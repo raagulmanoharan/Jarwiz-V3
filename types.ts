@@ -8,6 +8,7 @@ export interface CardData {
   x: number;
   y: number;
   color: string;
+  type?: 'link' | 'youtube' | 'image' | 'pdf';
 }
 
 export interface SiteInfo {
