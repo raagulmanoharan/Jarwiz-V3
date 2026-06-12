@@ -1,20 +1,33 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Jarwiz
 
-# Run and deploy your AI Studio app
+**Thinking made visual.** Jarwiz is an infinite canvas where live AI agents are your collaborators — think FigJam, but the other cursors on the board are a researcher, a summarizer, a brainstormer, and a writer. You spread ideas out as cards, and the agents work alongside you on the board itself: pulling sources, summarizing videos, fanning out sticky notes, drafting documents — every artifact a card you can see, move, connect, and keep.
 
-This contains everything you need to run your app locally.
+## Monorepo layout
 
-View your app in AI Studio: https://ai.studio/apps/drive/1vVc4NEI8UH1cEmadoN48mCag5oQ0sbiM
+```
+apps/web         Canvas app — Vite + React + tldraw, custom card shapes, agent presence layer
+apps/server      Thin agent server — link previews, SSE agent runs, holds API keys
+packages/shared  @jarwiz/shared — the agent wire protocol and agent registry (single source of truth)
+docs/            VISION.md and ARCHITECTURE.md — the spec
+```
 
-## Run Locally
+## Quickstart
 
-**Prerequisites:**  Node.js
+```sh
+npm install
+cp apps/server/.env.example apps/server/.env   # optional: add ANTHROPIC_API_KEY
+npm run dev
+```
 
+The web app runs at http://localhost:5173 and proxies `/api` to the server at http://localhost:3001. Everything works without an API key — `ANTHROPIC_API_KEY` only enables optional link-metadata cleanup.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Other scripts: `npm run build` and `npm run typecheck` (both fan out across all workspaces).
+
+## Read the spec
+
+- [docs/VISION.md](docs/VISION.md) — what Jarwiz is and why presence is the product
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — locked decisions, system design, milestones
+
+## Status
+
+**Milestone 0 — Foundation.** Infinite canvas in the Jarwiz skin, card shapes (link / YouTube / image / PDF / note), drop & paste ingestion via the server's link-preview endpoint, the agent dock (visual), and the SSE agent-event protocol stub. Live agents arrive in Milestone 1.

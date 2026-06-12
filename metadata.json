@@ -1,7 +1,0 @@
-{
-  "name": "LinkCanvas",
-  "description": "A minimalist infinite canvas where you can drag and drop links to generate visually rich preview cards using AI.",
-  "requestFramePermissions": [
-    "clipboard-read"
-  ]
-}
