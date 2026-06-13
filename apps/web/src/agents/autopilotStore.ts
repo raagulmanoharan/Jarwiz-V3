@@ -118,6 +118,7 @@ export async function continueProse(editor: Editor, cardId: TLShapeId): Promise<
   setSession({ cardId, status: 'continuing your draft…', anchor: cardCorner(editor, cardId) });
 
   let appended = '';
+  let joined = false;
   try {
     const res = await fetch('/api/autopilot', {
       method: 'POST',
@@ -128,6 +129,15 @@ export async function continueProse(editor: Editor, cardId: TLShapeId): Promise<
     if (!res.ok || !res.body) throw new Error('autopilot request failed');
     await readSSE<AutopilotEvent>(res.body, (event) => {
       if (event.type !== 'delta') return;
+      // Clean join: if the model didn't lead with whitespace and our text
+      // doesn't end with it, insert a break (newlines before a markdown heading,
+      // else a space) so the continuation doesn't weld onto the last word.
+      if (!joined && event.textDelta) {
+        joined = true;
+        if (baseText && !/\s$/.test(baseText) && !/^\s/.test(event.textDelta)) {
+          appended += /^#{1,6}\s/.test(event.textDelta) ? '\n\n' : ' ';
+        }
+      }
       appended += event.textDelta;
       const current = editor.getShape(cardId);
       if (!current || (current.type !== 'doc-card' && current.type !== 'note-card')) return;

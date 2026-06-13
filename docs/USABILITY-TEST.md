@@ -100,3 +100,52 @@ proactive offers) toward **making what exists shippable**:
 
 The interaction design earns the benefit of the doubt across every persona; the
 gap to adoption is **finishing and exporting**, not inventing more.
+
+---
+
+## Round 2 — re-run with real AI (sidecar)
+
+After wiring real Claude output (via the Claude CLI sidecar, no API key), the
+same five agents re-tested — this time able to judge the **substance** that
+demo mode hid. Each got a real, persona-specific artifact the product generated
+(a filled comparison table, or a Tab-to-continue draft) plus its screenshot.
+
+| Persona | Round 1 | Round 2 | Δ |
+|---|---|---|---|
+| Product Manager | 6 | **7** | +1 |
+| Tour / Travel Planner | 5.5 | **7** | +1.5 |
+| Teacher | 6 | **7.5** | +1.5 |
+| YouTuber | 6 | **8** | +2 |
+| Content Creator | 6 | **8** | +2 |
+| **Average** | **5.9** | **7.5** | **+1.6** |
+
+**The engine is proven.** Every tester confirmed the real output is genuinely
+good, not generic filler: the YouTuber would record from the script ("strong
+hook, correct science, real explainer structure — a B+ first draft"); the
+content creator would ship the blog draft with light edits ("actually sharp");
+the teacher found the WW1 handout "accurate, unbiased, classroom-grade" and
+confirmed that typing "for a 9th-grade reader" really did steer the reading
+level; the tour planner verified the Lisbon hotel table was accurate and
+correctly geolocated; the PM found the build/buy/partner matrix coherent and
+on-domain. The round-1 "I can't judge quality" caveat is retired.
+
+**What real output sharpened:**
+- **Export is now the louder blocker.** "The better the AI gets, the more this
+  hurts — I now have something worth keeping and no way to keep it." Still the
+  #1 thing between pilot and adopt, for every persona.
+- **Two real defects surfaced (and were fixed this run):** (1) the continuation
+  welded onto the seed text with no break and a raw `##` leaked into prose; (2)
+  a stray `</s>` stop-token rendered at the end of a draft. Both fixed — a join
+  rule (newline before a heading, else a space) and a sidecar output cleaner.
+- **Table clipping upgraded Minor → Major.** Now that the clipped cells hold
+  real decision data (the PM's risk column, the planner's Notes), truncation is
+  a correctness hazard, not a cosmetic nit.
+- **Steering still wanted.** The PM: "the model can clearly do more; the product
+  won't let me ask" — a per-summon brief (tone/length/columns) and stored
+  brand-voice profiles would lift output from good to tailored.
+- **Latency (~20–40s via the sidecar) was downgraded to Minor** by every tester
+  for one-shot generation; it would bite on rapid iteration.
+
+**Reconfirmed priority order:** Export → per-summon brief + voice profiles →
+card-focus/table-clipping fix → light organization → domain depth. The AI is no
+longer the question; **finishing and exporting** is.

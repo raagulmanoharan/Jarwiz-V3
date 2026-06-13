@@ -79,11 +79,19 @@ export function sidecarGenerate({
     child.on('close', (code) => {
       clearTimeout(timer);
       signal?.removeEventListener('abort', onAbort);
-      if (code === 0) resolve(out.trim());
+      if (code === 0) resolve(cleanOutput(out));
       else reject(new Error(err.trim() || `claude exited ${code}`));
     });
 
     child.stdin.write(user);
     child.stdin.end();
   });
+}
+
+/** Strip stray model artifacts that occasionally leak from the CLI stream. */
+function cleanOutput(raw: string): string {
+  return raw
+    .replace(/<\/?s>/gi, '') // end-of-sequence token leaks (</s>)
+    .replace(/<\|(?:eot_id|endoftext|end_of_turn)\|>/gi, '')
+    .trim();
 }
