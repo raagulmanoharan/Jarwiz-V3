@@ -3,7 +3,7 @@
  *
  *   GET  /api/health             → { ok: true }
  *   POST /api/link/preview       → LinkPreview (server-side fetch, SSRF-guarded)
- *   POST /api/agents/:id/run     → SSE stream of typed AgentEvents (M0 stub)
+ *   POST /api/agents/:id/run     → SSE stream of typed AgentEvents
  *
  * Secrets (ANTHROPIC_API_KEY) live only here — the client never sees a key.
  */
@@ -12,10 +12,11 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { logger } from 'hono/logger';
 import { streamSSE } from 'hono/streaming';
-import { getAgent, isAgentId } from '@jarwiz/shared';
+import { isAgentId } from '@jarwiz/shared';
 import type { AgentEvent } from '@jarwiz/shared';
 import { buildLinkPreview, SsrfError } from './linkPreview.js';
-import { streamScriptedRun } from './agentRun.js';
+import { streamAgentRun } from './agentRun.js';
+import { parseRunRequest, RunRequestError } from './agents/request.js';
 
 // Load apps/server/.env when present (no-op otherwise).
 try {
@@ -54,7 +55,7 @@ app.post('/api/link/preview', async (c) => {
   }
 });
 
-app.post('/api/agents/:agentId/run', (c) => {
+app.post('/api/agents/:agentId/run', async (c) => {
   const agentId = c.req.param('agentId');
   if (!isAgentId(agentId)) {
     return c.json(
@@ -62,13 +63,28 @@ app.post('/api/agents/:agentId/run', (c) => {
       404,
     );
   }
-  const agent = getAgent(agentId);
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected a JSON body: { source, placement, selection? }' }, 400);
+  }
+
+  let request;
+  try {
+    request = parseRunRequest(body);
+  } catch (error) {
+    const message = error instanceof RunRequestError ? error.message : 'Invalid request';
+    return c.json({ error: message }, 400);
+  }
 
   // streamSSE frames every event as `data: {json}\n\n`.
   return streamSSE(c, async (stream) => {
     const send = (event: AgentEvent) => stream.writeSSE({ data: JSON.stringify(event) });
+    const signal = c.req.raw.signal;
     try {
-      for await (const event of streamScriptedRun(agent)) {
+      for await (const event of streamAgentRun(agentId, request, signal)) {
         await send(event);
       }
     } catch (error) {

@@ -109,21 +109,21 @@ function serializeEmit(emit: EmitFn): (event: AgentEvent) => Promise<void> {
 
 function friendlyApiError(error: unknown): string {
   if (error instanceof Anthropic.AuthenticationError) {
-    return 'The server’s Anthropic API key was rejected — check ANTHROPIC_API_KEY.';
+    return "The server Anthropic API key was rejected - check ANTHROPIC_API_KEY.";
   }
   if (error instanceof Anthropic.RateLimitError) {
-    return 'Anthropic rate limit hit — give it a moment and try again.';
+    return "Anthropic rate limit hit - give it a moment and try again.";
   }
-  if (error instanceof Anthropic.OverloadedError || error instanceof Anthropic.InternalServerError) {
-    return 'Anthropic is overloaded right now — try again shortly.';
+  if (error instanceof Anthropic.InternalServerError) {
+    return "Anthropic is overloaded right now - try again shortly.";
   }
   if (error instanceof Anthropic.BadRequestError) {
     return `Anthropic rejected the request: ${error.message}`;
   }
   if (error instanceof Anthropic.APIError) {
-    return `Anthropic API error (${error.status ?? 'unknown'}): ${error.message}`;
+    return `Anthropic API error (${error.status ?? "unknown"}): ${error.message}`;
   }
-  return error instanceof Error ? error.message : 'Agent run failed';
+  return error instanceof Error ? error.message : "Agent run failed";
 }
 
 interface ToolInput {
@@ -179,7 +179,7 @@ export async function runAgentLoop(
         await emit({ type: 'card.create', cardId, kind, x, y, title });
         await emit({
           type: 'status',
-          message: kind === 'doc' ? `${meta.name} is writing…` : `${meta.name} is jotting a note…`,
+          message: kind === 'doc' ? `${meta.name} is writing...` : `${meta.name} is jotting a note...`,
         });
         openCardId = cardId;
         return {
@@ -203,7 +203,7 @@ export async function runAgentLoop(
           };
         }
         const label = typeof input.label === 'string' ? input.label : undefined;
-        await emit({ type: 'status', message: `${meta.name} is connecting it to the source…` });
+        await emit({ type: 'status', message: `${meta.name} is connecting it to the source...` });
         await emit({ type: 'edge.create', fromCardId, toCardId, label });
         return { result: 'ok' };
       }
@@ -214,7 +214,7 @@ export async function runAgentLoop(
 
   try {
     // Walk over to the source while we assemble the context.
-    await emit({ type: 'status', message: `${meta.name} is looking at the source…` });
+    await emit({ type: 'status', message: `${meta.name} is looking at the source...` });
     await emit({
       type: 'cursor',
       x: request.source.x + request.source.w / 2,
@@ -262,9 +262,9 @@ export async function runAgentLoop(
         if (event.type === 'content_block_start') {
           const block = event.content_block;
           if (block.type === 'server_tool_use' && block.name === 'web_fetch') {
-            void emit({ type: 'status', message: `${meta.name} is reading the page…` });
+            void emit({ type: 'status', message: `${meta.name} is reading the page...` });
           } else if (block.type === 'web_fetch_tool_result') {
-            void emit({ type: 'status', message: `${meta.name} finished reading — thinking…` });
+            void emit({ type: 'status', message: `${meta.name} finished reading - thinking...` });
           }
         }
       });
@@ -290,7 +290,7 @@ export async function runAgentLoop(
         await closeOpenCard();
         await emit({
           type: 'status',
-          message: `${meta.name} hit the output limit — the result may be truncated.`,
+          message: `${meta.name} hit the output limit - the result may be truncated.`,
         });
         await emit({ type: 'done' });
         return;

@@ -11,6 +11,9 @@ export const CARD_RADIUS = 16;
 /** Matches the sticky note's tighter corner rounding (.jz-note). */
 export const NOTE_RADIUS = 4;
 
+/** Document card uses the standard card radius. */
+export const DOC_RADIUS = CARD_RADIUS;
+
 export function roundedRectPath(w: number, h: number, radius: number): Path2D {
   const path = new Path2D();
   const r = Math.min(radius, w / 2, h / 2);
