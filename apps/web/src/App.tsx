@@ -9,6 +9,8 @@ import {
 } from 'tldraw';
 import { useSync } from '@tldraw/sync';
 import { AgentPresenceLayer } from './agents/AgentPresenceLayer';
+import { abortAutopilot } from './agents/autopilotStore';
+import { clearThread } from './agents/comments';
 import { registerIngestion } from './ingest/registerIngestion';
 import { cardShapeUtils } from './shapes';
 import { EmptyState } from './ui/EmptyState';
@@ -50,6 +52,13 @@ const components: TLComponents = {
 
 const handleMount = (editor: Editor) => {
   registerIngestion(editor);
+  // Clean up per-card state when a card is deleted: stop any in-flight Autopilot
+  // session and drop its comment thread, so we don't leak controllers or grow
+  // localStorage with threads whose card no longer exists.
+  editor.sideEffects.registerAfterDeleteHandler('shape', (shape) => {
+    abortAutopilot(shape.id);
+    clearThread(shape.id);
+  });
   // Dev convenience + e2e hook: reach the editor from the console.
   (window as unknown as { editor: Editor }).editor = editor;
 };

@@ -19,6 +19,32 @@ body,
   inset: 0;
 }
 
+/* Keyboard focus: a visible ring on our interactive overlays. Individual rules
+   set `outline: none` for the mouse case; restore a clear indicator for
+   keyboard users (focus-visible only, so it never shows on click). */
+.jz-palette-item,
+.jz-mention-item,
+.jz-roster-agent,
+.jz-comments-chip,
+.jz-comments-input,
+.jz-ask-button,
+.jz-ask-item,
+.jz-new-note,
+.jz-offer-accept,
+.jz-firstrun-dismiss,
+.jz-table-cell,
+.jz-table-headcell,
+.jz-doc-textarea,
+.jz-doc-title-input,
+.jz-note textarea {
+  outline: none;
+}
+.jarwiz-app :focus-visible {
+  outline: 2px solid var(--jz-focus);
+  outline-offset: 2px;
+  border-radius: var(--jz-radius-xs);
+}
+
 /* ─── Calm the tldraw chrome ────────────────────────────────────────────── */
 
 .jarwiz-app .tl-container {

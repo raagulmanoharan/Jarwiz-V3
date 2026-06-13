@@ -177,11 +177,13 @@ function cellAnchor(
   headerH: number,
 ): { x: number; y: number } | null {
   const b = editor.getShapePageBounds(cardId);
-  if (!b) return null;
+  if (!b || cols < 1) return null;
   const colW = b.w / cols;
   const bodyH = b.h - headerH;
   const rowH = bodyH / Math.max(1, totalRows);
-  return { x: b.x + (col + 0.5) * colW, y: b.y + headerH + (row + 0.5) * rowH };
+  // Park at the cell's right edge, not its center, so the avatar doesn't sit on
+  // top of the (left-aligned) text it's writing into.
+  return { x: b.x + (col + 1) * colW - 10, y: b.y + headerH + (row + 0.5) * rowH };
 }
 
 export async function fillTable(

@@ -154,7 +154,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
                   onPointerUp={stopEventPropagation}
                 />
               ) : (
-                <div key={col} className="jz-table-cell jz-table-cell-static">
+                <div key={col} className="jz-table-cell jz-table-cell-static" title={cell}>
                   {cell}
                 </div>
               ),
