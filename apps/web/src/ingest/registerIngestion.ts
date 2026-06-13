@@ -19,6 +19,7 @@ import {
   type VecLike,
 } from 'tldraw';
 import { domainOf, isHttpUrl } from '../lib/url';
+import { setOffer } from '../agents/offers';
 import {
   LINK_CARD_SIZE,
   NOTE_CARD_SIZE,
@@ -79,13 +80,16 @@ function placeUrl(editor: Editor, url: string, center: VecLike): void {
 
 function placeYouTube(editor: Editor, url: string, videoId: string, center: VecLike): void {
   const { w, h } = YOUTUBE_CARD_SIZE;
+  const id = createShapeId();
   editor.createShape<YouTubeCardShape>({
-    id: createShapeId(),
+    id,
     type: 'youtube-card',
     x: center.x - w / 2,
     y: center.y - h / 2,
     props: { w, h, videoId, url, title: 'YouTube' },
   });
+  // Proactive offer: the Summarizer raises its hand on a video.
+  setOffer({ shapeId: id, agentId: 'summarizer', label: 'Summarize this?' });
 }
 
 function placeLink(editor: Editor, url: string, center: VecLike): void {
@@ -100,6 +104,9 @@ function placeLink(editor: Editor, url: string, center: VecLike): void {
     y: center.y - h / 2,
     props: { ...LINK_CARD_SIZE, url, loading: true },
   });
+
+  // Proactive offer: the Summarizer raises its hand on an article link.
+  setOffer({ shapeId: id, agentId: 'summarizer', label: 'Summarize this?' });
 
   void fetchLinkPreview(url)
     .then((preview) => {
@@ -179,14 +186,17 @@ async function placeImage(editor: Editor, file: File, center: VecLike): Promise<
 async function placePdf(editor: Editor, file: File, center: VecLike): Promise<void> {
   const src = await FileHelpers.blobToDataUrl(file);
   const { w, h } = PDF_CARD_SIZE;
+  const id = createShapeId();
 
   editor.createShape<PdfCardShape>({
-    id: createShapeId(),
+    id,
     type: 'pdf-card',
     x: center.x - w / 2,
     y: center.y - h / 2,
     props: { w, h, src, name: file.name },
   });
+  // Proactive offer: the Summarizer raises its hand on a PDF.
+  setOffer({ shapeId: id, agentId: 'summarizer', label: 'Summarize this?' });
 }
 
 /* ─── Text ──────────────────────────────────────────────────────────────── */

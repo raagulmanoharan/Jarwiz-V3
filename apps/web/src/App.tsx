@@ -39,6 +39,8 @@ const components: TLComponents = {
 export function App() {
   const handleMount = useCallback((editor: Editor) => {
     registerIngestion(editor);
+    // Dev convenience + e2e hook: reach the editor from the console.
+    (window as unknown as { editor: Editor }).editor = editor;
   }, []);
 
   return (

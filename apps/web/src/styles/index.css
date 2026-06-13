@@ -502,6 +502,145 @@ body,
 .jz-dock-status {
   font-size: 10.5px;
   color: var(--jz-ink-400);
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Dock — active agent */
+.jz-dock-agent-active {
+  background: color-mix(in srgb, var(--agent-color) 9%, transparent);
+}
+
+.jz-dock-agent-active .jz-dock-status {
+  color: var(--agent-color);
+  font-weight: 500;
+}
+
+.jz-agent-dot-pulse {
+  animation: jz-dot-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes jz-dot-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--agent-color) 18%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--agent-color) 8%, transparent);
+  }
+}
+
+/* ─── Agent cursor overlay ──────────────────────────────────────────────── */
+
+.jz-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 310;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  /* The unhurried glide to where the agent is working. */
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.jz-cursor-arrow {
+  flex: none;
+  filter: drop-shadow(0 1px 2px rgba(64, 50, 34, 0.25));
+}
+
+.jz-cursor-label {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--agent-color);
+  color: #fffefb;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: var(--jz-shadow-soft);
+}
+
+.jz-cursor-status {
+  font-weight: 400;
+  opacity: 0.92;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Proactive offer chip ──────────────────────────────────────────────── */
+
+.jz-offer {
+  position: absolute;
+  z-index: 295;
+  transform: translate(-50%, -100%);
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--jz-card);
+  box-shadow: var(--jz-shadow);
+  animation: jz-offer-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.jz-offer-accept {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  cursor: pointer;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: transparent;
+  font-family: var(--jz-font);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--agent-color);
+  transition: background 120ms ease;
+}
+
+.jz-offer-accept:hover {
+  background: color-mix(in srgb, var(--agent-color) 12%, transparent);
+}
+
+.jz-offer-dismiss {
+  border: none;
+  cursor: pointer;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--jz-ink-400);
+  font-size: 11px;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.jz-offer-dismiss:hover {
+  background: rgba(64, 50, 34, 0.07);
+  color: var(--jz-ink-900);
+}
+
+@keyframes jz-offer-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% + 6px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
 }
 
 /* Ask-an-agent affordance */

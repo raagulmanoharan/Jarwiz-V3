@@ -1,23 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useEditor } from 'tldraw';
-import type { AgentMeta } from '@jarwiz/shared';
+import { useEditor, type TLShape, type TLShapeId } from 'tldraw';
+import { getAgent, type AgentMeta } from '@jarwiz/shared';
+import { AgentCursorLayer } from './AgentCursorLayer';
 import { AgentDock } from './AgentDock';
 import { AskAgentAffordance } from './AskAgentAffordance';
+import { dismissOffer } from './offers';
+import { buildRunRequest, isCardShape } from './runRequest';
+import { SuggestionChip } from './SuggestionChip';
 import { useAgentRun } from './useAgentRun';
 
 const TOAST_DURATION_MS = 2800;
-const PLACEMENT_OFFSET = 60;
 
 /**
  * The agent presence layer — everything agent-shaped that floats over the
- * canvas. Includes the dock (idle), the ask-an-agent affordance, and the
- * SSE-driven runtime that applies agent events to the board.
+ * canvas: the dock (live status), the ask-an-agent affordance (summoning),
+ * the proactive offer chip, and the agent cursor overlay. The SSE runtime
+ * (useAgentRun) drives presence as events arrive.
  */
 export function AgentPresenceLayer() {
   const editor = useEditor();
+  const { run, error } = useAgentRun();
   const [toast, setToast] = useState<string | null>(null);
   const toastTimeout = useRef<number | undefined>(undefined);
-  const { run: runAgent } = useAgentRun();
 
   const notify = useCallback((message: string) => {
     setToast(message);
@@ -27,78 +31,50 @@ export function AgentPresenceLayer() {
 
   useEffect(() => () => window.clearTimeout(toastTimeout.current), []);
 
+  // Surface run errors honestly as a toast.
+  useEffect(() => {
+    if (error) notify(error);
+  }, [error, notify]);
+
+  const runOnShapes = useCallback(
+    (agent: AgentMeta, source: TLShape, context: TLShape[] = []) => {
+      run(agent, buildRunRequest(editor, source, context));
+    },
+    [editor, run],
+  );
+
+  // Summoned: "Ask an agent" on the current selection.
   const handlePickAgent = useCallback(
     (agent: AgentMeta) => {
-      const selectedShapeIds = editor.getSelectedShapeIds();
-      if (selectedShapeIds.length === 0) {
-        notify(`${agent.name}: select at least one card first`);
-        return;
-      }
-
-      // Build the run request from the selection.
-      const shapes: any[] = [];
-      for (const id of selectedShapeIds) {
-        const shape = editor.getShape(id as any);
-        if (shape && ['link-card', 'youtube-card', 'image-card', 'pdf-card', 'note-card', 'doc-card'].includes(shape.type)) {
-          shapes.push(shape);
-        }
-      }
+      const shapes = editor
+        .getSelectedShapeIds()
+        .map((id) => editor.getShape(id))
+        .filter(isCardShape);
 
       if (shapes.length === 0) {
-        notify('Select a card to ask an agent');
+        notify('Select a card first, then ask an agent.');
         return;
       }
-
-      // The first shape is the "source" (what the agent works on).
-      // The rest are context.
-      const sourceShape = shapes[0];
-      const contextShapes = shapes.slice(1);
-
-      const shapeToRunCard = (shape: any): any => {
-        const kindMap: Record<string, any> = {
-          'link-card': 'link',
-          'youtube-card': 'youtube',
-          'image-card': 'image',
-          'pdf-card': 'pdf',
-          'note-card': 'note',
-          'doc-card': 'doc',
-        };
-        return {
-          cardId: shape.id,
-          kind: kindMap[shape.type],
-          x: shape.x,
-          y: shape.y,
-          w: shape.props.w,
-          h: shape.props.h,
-          url: shape.props.url,
-          title: shape.props.title,
-          text: shape.props.text,
-        };
-      };
-
-      const source = shapeToRunCard(sourceShape);
-      const selection = contextShapes.map(shapeToRunCard);
-
-      // Compute free-space placement hint to the right of the source.
-      const placement = {
-        x: sourceShape.x + sourceShape.props.w + PLACEMENT_OFFSET,
-        y: sourceShape.y,
-      };
-
-      const request: any = {
-        source,
-        selection: selection.length > 0 ? selection : undefined,
-        placement,
-      };
-
-      notify(`${agent.name} is working…`);
-      runAgent(agent, request);
+      const [source, ...context] = shapes;
+      if (source) runOnShapes(agent, source, context);
     },
-    [editor, runAgent, notify],
+    [editor, notify, runOnShapes],
+  );
+
+  // Offered: one-tap accept of a proactive suggestion chip.
+  const handleAcceptOffer = useCallback(
+    (shapeId: TLShapeId) => {
+      const shape = editor.getShape(shapeId);
+      dismissOffer(shapeId);
+      if (isCardShape(shape)) runOnShapes(getAgent('summarizer'), shape);
+    },
+    [editor, runOnShapes],
   );
 
   return (
     <>
+      <AgentCursorLayer />
+      <SuggestionChip onAccept={handleAcceptOffer} />
       <AskAgentAffordance onPickAgent={handlePickAgent} />
       <AgentDock />
       {toast ? <div className="jz-toast">{toast}</div> : null}
