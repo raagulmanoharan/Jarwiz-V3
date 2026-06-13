@@ -34,6 +34,7 @@ import {
 } from '../shapes';
 import { fetchLinkPreview } from '../ingest/linkPreview';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from './presence';
+import { startStreaming, stopStreaming } from './streaming';
 
 /** Agent identity hue → nearest tldraw palette color (arrows use the palette). */
 const ARROW_COLOR: Record<AgentId, TLDefaultColorStyle> = {
@@ -110,6 +111,10 @@ export function useAgentRun() {
           setError(err.message);
         }
       } finally {
+        // Stop any streaming caret that a mid-flight error left open.
+        for (const shapeId of idMap.values()) {
+          stopStreaming(shapeId);
+        }
         endPresence(agent.id);
         setIsRunning(false);
       }
@@ -175,6 +180,7 @@ function applyAgentEvent(
           y: event.y,
           props: { w: NOTE_CARD_SIZE.w, h: NOTE_CARD_SIZE.h, text: event.text ?? '' },
         });
+        startStreaming(shapeId);
       } else {
         editor.createShape<DocCardShape>({
           id: shapeId,
@@ -188,6 +194,7 @@ function applyAgentEvent(
             title: event.title ?? '',
           },
         });
+        startStreaming(shapeId);
       }
       break;
     }
@@ -206,7 +213,8 @@ function applyAgentEvent(
     }
 
     case 'card.done':
-      break; // streaming complete; nothing to flush
+      stopStreaming(resolveId(event.cardId));
+      break;
 
     case 'edge.create':
       createEdge(
@@ -273,6 +281,9 @@ function createEdge(
     type: 'arrow',
     props: {
       color: color as TLDefaultColorStyle,
+      size: 's',
+      dash: 'solid',
+      arrowheadEnd: 'triangle',
       ...(label ? { richText: toRichText(label) } : {}),
     },
   });

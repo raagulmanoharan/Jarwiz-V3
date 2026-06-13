@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react';
 import {
   HTMLContainer,
   Rectangle2d,
@@ -11,6 +12,7 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
+import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { NOTE_RADIUS, roundedRectPath } from './cardGeometry';
 
 export interface NoteCardProps {
@@ -78,6 +80,8 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
   const editor = useEditor();
   const isEditing = useIsEditing(shape.id);
   const { text } = shape.props;
+  const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
+  const isStreaming = streamingSet.has(shape.id);
 
   return (
     <div className="jz-note" style={{ background: NOTE_PAPER }}>
@@ -88,7 +92,6 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
           placeholder="Write something…"
           style={{ pointerEvents: 'all' }}
           onFocus={(e) => {
-            // Put the caret at the end instead of selecting nothing at the start.
             const length = e.currentTarget.value.length;
             e.currentTarget.setSelectionRange(length, length);
           }}
@@ -106,6 +109,7 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
       ) : (
         <div className={`jz-note-text${text ? '' : ' jz-note-placeholder'}`}>
           {text || 'Double-click to write'}
+          {isStreaming && <span className="jz-stream-caret" aria-hidden />}
         </div>
       )}
     </div>

@@ -1,17 +1,22 @@
 /**
- * Agent cursor overlay — named cursors in each agent's color that glide to
- * where the agent is working. Presence, made visible (VISION.md).
- *
- * Cursors are stored in page space (the `cursor` AgentEvent target) and
- * converted to viewport space here, reactively, so they pan and zoom with the
- * board. A CSS transition on the transform gives the unhurried "walk over"
- * glide; size stays constant regardless of zoom (FigJam-style).
+ * Figma-style agent presence — colored avatar circles that glide to wherever
+ * the agent is working. Coordinates are stored in page space (the `cursor`
+ * AgentEvent target) and converted to viewport space here, reactively, so
+ * they pan and zoom with the board. The CSS transition gives the unhurried
+ * glide; circle size stays constant regardless of zoom.
  */
 
 import { useSyncExternalStore, type CSSProperties } from 'react';
 import { useEditor, useValue } from 'tldraw';
 import { AGENTS, type AgentMeta } from '@jarwiz/shared';
 import { getPresenceSnapshot, subscribePresence } from './presence';
+
+const INITIALS: Record<string, string> = {
+  researcher: 'R',
+  summarizer: 'S',
+  brainstormer: 'B',
+  writer: 'W',
+};
 
 export function AgentCursorLayer() {
   const snapshot = useSyncExternalStore(subscribePresence, getPresenceSnapshot, getPresenceSnapshot);
@@ -22,7 +27,7 @@ export function AgentCursorLayer() {
         const presence = snapshot[agent.id];
         if (!presence?.active || !presence.cursor) return null;
         return (
-          <AgentCursor
+          <AgentAvatar
             key={agent.id}
             agent={agent}
             page={presence.cursor}
@@ -34,7 +39,7 @@ export function AgentCursorLayer() {
   );
 }
 
-function AgentCursor({
+function AgentAvatar({
   agent,
   page,
   status,
@@ -45,38 +50,34 @@ function AgentCursor({
 }) {
   const editor = useEditor();
 
-  // Reactive: recomputes on camera change (pan/zoom) and on new cursor target.
   const screen = useValue(
-    'jarwiz agent cursor',
+    'jarwiz agent avatar',
     () => editor.pageToViewport(page),
     [editor, page.x, page.y],
   );
 
+  const initial = INITIALS[agent.id] ?? agent.name[0];
+
   return (
     <div
-      className="jz-cursor"
+      className="jz-avatar"
       style={
         {
-          transform: `translate(${screen.x}px, ${screen.y}px)`,
+          // Center the 36px circle on the cursor point.
+          transform: `translate(${screen.x - 18}px, ${screen.y - 18}px)`,
           '--agent-color': agent.color,
         } as CSSProperties
       }
     >
-      <span className="jz-cursor-arrow-wrap">
-        <span className="jz-cursor-ring" aria-hidden />
-        <svg className="jz-cursor-arrow" width="20" height="20" viewBox="0 0 20 20" aria-hidden>
-          <path
-            d="M3 2 L3 16 L7 12 L10 18 L12.5 17 L9.5 11 L15 11 Z"
-            fill="var(--agent-color)"
-            stroke="#fffefb"
-            strokeWidth="1"
-          />
-        </svg>
-      </span>
-      <div className="jz-cursor-label">
-        <span className="jz-cursor-dot" />
-        <span className="jz-cursor-name">{agent.name}</span>
-        {status ? <span className="jz-cursor-status">{status}</span> : null}
+      <div className="jz-avatar-circle-wrap">
+        <span className="jz-avatar-ring" aria-hidden />
+        <div className="jz-avatar-circle" aria-label={agent.name}>
+          <span className="jz-avatar-initial">{initial}</span>
+        </div>
+      </div>
+      <div className="jz-avatar-badge">
+        <span className="jz-avatar-name">{agent.name}</span>
+        {status ? <span className="jz-avatar-status">{status}</span> : null}
       </div>
     </div>
   );

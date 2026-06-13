@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react';
 import {
   HTMLContainer,
   Rectangle2d,
@@ -11,6 +12,7 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
+import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { DocMarkdown } from '../ui/DocMarkdown';
 import { DOC_RADIUS, roundedRectPath } from './cardGeometry';
 
@@ -78,6 +80,8 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
   const editor = useEditor();
   const isEditing = useIsEditing(shape.id);
   const { text, title } = shape.props;
+  const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
+  const isStreaming = streamingSet.has(shape.id);
 
   if (isEditing) {
     return (
@@ -128,6 +132,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
       </div>
       <div className={`jz-doc-content${text ? '' : ' jz-doc-placeholder'}`}>
         {text ? <DocMarkdown content={text} /> : 'Double-click to edit'}
+        {isStreaming && <span className="jz-stream-caret" aria-hidden />}
       </div>
     </div>
   );

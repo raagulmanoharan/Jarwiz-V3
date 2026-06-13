@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor, type TLShape, type TLShapeId } from 'tldraw';
 import { getAgent, type AgentMeta } from '@jarwiz/shared';
 import { AgentCursorLayer } from './AgentCursorLayer';
-import { AgentDock } from './AgentDock';
 import { AskAgentAffordance } from './AskAgentAffordance';
 import { dismissOffer } from './offers';
 import { buildRunRequest, isCardShape } from './runRequest';
@@ -76,7 +75,6 @@ export function AgentPresenceLayer() {
       <AgentCursorLayer />
       <SuggestionChip onAccept={handleAcceptOffer} />
       <AskAgentAffordance onPickAgent={handlePickAgent} />
-      <AgentDock />
       {toast ? <div className="jz-toast">{toast}</div> : null}
     </>
   );
