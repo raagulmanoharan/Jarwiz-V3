@@ -44,7 +44,7 @@ function shapeToRunCard(shape: TLShape): RunCard {
 }
 
 export function buildRunRequest(
-  _editor: Editor,
+  editor: Editor,
   source: TLShape,
   context: TLShape[] = [],
 ): AgentRunRequest {
@@ -55,9 +55,22 @@ export function buildRunRequest(
   return {
     source: shapeToRunCard(source),
     selection: selection.length > 0 ? selection : undefined,
-    placement: {
-      x: source.x + sourceWidth + PLACEMENT_OFFSET,
-      y: source.y,
-    },
+    placement: freePlacement(editor, source, sourceWidth),
   };
+}
+
+/**
+ * Where to drop the agent's artifacts: to the right of the source, but past
+ * any existing content so successive runs don't pile cards on top of each
+ * other. Falls back to right-of-source when the board bounds are unavailable.
+ */
+function freePlacement(
+  editor: Editor,
+  source: TLShape,
+  sourceWidth: number,
+): { x: number; y: number } {
+  const rightOfSource = source.x + sourceWidth + PLACEMENT_OFFSET;
+  const bounds = editor.getCurrentPageBounds();
+  const x = bounds ? Math.max(rightOfSource, bounds.maxX + PLACEMENT_OFFSET) : rightOfSource;
+  return { x, y: source.y };
 }

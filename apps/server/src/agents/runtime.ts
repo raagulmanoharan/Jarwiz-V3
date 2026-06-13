@@ -19,7 +19,7 @@ import type { AgentEvent, AgentMeta, AgentRunRequest, CardKind } from '@jarwiz/s
 export const AGENT_MODEL = 'claude-opus-4-8';
 export const AGENT_MAX_TOKENS = 16_000;
 /** Max assistant turns per run — cost control, see ARCHITECTURE.md. */
-export const MAX_ITERATIONS = 8;
+export const MAX_ITERATIONS = 12;
 
 export type EmitFn = (event: AgentEvent) => void | Promise<void>;
 
@@ -77,6 +77,43 @@ const CANVAS_TOOLS: Anthropic.Messages.Tool[] = [
         cardId: { type: 'string', description: 'The cardId returned by begin_card.' },
       },
       required: ['cardId'],
+    },
+  },
+  {
+    name: 'create_link_card',
+    description:
+      'Place a finished link (source) card on the board in one step — for citing a web ' +
+      'source you found. No streaming: the card shows its title, a one-line description, ' +
+      'and the domain immediately. Returns the new cardId so you can connect_cards to it.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'The source URL (https). Must be a real, fetched source.' },
+        title: { type: 'string', description: 'The source title (the page/article/video title).' },
+        description: {
+          type: 'string',
+          description: 'One short sentence on why this source is relevant to the idea.',
+        },
+        x: { type: 'number', description: 'Page-space x of the card top-left corner.' },
+        y: { type: 'number', description: 'Page-space y of the card top-left corner.' },
+      },
+      required: ['url', 'title', 'x', 'y'],
+    },
+  },
+  {
+    name: 'create_note',
+    description:
+      'Place a finished sticky note on the board in one step — for a single idea, hook, ' +
+      'angle, or name. Keep each note to one idea, a few words to a sentence. Returns the ' +
+      'new cardId so you can connect_cards to it.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'The note body — one idea, short.' },
+        x: { type: 'number', description: 'Page-space x of the note top-left corner.' },
+        y: { type: 'number', description: 'Page-space y of the note top-left corner.' },
+      },
+      required: ['text', 'x', 'y'],
     },
   },
   {
@@ -193,6 +230,34 @@ export async function runAgentLoop(
         await closeOpenCard();
         return { result: 'ok' };
       }
+      case 'create_link_card': {
+        const url = typeof input.url === 'string' ? input.url : '';
+        if (url === '') return { result: 'url is required', isError: true };
+        const title = typeof input.title === 'string' ? input.title : url;
+        const description = typeof input.description === 'string' ? input.description : undefined;
+        const x = typeof input.x === 'number' ? input.x : request.placement.x;
+        const y = typeof input.y === 'number' ? input.y : request.placement.y;
+        await closeOpenCard();
+        const cardId = `card_${++cardCounter}`;
+        knownCardIds.add(cardId);
+        await emit({ type: 'cursor', x, y });
+        await emit({ type: 'card.create', cardId, kind: 'link', x, y, title, url, text: description });
+        await emit({ type: 'status', message: `${meta.name} added a source` });
+        return { result: JSON.stringify({ cardId }) };
+      }
+      case 'create_note': {
+        const text = typeof input.text === 'string' ? input.text : '';
+        if (text === '') return { result: 'text is required', isError: true };
+        const x = typeof input.x === 'number' ? input.x : request.placement.x;
+        const y = typeof input.y === 'number' ? input.y : request.placement.y;
+        await closeOpenCard();
+        const cardId = `card_${++cardCounter}`;
+        knownCardIds.add(cardId);
+        await emit({ type: 'cursor', x, y });
+        await emit({ type: 'card.create', cardId, kind: 'note', x, y, text });
+        await emit({ type: 'status', message: `${meta.name} jotted an idea` });
+        return { result: JSON.stringify({ cardId }) };
+      }
       case 'connect_cards': {
         const fromCardId = String(input.fromCardId ?? '');
         const toCardId = String(input.toCardId ?? '');
@@ -261,8 +326,12 @@ export async function runAgentLoop(
       stream.on('streamEvent', (event) => {
         if (event.type === 'content_block_start') {
           const block = event.content_block;
-          if (block.type === 'server_tool_use' && block.name === 'web_fetch') {
+          if (block.type === 'server_tool_use' && block.name === 'web_search') {
+            void emit({ type: 'status', message: `${meta.name} is searching the web...` });
+          } else if (block.type === 'server_tool_use' && block.name === 'web_fetch') {
             void emit({ type: 'status', message: `${meta.name} is reading the page...` });
+          } else if (block.type === 'web_search_tool_result') {
+            void emit({ type: 'status', message: `${meta.name} found sources - vetting...` });
           } else if (block.type === 'web_fetch_tool_result') {
             void emit({ type: 'status', message: `${meta.name} finished reading - thinking...` });
           }

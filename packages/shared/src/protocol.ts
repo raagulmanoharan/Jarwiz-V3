@@ -67,7 +67,14 @@ export type AgentEvent =
   | { type: 'status'; message: string }
   /** Cursor target in page (canvas) coordinates — the agent walks here. */
   | { type: 'cursor'; x: number; y: number }
-  /** Place a new card artifact on the board. */
+  /**
+   * Place a new card artifact on the board.
+   *
+   * Streamed cards (a Summarizer doc) are created empty and filled by later
+   * `card.delta` events. Fully-formed cards (a Researcher link card, a
+   * Brainstormer note) carry their content here: `url` for link cards, `text`
+   * for the note body or link description.
+   */
   | {
       type: 'card.create';
       cardId: string;
@@ -75,6 +82,8 @@ export type AgentEvent =
       x: number;
       y: number;
       title?: string;
+      url?: string;
+      text?: string;
     }
   /** Stream text into a card, word by word. */
   | { type: 'card.delta'; cardId: string; textDelta: string }

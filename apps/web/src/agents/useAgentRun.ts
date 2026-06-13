@@ -26,10 +26,13 @@ import {
 import type { AgentEvent, AgentId, AgentMeta, AgentRunRequest } from '@jarwiz/shared';
 import {
   DOC_CARD_SIZE,
+  LINK_CARD_SIZE,
   NOTE_CARD_SIZE,
   type DocCardShape,
+  type LinkCardShape,
   type NoteCardShape,
 } from '../shapes';
+import { fetchLinkPreview } from '../ingest/linkPreview';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from './presence';
 
 /** Agent identity hue → nearest tldraw palette color (arrows use the palette). */
@@ -142,13 +145,35 @@ function applyAgentEvent(
     case 'card.create': {
       const shapeId = createShapeId();
       idMap.set(event.cardId, shapeId);
-      if (event.kind === 'note') {
+      if (event.kind === 'link') {
+        // A finished source card from the Researcher: render the agent's
+        // metadata immediately, then best-effort enrich (image/favicon).
+        editor.createShape<LinkCardShape>({
+          id: shapeId,
+          type: 'link-card',
+          x: event.x,
+          y: event.y,
+          props: {
+            w: LINK_CARD_SIZE.w,
+            h: LINK_CARD_SIZE.h,
+            url: event.url ?? '',
+            title: event.title ?? event.url ?? '',
+            description: event.text ?? '',
+            image: '',
+            favicon: '',
+            themeColor: '',
+            siteName: '',
+            loading: false,
+          },
+        });
+        if (event.url) void enrichLinkCard(editor, shapeId, event.url);
+      } else if (event.kind === 'note') {
         editor.createShape<NoteCardShape>({
           id: shapeId,
           type: 'note-card',
           x: event.x,
           y: event.y,
-          props: { w: NOTE_CARD_SIZE.w, h: NOTE_CARD_SIZE.h, text: '' },
+          props: { w: NOTE_CARD_SIZE.w, h: NOTE_CARD_SIZE.h, text: event.text ?? '' },
         });
       } else {
         editor.createShape<DocCardShape>({
@@ -156,7 +181,12 @@ function applyAgentEvent(
           type: 'doc-card',
           x: event.x,
           y: event.y,
-          props: { w: DOC_CARD_SIZE.w, h: DOC_CARD_SIZE.h, text: '', title: event.title ?? '' },
+          props: {
+            w: DOC_CARD_SIZE.w,
+            h: DOC_CARD_SIZE.h,
+            text: event.text ?? '',
+            title: event.title ?? '',
+          },
         });
       }
       break;
@@ -195,6 +225,35 @@ function applyAgentEvent(
       setPresenceStatus(agent.id, event.message);
       console.error('[jarwiz] agent error:', event.message);
       break;
+  }
+}
+
+/**
+ * Best-effort enrichment of an agent-placed link card: fetch the real page
+ * preview and merge in the image/favicon/site metadata, keeping the agent's
+ * title and description. Silently no-ops if the fetch fails (offline, etc.).
+ */
+async function enrichLinkCard(editor: Editor, shapeId: TLShapeId, url: string): Promise<void> {
+  try {
+    const preview = await fetchLinkPreview(url);
+    const shape = editor.getShape(shapeId);
+    if (!shape || shape.type !== 'link-card') return; // deleted meanwhile
+    const props = shape.props as LinkCardShape['props'];
+    editor.updateShape<LinkCardShape>({
+      id: shapeId,
+      type: 'link-card',
+      props: {
+        image: preview.image ?? props.image,
+        favicon: preview.favicon ?? props.favicon,
+        themeColor: preview.themeColor ?? props.themeColor,
+        siteName: preview.siteName ?? props.siteName,
+        // Keep the agent's title/description, but fill them if it left them blank.
+        title: props.title || preview.title,
+        description: props.description || preview.description,
+      },
+    });
+  } catch {
+    /* enrichment is optional — the card is already useful */
   }
 }
 
