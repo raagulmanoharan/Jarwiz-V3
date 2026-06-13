@@ -15,12 +15,13 @@ import { runMockLoop } from './agents/mock.js';
 import { summarizer } from './agents/summarizer.js';
 import { researcher } from './agents/researcher.js';
 import { brainstormer } from './agents/brainstormer.js';
+import { writer } from './agents/writer.js';
 
 const AGENT_DEFINITIONS: Record<string, AgentDefinition> = {
   summarizer,
   researcher,
   brainstormer,
-  // writer arrives in Milestone 3
+  writer,
 };
 
 export async function* streamAgentRun(

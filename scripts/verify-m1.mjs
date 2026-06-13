@@ -44,22 +44,24 @@ async function main() {
     }
   });
   await page.goto(WEB, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('[data-testid="agent-dock"]', { timeout: 15000 });
+  await page.waitForSelector('.jz-wordmark', { timeout: 15000 });
+  await page.waitForFunction(() => Boolean(window.editor), { timeout: 15000 });
   await page.evaluate(() => {
     const ids = window.editor.getCurrentPageShapes().map((s) => s.id);
     if (ids.length) window.editor.deleteShapes(ids);
   });
-  log('✓ canvas + dock mounted');
+  log('✓ canvas mounted');
 
-  // Capture every status the dock shows during the run, so a fast mock run
-  // can't slip between assertions.
+  // Capture every status shown during the run (now on the agent avatar badge,
+  // since the dock was removed in C2), so a fast mock run can't slip between
+  // assertions.
   const dockStatuses = new Set();
   const sampler = setInterval(async () => {
     try {
       const txt = await page.evaluate(
-        () => document.querySelector('[data-testid="agent-dock"]')?.textContent ?? '',
+        () => document.querySelector('.jz-avatar-status')?.textContent ?? '',
       );
-      dockStatuses.add(txt);
+      if (txt) dockStatuses.add(txt);
     } catch {
       /* page closing */
     }

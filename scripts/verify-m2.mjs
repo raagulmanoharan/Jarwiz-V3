@@ -47,12 +47,13 @@ async function main() {
   });
 
   await page.goto(WEB, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('[data-testid="agent-dock"]', { timeout: 15000 });
+  await page.waitForSelector('.jz-wordmark', { timeout: 15000 });
+  await page.waitForFunction(() => Boolean(window.editor), { timeout: 15000 });
   await page.evaluate(() => {
     const ids = window.editor.getCurrentPageShapes().map((s) => s.id);
     if (ids.length) window.editor.deleteShapes(ids);
   });
-  log('✓ canvas + dock mounted');
+  log('✓ canvas mounted');
 
   // 1. Create an idea note and select it.
   const ideaId = await page.evaluate(() => {

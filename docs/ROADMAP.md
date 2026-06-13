@@ -33,10 +33,13 @@ beautiful beats a board with one more agent.
 | **M0 — Foundation** | ✅ | Monorepo, infinite tldraw canvas, card shapes (link/yt/image/pdf/note), drop-paste ingestion, SSRF-guarded previews, SSE protocol |
 | **M1 — First live agent** | ✅ | Agent runtime (Anthropic tool-use loop → SSE), Summarizer end-to-end, live presence (cursor + dock + streaming doc card), proactive "Summarize this?" offer |
 | **M2 — The crew** | ✅ | Researcher (web_search) + Brainstormer, multi-select summoning, free-space placement, agent-colored provenance edges |
+| **M3 — Writer** | ✅ | Writer agent synthesizes the selection into one long-form draft, connected back to every input with green "drawn from" edges; in-place doc editing. Completes golden-path steps 5–6 |
+| **Craft C0/C1** | ✅ | Token foundation; editorial surfaces (Fraunces+Inter, dot-grid paper, cards, empty state) |
+| **Craft C2** | ✅ | Cinematic presence: dock removed; Figma-style agent avatars; card materialization; streaming caret; refined edges |
+| **Craft C3** | ◐ | ⌘K command palette (shows "what the agent sees"), demo-mode badge, first-run ⌘K nudge. Remaining: full onboarding, more error-state design |
 
-Golden-path **steps 1–4** work. The plumbing is sound. **What's missing is the
-craft** — the product works but doesn't yet _feel_ world-class. That is the
-subject of the next initiative.
+Golden-path **steps 1–6** work end to end. The plumbing is sound and the craft
+bar is rising. Next: finish C3 flows, then **M4 Autopilot** (§9), then C4.
 
 ---
 

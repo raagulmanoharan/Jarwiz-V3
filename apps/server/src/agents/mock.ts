@@ -58,6 +58,8 @@ export async function runMockLoop(
       return runResearcherMock(def, request, step, signal);
     case 'brainstormer':
       return runBrainstormerMock(def, request, step, signal);
+    case 'writer':
+      return runWriterMock(def, request, step, signal);
     default:
       return runSummarizerMock(def, request, step, signal);
   }
@@ -191,6 +193,79 @@ async function runResearcherMock(
         toCardId: cardId,
         label: 'source',
       }))
+    ) {
+      return;
+    }
+  }
+
+  if (signal.aborted) return;
+  await step({ type: 'status', message: `${def.meta.name} is done (demo)` }, 0);
+  await step({ type: 'done' }, 0);
+}
+
+/* ─── Writer: one long-form draft, connected to every input ─────────────── */
+
+function mockDraftText(request: AgentRunRequest): string {
+  const inputs = [request.source, ...(request.selection ?? [])];
+  const n = new Set(inputs.map((c) => c.cardId)).size;
+  return [
+    `**Demo mode** — no ANTHROPIC_API_KEY is set, so this is a scripted stand-in draft synthesizing the ${n} selected card${n === 1 ? '' : 's'}.`,
+    '',
+    'A real Writer run would weave your selection into a single argument — not a list of what each card said, but a throughline that connects and contrasts them.',
+    '',
+    '## What it draws from',
+    '',
+    'Every selected card becomes a thread: the seed idea sets the brief, sources lend evidence, and notes add angles. The Writer reads each one (fetching link sources with web_fetch when only a URL is given) before drafting.',
+    '',
+    '## How it reads',
+    '',
+    'Clean markdown, an editorial title, two to four sections, tight paragraphs. The aim is a draft you would be glad to keep and edit in place — right here on the card.',
+    '',
+    '## What stays honest',
+    '',
+    'No invented quotes or statistics; if a source could not be read, the draft says so. When it finishes, a green "drawn from" edge connects this draft back to each input, so the board remembers where the thinking came from.',
+    '',
+    'Add an API key to `apps/server/.env` and run this again for the real synthesis.',
+  ].join('\n');
+}
+
+async function runWriterMock(
+  def: AgentDefinition,
+  request: AgentRunRequest,
+  step: StepFn,
+  signal: AbortSignal,
+): Promise<void> {
+  const { source, placement } = request;
+  const cardId = 'card_1';
+
+  if (!(await step({ type: 'status', message: `${def.meta.name} is reading the selection… (demo)` }, 420)))
+    return;
+  if (!(await step({ type: 'cursor', x: placement.x, y: placement.y }, 420))) return;
+  if (
+    !(await step({
+      type: 'card.create',
+      cardId,
+      kind: 'doc',
+      x: placement.x,
+      y: placement.y,
+      title: source.title ? `Draft: ${source.title.slice(0, 56)}` : 'Demo draft',
+    }))
+  ) {
+    return;
+  }
+  if (!(await step({ type: 'status', message: `${def.meta.name} is drafting… (demo)` }))) return;
+
+  for (const chunk of chunkText(mockDraftText(request), 40)) {
+    if (!(await step({ type: 'card.delta', cardId, textDelta: chunk }, 70))) return;
+  }
+
+  if (!(await step({ type: 'card.done', cardId }))) return;
+
+  // Connect the draft back to every distinct input card.
+  const inputIds = [source.cardId, ...(request.selection ?? []).map((c) => c.cardId)];
+  for (const fromId of [...new Set(inputIds)]) {
+    if (
+      !(await step({ type: 'edge.create', fromCardId: fromId, toCardId: cardId, label: 'drawn from' }))
     ) {
       return;
     }
