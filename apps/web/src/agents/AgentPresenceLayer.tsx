@@ -5,8 +5,11 @@ import { AgentCursorLayer } from './AgentCursorLayer';
 import { AutopilotPresenceLayer } from './AutopilotPresenceLayer';
 import { AskAgentAffordance } from './AskAgentAffordance';
 import { CommandPalette } from './CommandPalette';
+import { MentionMenu } from './MentionMenu';
 import { dismissOffer } from './offers';
+import { ParticipantRoster } from './ParticipantRoster';
 import { buildRunRequest, isCardShape } from './runRequest';
+import { onSummon } from './summon';
 import { SuggestionChip } from './SuggestionChip';
 import { useAgentRun } from './useAgentRun';
 import { markOnboarded } from '../ui/onboarding';
@@ -74,6 +77,16 @@ export function AgentPresenceLayer() {
     [editor, runOnShapes],
   );
 
+  // Addressed by name: an @mention (or any summon channel) calls an agent on a card.
+  useEffect(
+    () =>
+      onSummon(({ agentId, cardId }) => {
+        const shape = editor.getShape(cardId);
+        if (isCardShape(shape)) runOnShapes(getAgent(agentId), shape);
+      }),
+    [editor, runOnShapes],
+  );
+
   return (
     <>
       <AgentCursorLayer />
@@ -81,6 +94,8 @@ export function AgentPresenceLayer() {
       <SuggestionChip onAccept={handleAcceptOffer} />
       <AskAgentAffordance onPickAgent={handlePickAgent} />
       <CommandPalette onPickAgent={handlePickAgent} />
+      <MentionMenu />
+      <ParticipantRoster onPick={handlePickAgent} />
       {toast ? <div className="jz-toast">{toast}</div> : null}
     </>
   );

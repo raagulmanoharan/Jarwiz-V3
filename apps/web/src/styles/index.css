@@ -1408,6 +1408,175 @@ body,
   }
 }
 
+/* ─── @mention picker (address an agent by name) ────────────────────────── */
+
+.jz-mention {
+  position: absolute;
+  z-index: 315;
+  transform: translateY(calc(-100% - 8px));
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--jz-space-1);
+  min-width: 240px;
+  padding: var(--jz-space-2);
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
+  transform-origin: bottom left;
+}
+
+/* Flip downward when there's no room above the card top. */
+.jz-mention-below {
+  transform: translateY(8px);
+  transform-origin: top left;
+}
+
+.jz-mention-head {
+  padding: 4px 8px 2px;
+  font-size: var(--jz-text-micro-size);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--jz-ink-400);
+}
+
+.jz-mention-item {
+  display: flex;
+  align-items: center;
+  gap: var(--jz-space-3);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  padding: 7px 8px;
+  border-radius: var(--jz-radius-sm);
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-mention-item:hover {
+  background: color-mix(in srgb, var(--agent-color) 12%, transparent);
+}
+
+.jz-mention-avatar {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--agent-color);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jz-mention-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.jz-mention-name {
+  font-size: var(--jz-text-body-sm-size);
+  font-weight: 600;
+  color: var(--jz-ink-900);
+}
+
+.jz-mention-tagline {
+  font-size: var(--jz-text-micro-size);
+  line-height: 1.3;
+  color: var(--jz-ink-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+/* ─── Participant roster (who's in the room) ────────────────────────────── */
+
+.jz-roster {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  pointer-events: auto;
+  user-select: none;
+}
+
+.jz-roster-you {
+  font-size: var(--jz-text-micro-size);
+  font-weight: 600;
+  color: var(--jz-ink-500);
+  padding: 0 2px;
+}
+
+.jz-roster-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--jz-hairline-strong);
+}
+
+.jz-roster-agent {
+  position: relative;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: transparent;
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-roster-agent:hover {
+  transform: translateY(-1px);
+}
+
+.jz-roster-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  /* Idle: a soft tinted token; active: full color. */
+  background: color-mix(in srgb, var(--agent-color) 20%, var(--jz-surface));
+  color: color-mix(in srgb, var(--agent-color) 70%, var(--jz-ink-900));
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--agent-color) 40%, transparent);
+  transition:
+    background var(--jz-dur-base) var(--jz-ease-out),
+    color var(--jz-dur-base) var(--jz-ease-out);
+}
+
+.jz-roster-active .jz-roster-avatar {
+  background: var(--agent-color);
+  color: #fff;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--agent-color) 22%, transparent);
+  animation: jz-avatar-pulse-soft 1.6s ease-in-out infinite;
+}
+
+@keyframes jz-avatar-pulse-soft {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--agent-color) 22%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--agent-color) 8%, transparent);
+  }
+}
+
 /* ─── Reduced motion: collapse travel/scale to quiet fades ──────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -1415,7 +1584,8 @@ body,
     transition: opacity var(--jz-dur-fast) var(--jz-ease-out);
   }
   .jz-avatar-ring,
-  .jz-stream-caret {
+  .jz-stream-caret,
+  .jz-roster-active .jz-roster-avatar {
     animation: none;
   }
   .jz-card,
@@ -1428,7 +1598,8 @@ body,
   .jz-ask-menu,
   .jz-toast,
   .jz-palette,
-  .jz-firstrun {
+  .jz-firstrun,
+  .jz-mention {
     animation-name: jz-fade-in;
   }
 }

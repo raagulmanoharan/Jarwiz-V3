@@ -14,6 +14,7 @@ import {
 } from 'tldraw';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { useAutopilot } from '../agents/useAutopilot';
+import { useMention } from '../agents/useMention';
 import { NOTE_RADIUS, roundedRectPath } from './cardGeometry';
 
 export interface NoteCardProps {
@@ -84,6 +85,7 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
   const isStreaming = streamingSet.has(shape.id);
   const autopilot = useAutopilot();
+  const mention = useMention();
 
   return (
     <div className="jz-note" style={{ background: NOTE_PAPER }}>
@@ -91,20 +93,26 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
         <textarea
           autoFocus
           value={text}
-          placeholder="Write something… (Tab to continue)"
+          placeholder="Write something… (Tab to continue, @ to call an agent)"
           style={{ pointerEvents: 'all' }}
-          onKeyDown={(e) => autopilot.onKeyDown(shape.id, e)}
+          onKeyDown={(e) => {
+            if (mention.onKeyDown(shape.id, e)) return;
+            autopilot.onKeyDown(shape.id, e);
+          }}
           onFocus={(e) => {
             const length = e.currentTarget.value.length;
             e.currentTarget.setSelectionRange(length, length);
           }}
-          onChange={(e) =>
+          onChange={(e) => {
+            const value = e.currentTarget.value;
+            const caret = e.currentTarget.selectionStart ?? value.length;
             editor.updateShape<NoteCardShape>({
               id: shape.id,
               type: 'note-card',
-              props: { text: e.currentTarget.value },
-            })
-          }
+              props: { text: value },
+            });
+            mention.sync(shape.id, value, caret);
+          }}
           onPointerDown={stopEventPropagation}
           onPointerMove={stopEventPropagation}
           onPointerUp={stopEventPropagation}

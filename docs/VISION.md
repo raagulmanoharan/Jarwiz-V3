@@ -17,6 +17,28 @@ Jarwiz puts AI where thinking actually happens — **on the board, as a
 presence, producing artifacts you can see, move, connect, and keep**. The
 unit of collaboration is not a message; it's a card on the canvas.
 
+## North star
+
+> **Build a genuinely good multiplayer canvas for humans — then let autonomous
+> agents participate in it the way humans do, with a few special powers.**
+
+This is the lens for every decision. The human substrate (presence, real-time
+canvas, comments, addressing teammates) has to be excellent on its own; if it
+isn't a joy without agents, agent presence is just lipstick. Then agents join
+that same room as **first-class participants**: they have a name and an avatar,
+you **address them like people** (mention them, comment at them), they act
+through the **same affordances** humans use (create, edit, connect cards), and
+they leave a visible trail. What makes them agents is not a separate UI — it's
+their **special powers**: tireless, web-scale recall, instant drafting,
+structure-aware synthesis, filling a grid in seconds. Superhuman at a few
+things; an ordinary, legible teammate at everything else.
+
+Consequence for the roadmap: invest in the *participant grammar* (addressing,
+voice, a roster of who's in the room) as a first-class human primitive that
+agents reuse — not in agent-only control surfaces. Heavy real-time sync for
+multiple humans is the eventual foundation, built when two humans actually need
+it; the grammar is built now and works the day sync lands.
+
 The bar for every interaction: *it should just make sense*. Drop a YouTube
 link, and of course the Summarizer offers to give you the gist. Select three
 research cards and ask the Writer for a draft, and of course the script

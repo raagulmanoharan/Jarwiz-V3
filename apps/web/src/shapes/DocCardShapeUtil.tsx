@@ -14,6 +14,7 @@ import {
 } from 'tldraw';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { useAutopilot } from '../agents/useAutopilot';
+import { useMention } from '../agents/useMention';
 import { DocMarkdown } from '../ui/DocMarkdown';
 import { DOC_RADIUS, roundedRectPath } from './cardGeometry';
 
@@ -84,6 +85,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
   const isStreaming = streamingSet.has(shape.id);
   const autopilot = useAutopilot();
+  const mention = useMention();
 
   if (isEditing) {
     return (
@@ -109,17 +111,23 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
         </div>
         <textarea
           value={text}
-          placeholder="Write something… (Tab to continue with an agent)"
+          placeholder="Write something… (Tab to continue, @ to call an agent)"
           className="jz-doc-textarea"
           style={{ pointerEvents: 'all' }}
-          onKeyDown={(e) => autopilot.onKeyDown(shape.id, e)}
-          onChange={(e) =>
+          onKeyDown={(e) => {
+            if (mention.onKeyDown(shape.id, e)) return;
+            autopilot.onKeyDown(shape.id, e);
+          }}
+          onChange={(e) => {
+            const value = e.currentTarget.value;
+            const caret = e.currentTarget.selectionStart ?? value.length;
             editor.updateShape<DocCardShape>({
               id: shape.id,
               type: 'doc-card',
-              props: { text: e.currentTarget.value },
-            })
-          }
+              props: { text: value },
+            });
+            mention.sync(shape.id, value, caret);
+          }}
           onPointerDown={stopEventPropagation}
           onPointerMove={stopEventPropagation}
           onPointerUp={stopEventPropagation}
