@@ -7,6 +7,8 @@
  * wherever the event lands. See docs/ARCHITECTURE.md.
  */
 
+import type { AgentId } from './agents.js';
+
 /** The kinds of cards an agent (or the user) can place on the board. */
 export type CardKind = 'link' | 'youtube' | 'image' | 'pdf' | 'note' | 'doc' | 'table';
 
@@ -144,3 +146,29 @@ export type TableAutopilotEvent =
   | { type: 'cell'; row: number; col: number; text: string }
   | { type: 'done' }
   | { type: 'error'; message: string };
+
+/* ─── Comments & agent voice ────────────────────────────────────────────── */
+
+/** One message in a card's comment thread — from you or from an agent. */
+export interface CommentMessage {
+  id: string;
+  /** 'you' for the human, or an AgentId when an agent replied. */
+  author: 'you' | AgentId;
+  text: string;
+  ts: number;
+}
+
+/**
+ * POST /api/comment request — ask an agent to reply, in conversation, to a
+ * card's comment thread. Agents are participants: they answer in the thread
+ * like a teammate (a short message), they don't dump a card. Streams its reply
+ * as `AutopilotEvent` text deltas.
+ */
+export interface CommentReplyRequest {
+  agentId: AgentId;
+  cardKind: CardKind;
+  cardTitle?: string;
+  cardText?: string;
+  /** The thread so far, oldest first; author is 'you' or an agent's name. */
+  thread: Array<{ author: string; text: string }>;
+}

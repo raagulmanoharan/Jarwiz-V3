@@ -19,12 +19,14 @@ import type {
   AgentEvent,
   AutopilotEvent,
   AutopilotRequest,
+  CommentReplyRequest,
   TableAutopilotEvent,
   TableAutopilotRequest,
 } from '@jarwiz/shared';
 import { buildLinkPreview, SsrfError } from './linkPreview.js';
 import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
+import { streamComment } from './comment.js';
 import { parseRunRequest, RunRequestError } from './agents/request.js';
 
 // Load apps/server/.env when present (no-op otherwise).
@@ -175,6 +177,47 @@ app.post('/api/autopilot/table', async (c) => {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Table autopilot failed';
+      await send({ type: 'error', message });
+    }
+  });
+});
+
+app.post('/api/comment', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected a JSON body: { agentId, cardKind, thread }' }, 400);
+  }
+
+  const raw = body as Partial<CommentReplyRequest>;
+  if (
+    typeof raw.agentId !== 'string' ||
+    !isAgentId(raw.agentId) ||
+    typeof raw.cardKind !== 'string' ||
+    !Array.isArray(raw.thread)
+  ) {
+    return c.json({ error: 'Expected { agentId, cardKind, cardTitle?, cardText?, thread[] }' }, 400);
+  }
+  const request: CommentReplyRequest = {
+    agentId: raw.agentId,
+    cardKind: raw.cardKind,
+    cardTitle: typeof raw.cardTitle === 'string' ? raw.cardTitle.slice(0, 200) : undefined,
+    cardText: typeof raw.cardText === 'string' ? raw.cardText.slice(0, 4000) : undefined,
+    thread: raw.thread
+      .slice(-20)
+      .map((m) => ({ author: String(m?.author ?? 'you'), text: String(m?.text ?? '').slice(0, 1000) })),
+  };
+
+  return streamSSE(c, async (stream) => {
+    const send = (event: AutopilotEvent) => stream.writeSSE({ data: JSON.stringify(event) });
+    const signal = c.req.raw.signal;
+    try {
+      for await (const event of streamComment(request, signal)) {
+        await send(event);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Reply failed';
       await send({ type: 'error', message });
     }
   });

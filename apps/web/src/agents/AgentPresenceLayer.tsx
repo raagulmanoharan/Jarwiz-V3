@@ -5,6 +5,7 @@ import { AgentCursorLayer } from './AgentCursorLayer';
 import { AutopilotPresenceLayer } from './AutopilotPresenceLayer';
 import { AskAgentAffordance } from './AskAgentAffordance';
 import { CommandPalette } from './CommandPalette';
+import { CommentThread } from './CommentThread';
 import { MentionMenu } from './MentionMenu';
 import { dismissOffer } from './offers';
 import { ParticipantRoster } from './ParticipantRoster';
@@ -95,6 +96,7 @@ export function AgentPresenceLayer() {
       <AskAgentAffordance onPickAgent={handlePickAgent} />
       <CommandPalette onPickAgent={handlePickAgent} />
       <MentionMenu />
+      <CommentThread />
       <ParticipantRoster onPick={handlePickAgent} />
       {toast ? <div className="jz-toast">{toast}</div> : null}
     </>
