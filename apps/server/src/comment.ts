@@ -9,6 +9,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getAgent, type AutopilotEvent, type CommentReplyRequest } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
+import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 
 const COMMENT_MAX_TOKENS = 320;
 
@@ -57,8 +58,28 @@ export async function* streamComment(
   signal: AbortSignal,
 ): AsyncGenerator<AutopilotEvent> {
   const hasKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+  const meta = getAgent(request.agentId);
 
   if (!hasKey) {
+    // Real reply via the CLI sidecar; fall back to the scripted stand-in.
+    if (sidecarAvailable()) {
+      try {
+        const text = await sidecarGenerate({
+          system: systemPrompt(meta.name, meta.tagline),
+          user: buildUserTurn(request),
+          signal,
+        });
+        for (const piece of chunk(text)) {
+          if (signal.aborted) return;
+          yield { type: 'delta', textDelta: piece };
+          await sleep(35, signal);
+        }
+        yield { type: 'done' };
+        return;
+      } catch {
+        if (signal.aborted) return;
+      }
+    }
     for (const piece of chunk(mockReply(request))) {
       if (signal.aborted) return;
       yield { type: 'delta', textDelta: piece };
@@ -75,7 +96,6 @@ export async function* streamComment(
     waker.fn?.();
     waker.fn = null;
   };
-  const meta = getAgent(request.agentId);
 
   const run = (async () => {
     try {

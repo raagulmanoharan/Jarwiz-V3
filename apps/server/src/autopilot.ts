@@ -17,6 +17,7 @@ import type {
   TableAutopilotRequest,
 } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
+import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 
 /** Bounded per the spec — a paragraph or a few bullets, never a runaway. */
 const AUTOPILOT_MAX_TOKENS = 400;
@@ -84,6 +85,21 @@ export async function* streamAutopilot(
   const hasKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
 
   if (!hasKey) {
+    // Real Claude via the CLI sidecar; fall back to the scripted stand-in.
+    if (sidecarAvailable()) {
+      try {
+        const text = await sidecarGenerate({ system: SYSTEM_PROMPT, user: buildUserTurn(request), signal });
+        for (const piece of chunk(text)) {
+          if (signal.aborted) return;
+          yield { type: 'delta', textDelta: piece };
+          await sleep(40, signal);
+        }
+        yield { type: 'done' };
+        return;
+      } catch {
+        if (signal.aborted) return; // else fall through to the scripted stand-in
+      }
+    }
     for (const piece of chunk(mockContinuation(request))) {
       if (signal.aborted) return;
       yield { type: 'delta', textDelta: piece };
@@ -186,7 +202,13 @@ async function fetchFilledRows(
   const text = message.content
     .filter((b): b is Anthropic.Messages.TextBlock => b.type === 'text')
     .map((b) => b.text)
-    .join('')
+    .join('');
+  return parseRows(text);
+}
+
+/** Tolerantly parse a {"rows": string[][]} object from a model's text reply. */
+function parseRows(raw: string): string[][] {
+  const text = raw
     .trim()
     .replace(/^```(?:json)?/i, '')
     .replace(/```$/, '')
@@ -194,6 +216,16 @@ async function fetchFilledRows(
   const parsed = JSON.parse(text) as { rows?: unknown };
   if (!Array.isArray(parsed.rows)) throw new Error('bad table JSON');
   return parsed.rows.map((r) => (Array.isArray(r) ? r.map((c) => String(c ?? '')) : []));
+}
+
+/** Real fill via the CLI sidecar (no API key). */
+async function fetchFilledRowsSidecar(
+  request: TableAutopilotRequest,
+  signal: AbortSignal,
+): Promise<string[][]> {
+  const user = JSON.stringify({ columns: request.columns, rows: request.rows });
+  const text = await sidecarGenerate({ system: TABLE_SYSTEM_PROMPT, user, signal });
+  return parseRows(text);
 }
 
 function mockCell(request: TableAutopilotRequest, row: number, col: number): string {
@@ -218,7 +250,13 @@ export async function* streamTableAutopilot(
 
   const hasKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
   let filled: string[][] | null = null;
-  if (hasKey) {
+  if (!hasKey && sidecarAvailable()) {
+    try {
+      filled = await fetchFilledRowsSidecar(request, signal);
+    } catch {
+      if (signal.aborted) return; // else fall through to scripted mockCell values
+    }
+  } else if (hasKey) {
     try {
       filled = await fetchFilledRows(request, signal);
     } catch (error) {

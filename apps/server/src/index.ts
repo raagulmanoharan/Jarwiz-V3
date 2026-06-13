@@ -30,6 +30,7 @@ import { buildLinkPreview, SsrfError } from './linkPreview.js';
 import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
 import { streamComment } from './comment.js';
+import { sidecarAvailable } from './sidecar.js';
 import { handleSyncSocket } from './sync.js';
 import { parseRunRequest, RunRequestError } from './agents/request.js';
 
@@ -46,14 +47,19 @@ app.use(logger());
 app.get('/api/health', (c) => c.json({ ok: true }));
 
 /**
- * What this server can do right now. `live` is false when no ANTHROPIC_API_KEY
- * is configured — the runtime falls back to a scripted mock loop, and the
- * client surfaces an honest "Demo mode" badge so canned output never masquerades
- * as a real agent.
+ * What this server can do right now. Output is "live" (real Claude) when an
+ * ANTHROPIC_API_KEY is set OR the Claude CLI sidecar is available; otherwise the
+ * runtime serves a scripted mock and the client shows an honest "Demo mode"
+ * badge. `mode` distinguishes the three so the UI can be precise.
  */
-app.get('/api/capabilities', (c) =>
-  c.json({ live: Boolean(process.env.ANTHROPIC_API_KEY?.trim()) }),
-);
+app.get('/api/capabilities', (c) => {
+  const mode = process.env.ANTHROPIC_API_KEY?.trim()
+    ? 'api'
+    : sidecarAvailable()
+      ? 'sidecar'
+      : 'demo';
+  return c.json({ live: mode !== 'demo', mode });
+});
 
 app.post('/api/link/preview', async (c) => {
   let body: unknown;

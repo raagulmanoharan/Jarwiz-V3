@@ -12,6 +12,8 @@ import type { AgentRunRequest, AgentEvent } from '@jarwiz/shared';
 import type { AgentDefinition } from './agents/runtime.js';
 import { runAgentLoop } from './agents/runtime.js';
 import { runMockLoop } from './agents/mock.js';
+import { runSidecarLoop } from './agents/sidecarLoop.js';
+import { sidecarAvailable } from './sidecar.js';
 import { summarizer } from './agents/summarizer.js';
 import { researcher } from './agents/researcher.js';
 import { brainstormer } from './agents/brainstormer.js';
@@ -47,7 +49,11 @@ export async function* streamAgentRun(
   };
 
   const hasApiKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
-  const runner = hasApiKey ? runAgentLoop : runMockLoop;
+  // Routing: real API → tool-use runtime; no key but CLI sidecar → real content
+  // for the text agents (Researcher needs citable web sources, so it stays on
+  // the scripted mock); otherwise → scripted mock.
+  const useSidecar = !hasApiKey && sidecarAvailable() && agentId !== 'researcher';
+  const runner = hasApiKey ? runAgentLoop : useSidecar ? runSidecarLoop : runMockLoop;
 
   const runPromise = runner(agentDef, request, emit, signal)
     .catch((error: unknown) => {
