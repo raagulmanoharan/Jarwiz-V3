@@ -97,49 +97,95 @@ async function openPalette(page) {
   await page.waitForSelector('.jz-palette', { timeout: 4000 });
 }
 
+/** Autopilot (Tab-to-continue): seed a doc with a brief, edit it, press Tab,
+ *  capture the continuation streaming in place. Proven stable in this sandbox. */
+async function shotAutopilot(page) {
+  await clearAndSettle(page);
+  await page.evaluate(() => {
+    window.editor.createShape({
+      type: 'doc-card',
+      x: 360,
+      y: 200,
+      props: {
+        w: 520,
+        h: 380,
+        title: 'Async beats meetings',
+        text: 'Meetings are where momentum goes to die. A writing-first culture trades the calendar for the document:',
+      },
+    });
+    window.editor.zoomToFit();
+  });
+  await sleep(2500);
+  const id = await page.evaluate(() => {
+    const s = window.editor.getCurrentPageShapes().find((s) => s.type === 'doc-card');
+    window.editor.select(s.id);
+    window.editor.setEditingShape(s.id);
+    window.editor.setCurrentTool('select.editing_shape');
+    return s.id;
+  });
+  await page.waitForSelector('.jz-doc-textarea', { timeout: 5000 });
+  await page.locator('.jz-doc-textarea').click();
+  await sleep(300);
+  await page.locator('.jz-doc-textarea').press('Tab');
+  await page
+    .waitForFunction((sid) => (window.editor.getShape(sid)?.props.text.length ?? 0) > 140, id, {
+      timeout: 15000,
+    })
+    .catch(() => {});
+  await sleep(1500);
+  await page.screenshot({ path: `${OUT}/jz-autopilot.png` });
+  log('  ✓ jz-autopilot.png');
+}
+
 /**
- * One single-session capture of every milestone state. Mirrors the proven
- * probe ordering: clear → settle → screenshot → seed → settle → drive. Doing it
- * all in one page (rather than a fresh browser per shot) is what stays stable.
+ * Single-session capture of the milestone states. The empty and autopilot
+ * shots are reliable here; the palette/summon shots create multiple shapes and
+ * are flaky in this sandbox, so they're best-effort (a failure logs and is
+ * skipped rather than aborting the whole run). See the gotchas in CLAUDE.md.
  */
 async function captureAll(browser) {
   const page = await openApp(browser);
 
-  // 1) Empty state + first-run nudge.
+  // 1) Empty state + first-run nudge (reliable).
   await clearAndSettle(page);
   await page.screenshot({ path: `${OUT}/jz-empty.png` });
   log('  ✓ jz-empty.png');
 
-  // 2) Seed a brief, frame it, settle.
-  await page.evaluate(SEED);
-  await sleep(2500);
-  await page.evaluate(() => window.editor.zoomToFit());
+  // 2) Autopilot — the signature moment (reliable).
+  await shotAutopilot(page);
 
-  // 3) ⌘K palette over the selection.
-  await openPalette(page);
-  await page.locator('.jz-palette-item', { hasText: 'Writer' }).hover();
-  await sleep(400);
-  await page.screenshot({ path: `${OUT}/jz-palette.png` });
-  log('  ✓ jz-palette.png');
+  // 3) Best-effort: ⌘K palette + Writer run (multi-shape, flaky here).
+  try {
+    await clearAndSettle(page);
+    await page.evaluate(SEED);
+    await sleep(2500);
+    await page.evaluate(() => window.editor.zoomToFit());
 
-  // 4) Summon the Writer → streaming shot.
-  await page.locator('.jz-palette-item', { hasText: 'Writer' }).click();
-  await waitFor(() => shapeCount(page, 'doc-card').then((n) => n >= 1), { label: 'doc card' });
-  await sleep(800);
-  await page.evaluate(() => window.editor.zoomToFit());
-  await sleep(400);
-  await page.screenshot({ path: `${OUT}/jz-writer-streaming.png` });
-  log('  ✓ jz-writer-streaming.png');
+    await openPalette(page);
+    await page.locator('.jz-palette-item', { hasText: 'Writer' }).hover();
+    await sleep(400);
+    await page.screenshot({ path: `${OUT}/jz-palette.png` });
+    log('  ✓ jz-palette.png');
 
-  // 5) Synthesis: let the mock finish, then the final shot.
-  await sleep(9000);
-  await page.evaluate(() => {
-    window.editor.selectNone();
-    window.editor.zoomToFit();
-  });
-  await sleep(500);
-  await page.screenshot({ path: `${OUT}/jz-synthesis.png` });
-  log('  ✓ jz-synthesis.png');
+    await page.locator('.jz-palette-item', { hasText: 'Writer' }).click();
+    await waitFor(() => shapeCount(page, 'doc-card').then((n) => n >= 1), { label: 'doc card' });
+    await sleep(800);
+    await page.evaluate(() => window.editor.zoomToFit());
+    await sleep(400);
+    await page.screenshot({ path: `${OUT}/jz-writer-streaming.png` });
+    log('  ✓ jz-writer-streaming.png');
+
+    await sleep(9000);
+    await page.evaluate(() => {
+      window.editor.selectNone();
+      window.editor.zoomToFit();
+    });
+    await sleep(500);
+    await page.screenshot({ path: `${OUT}/jz-synthesis.png` });
+    log('  ✓ jz-synthesis.png');
+  } catch (err) {
+    log(`  (skipped palette/summon shots — flaky sandbox: ${String(err).split('\n')[0].slice(0, 70)})`);
+  }
 
   await page.close();
 }
