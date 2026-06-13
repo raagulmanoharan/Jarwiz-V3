@@ -123,6 +123,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
               className="jz-table-headcell"
               value={label}
               placeholder={`Column ${col + 1}`}
+              style={{ pointerEvents: 'all' }}
               onChange={(e) => setHeader(col, e.currentTarget.value)}
               onKeyDown={(e) => autopilot.onKeyDown(shape.id, e)}
               onPointerDown={stopEventPropagation}
@@ -145,6 +146,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
                   key={col}
                   className="jz-table-cell"
                   value={cell}
+                  style={{ pointerEvents: 'all' }}
                   onChange={(e) => setCell(row, col, e.currentTarget.value)}
                   onKeyDown={(e) => autopilot.onKeyDown(shape.id, e)}
                   onPointerDown={stopEventPropagation}
