@@ -95,3 +95,30 @@ export type AgentEvent =
   | { type: 'done' }
   /** The run failed — surfaced honestly on the board, never silently. */
   | { type: 'error'; message: string };
+
+/* ─── Autopilot (Tab-to-continue) ───────────────────────────────────────── */
+
+/**
+ * POST /api/autopilot request — ask an agent to continue the prose in a card
+ * the user is editing, in place, from where their caret stopped. The agent
+ * never rewrites existing text; it only appends a bounded continuation.
+ * See docs/ROADMAP.md §9 (M4 — Autopilot, phase A0).
+ */
+export interface AutopilotRequest {
+  /** Which card kind is being continued — shapes the voice/format. */
+  kind: 'doc' | 'note';
+  /** The document title, when present, for context. */
+  title?: string;
+  /** The existing card text up to the caret — the agent continues from here. */
+  text: string;
+}
+
+/**
+ * One event in an autopilot SSE stream. Framing: `data: {json}\n\n`. Always
+ * terminates with `done` or `error`. Deltas are appended at the caret live,
+ * with the agent's streaming caret showing, multiplayer-style.
+ */
+export type AutopilotEvent =
+  | { type: 'delta'; textDelta: string }
+  | { type: 'done' }
+  | { type: 'error'; message: string };

@@ -274,10 +274,11 @@ interruptible + single-undo), prototype both, let the awe test decide.
 
 ### 9.6 Phasing
 
-- **A0 — Prose continue.** Tab inside a note/doc card; agent continues the text
-  at the caret, streaming with its caret + parked avatar. Yield-on-type, Esc,
-  single-undo. _Exit: a first-timer presses Tab in a half-written note and
-  audibly reacts._
+- **A0 — Prose continue.** `shipped (core)` Tab inside an editing note/doc card
+  continues the text in place: the Writer's avatar parks beside the card and the
+  continuation streams in. Yield-on-type, Esc, single-undo, insert-only.
+  `POST /api/autopilot` (SSE), demoable with no key via a scripted continuation.
+  _Remaining: agent-colored caret in the textarea, Tab-to-extend while running._
 - **A1 — Structured cards.** Introduce a **table/list card** kind; Autopilot
   fills cells/rows, cursor hopping fields. _Exit: a 4-row comparison table
   fills itself, legibly, cell by cell._

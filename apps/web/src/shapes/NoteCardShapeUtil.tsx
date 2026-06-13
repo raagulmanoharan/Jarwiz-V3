@@ -13,6 +13,7 @@ import {
   type TLShape,
 } from 'tldraw';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
+import { useAutopilot } from '../agents/useAutopilot';
 import { NOTE_RADIUS, roundedRectPath } from './cardGeometry';
 
 export interface NoteCardProps {
@@ -82,6 +83,7 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
   const { text } = shape.props;
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
   const isStreaming = streamingSet.has(shape.id);
+  const autopilot = useAutopilot();
 
   return (
     <div className="jz-note" style={{ background: NOTE_PAPER }}>
@@ -89,8 +91,9 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
         <textarea
           autoFocus
           value={text}
-          placeholder="Write something…"
+          placeholder="Write something… (Tab to continue)"
           style={{ pointerEvents: 'all' }}
+          onKeyDown={(e) => autopilot.onKeyDown(shape.id, e)}
           onFocus={(e) => {
             const length = e.currentTarget.value.length;
             e.currentTarget.setSelectionRange(length, length);

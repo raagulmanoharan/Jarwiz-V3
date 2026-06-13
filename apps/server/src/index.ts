@@ -2,8 +2,10 @@
  * Jarwiz thin agent server.
  *
  *   GET  /api/health             → { ok: true }
+ *   GET  /api/capabilities       → { live } (real key vs scripted demo)
  *   POST /api/link/preview       → LinkPreview (server-side fetch, SSRF-guarded)
  *   POST /api/agents/:id/run     → SSE stream of typed AgentEvents
+ *   POST /api/autopilot          → SSE stream of AutopilotEvents (Tab-to-continue)
  *
  * Secrets (ANTHROPIC_API_KEY) live only here — the client never sees a key.
  */
@@ -13,9 +15,10 @@ import { Hono } from 'hono';
 import { logger } from 'hono/logger';
 import { streamSSE } from 'hono/streaming';
 import { isAgentId } from '@jarwiz/shared';
-import type { AgentEvent } from '@jarwiz/shared';
+import type { AgentEvent, AutopilotEvent, AutopilotRequest } from '@jarwiz/shared';
 import { buildLinkPreview, SsrfError } from './linkPreview.js';
 import { streamAgentRun } from './agentRun.js';
+import { streamAutopilot } from './autopilot.js';
 import { parseRunRequest, RunRequestError } from './agents/request.js';
 
 // Load apps/server/.env when present (no-op otherwise).
@@ -99,6 +102,38 @@ app.post('/api/agents/:agentId/run', async (c) => {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Agent run failed';
+      await send({ type: 'error', message });
+    }
+  });
+});
+
+app.post('/api/autopilot', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected a JSON body: { kind, text, title? }' }, 400);
+  }
+
+  const raw = body as Partial<AutopilotRequest>;
+  if ((raw.kind !== 'doc' && raw.kind !== 'note') || typeof raw.text !== 'string') {
+    return c.json({ error: 'Expected { kind: "doc" | "note", text: string, title?: string }' }, 400);
+  }
+  const request: AutopilotRequest = {
+    kind: raw.kind,
+    text: raw.text.slice(0, 8000),
+    title: typeof raw.title === 'string' ? raw.title.slice(0, 200) : undefined,
+  };
+
+  return streamSSE(c, async (stream) => {
+    const send = (event: AutopilotEvent) => stream.writeSSE({ data: JSON.stringify(event) });
+    const signal = c.req.raw.signal;
+    try {
+      for await (const event of streamAutopilot(request, signal)) {
+        await send(event);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Autopilot failed';
       await send({ type: 'error', message });
     }
   });
