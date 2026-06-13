@@ -10,7 +10,10 @@
  * Secrets (ANTHROPIC_API_KEY) live only here — the client never sees a key.
  */
 
+import { randomUUID } from 'node:crypto';
+import type { Server as HttpServer } from 'node:http';
 import { serve } from '@hono/node-server';
+import { WebSocketServer } from 'ws';
 import { Hono } from 'hono';
 import { logger } from 'hono/logger';
 import { streamSSE } from 'hono/streaming';
@@ -27,6 +30,7 @@ import { buildLinkPreview, SsrfError } from './linkPreview.js';
 import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
 import { streamComment } from './comment.js';
+import { handleSyncSocket } from './sync.js';
 import { parseRunRequest, RunRequestError } from './agents/request.js';
 
 // Load apps/server/.env when present (no-op otherwise).
@@ -225,6 +229,22 @@ app.post('/api/comment', async (c) => {
 
 const port = Number.parseInt(process.env.PORT ?? '3001', 10);
 
-serve({ fetch: app.fetch, port }, (info) => {
+const server = serve({ fetch: app.fetch, port }, (info) => {
   console.log(`[jarwiz/server] listening on http://localhost:${info.port}`);
+});
+
+// Multiplayer sync: upgrade ws://…/api/sync/:roomId into a tldraw sync session.
+const wss = new WebSocketServer({ noServer: true });
+(server as HttpServer).on('upgrade', (req, socket, head) => {
+  const { pathname, searchParams } = new URL(req.url ?? '', 'http://localhost');
+  const match = /^\/api\/sync\/(.+)$/.exec(pathname);
+  if (!match) {
+    socket.destroy();
+    return;
+  }
+  const roomId = decodeURIComponent(match[1]!);
+  const sessionId = searchParams.get('sessionId') ?? randomUUID();
+  wss.handleUpgrade(req, socket, head, (ws) => {
+    handleSyncSocket(roomId, sessionId, ws);
+  });
 });
