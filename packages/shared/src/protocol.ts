@@ -8,7 +8,7 @@
  */
 
 /** The kinds of cards an agent (or the user) can place on the board. */
-export type CardKind = 'link' | 'youtube' | 'image' | 'pdf' | 'note' | 'doc';
+export type CardKind = 'link' | 'youtube' | 'image' | 'pdf' | 'note' | 'doc' | 'table';
 
 /** Metadata extracted by the server's POST /api/link/preview endpoint. */
 export interface LinkPreview {
@@ -84,6 +84,9 @@ export type AgentEvent =
       title?: string;
       url?: string;
       text?: string;
+      /** Table cards (kind 'table') carry their grid here, fully formed. */
+      columns?: string[];
+      rows?: string[][];
     }
   /** Stream text into a card, word by word. */
   | { type: 'card.delta'; cardId: string; textDelta: string }

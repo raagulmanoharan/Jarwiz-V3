@@ -21,7 +21,17 @@ const KIND_BY_TYPE: Record<string, CardKind> = {
   'pdf-card': 'pdf',
   'note-card': 'note',
   'doc-card': 'doc',
+  'table-card': 'table',
 };
+
+/** Flatten a table card's grid into a compact text an agent can read. */
+function tableToText(props: Record<string, unknown>): string {
+  const columns = Array.isArray(props.columns) ? (props.columns as string[]) : [];
+  const rows = Array.isArray(props.rows) ? (props.rows as string[][]) : [];
+  if (columns.length === 0) return '';
+  const line = (cells: string[]) => `| ${cells.join(' | ')} |`;
+  return [line(columns), ...rows.map((r) => line(r))].join('\n');
+}
 
 /** Does this shape carry a Jarwiz card a card can act on? */
 export function isCardShape(shape: TLShape | undefined): shape is TLShape {
@@ -30,6 +40,12 @@ export function isCardShape(shape: TLShape | undefined): shape is TLShape {
 
 function shapeToRunCard(shape: TLShape): RunCard {
   const props = shape.props as Record<string, unknown>;
+  const text =
+    shape.type === 'table-card'
+      ? tableToText(props)
+      : typeof props.text === 'string'
+        ? props.text
+        : undefined;
   return {
     cardId: shape.id,
     kind: KIND_BY_TYPE[shape.type] ?? 'note',
@@ -39,7 +55,7 @@ function shapeToRunCard(shape: TLShape): RunCard {
     h: typeof props.h === 'number' ? props.h : 0,
     url: typeof props.url === 'string' ? props.url : undefined,
     title: typeof props.title === 'string' ? props.title : undefined,
-    text: typeof props.text === 'string' ? props.text : undefined,
+    text,
   };
 }
 

@@ -229,12 +229,65 @@ function mockDraftText(request: AgentRunRequest): string {
   ].join('\n');
 }
 
+/** Cheap intent sniff so the demo can show format routing (doc vs table). */
+function looksLikeComparison(request: AgentRunRequest): boolean {
+  const hay = [request.source, ...(request.selection ?? [])]
+    .map((c) => `${c.title ?? ''} ${c.text ?? ''}`)
+    .join(' ')
+    .toLowerCase();
+  return /\b(compare|comparison|vs\.?|versus|options|pros and cons|trade-?offs?|matrix|table)\b/.test(
+    hay,
+  );
+}
+
+async function runWriterTableMock(
+  def: AgentDefinition,
+  request: AgentRunRequest,
+  step: StepFn,
+  signal: AbortSignal,
+): Promise<void> {
+  const { source, placement } = request;
+  const cardId = 'card_1';
+  if (!(await step({ type: 'status', message: `${def.meta.name} sees a comparison — building a table… (demo)` }, 420)))
+    return;
+  if (!(await step({ type: 'cursor', x: placement.x, y: placement.y }, 420))) return;
+  if (
+    !(await step({
+      type: 'card.create',
+      cardId,
+      kind: 'table',
+      x: placement.x,
+      y: placement.y,
+      columns: ['Option', 'Cost', 'Strengths', 'Watch-outs'],
+      rows: [
+        ['Option A', '$', 'Fast to adopt (demo)', 'Limited ceiling'],
+        ['Option B', '$$', 'Balanced (demo)', 'Setup effort'],
+        ['Option C', '$$$', 'Most powerful (demo)', 'Overkill for small teams'],
+      ],
+    }))
+  ) {
+    return;
+  }
+  if (signal.aborted) return;
+  await step({
+    type: 'edge.create',
+    fromCardId: source.cardId,
+    toCardId: cardId,
+    label: 'drawn from',
+  });
+  await step({ type: 'status', message: `${def.meta.name} is done (demo)` }, 0);
+  await step({ type: 'done' }, 0);
+}
+
 async function runWriterMock(
   def: AgentDefinition,
   request: AgentRunRequest,
   step: StepFn,
   signal: AbortSignal,
 ): Promise<void> {
+  // Format routing: a comparison brief becomes a table, everything else a doc.
+  if (looksLikeComparison(request)) return runWriterTableMock(def, request, step, signal);
+
   const { source, placement } = request;
   const cardId = 'card_1';
 

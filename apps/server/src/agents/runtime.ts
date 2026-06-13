@@ -117,6 +117,34 @@ const CANVAS_TOOLS: Anthropic.Messages.Tool[] = [
     },
   },
   {
+    name: 'create_table',
+    description:
+      'Place a finished TABLE on the board in one step. Use this — not a document — when ' +
+      'the content is a 2-D matrix: parallel items compared across the same dimensions ' +
+      '(options × criteria), a schedule, a scorecard, a spec sheet. Provide column headers ' +
+      'and rows (each row has one cell per column, in order). Keep cells short (a few words). ' +
+      'Returns the new cardId so you can connect_cards to it.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        columns: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Column headers — the dimensions each row is described on.',
+        },
+        rows: {
+          type: 'array',
+          items: { type: 'array', items: { type: 'string' } },
+          description: 'Rows; each is an array of cells matching the columns, in order.',
+        },
+        x: { type: 'number', description: 'Page-space x of the table top-left corner.' },
+        y: { type: 'number', description: 'Page-space y of the table top-left corner.' },
+        title: { type: 'string', description: 'Optional short caption (unused for now).' },
+      },
+      required: ['columns', 'rows', 'x', 'y'],
+    },
+  },
+  {
     name: 'connect_cards',
     description:
       'Draw a provenance edge between two cards on the board (an arrow from the source ' +
@@ -256,6 +284,23 @@ export async function runAgentLoop(
         await emit({ type: 'cursor', x, y });
         await emit({ type: 'card.create', cardId, kind: 'note', x, y, text });
         await emit({ type: 'status', message: `${meta.name} jotted an idea` });
+        return { result: JSON.stringify({ cardId }) };
+      }
+      case 'create_table': {
+        const columns = Array.isArray(input.columns) ? input.columns.map((c) => String(c)) : [];
+        if (columns.length === 0) return { result: 'columns is required', isError: true };
+        const rows = Array.isArray(input.rows)
+          ? input.rows.map((r) => (Array.isArray(r) ? r.map((c) => String(c ?? '')) : []))
+          : [];
+        const x = typeof input.x === 'number' ? input.x : request.placement.x;
+        const y = typeof input.y === 'number' ? input.y : request.placement.y;
+        const title = typeof input.title === 'string' ? input.title : undefined;
+        await closeOpenCard();
+        const cardId = `card_${++cardCounter}`;
+        knownCardIds.add(cardId);
+        await emit({ type: 'cursor', x, y });
+        await emit({ type: 'card.create', cardId, kind: 'table', x, y, title, columns, rows });
+        await emit({ type: 'status', message: `${meta.name} built a table` });
         return { result: JSON.stringify({ cardId }) };
       }
       case 'connect_cards': {

@@ -28,9 +28,11 @@ import {
   DOC_CARD_SIZE,
   LINK_CARD_SIZE,
   NOTE_CARD_SIZE,
+  TABLE_CARD_SIZE,
   type DocCardShape,
   type LinkCardShape,
   type NoteCardShape,
+  type TableCardShape,
 } from '../shapes';
 import { fetchLinkPreview } from '../ingest/linkPreview';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from './presence';
@@ -181,6 +183,22 @@ function applyAgentEvent(
           props: { w: NOTE_CARD_SIZE.w, h: NOTE_CARD_SIZE.h, text: event.text ?? '' },
         });
         startStreaming(shapeId);
+      } else if (event.kind === 'table') {
+        // Agent-built table: arrives complete (Autopilot is what fills live).
+        const columns = event.columns ?? [];
+        const rows = event.rows ?? [];
+        editor.createShape<TableCardShape>({
+          id: shapeId,
+          type: 'table-card',
+          x: event.x,
+          y: event.y,
+          props: {
+            w: TABLE_CARD_SIZE.w,
+            h: Math.max(TABLE_CARD_SIZE.h, 40 + rows.length * 48),
+            columns,
+            rows,
+          },
+        });
       } else {
         editor.createShape<DocCardShape>({
           id: shapeId,
