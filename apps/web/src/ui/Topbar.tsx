@@ -1,9 +1,11 @@
 import { createShapeId, useEditor } from 'tldraw';
 import { NOTE_CARD_SIZE, type NoteCardShape } from '../shapes';
+import { useCapabilities } from './useCapabilities';
 
 /** Top-left chrome: the Jarwiz wordmark chip and a quick "new note" action. */
 export function Topbar() {
   const editor = useEditor();
+  const caps = useCapabilities();
 
   const handleNewNote = () => {
     const center = editor.getViewportPageBounds().center;
@@ -32,6 +34,14 @@ export function Topbar() {
       <button className="jz-new-note" onClick={handleNewNote}>
         + Note
       </button>
+      {caps?.live === false ? (
+        <span
+          className="jz-demo-badge"
+          title="No API key configured — agents run a scripted demo, so output is illustrative rather than real."
+        >
+          Demo mode
+        </span>
+      ) : null}
     </div>
   );
 }

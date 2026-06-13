@@ -4,6 +4,7 @@ import { AgentPresenceLayer } from './agents/AgentPresenceLayer';
 import { registerIngestion } from './ingest/registerIngestion';
 import { cardShapeUtils } from './shapes';
 import { EmptyState } from './ui/EmptyState';
+import { FirstRunHint } from './ui/FirstRunHint';
 import { Topbar } from './ui/Topbar';
 
 /** Everything Jarwiz floats over the canvas, in one overlay slot. */
@@ -13,6 +14,7 @@ function JarwizOverlay() {
       <EmptyState />
       <Topbar />
       <AgentPresenceLayer />
+      <FirstRunHint />
     </>
   );
 }

@@ -139,8 +139,13 @@ Craft and capability interleave, they don't block each other:
   C1/C2 foundation, so the Writer's document card is born world-class.
 - Golden-path **steps 5–6** (Writer synthesis + in-place editing) complete the
   acceptance scenario once C-phases give them a surface worthy of it.
+- **M4 — Autopilot (Tab-to-continue)** — the signature capability: press Tab
+  and an agent picks up your cursor and pen, filling in the artifact you're
+  authoring (a plan, a script, a table) live and multiplayer-style. Specced in
+  full in §9. Depends on M3 (editing substrate) and C2 (avatars + caret, now
+  shipped).
 
-Recommended order: **C0 → C1 → C2 → (M3 + C3 together) → C4.**
+Recommended order: **C0 → C1 → C2 → (M3 + C3 together) → M4 → C4.**
 
 ---
 
@@ -181,3 +186,122 @@ Not vanity. Observable bars:
 3. Keyboard-reachable and AA-contrast.
 4. Motion respects the system + reduced-motion.
 5. typecheck + build + e2e green; a screenshot is attached to the PR.
+
+---
+
+## 9. M4 — Autopilot (Tab-to-continue) `proposed`
+
+> You're authoring on the board — a launch plan, a cold-outreach script, a
+> comparison table. You've written the title and a stub or two. You press
+> **Tab**. An agent glides in, takes the pen, and **continues the artifact in
+> place** — you watch its cursor move and the fields fill, the way a teammate
+> would in a multiplayer doc. Keep typing to take the pen back; Esc to stop.
+
+This is the sharpest expression of the thesis. Where today's agents hand you a
+_finished card_, Autopilot lets an agent _co-author the card you're already in_.
+It collapses the gap between "thinking" and "the agent helping you think" to a
+single keystroke, and it is **pure presence** — the agent literally shares your
+cursor. No competitor's chat box can do this; few canvases dare to.
+
+### 9.1 The product insight
+
+A huge share of real work isn't "summarize this" — it's **structured
+authoring**: you start a scaffold (a heading, a few bullets, column names, the
+first line of a script) and grind out the rest. Chat-box AI forces a context
+switch: describe what you have, copy the reply back, reformat. On an infinite
+canvas the agent can simply **continue from your caret, in the artifact, where
+you are** — and because Jarwiz already renders agents as present collaborators
+(avatars, gliding cursor, streaming caret from C2), the continuation _looks and
+feels_ like a person working beside you, not a result being pasted in.
+
+### 9.2 User journeys
+
+1. **The plan.** User drops a note titled "Beta launch plan" and types three
+   bullet stubs. Presses Tab. The agent's avatar glides to the card, the caret
+   turns its color, and it extends the plan — milestones, owners, rough dates —
+   bullet by bullet. The user edits a date inline; the agent yields instantly,
+   then resumes on the next Tab.
+2. **The script.** A doc card "Cold outreach — Series A founders" with one
+   opening line. Tab. The agent continues the script in voice, paragraph by
+   paragraph, caret streaming. Tab again to push past where it stopped.
+3. **The table.** User makes a comparison table card with headers
+   `Tool · Price · Strengths · Watch-outs` and one filled row. Tab. The agent
+   fills the remaining rows **cell by cell**, its cursor hopping across the grid
+   like a collaborator tabbing through a spreadsheet.
+
+### 9.3 Needs vs. wants
+
+- **Needs:** finish structured artifacts without leaving the canvas or
+  round-tripping through chat; stay the author (accept / reject / steer); trust
+  what the agent is reading.
+- **Wants:** to _feel_ a capable teammate working with them (the multiplayer
+  moment); momentum — one key keeps the work flowing; the artifact stays whole
+  and in place, never a sidecar.
+
+### 9.4 Interaction model (control is the whole game)
+
+The feature lives or dies on the user never feeling hijacked. Rules:
+
+- **Tab** — trigger Autopilot at the caret; while running, Tab = _accept the
+  current run and continue_ (extend further).
+- **Type anything** — instantly reclaim the pen. The agent yields mid-stream,
+  no confirmation, no fight. This is the trust contract.
+- **Esc** — stop Autopilot, keep what landed.
+- **⌘Z** — one continuation = one undo step. A whole autopilot fill is
+  reversible in a single stroke; the board is never left in a half-state.
+- **Insert, don't overwrite.** The agent only adds at/after the caret (or into
+  empty cells); it never silently rewrites text the user typed.
+- **Visible reading.** Before it types, the agent shows _what it sees_
+  (this card + nearby/linked cards) — the same Kuse-style transparency as the
+  ⌘K palette — so the continuation is never a black box.
+
+Open question to validate with users: **ghost-preview vs. live-commit.**
+Copilot-style dimmed "ghost text" that Tab commits is safer; live multiplayer
+typing is more magical and on-thesis. Lean live-commit (bounded + instantly
+interruptible + single-undo), prototype both, let the awe test decide.
+
+### 9.5 What it reuses (cheap because C2 shipped)
+
+- **Avatar + glide** — the agent parks its avatar on the card it's autopiloting.
+- **Streaming caret** — already agent-colored; becomes the literal authoring
+  caret during a fill.
+- **SSE runtime + emit()** — Autopilot is a run whose deltas target an
+  _existing_ card/field instead of creating a new one. The wire protocol needs
+  a field/anchor target, not a new transport.
+
+### 9.6 Phasing
+
+- **A0 — Prose continue.** Tab inside a note/doc card; agent continues the text
+  at the caret, streaming with its caret + parked avatar. Yield-on-type, Esc,
+  single-undo. _Exit: a first-timer presses Tab in a half-written note and
+  audibly reacts._
+- **A1 — Structured cards.** Introduce a **table/list card** kind; Autopilot
+  fills cells/rows, cursor hopping fields. _Exit: a 4-row comparison table
+  fills itself, legibly, cell by cell._
+- **A2 — Steering.** Partial accept (Tab a word/line), inline ghost-preview
+  option, per-field re-roll, multi-field plan fills. _Exit: a user can shape a
+  long plan with Tab/Esc alone, never touching a menu._
+- **A3 — Proactive autopilot.** When the agent detects a scaffold (empty table
+  rows, a heading with no body), it _offers_ to continue — consent-first, same
+  as today's "Summarize this?" chip. _Exit: offers convert without feeling
+  pushy; dismiss rate stays low._
+
+### 9.7 Risks & mitigations
+
+- **Runaway generation** → bounded continuations (a few bullets / rows / a
+  paragraph per run), always interruptible, one undo.
+- **Feels like hijacking** → yield-on-type is sacred; insert-only; the agent
+  parks _near_ the caret, never wrestles it.
+- **Latency dulls the magic** → stream tokens immediately; show avatar
+  "thinking" pulse for the gap, then type.
+- **Structured-card scope creep** → ship prose (A0) before the table card; the
+  table is its own design problem (resize, overflow, edit) gated behind A1.
+- **Discoverability** → first-run hint already teaches one shortcut (⌘K);
+  add a contextual "Tab to continue" ghost affordance inside an editing card.
+
+### 9.8 Definition of done (M4)
+
+Beyond §8: yield-on-type is instantaneous and never drops a keystroke; every
+fill is a single undo; the agent's "what I see" is inspectable before it types;
+motion (glide, caret, cursor hops) obeys the system and reduced-motion; a
+10-second recording of a Tab-fill reads as _a teammate writing with you_.

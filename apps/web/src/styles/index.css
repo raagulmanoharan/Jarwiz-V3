@@ -1008,6 +1008,279 @@ body,
   opacity: 0.7;
 }
 
+/* ─── Demo-mode badge (honest system state) ─────────────────────────────── */
+
+.jz-demo-badge {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: var(--jz-radius-pill);
+  background: color-mix(in srgb, var(--jz-spark, #d97706) 14%, var(--jz-surface-raised));
+  box-shadow: var(--jz-e2);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-micro-size);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #b45309;
+  cursor: default;
+  user-select: none;
+}
+
+/* ─── First-run nudge ───────────────────────────────────────────────────── */
+
+.jz-firstrun {
+  position: absolute;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 305;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jz-space-3);
+  padding: 8px 10px 8px 16px;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-ink-900);
+  color: #faf6ec;
+  box-shadow: var(--jz-e3);
+  font-size: var(--jz-text-body-sm-size);
+  font-weight: 500;
+  pointer-events: auto;
+  animation: jz-firstrun-in var(--jz-dur-base) var(--jz-ease-glide) 600ms both;
+}
+
+.jz-firstrun-spark {
+  color: #f0b85a;
+  font-size: 12px;
+}
+
+.jz-firstrun-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.jz-firstrun kbd,
+.jz-palette-footer kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: var(--jz-radius-xs);
+  font-family: var(--jz-font-ui);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.jz-firstrun kbd {
+  background: rgba(255, 255, 255, 0.16);
+  color: #faf6ec;
+}
+
+.jz-firstrun-dismiss {
+  border: none;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--jz-radius-pill);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(250, 246, 236, 0.7);
+  font-size: 11px;
+  transition:
+    background var(--jz-dur-fast) var(--jz-ease-out),
+    color var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-firstrun-dismiss:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #faf6ec;
+}
+
+@keyframes jz-firstrun-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ─── ⌘K command palette ────────────────────────────────────────────────── */
+
+.jz-palette-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 16vh;
+  background: color-mix(in srgb, var(--jz-ink-900) 22%, transparent);
+  backdrop-filter: blur(2px);
+  pointer-events: auto;
+  animation: jz-fade-in var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-palette {
+  width: min(560px, calc(100vw - 48px));
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--jz-radius-lg);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e4);
+  overflow: hidden;
+  outline: none;
+  animation: jz-palette-in var(--jz-dur-base) var(--jz-ease-glide);
+}
+
+@keyframes jz-palette-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.jz-palette-context {
+  display: flex;
+  align-items: center;
+  gap: var(--jz-space-3);
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--jz-hairline);
+  font-size: var(--jz-text-body-sm-size);
+  color: var(--jz-ink-700);
+}
+
+.jz-palette-context-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--jz-radius-pill);
+  flex: none;
+  background: #16a34a;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #16a34a 18%, transparent);
+}
+
+.jz-palette-context-text strong {
+  font-weight: 600;
+  color: var(--jz-ink-900);
+}
+
+.jz-palette-context-empty {
+  color: var(--jz-ink-400);
+}
+
+.jz-palette-list {
+  display: flex;
+  flex-direction: column;
+  padding: var(--jz-space-2);
+  outline: none;
+}
+
+.jz-palette-item {
+  display: flex;
+  align-items: center;
+  gap: var(--jz-space-4);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: var(--jz-radius-sm);
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-palette-item-active {
+  background: color-mix(in srgb, var(--agent-color) 12%, transparent);
+}
+
+.jz-palette-avatar {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--agent-color);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--agent-color) 45%, transparent);
+}
+
+.jz-palette-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.jz-palette-name {
+  font-size: var(--jz-text-body-size);
+  font-weight: 600;
+  color: var(--jz-ink-900);
+}
+
+.jz-palette-tagline {
+  font-size: var(--jz-text-caption-size);
+  line-height: 1.35;
+  color: var(--jz-ink-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jz-palette-enter {
+  flex: none;
+  font-size: 14px;
+  color: var(--agent-color);
+  opacity: 0;
+  transition: opacity var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-palette-item-active .jz-palette-enter {
+  opacity: 0.85;
+}
+
+.jz-palette-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--jz-space-6);
+  padding: 10px 18px;
+  border-top: 1px solid var(--jz-hairline);
+  font-size: var(--jz-text-micro-size);
+  color: var(--jz-ink-400);
+}
+
+.jz-palette-footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.jz-palette-footer kbd {
+  background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
+  color: var(--jz-ink-500);
+}
+
+@keyframes jz-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* ─── Reduced motion: collapse travel/scale to quiet fades ──────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -1025,15 +1298,9 @@ body,
   }
   .jz-offer,
   .jz-ask-menu,
-  .jz-toast {
+  .jz-toast,
+  .jz-palette,
+  .jz-firstrun {
     animation-name: jz-fade-in;
-  }
-  @keyframes jz-fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
   }
 }

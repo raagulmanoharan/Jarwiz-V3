@@ -3,10 +3,12 @@ import { useEditor, type TLShape, type TLShapeId } from 'tldraw';
 import { getAgent, type AgentMeta } from '@jarwiz/shared';
 import { AgentCursorLayer } from './AgentCursorLayer';
 import { AskAgentAffordance } from './AskAgentAffordance';
+import { CommandPalette } from './CommandPalette';
 import { dismissOffer } from './offers';
 import { buildRunRequest, isCardShape } from './runRequest';
 import { SuggestionChip } from './SuggestionChip';
 import { useAgentRun } from './useAgentRun';
+import { markOnboarded } from '../ui/onboarding';
 
 const TOAST_DURATION_MS = 2800;
 
@@ -37,6 +39,7 @@ export function AgentPresenceLayer() {
 
   const runOnShapes = useCallback(
     (agent: AgentMeta, source: TLShape, context: TLShape[] = []) => {
+      markOnboarded(); // a real summon retires the first-run nudge
       run(agent, buildRunRequest(editor, source, context));
     },
     [editor, run],
@@ -75,6 +78,7 @@ export function AgentPresenceLayer() {
       <AgentCursorLayer />
       <SuggestionChip onAccept={handleAcceptOffer} />
       <AskAgentAffordance onPickAgent={handlePickAgent} />
+      <CommandPalette onPickAgent={handlePickAgent} />
       {toast ? <div className="jz-toast">{toast}</div> : null}
     </>
   );

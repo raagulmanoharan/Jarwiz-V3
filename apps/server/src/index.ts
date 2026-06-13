@@ -30,6 +30,16 @@ app.use(logger());
 
 app.get('/api/health', (c) => c.json({ ok: true }));
 
+/**
+ * What this server can do right now. `live` is false when no ANTHROPIC_API_KEY
+ * is configured — the runtime falls back to a scripted mock loop, and the
+ * client surfaces an honest "Demo mode" badge so canned output never masquerades
+ * as a real agent.
+ */
+app.get('/api/capabilities', (c) =>
+  c.json({ live: Boolean(process.env.ANTHROPIC_API_KEY?.trim()) }),
+);
+
 app.post('/api/link/preview', async (c) => {
   let body: unknown;
   try {
