@@ -1,36 +1,17 @@
-/* ─── Jarwiz design tokens ──────────────────────────────────────────────── */
-
-:root {
-  --jz-paper: #f5eee2;
-  --jz-card: #fffefb;
-  --jz-ink-900: #27272a; /* zinc-800 — headings */
-  --jz-ink-600: #52525b; /* zinc-600 — body */
-  --jz-ink-400: #a1a1aa; /* zinc-400 — muted */
-  --jz-line: rgba(64, 50, 34, 0.1);
-  --jz-radius: 1rem; /* rounded-2xl */
-  --jz-shadow:
-    0 1px 2px rgba(64, 50, 34, 0.05),
-    0 4px 12px rgba(64, 50, 34, 0.07),
-    0 16px 40px rgba(64, 50, 34, 0.07);
-  --jz-shadow-soft:
-    0 1px 2px rgba(64, 50, 34, 0.05),
-    0 6px 18px rgba(64, 50, 34, 0.08);
-  --jz-font:
-    'Poppins',
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    sans-serif;
-}
+/**
+ * Jarwiz component styles. Design tokens live in tokens.css (imported first);
+ * everything themeable references a --jz-* custom property. See docs/DESIGN.md.
+ */
 
 html,
 body,
 #root {
   margin: 0;
   height: 100%;
-  font-family: var(--jz-font);
+  font-family: var(--jz-font-ui);
   color: var(--jz-ink-900);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 .jarwiz-app {
@@ -41,20 +22,34 @@ body,
 /* ─── Calm the tldraw chrome ────────────────────────────────────────────── */
 
 .jarwiz-app .tl-container {
-  --tl-font-sans: var(--jz-font);
-  font-family: var(--jz-font);
+  --tl-font-sans: var(--jz-font-ui);
+  font-family: var(--jz-font-ui);
 }
 
-/* Warm paper canvas. */
+/* Warm paper canvas: base wash, faint dot grid, and a soft vignette so the
+   centre reads as a lit page. The dot grid is a tiled radial-gradient. */
 .jarwiz-app .tl-background {
   background-color: var(--jz-paper);
+  background-image:
+    radial-gradient(
+      120% 120% at 50% 30%,
+      transparent 55%,
+      color-mix(in srgb, var(--jz-paper-deep) 60%, transparent) 100%
+    ),
+    radial-gradient(circle, var(--jz-ink-300) 1px, transparent 1.4px);
+  background-size:
+    100% 100%,
+    24px 24px;
+  background-position:
+    center,
+    center;
 }
 
 /* Soften the remaining UI panels (zoom / navigation) into the aesthetic. */
 .jarwiz-app .tlui-navigation-panel {
-  border-radius: 12px;
-  box-shadow: var(--jz-shadow-soft);
-  background: var(--jz-card);
+  border-radius: var(--jz-radius-md);
+  box-shadow: var(--jz-e3);
+  background: var(--jz-surface-raised);
 }
 
 /* ─── Wordmark chip ─────────────────────────────────────────────────────── */
@@ -73,15 +68,17 @@ body,
 .jz-wordmark {
   pointer-events: auto;
   display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 14px;
-  border-radius: 999px;
-  background: var(--jz-card);
-  box-shadow: var(--jz-shadow-soft);
-  font-weight: 600;
-  font-size: 14px;
-  letter-spacing: 0.01em;
+  align-items: baseline;
+  gap: 7px;
+  padding: 7px 16px;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  font-family: var(--jz-font-display);
+  font-optical-sizing: auto;
+  font-weight: 540;
+  font-size: 18px;
+  letter-spacing: 0.005em;
   color: var(--jz-ink-900);
   user-select: none;
 }
@@ -89,23 +86,24 @@ body,
 .jz-wordmark .jz-spark {
   color: #d97706;
   font-size: 13px;
+  align-self: center;
 }
 
 .jz-new-note {
   pointer-events: auto;
   border: none;
   cursor: pointer;
-  padding: 7px 13px;
-  border-radius: 999px;
-  background: var(--jz-card);
-  box-shadow: var(--jz-shadow-soft);
-  font-family: var(--jz-font);
-  font-size: 12.5px;
+  padding: 8px 14px;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
   font-weight: 500;
-  color: var(--jz-ink-600);
+  color: var(--jz-ink-500);
   transition:
-    transform 120ms ease,
-    color 120ms ease;
+    transform var(--jz-dur-fast) var(--jz-ease-out),
+    color var(--jz-dur-fast) var(--jz-ease-out);
 }
 
 .jz-new-note:hover {
@@ -120,12 +118,12 @@ body,
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--jz-card);
-  border-radius: var(--jz-radius);
-  box-shadow: var(--jz-shadow);
+  background: var(--jz-surface);
+  border-radius: var(--jz-radius-lg);
+  box-shadow: var(--jz-e2);
   overflow: hidden;
-  font-family: var(--jz-font);
-  border: 1px solid rgba(64, 50, 34, 0.06);
+  font-family: var(--jz-font-ui);
+  border: 1px solid var(--jz-hairline-strong);
   box-sizing: border-box;
 }
 
@@ -195,7 +193,7 @@ body,
 .jz-link-desc {
   font-size: 12px;
   line-height: 1.45;
-  color: var(--jz-ink-600);
+  color: var(--jz-ink-500);
 }
 
 .jz-link-footer {
@@ -279,7 +277,7 @@ body,
   padding: 0 12px;
   font-size: 12px;
   font-weight: 500;
-  color: var(--jz-ink-600);
+  color: var(--jz-ink-500);
   border-bottom: 1px solid var(--jz-line);
   background: var(--jz-card);
   user-select: none;
@@ -390,7 +388,7 @@ body,
   padding: 9px 14px;
   border-top: 1px solid var(--jz-line);
   font-size: 11.5px;
-  color: var(--jz-ink-600);
+  color: var(--jz-ink-500);
   min-width: 0;
 }
 
@@ -454,11 +452,11 @@ body,
   z-index: 300;
   display: flex;
   align-items: stretch;
-  gap: 2px;
-  padding: 6px;
-  border-radius: 18px;
-  background: var(--jz-card);
-  box-shadow: var(--jz-shadow);
+  gap: var(--jz-space-1);
+  padding: var(--jz-space-2);
+  border-radius: var(--jz-radius-xl);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
   pointer-events: auto;
   user-select: none;
 }
@@ -494,15 +492,17 @@ body,
 }
 
 .jz-dock-name {
-  font-size: 12px;
+  font-size: var(--jz-text-caption-size);
+  line-height: var(--jz-text-caption-lh);
   font-weight: 600;
   color: var(--jz-ink-900);
 }
 
 .jz-dock-status {
-  font-size: 10.5px;
+  font-size: var(--jz-text-micro-size);
+  line-height: var(--jz-text-micro-lh);
   color: var(--jz-ink-400);
-  max-width: 120px;
+  max-width: 132px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -510,11 +510,11 @@ body,
 
 /* Dock — active agent */
 .jz-dock-agent-active {
-  background: color-mix(in srgb, var(--agent-color) 9%, transparent);
+  background: color-mix(in srgb, var(--agent-color) 10%, transparent);
 }
 
 .jz-dock-agent-active .jz-dock-status {
-  color: var(--agent-color);
+  color: color-mix(in srgb, var(--agent-color) 72%, var(--jz-ink-900));
   font-weight: 500;
 }
 
@@ -542,35 +542,82 @@ body,
   pointer-events: none;
   display: flex;
   align-items: flex-start;
-  gap: 4px;
+  gap: var(--jz-space-2);
   /* The unhurried glide to where the agent is working. */
-  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform var(--jz-dur-slow) var(--jz-ease-glide);
   will-change: transform;
 }
 
-.jz-cursor-arrow {
+.jz-cursor-arrow-wrap {
+  position: relative;
   flex: none;
-  filter: drop-shadow(0 1px 2px rgba(64, 50, 34, 0.25));
+  width: 20px;
+  height: 20px;
+}
+
+.jz-cursor-arrow {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 1px 2px rgba(var(--jz-shadow-rgb), 0.28));
+}
+
+/* A breathing ring behind the arrow conveys "thinking". */
+.jz-cursor-ring {
+  position: absolute;
+  top: 5px;
+  left: 3px;
+  width: 11px;
+  height: 11px;
+  border-radius: var(--jz-radius-pill);
+  background: var(--agent-color);
+  opacity: 0.35;
+  animation: jz-cursor-think 1.6s var(--jz-ease-out) infinite;
+}
+
+@keyframes jz-cursor-think {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.45;
+  }
+  70%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
 }
 
 .jz-cursor-label {
-  margin-top: 12px;
+  margin-top: 14px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: var(--agent-color);
-  color: #fffefb;
-  font-size: 11px;
-  font-weight: 600;
+  gap: var(--jz-space-3);
+  padding: 5px 11px 5px 9px;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e4);
   white-space: nowrap;
-  box-shadow: var(--jz-shadow-soft);
+}
+
+.jz-cursor-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--jz-radius-pill);
+  flex: none;
+  background: var(--agent-color);
+}
+
+.jz-cursor-name {
+  font-family: var(--jz-font-display);
+  font-optical-sizing: auto;
+  font-size: var(--jz-text-caption-size);
+  font-weight: 560;
+  color: var(--jz-ink-900);
 }
 
 .jz-cursor-status {
-  font-weight: 400;
-  opacity: 0.92;
+  font-size: var(--jz-text-micro-size);
+  line-height: var(--jz-text-micro-lh);
+  color: var(--jz-ink-500);
   max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -585,28 +632,28 @@ body,
   pointer-events: auto;
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--jz-card);
-  box-shadow: var(--jz-shadow);
-  animation: jz-offer-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  gap: var(--jz-space-1);
+  padding: var(--jz-space-2);
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  animation: jz-offer-in var(--jz-dur-base) var(--jz-ease-glide);
 }
 
 .jz-offer-accept {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--jz-space-3);
   border: none;
   cursor: pointer;
-  padding: 7px 13px;
-  border-radius: 999px;
+  padding: 7px 14px;
+  border-radius: var(--jz-radius-pill);
   background: transparent;
-  font-family: var(--jz-font);
-  font-size: 12.5px;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
   font-weight: 600;
-  color: var(--agent-color);
-  transition: background 120ms ease;
+  color: color-mix(in srgb, var(--agent-color) 72%, var(--jz-ink-900));
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
 }
 
 .jz-offer-accept:hover {
@@ -618,17 +665,17 @@ body,
   cursor: pointer;
   width: 26px;
   height: 26px;
-  border-radius: 999px;
+  border-radius: var(--jz-radius-pill);
   background: transparent;
   color: var(--jz-ink-400);
-  font-size: 11px;
+  font-size: var(--jz-text-micro-size);
   transition:
-    background 120ms ease,
-    color 120ms ease;
+    background var(--jz-dur-fast) var(--jz-ease-out),
+    color var(--jz-dur-fast) var(--jz-ease-out);
 }
 
 .jz-offer-dismiss:hover {
-  background: rgba(64, 50, 34, 0.07);
+  background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
   color: var(--jz-ink-900);
 }
 
@@ -659,16 +706,16 @@ body,
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: 999px;
+  gap: var(--jz-space-2);
+  padding: 8px 15px;
+  border-radius: var(--jz-radius-pill);
   background: var(--jz-ink-900);
-  color: #faf7f0;
-  font-family: var(--jz-font);
-  font-size: 12.5px;
+  color: #faf6ec;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
   font-weight: 500;
-  box-shadow: var(--jz-shadow-soft);
-  transition: transform 120ms ease;
+  box-shadow: var(--jz-e3);
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out);
 }
 
 .jz-ask-button:hover {
@@ -677,64 +724,77 @@ body,
 
 .jz-ask-menu {
   position: absolute;
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + var(--jz-space-3));
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 6px;
-  border-radius: 14px;
-  background: var(--jz-card);
-  box-shadow: var(--jz-shadow);
-  min-width: 230px;
+  gap: var(--jz-space-1);
+  padding: var(--jz-space-2);
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  min-width: 248px;
+  animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
+  transform-origin: bottom center;
+}
+
+@keyframes jz-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .jz-ask-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--jz-space-4);
   border: none;
   background: transparent;
   cursor: pointer;
   text-align: left;
-  padding: 8px 10px;
-  border-radius: 10px;
-  font-family: var(--jz-font);
-  transition: background 120ms ease;
+  padding: var(--jz-space-3) var(--jz-space-4);
+  border-radius: var(--jz-radius-sm);
+  font-family: var(--jz-font-ui);
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
 }
 
 .jz-ask-item:hover {
-  background: rgba(64, 50, 34, 0.06);
+  background: color-mix(in srgb, var(--agent-color) 10%, transparent);
 }
 
 .jz-ask-item-name {
-  font-size: 12.5px;
+  font-size: var(--jz-text-body-sm-size);
   font-weight: 600;
   color: var(--jz-ink-900);
 }
 
 .jz-ask-item-tagline {
-  font-size: 10.5px;
+  font-size: var(--jz-text-micro-size);
+  line-height: 1.35;
   color: var(--jz-ink-400);
-  line-height: 1.3;
 }
 
 /* Toast */
 .jz-toast {
   position: absolute;
-  bottom: 86px;
+  bottom: 92px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 320;
+  max-width: 420px;
   padding: 10px 16px;
-  border-radius: 12px;
+  border-radius: var(--jz-radius-md);
   background: var(--jz-ink-900);
-  color: #faf7f0;
-  font-size: 12.5px;
+  color: #faf6ec;
+  font-size: var(--jz-text-body-sm-size);
   font-weight: 500;
-  box-shadow: var(--jz-shadow);
+  box-shadow: var(--jz-e3);
   pointer-events: none;
-  animation: jz-toast-in 180ms ease;
-  white-space: nowrap;
+  animation: jz-toast-in var(--jz-dur-base) var(--jz-ease-out);
 }
 
 @keyframes jz-toast-in {
@@ -748,33 +808,38 @@ body,
   }
 }
 
-/* Document card */
+/* ─── Document card — the editorial artifact ────────────────────────────── */
+
 .jz-doc {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
-  border-radius: var(--jz-radius);
-  box-shadow: var(--jz-shadow);
+  border-radius: var(--jz-radius-lg);
+  box-shadow: var(--jz-e2);
   overflow: hidden;
-  font-family: var(--jz-font);
-  border: 1px solid rgba(64, 50, 34, 0.06);
+  font-family: var(--jz-font-ui);
+  background: var(--jz-surface);
+  border: 1px solid var(--jz-hairline-strong);
   box-sizing: border-box;
 }
 
 .jz-doc-header {
   flex: none;
-  height: 44px;
+  min-height: 48px;
   display: flex;
   align-items: center;
-  padding: 0 16px;
-  gap: 8px;
-  border-bottom: 1px solid rgba(64, 50, 34, 0.08);
+  padding: var(--jz-space-3) var(--jz-space-6);
+  gap: var(--jz-space-3);
+  border-bottom: 1px solid var(--jz-hairline);
 }
 
 .jz-doc-title {
-  font-size: 13px;
-  font-weight: 600;
+  font-family: var(--jz-font-display);
+  font-optical-sizing: auto;
+  font-size: var(--jz-text-title-size);
+  line-height: var(--jz-text-title-lh);
+  font-weight: 540;
   color: var(--jz-ink-900);
   white-space: nowrap;
   overflow: hidden;
@@ -788,9 +853,11 @@ body,
   border: none;
   outline: none;
   background: transparent;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
+  font-family: var(--jz-font-display);
+  font-optical-sizing: auto;
+  font-size: var(--jz-text-title-size);
+  line-height: var(--jz-text-title-lh);
+  font-weight: 540;
   color: var(--jz-ink-900);
 }
 
@@ -798,18 +865,18 @@ body,
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 14px 16px;
+  padding: var(--jz-space-6);
   box-sizing: border-box;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--jz-ink-600);
+  font-size: var(--jz-text-body-size);
+  line-height: var(--jz-text-body-lh);
+  color: var(--jz-ink-700);
 }
 
 .jz-doc-content.jz-doc-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(52, 50, 43, 0.4);
+  color: var(--jz-ink-400);
   user-select: none;
 }
 
@@ -820,61 +887,72 @@ body,
   border: none;
   outline: none;
   background: transparent;
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--jz-ink-600);
-  padding: 14px 16px;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-size);
+  line-height: var(--jz-text-body-lh);
+  color: var(--jz-ink-700);
+  padding: var(--jz-space-6);
   box-sizing: border-box;
   margin: 0;
 }
 
-/* Markdown rendering within doc cards */
+/* Markdown rendering within doc cards — editorial headings in the serif. */
 .jz-markdown {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--jz-space-4);
+  max-width: 68ch;
+}
+
+.jz-md-h1,
+.jz-md-h2,
+.jz-md-h3 {
+  margin: var(--jz-space-2) 0 0;
+  color: var(--jz-ink-900);
+  font-family: var(--jz-font-display);
+  font-optical-sizing: auto;
+  font-weight: 560;
 }
 
 .jz-md-h1 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--jz-ink-900);
+  font-size: var(--jz-text-title-lg-size);
+  line-height: var(--jz-text-title-lg-lh);
 }
 
 .jz-md-h2 {
-  margin: 0;
-  font-size: 14.5px;
-  font-weight: 700;
-  color: var(--jz-ink-900);
+  font-size: var(--jz-text-title-size);
+  line-height: var(--jz-text-title-lh);
 }
 
 .jz-md-h3 {
-  margin: 0;
-  font-size: 13px;
+  font-size: var(--jz-text-heading-size);
+  line-height: var(--jz-text-heading-lh);
   font-weight: 600;
-  color: var(--jz-ink-900);
+  font-family: var(--jz-font-ui);
 }
 
 .jz-md-p {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--jz-ink-600);
+  font-size: var(--jz-text-body-size);
+  line-height: var(--jz-text-body-lh);
+  color: var(--jz-ink-700);
 }
 
 .jz-md-ul {
   margin: 0;
-  padding-left: 20px;
+  padding-left: var(--jz-space-6);
   list-style: disc;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--jz-ink-600);
+  font-size: var(--jz-text-body-size);
+  line-height: var(--jz-text-body-lh);
+  color: var(--jz-ink-700);
 }
 
 .jz-md-ul li {
-  margin-bottom: 4px;
+  margin-bottom: var(--jz-space-2);
+}
+
+.jz-md-ul li::marker {
+  color: var(--jz-ink-400);
 }
 
 .jz-markdown strong {
@@ -887,13 +965,96 @@ body,
 }
 
 .jz-markdown code {
-  font-family:
-    'Monaco',
-    'Courier New',
-    monospace;
-  font-size: 11.5px;
-  background: rgba(64, 50, 34, 0.06);
-  padding: 2px 6px;
-  border-radius: 4px;
-  color: #d97706;
+  font-family: var(--jz-font-mono);
+  font-size: 0.86em;
+  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+  padding: 1px 6px;
+  border-radius: var(--jz-radius-xs);
+  color: var(--jz-ink-700);
+}
+
+/* ─── Empty state — the cold board invitation ───────────────────────────── */
+
+.jz-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--jz-space-7);
+  pointer-events: none;
+  text-align: center;
+  padding: var(--jz-space-8);
+}
+
+.jz-empty-hero {
+  font-family: var(--jz-font-display);
+  font-optical-sizing: auto;
+  font-size: var(--jz-text-display-size);
+  line-height: var(--jz-text-display-lh);
+  font-weight: 540;
+  color: var(--jz-ink-900);
+  max-width: 16ch;
+  margin: 0;
+}
+
+.jz-empty-sub {
+  font-size: var(--jz-text-body-size);
+  line-height: var(--jz-text-body-lh);
+  color: var(--jz-ink-500);
+  max-width: 38ch;
+  margin: 0;
+}
+
+.jz-empty-hints {
+  display: flex;
+  align-items: center;
+  gap: var(--jz-space-4);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.jz-empty-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jz-space-3);
+  padding: 8px 14px;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e2);
+  font-size: var(--jz-text-body-sm-size);
+  font-weight: 500;
+  color: var(--jz-ink-700);
+}
+
+.jz-empty-hint .jz-empty-glyph {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+/* ─── Reduced motion: collapse travel/scale to quiet fades ──────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .jz-cursor {
+    transition: opacity var(--jz-dur-fast) var(--jz-ease-out);
+  }
+  .jz-cursor-ring,
+  .jz-agent-dot-pulse {
+    animation: none;
+  }
+  .jz-offer,
+  .jz-ask-menu,
+  .jz-toast {
+    animation-name: jz-fade-in;
+  }
+  @keyframes jz-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 }

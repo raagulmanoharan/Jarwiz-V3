@@ -62,16 +62,20 @@ function AgentCursor({
         } as CSSProperties
       }
     >
-      <svg className="jz-cursor-arrow" width="20" height="20" viewBox="0 0 20 20" aria-hidden>
-        <path
-          d="M3 2 L3 16 L7 12 L10 18 L12.5 17 L9.5 11 L15 11 Z"
-          fill="var(--agent-color)"
-          stroke="#fffefb"
-          strokeWidth="1"
-        />
-      </svg>
+      <span className="jz-cursor-arrow-wrap">
+        <span className="jz-cursor-ring" aria-hidden />
+        <svg className="jz-cursor-arrow" width="20" height="20" viewBox="0 0 20 20" aria-hidden>
+          <path
+            d="M3 2 L3 16 L7 12 L10 18 L12.5 17 L9.5 11 L15 11 Z"
+            fill="var(--agent-color)"
+            stroke="#fffefb"
+            strokeWidth="1"
+          />
+        </svg>
+      </span>
       <div className="jz-cursor-label">
-        {agent.name}
+        <span className="jz-cursor-dot" />
+        <span className="jz-cursor-name">{agent.name}</span>
         {status ? <span className="jz-cursor-status">{status}</span> : null}
       </div>
     </div>

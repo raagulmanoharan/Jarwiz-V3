@@ -31,10 +31,6 @@ export type DocCardShape = TLShape<'doc-card'>;
 
 export const DOC_CARD_SIZE = { w: 520, h: 360 };
 
-/** Warm paper background matching the canvas. */
-const DOC_PAPER = '#f5eee2';
-const DOC_CARD_BG = '#fffefb';
-
 export class DocCardShapeUtil extends ShapeUtil<DocCardShape> {
   static override type = 'doc-card' as const;
 
@@ -85,8 +81,8 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
 
   if (isEditing) {
     return (
-      <div className="jz-doc" style={{ background: DOC_PAPER }}>
-        <div className="jz-doc-header" style={{ background: DOC_CARD_BG }}>
+      <div className="jz-doc">
+        <div className="jz-doc-header">
           <input
             autoFocus
             type="text"
@@ -126,8 +122,8 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
   }
 
   return (
-    <div className="jz-doc" style={{ background: DOC_PAPER }}>
-      <div className="jz-doc-header" style={{ background: DOC_CARD_BG }}>
+    <div className="jz-doc">
+      <div className="jz-doc-header">
         <div className="jz-doc-title">{title || 'Document'}</div>
       </div>
       <div className={`jz-doc-content${text ? '' : ' jz-doc-placeholder'}`}>

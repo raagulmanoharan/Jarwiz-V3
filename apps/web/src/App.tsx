@@ -3,12 +3,14 @@ import { Tldraw, type Editor, type TLComponents } from 'tldraw';
 import { AgentPresenceLayer } from './agents/AgentPresenceLayer';
 import { registerIngestion } from './ingest/registerIngestion';
 import { cardShapeUtils } from './shapes';
+import { EmptyState } from './ui/EmptyState';
 import { Topbar } from './ui/Topbar';
 
 /** Everything Jarwiz floats over the canvas, in one overlay slot. */
 function JarwizOverlay() {
   return (
     <>
+      <EmptyState />
       <Topbar />
       <AgentPresenceLayer />
     </>
