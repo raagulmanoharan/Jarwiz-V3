@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor, type TLShape, type TLShapeId } from 'tldraw';
 import { getAgent, type AgentMeta } from '@jarwiz/shared';
 import { AgentCursorLayer } from './AgentCursorLayer';
+import { AutopilotPresenceLayer } from './AutopilotPresenceLayer';
 import { AskAgentAffordance } from './AskAgentAffordance';
 import { CommandPalette } from './CommandPalette';
 import { dismissOffer } from './offers';
@@ -76,6 +77,7 @@ export function AgentPresenceLayer() {
   return (
     <>
       <AgentCursorLayer />
+      <AutopilotPresenceLayer />
       <SuggestionChip onAccept={handleAcceptOffer} />
       <AskAgentAffordance onPickAgent={handlePickAgent} />
       <CommandPalette onPickAgent={handlePickAgent} />

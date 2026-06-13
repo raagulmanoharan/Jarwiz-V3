@@ -249,6 +249,11 @@ The feature lives or dies on the user never feeling hijacked. Rules:
   current run and continue_ (extend further).
 - **Type anything** — instantly reclaim the pen. The agent yields mid-stream,
   no confirmation, no fight. This is the trust contract.
+- **Fire and walk away.** A fill is a background task, not a modal wait: kick
+  one off on this card and immediately go work (or fill) another. Runs are
+  concurrent and independent — a Writer avatar shows at *each* active card, and
+  each card's typing/Esc only yields *that* card. (Implemented in
+  `autopilotStore`: a session per card id, each with its own AbortController.)
 - **Esc** — stop Autopilot, keep what landed.
 - **⌘Z** — one continuation = one undo step. A whole autopilot fill is
   reversible in a single stroke; the board is never left in a half-state.
@@ -279,9 +284,12 @@ interruptible + single-undo), prototype both, let the awe test decide.
   continuation streams in. Yield-on-type, Esc, single-undo, insert-only.
   `POST /api/autopilot` (SSE), demoable with no key via a scripted continuation.
   _Remaining: agent-colored caret in the textarea, Tab-to-extend while running._
-- **A1 — Structured cards.** Introduce a **table/list card** kind; Autopilot
-  fills cells/rows, cursor hopping fields. _Exit: a 4-row comparison table
-  fills itself, legibly, cell by cell._
+- **A1 — Structured cards.** `shipped (core)` A **table card** (+ Table in the
+  topbar): headers + rows, per-cell editing. Tab fills the empty cells via
+  `POST /api/autopilot/table`; cells stream in row-major order and the Writer
+  avatar hops cell to cell. Insert-only (never overwrites a typed cell), one
+  undo, yield-on-type. Real model returns the completed grid (parsed to cells);
+  scripted mock with no key. _Remaining: column add/remove, drag-resize._
 - **A2 — Steering.** Partial accept (Tab a word/line), inline ghost-preview
   option, per-field re-roll, multi-field plan fills. _Exit: a user can shape a
   long plan with Tab/Esc alone, never touching a menu._

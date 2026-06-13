@@ -10,7 +10,12 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import type { AutopilotEvent, AutopilotRequest } from '@jarwiz/shared';
+import type {
+  AutopilotEvent,
+  AutopilotRequest,
+  TableAutopilotEvent,
+  TableAutopilotRequest,
+} from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
 
 /** Bounded per the spec — a paragraph or a few bullets, never a runaway. */
@@ -145,5 +150,95 @@ export async function* streamAutopilot(
     });
   }
   await run;
+  if (!signal.aborted) yield { type: 'done' };
+}
+
+/* ─── Table cell-fill (A1) ──────────────────────────────────────────────── */
+
+/** Row-major list of the empty cells the agent should fill. */
+function emptyCells(rows: string[][]): Array<{ row: number; col: number }> {
+  const out: Array<{ row: number; col: number }> = [];
+  rows.forEach((r, row) =>
+    r.forEach((cell, col) => {
+      if (!cell?.trim()) out.push({ row, col });
+    }),
+  );
+  return out;
+}
+
+const TABLE_SYSTEM_PROMPT = `You fill in the empty cells of a small table on a canvas. You are given the column headers and the current rows (some cells filled by the user, some empty). Return ONLY a JSON object of the form {"rows": string[][]} with the SAME number of rows and the SAME number of columns as the input. Keep every already-filled cell EXACTLY as given. Fill each empty cell with a concise, accurate value that fits its column header and stays consistent with the other cells in its row. Values are short — a few words, not sentences. Output only the JSON object: no prose, no markdown, no code fences.`;
+
+async function fetchFilledRows(
+  request: TableAutopilotRequest,
+  signal: AbortSignal,
+): Promise<string[][]> {
+  const client = new Anthropic();
+  const userTurn = JSON.stringify({ columns: request.columns, rows: request.rows });
+  const message = await client.messages.create(
+    {
+      model: AGENT_MODEL,
+      max_tokens: 1024,
+      system: [{ type: 'text', text: TABLE_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: userTurn }],
+    },
+    { signal },
+  );
+  const text = message.content
+    .filter((b): b is Anthropic.Messages.TextBlock => b.type === 'text')
+    .map((b) => b.text)
+    .join('')
+    .trim()
+    .replace(/^```(?:json)?/i, '')
+    .replace(/```$/, '')
+    .trim();
+  const parsed = JSON.parse(text) as { rows?: unknown };
+  if (!Array.isArray(parsed.rows)) throw new Error('bad table JSON');
+  return parsed.rows.map((r) => (Array.isArray(r) ? r.map((c) => String(c ?? '')) : []));
+}
+
+function mockCell(request: TableAutopilotRequest, row: number, col: number): string {
+  const header = (request.columns[col] ?? '').toLowerCase();
+  const subject = request.rows[row]?.find((c) => c?.trim()) ?? `row ${row + 1}`;
+  if (col === 0) return `Option ${row + 1}`;
+  if (header.includes('cost') || header.includes('price')) return ['$', '$$', '$$$'][row % 3] ?? '$';
+  if (header.includes('pro') || header.includes('strength')) return `Strong fit for ${subject}`;
+  if (header.includes('con') || header.includes('watch')) return `Watch the trade-offs`;
+  return `${subject} — demo`;
+}
+
+export async function* streamTableAutopilot(
+  request: TableAutopilotRequest,
+  signal: AbortSignal,
+): AsyncGenerator<TableAutopilotEvent> {
+  const targets = emptyCells(request.rows);
+  if (targets.length === 0) {
+    yield { type: 'done' };
+    return;
+  }
+
+  const hasKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+  let filled: string[][] | null = null;
+  if (hasKey) {
+    try {
+      filled = await fetchFilledRows(request, signal);
+    } catch (error) {
+      if (signal.aborted) return;
+      const message =
+        error instanceof Anthropic.APIError
+          ? `Autopilot couldn't fill the table (${error.status ?? 'API error'}).`
+          : 'Autopilot couldn\'t parse a table from the model.';
+      yield { type: 'error', message };
+      return;
+    }
+  }
+
+  // Emit one cell at a time, in visiting order, so the avatar hops the grid.
+  for (const { row, col } of targets) {
+    if (signal.aborted) return;
+    const candidate = filled?.[row]?.[col];
+    const text = candidate && candidate.trim() ? candidate : mockCell(request, row, col);
+    yield { type: 'cell', row, col, text };
+    await sleep(260, signal);
+  }
   if (!signal.aborted) yield { type: 'done' };
 }

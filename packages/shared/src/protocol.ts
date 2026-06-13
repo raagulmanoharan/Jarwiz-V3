@@ -122,3 +122,22 @@ export type AutopilotEvent =
   | { type: 'delta'; textDelta: string }
   | { type: 'done' }
   | { type: 'error'; message: string };
+
+/**
+ * POST /api/autopilot/table request — fill the empty cells of a table the user
+ * is building (A1). The agent reads the column headers and any rows the user
+ * filled, completes the rest, and the cells stream in one at a time so the
+ * Writer avatar can hop across the grid.
+ */
+export interface TableAutopilotRequest {
+  /** Column headers — define what each cell should contain. */
+  columns: string[];
+  /** Current rows (row-major); empty strings are the cells to fill. */
+  rows: string[][];
+}
+
+export type TableAutopilotEvent =
+  /** Fill one cell. Emitted in visiting order so the avatar hops cell to cell. */
+  | { type: 'cell'; row: number; col: number; text: string }
+  | { type: 'done' }
+  | { type: 'error'; message: string };

@@ -15,10 +15,16 @@ import { Hono } from 'hono';
 import { logger } from 'hono/logger';
 import { streamSSE } from 'hono/streaming';
 import { isAgentId } from '@jarwiz/shared';
-import type { AgentEvent, AutopilotEvent, AutopilotRequest } from '@jarwiz/shared';
+import type {
+  AgentEvent,
+  AutopilotEvent,
+  AutopilotRequest,
+  TableAutopilotEvent,
+  TableAutopilotRequest,
+} from '@jarwiz/shared';
 import { buildLinkPreview, SsrfError } from './linkPreview.js';
 import { streamAgentRun } from './agentRun.js';
-import { streamAutopilot } from './autopilot.js';
+import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
 import { parseRunRequest, RunRequestError } from './agents/request.js';
 
 // Load apps/server/.env when present (no-op otherwise).
@@ -134,6 +140,41 @@ app.post('/api/autopilot', async (c) => {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Autopilot failed';
+      await send({ type: 'error', message });
+    }
+  });
+});
+
+app.post('/api/autopilot/table', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected a JSON body: { columns, rows }' }, 400);
+  }
+
+  const raw = body as Partial<TableAutopilotRequest>;
+  const okColumns = Array.isArray(raw.columns) && raw.columns.every((c) => typeof c === 'string');
+  const okRows =
+    Array.isArray(raw.rows) &&
+    raw.rows.every((r) => Array.isArray(r) && r.every((c) => typeof c === 'string'));
+  if (!okColumns || !okRows) {
+    return c.json({ error: 'Expected { columns: string[], rows: string[][] }' }, 400);
+  }
+  const request: TableAutopilotRequest = {
+    columns: raw.columns!.slice(0, 8),
+    rows: raw.rows!.slice(0, 24).map((r) => r.slice(0, 8)),
+  };
+
+  return streamSSE(c, async (stream) => {
+    const send = (event: TableAutopilotEvent) => stream.writeSSE({ data: JSON.stringify(event) });
+    const signal = c.req.raw.signal;
+    try {
+      for await (const event of streamTableAutopilot(request, signal)) {
+        await send(event);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Table autopilot failed';
       await send({ type: 'error', message });
     }
   });

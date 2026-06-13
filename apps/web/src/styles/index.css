@@ -415,7 +415,8 @@ body,
 
 .jz-card,
 .jz-note,
-.jz-doc {
+.jz-doc,
+.jz-table {
   animation: jz-materialize var(--jz-dur-base) var(--jz-ease-glide) both;
 }
 
@@ -484,6 +485,132 @@ body,
   line-height: inherit;
   padding: 0;
   margin: 0;
+}
+
+/* ─── Table card (structured authoring + cell-fill Autopilot, A1) ────────── */
+
+.jz-table {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--jz-surface);
+  border-radius: var(--jz-radius-lg);
+  box-shadow: var(--jz-e2);
+  border: 1px solid var(--jz-hairline-strong);
+  box-sizing: border-box;
+  overflow: hidden;
+  font-family: var(--jz-font-ui);
+}
+
+/* While Autopilot fills it, the card wears a faint agent-colored ring. */
+.jz-table-filling {
+  box-shadow:
+    var(--jz-e2),
+    0 0 0 2px color-mix(in srgb, #059669 55%, transparent);
+}
+
+.jz-table-head {
+  flex: none;
+  display: grid;
+  align-items: stretch;
+  background: color-mix(in srgb, var(--jz-paper) 60%, var(--jz-surface));
+  border-bottom: 1px solid var(--jz-hairline-strong);
+}
+
+.jz-table-headcell {
+  border: none;
+  outline: none;
+  background: transparent;
+  border-right: 1px solid var(--jz-hairline);
+  padding: 0 12px;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--jz-ink-700);
+  min-width: 0;
+}
+
+.jz-table-headcell:last-child {
+  border-right: none;
+}
+
+.jz-table-headcell-static {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jz-table-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.jz-table-row {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  align-items: stretch;
+  border-bottom: 1px solid var(--jz-hairline);
+}
+
+.jz-table-row:last-child {
+  border-bottom: none;
+}
+
+.jz-table-cell {
+  border: none;
+  outline: none;
+  background: transparent;
+  border-right: 1px solid var(--jz-hairline);
+  padding: 0 12px;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-sm-size);
+  line-height: 1.4;
+  color: var(--jz-ink-900);
+  min-width: 0;
+}
+
+.jz-table-cell:last-child {
+  border-right: none;
+}
+
+.jz-table-cell-static {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A new cell value fades in as Autopilot lands it. */
+.jz-table-cell-static {
+  animation: jz-cell-in var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+@keyframes jz-cell-in {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.jz-table-hint {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  font-size: var(--jz-text-micro-size);
+  color: var(--jz-ink-400);
+  pointer-events: none;
+  user-select: none;
 }
 
 /* ─── Agent presence layer ──────────────────────────────────────────────── */
@@ -1293,7 +1420,8 @@ body,
   }
   .jz-card,
   .jz-note,
-  .jz-doc {
+  .jz-doc,
+  .jz-table {
     animation: none;
   }
   .jz-offer,
