@@ -163,6 +163,17 @@ export interface SuggestResponse {
 }
 
 /**
+ * POST /api/cluster-suggest request — propose CROSS-CUTTING actions over a set
+ * of related artifacts (compare them, synthesize them, find the through-line).
+ * Surface-level: only titles + kinds, so it's fast.
+ */
+export interface ClusterSuggestRequest {
+  items: Array<{ kind: string; title: string }>;
+  /** The detected shared theme word, if any. */
+  theme?: string;
+}
+
+/**
  * POST /api/autopilot/table request — fill the empty cells of a table the user
  * is building (A1). The agent reads the column headers and any rows the user
  * filled, completes the rest, and the cells stream in one at a time so the

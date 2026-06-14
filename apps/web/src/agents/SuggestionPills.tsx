@@ -1,20 +1,20 @@
 /**
- * Proactive suggestion pills — when an artifact lands, a cluster of agent-action
- * pills floats above the card ("Summarize", "Find related", "Make a comparison
- * table"…), each in its agent's color. One tap kicks off that agent on the card
- * (with the suggestion's steering brief). Consent over magic: it only offers;
- * the ✕ dismisses the whole cluster. Anchors to the card and follows pan/zoom;
- * clears itself if the card is deleted.
+ * Proactive suggestion pills — when an artifact (or a cluster of related
+ * artifacts) lands, a cluster of agent-action pills floats above it, each in its
+ * agent's color. One tap kicks off that agent on the card(s) (with the
+ * suggestion's steering brief). Consent over magic: it only offers; the ✕
+ * dismisses. Anchors to the combined bounds of the offered cards and follows
+ * pan/zoom; clears itself if they're gone.
  */
 
 import { useSyncExternalStore, type CSSProperties } from 'react';
-import { stopEventPropagation, useEditor, useValue, type TLShapeId } from 'tldraw';
+import { Box, stopEventPropagation, useEditor, useValue, type TLShapeId } from 'tldraw';
 import { getAgent } from '@jarwiz/shared';
 import { dismissOffer, getOffer, subscribeOffer, type Suggestion } from './offers';
 
 interface SuggestionPillsProps {
-  /** Accept a suggestion — run its agent on the offered card. */
-  onAccept: (shapeId: TLShapeId, suggestion: Suggestion) => void;
+  /** Accept a suggestion — run its agent on the offered card(s). */
+  onAccept: (shapeIds: TLShapeId[], suggestion: Suggestion) => void;
 }
 
 export function SuggestionPills({ onAccept }: SuggestionPillsProps) {
@@ -25,12 +25,15 @@ export function SuggestionPills({ onAccept }: SuggestionPillsProps) {
     'jarwiz offer anchor',
     () => {
       if (!offer) return null;
-      const bounds = editor.getShapePageBounds(offer.shapeId);
-      if (!bounds) {
-        queueMicrotask(() => dismissOffer(offer.shapeId)); // card deleted
+      const boxes = offer.shapeIds
+        .map((id) => editor.getShapePageBounds(id))
+        .filter((b): b is Box => Boolean(b));
+      if (boxes.length === 0) {
+        queueMicrotask(() => dismissOffer(offer.shapeIds[0])); // all gone
         return null;
       }
-      const top = editor.pageToViewport({ x: bounds.midX, y: bounds.minY });
+      const union = boxes.reduce((acc, b) => acc.union(b), boxes[0]!.clone());
+      const top = editor.pageToViewport({ x: union.midX, y: union.minY });
       return { x: top.x, y: top.y };
     },
     [editor, offer],
@@ -56,7 +59,7 @@ export function SuggestionPills({ onAccept }: SuggestionPillsProps) {
             className="jz-offer-pill"
             style={{ '--agent-color': agent.color } as CSSProperties}
             title={`${agent.name}${s.brief ? ` — ${s.brief}` : ''}`}
-            onClick={() => onAccept(offer.shapeId, s)}
+            onClick={() => onAccept(offer.shapeIds, s)}
           >
             <span className="jz-agent-dot" />
             {s.label}
@@ -66,7 +69,7 @@ export function SuggestionPills({ onAccept }: SuggestionPillsProps) {
       <button
         className="jz-offer-dismiss"
         aria-label="Dismiss suggestions"
-        onClick={() => dismissOffer(offer.shapeId)}
+        onClick={() => dismissOffer(offer.shapeIds[0])}
       >
         ✕
       </button>

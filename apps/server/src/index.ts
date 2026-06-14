@@ -31,8 +31,8 @@ import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
 import { streamComment } from './comment.js';
 import { sidecarAvailable } from './sidecar.js';
-import { proposeSuggestions } from './suggest.js';
-import type { SuggestRequest } from '@jarwiz/shared';
+import { proposeClusterSuggestions, proposeSuggestions } from './suggest.js';
+import type { ClusterSuggestRequest, SuggestRequest } from '@jarwiz/shared';
 import { handleSyncSocket } from './sync.js';
 import { parseRunRequest, RunRequestError } from './agents/request.js';
 
@@ -254,6 +254,29 @@ app.post('/api/suggest', async (c) => {
   };
   try {
     const suggestions = await proposeSuggestions(request, c.req.raw.signal);
+    return c.json({ suggestions });
+  } catch {
+    return c.json({ suggestions: [] });
+  }
+});
+
+app.post('/api/cluster-suggest', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected a JSON body: { items, theme? }' }, 400);
+  }
+  const raw = body as Partial<ClusterSuggestRequest>;
+  if (!Array.isArray(raw.items)) return c.json({ error: 'items must be an array' }, 400);
+  const request: ClusterSuggestRequest = {
+    items: raw.items
+      .slice(0, 12)
+      .map((i) => ({ kind: String(i?.kind ?? 'card'), title: String(i?.title ?? '').slice(0, 300) })),
+    theme: typeof raw.theme === 'string' ? raw.theme.slice(0, 80) : undefined,
+  };
+  try {
+    const suggestions = await proposeClusterSuggestions(request, c.req.raw.signal);
     return c.json({ suggestions });
   } catch {
     return c.json({ suggestions: [] });

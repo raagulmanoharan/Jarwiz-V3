@@ -7,7 +7,7 @@
  * actual parsed content (e.g. a compliance doc → "Make a compliance checklist").
  */
 
-import type { AgentSuggestion, SuggestRequest } from '@jarwiz/shared';
+import type { AgentSuggestion, ClusterSuggestRequest, SuggestRequest } from '@jarwiz/shared';
 import type { Suggestion } from './offers';
 
 type DropKind = 'youtube' | 'link' | 'pdf';
@@ -69,6 +69,35 @@ const CATALOG: Record<DropKind, Suggestion[]> = {
 
 export function suggestionsForDrop(kind: DropKind): Suggestion[] {
   return CATALOG[kind] ?? [];
+}
+
+/** Fast type-based actions for a cluster of related artifacts (the fallback). */
+export function clusterSuggestions(): Suggestion[] {
+  return [
+    { id: 'cl-sum', label: 'Summarize all', agentId: 'summarizer', brief: 'Summarize all of these sources together into one gist.' },
+    { id: 'cl-table', label: 'Compare in a table', agentId: 'writer', brief: 'Compare these sources side by side in a single comparison table.' },
+    { id: 'cl-brief', label: 'Synthesize a brief', agentId: 'writer', brief: 'Synthesize these into one short brief with a clear through-line.' },
+    { id: 'cl-thread', label: 'Find the through-line', agentId: 'brainstormer', brief: 'Identify the common thread across these and what to explore next.' },
+  ];
+}
+
+const toSuggestions = (list: AgentSuggestion[], prefix: string): Suggestion[] =>
+  list.map((s, i) => ({ id: `${prefix}-${i}`, label: s.label, agentId: s.agentId, brief: s.brief }));
+
+/** Content-aware cross-cutting actions for a cluster (over titles — fast). */
+export async function fetchClusterSuggestions(req: ClusterSuggestRequest): Promise<Suggestion[]> {
+  try {
+    const res = await fetch('/api/cluster-suggest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { suggestions?: AgentSuggestion[] };
+    return toSuggestions(data.suggestions ?? [], 'clai');
+  } catch {
+    return [];
+  }
 }
 
 /**

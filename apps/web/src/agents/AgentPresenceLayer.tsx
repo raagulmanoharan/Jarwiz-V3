@@ -5,15 +5,30 @@ import { AgentCursorLayer } from './AgentCursorLayer';
 import { AutopilotPresenceLayer } from './AutopilotPresenceLayer';
 import { AskAgentAffordance } from './AskAgentAffordance';
 import { CommandPalette } from './CommandPalette';
+import { clearFromPool, type ClusterCandidate } from './cluster';
+import { ClusterButton } from './ClusterButton';
 import { CommentThread } from './CommentThread';
 import { MentionMenu } from './MentionMenu';
-import { dismissOffer, type Suggestion } from './offers';
+import { dismissOffer, hasOfferFor, setOffer, type Suggestion } from './offers';
 import { ParticipantRoster } from './ParticipantRoster';
 import { buildRunRequest, isCardShape } from './runRequest';
 import { onSummon } from './summon';
+import { clusterSuggestions, fetchClusterSuggestions } from './suggestions';
 import { SuggestionPills } from './SuggestionPills';
 import { useAgentRun } from './useAgentRun';
 import { markOnboarded } from '../ui/onboarding';
+
+/** A short surface label + kind for a card, for the cluster suggestion engine. */
+function describeForCluster(shape: TLShape): { kind: string; title: string } {
+  const props = shape.props as Record<string, unknown>;
+  const title =
+    (typeof props.title === 'string' && props.title) ||
+    (typeof props.text === 'string' && props.text.slice(0, 80)) ||
+    (typeof props.url === 'string' && props.url) ||
+    (typeof props.name === 'string' && props.name) ||
+    'card';
+  return { kind: shape.type.replace('-card', ''), title: String(title) };
+}
 
 const TOAST_DURATION_MS = 2800;
 
@@ -68,15 +83,53 @@ export function AgentPresenceLayer() {
     [editor, notify, runOnShapes],
   );
 
-  // Offered: one-tap accept of a proactive suggestion pill — runs its agent
-  // on the card, with the suggestion's steering brief.
+  // Offered: one-tap accept of a proactive pill — runs its agent on the card,
+  // or across the whole cluster (first card is the source, the rest context).
   const handleAcceptOffer = useCallback(
-    (shapeId: TLShapeId, suggestion: Suggestion) => {
-      const shape = editor.getShape(shapeId);
-      dismissOffer(shapeId);
-      if (isCardShape(shape)) runOnShapes(getAgent(suggestion.agentId), shape, [], suggestion.brief);
+    (shapeIds: TLShapeId[], suggestion: Suggestion) => {
+      const shapes = shapeIds.map((id) => editor.getShape(id)).filter(isCardShape);
+      dismissOffer(shapeIds[0]);
+      const [source, ...context] = shapes;
+      if (source) runOnShapes(getAgent(suggestion.agentId), source, context, suggestion.brief);
     },
     [editor, runOnShapes],
+  );
+
+  // Auto-cluster: tidy the related drops into a row, select them, and raise
+  // content-aware pills on the cluster.
+  const handleCluster = useCallback(
+    (candidate: ClusterCandidate) => {
+      const shapes = candidate.ids.map((id) => editor.getShape(id)).filter(isCardShape);
+      if (shapes.length < 2) return;
+
+      const boxes = shapes
+        .map((s) => editor.getShapePageBounds(s.id))
+        .filter((b): b is NonNullable<typeof b> => Boolean(b));
+      const startX = Math.min(...boxes.map((b) => b.minX));
+      const topY = Math.min(...boxes.map((b) => b.minY));
+
+      editor.markHistoryStoppingPoint('cluster');
+      editor.run(() => {
+        let x = startX;
+        for (const s of shapes) {
+          const w = editor.getShapePageBounds(s.id)?.w ?? 280;
+          editor.updateShape({ id: s.id, type: s.type, x, y: topY } as Parameters<
+            typeof editor.updateShape
+          >[0]);
+          x += w + 28;
+        }
+      });
+      editor.setSelectedShapes(shapes.map((s) => s.id));
+      clearFromPool(candidate.ids);
+
+      setOffer(candidate.ids, clusterSuggestions(), true);
+      const items = shapes.map(describeForCluster);
+      void fetchClusterSuggestions({ items, theme: candidate.theme }).then((tailored) => {
+        if (!hasOfferFor(candidate.ids[0]!)) return;
+        setOffer(candidate.ids, tailored.length > 0 ? tailored : clusterSuggestions(), false);
+      });
+    },
+    [editor],
   );
 
   // Addressed by name: an @mention (or any summon channel) calls an agent on a card.
@@ -94,6 +147,7 @@ export function AgentPresenceLayer() {
       <AgentCursorLayer />
       <AutopilotPresenceLayer />
       <SuggestionPills onAccept={handleAcceptOffer} />
+      <ClusterButton onCluster={handleCluster} />
       <AskAgentAffordance onPickAgent={handlePickAgent} />
       <CommandPalette onPickAgent={handlePickAgent} />
       <MentionMenu />

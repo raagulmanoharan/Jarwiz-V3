@@ -10,7 +10,12 @@
  */
 
 import { createRequire } from 'node:module';
-import { isAgentId, type AgentSuggestion, type SuggestRequest } from '@jarwiz/shared';
+import {
+  isAgentId,
+  type AgentSuggestion,
+  type ClusterSuggestRequest,
+  type SuggestRequest,
+} from '@jarwiz/shared';
 import { fetchPageText } from './linkPreview.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 
@@ -127,6 +132,35 @@ export async function proposeSuggestions(
   const user = `Artifact kind: ${req.kind}\nTitle: ${title || '(none)'}\n\nContent:\n"""\n${text}\n"""`;
   try {
     const raw = await sidecarGenerate({ system: SYSTEM_PROMPT, user, signal, timeoutMs: 45_000 });
+    return parseSuggestions(raw);
+  } catch {
+    return [];
+  }
+}
+
+const CLUSTER_SYSTEM_PROMPT = `You are given a set of RELATED artifacts a user dropped on a canvas while researching (only their kinds and titles). Propose the 3–4 most useful CROSS-CUTTING actions over the WHOLE set — comparing, synthesizing, or finding the through-line — each handled by one of four agents:
+- "summarizer": one combined gist across all of them.
+- "researcher": find more sources on the shared subject.
+- "brainstormer": the common thread, gaps, and what to explore next.
+- "writer": a comparison TABLE across them, a synthesis brief/memo, or a deck.
+
+Rules:
+- Name the actual shared subject; never generic ("Summarize these").
+- The actions must span the set, not one item.
+- Each: a short imperative "label" (2–5 words), the "agentId", and a one-sentence "brief".
+- Return ONLY a JSON array of {label, agentId, brief}. No prose, no code fences.`;
+
+export async function proposeClusterSuggestions(
+  req: ClusterSuggestRequest,
+  signal: AbortSignal,
+): Promise<AgentSuggestion[]> {
+  if (!sidecarAvailable() && !process.env.ANTHROPIC_API_KEY?.trim()) return [];
+  const items = req.items.filter((i) => i.title?.trim()).slice(0, 12);
+  if (items.length < 2) return [];
+  const list = items.map((i) => `- (${i.kind}) ${i.title.trim()}`).join('\n');
+  const user = `Shared theme: ${req.theme || '(infer it)'}\n\nThe related artifacts:\n${list}`;
+  try {
+    const raw = await sidecarGenerate({ system: CLUSTER_SYSTEM_PROMPT, user, signal, timeoutMs: 45_000 });
     return parseSuggestions(raw);
   } catch {
     return [];

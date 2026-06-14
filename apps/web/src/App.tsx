@@ -10,6 +10,7 @@ import {
 import { useSync } from '@tldraw/sync';
 import { AgentPresenceLayer } from './agents/AgentPresenceLayer';
 import { abortAutopilot } from './agents/autopilotStore';
+import { clearFromPool } from './agents/cluster';
 import { clearThread } from './agents/comments';
 import { registerIngestion } from './ingest/registerIngestion';
 import { cardShapeUtils } from './shapes';
@@ -58,6 +59,7 @@ const handleMount = (editor: Editor) => {
   editor.sideEffects.registerAfterDeleteHandler('shape', (shape) => {
     abortAutopilot(shape.id);
     clearThread(shape.id);
+    clearFromPool([shape.id]);
   });
   // Dev convenience + e2e hook: reach the editor from the console.
   (window as unknown as { editor: Editor }).editor = editor;

@@ -61,8 +61,34 @@ name, showing it worked from the genuine extracted text.
 - **Latency** ~20–40s for the tailored upgrade (sidecar). Mitigated by showing
   type-based pills instantly and a "reading…" cue.
 
+## Auto-clustering of multiple drops
+
+When several related artifacts are dropped (a research dump — a link, a video, a
+doc), the canvas surface-parses each (titles/filenames/domains only — instant,
+no deep fetch), detects a common thread, and floats an **"Auto-cluster N
+related"** button. Accepting tidies them into a row, selects them, and raises
+**content-aware pills on the cluster** (cross-cutting actions over the whole
+set), which run an agent on the multi-selection.
+
+**Evaluated end-to-end** (3 PDFs named `onboarding-guide`,
+`user-onboarding-benchmarks`, `saas-onboarding-activation`):
+- Surface heuristic detected the shared "onboarding" thread → "Cluster 3
+  related" button appeared.
+- Click → cards arranged into a row + selected; instant type-based cluster pills
+  (Summarize all · Compare in a table · Synthesize a brief · Find the
+  through-line) upgraded to tailored: **"Synthesize onboarding activation
+  insight," "Compare onboarding metrics and tactics," "Identify onboarding gaps
+  and next steps," "Find current onboarding research."**
+- The `/api/cluster-suggest` engine, on a richer set, produced genuinely
+  cross-cutting actions — a "theory vs. data" comparison table, and it noticed a
+  consumer-skew gap (Duolingo) to research for B2B.
+
+Fixed during the build: a race where a single card's slow content-aware request
+clobbered the cluster offer (a card is *part of* the cluster) — guarded with
+`isSoleOffer`.
+
 ## Next
 
 Content-aware tailoring for **notes/docs typed on the board** (not just dropped
-artifacts); a transcript source for YouTube; and a dedicated Designer agent so
-"Outline a deck" becomes a real deck.
+artifacts); a transcript source for YouTube; image (vision) support; and a
+dedicated Designer agent so "Outline a deck" becomes a real deck.

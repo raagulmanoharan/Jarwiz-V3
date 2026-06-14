@@ -20,18 +20,23 @@ import {
 } from 'tldraw';
 import type { SuggestRequest } from '@jarwiz/shared';
 import { domainOf, isHttpUrl } from '../lib/url';
-import { hasOfferFor, setOffer } from '../agents/offers';
+import { isSoleOffer, setOffer } from '../agents/offers';
+import { noteDrop } from '../agents/cluster';
 import { fetchTailoredSuggestions, suggestionsForDrop } from '../agents/suggestions';
 
 type DropKind = 'youtube' | 'link' | 'pdf';
 
 /** Show fast type-based pills now, then upgrade them to content-aware ones. */
 function raiseOffer(id: TLShapeId, kind: DropKind, req: SuggestRequest): void {
-  setOffer(id, suggestionsForDrop(kind), true);
+  setOffer([id], suggestionsForDrop(kind), true);
   void fetchTailoredSuggestions(req).then((tailored) => {
-    if (!hasOfferFor(id)) return; // dismissed, superseded, or accepted meanwhile
-    setOffer(id, tailored.length > 0 ? tailored : suggestionsForDrop(kind), false);
+    // Only upgrade if this is still this card's sole offer (not superseded by a
+    // newer drop, dismissed, or absorbed into a cluster offer).
+    if (!isSoleOffer(id)) return;
+    setOffer([id], tailored.length > 0 ? tailored : suggestionsForDrop(kind), false);
   });
+  // Feed the clustering heuristic (surface-level: title/domain only, instant).
+  noteDrop({ id, kind, title: req.title, url: req.url });
 }
 import {
   LINK_CARD_SIZE,
@@ -131,6 +136,8 @@ function placeLink(editor: Editor, url: string, center: VecLike): void {
         themeColor: preview.themeColor ?? '',
         siteName: preview.siteName ?? '',
       });
+      // The real title is a better surface signal for clustering than the URL.
+      if (preview.title) noteDrop({ id, kind: 'link', title: preview.title, url });
     })
     .catch(() => {
       // Graceful degradation: the card stays useful without a preview.

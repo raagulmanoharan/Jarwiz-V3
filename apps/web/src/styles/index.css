@@ -811,6 +811,39 @@ body,
   padding: 0 2px;
 }
 
+/* Auto-cluster button (when several related drops are detected). */
+.jz-cluster-btn {
+  position: absolute;
+  z-index: 296;
+  transform: translate(-50%, -100%);
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jz-space-3);
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-ink-900);
+  color: #faf6ec;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  font-weight: 600;
+  box-shadow: var(--jz-e3);
+  cursor: pointer;
+  white-space: nowrap;
+  animation: jz-offer-in var(--jz-dur-base) var(--jz-ease-glide);
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-cluster-btn:hover {
+  transform: translate(-50%, -100%) translateY(-1px);
+}
+
+.jz-cluster-spark {
+  color: #f0b85a;
+  font-size: 12px;
+}
+
 .jz-offer-reading {
   font-size: var(--jz-text-micro-size);
   font-weight: 600;
