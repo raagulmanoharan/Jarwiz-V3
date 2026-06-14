@@ -20,6 +20,7 @@ import {
 } from 'tldraw';
 import { domainOf, isHttpUrl } from '../lib/url';
 import { setOffer } from '../agents/offers';
+import { suggestionsForDrop } from '../agents/suggestions';
 import {
   LINK_CARD_SIZE,
   NOTE_CARD_SIZE,
@@ -88,8 +89,8 @@ function placeYouTube(editor: Editor, url: string, videoId: string, center: VecL
     y: center.y - h / 2,
     props: { w, h, videoId, url, title: 'YouTube' },
   });
-  // Proactive offer: the Summarizer raises its hand on a video.
-  setOffer({ shapeId: id, agentId: 'summarizer', label: 'Summarize this?' });
+  // Proactive: a cluster of agent-action pills for a dropped video.
+  setOffer(id, suggestionsForDrop('youtube'));
 }
 
 function placeLink(editor: Editor, url: string, center: VecLike): void {
@@ -105,8 +106,8 @@ function placeLink(editor: Editor, url: string, center: VecLike): void {
     props: { ...LINK_CARD_SIZE, url, loading: true },
   });
 
-  // Proactive offer: the Summarizer raises its hand on an article link.
-  setOffer({ shapeId: id, agentId: 'summarizer', label: 'Summarize this?' });
+  // Proactive: agent-action pills for a dropped link/article.
+  setOffer(id, suggestionsForDrop('link'));
 
   void fetchLinkPreview(url)
     .then((preview) => {
@@ -195,8 +196,8 @@ async function placePdf(editor: Editor, file: File, center: VecLike): Promise<vo
     y: center.y - h / 2,
     props: { w, h, src, name: file.name },
   });
-  // Proactive offer: the Summarizer raises its hand on a PDF.
-  setOffer({ shapeId: id, agentId: 'summarizer', label: 'Summarize this?' });
+  // Proactive: agent-action pills for a dropped PDF/document.
+  setOffer(id, suggestionsForDrop('pdf'));
 }
 
 /* ─── Text ──────────────────────────────────────────────────────────────── */

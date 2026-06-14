@@ -7,11 +7,11 @@ import { AskAgentAffordance } from './AskAgentAffordance';
 import { CommandPalette } from './CommandPalette';
 import { CommentThread } from './CommentThread';
 import { MentionMenu } from './MentionMenu';
-import { dismissOffer } from './offers';
+import { dismissOffer, type Suggestion } from './offers';
 import { ParticipantRoster } from './ParticipantRoster';
 import { buildRunRequest, isCardShape } from './runRequest';
 import { onSummon } from './summon';
-import { SuggestionChip } from './SuggestionChip';
+import { SuggestionPills } from './SuggestionPills';
 import { useAgentRun } from './useAgentRun';
 import { markOnboarded } from '../ui/onboarding';
 
@@ -68,12 +68,13 @@ export function AgentPresenceLayer() {
     [editor, notify, runOnShapes],
   );
 
-  // Offered: one-tap accept of a proactive suggestion chip.
+  // Offered: one-tap accept of a proactive suggestion pill — runs its agent
+  // on the card, with the suggestion's steering brief.
   const handleAcceptOffer = useCallback(
-    (shapeId: TLShapeId) => {
+    (shapeId: TLShapeId, suggestion: Suggestion) => {
       const shape = editor.getShape(shapeId);
       dismissOffer(shapeId);
-      if (isCardShape(shape)) runOnShapes(getAgent('summarizer'), shape);
+      if (isCardShape(shape)) runOnShapes(getAgent(suggestion.agentId), shape, [], suggestion.brief);
     },
     [editor, runOnShapes],
   );
@@ -92,7 +93,7 @@ export function AgentPresenceLayer() {
     <>
       <AgentCursorLayer />
       <AutopilotPresenceLayer />
-      <SuggestionChip onAccept={handleAcceptOffer} />
+      <SuggestionPills onAccept={handleAcceptOffer} />
       <AskAgentAffordance onPickAgent={handlePickAgent} />
       <CommandPalette onPickAgent={handlePickAgent} />
       <MentionMenu />
