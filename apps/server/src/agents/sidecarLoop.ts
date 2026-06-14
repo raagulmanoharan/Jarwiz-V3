@@ -12,6 +12,7 @@
 
 import type { AgentRunRequest, RunCard } from '@jarwiz/shared';
 import type { AgentDefinition, EmitFn } from './runtime.js';
+import { briefSuffix } from './runtime.js';
 import { sidecarGenerate } from '../sidecar.js';
 
 const SUMMARIZER_SYSTEM = `You are the Summarizer on a canvas. Given a source card, write "the gist at a glance" as tight markdown: an opening line with the core takeaway, then a few short bullets or one compact section. 120–220 words. If you only have a title/snippet (not full content), be honest and summarize what's known. Output ONLY the summary — no preamble.`;
@@ -67,7 +68,11 @@ async function streamDoc(
   await emit({ type: 'status', message: `${def.meta.name} is reading the selection…` });
   await emit({ type: 'cursor', x: source.x + source.w / 2, y: source.y + source.h / 2 });
 
-  const text = await sidecarGenerate({ system, user: describeInputs(request), signal });
+  const text = await sidecarGenerate({
+    system,
+    user: describeInputs(request) + briefSuffix(request),
+    signal,
+  });
   if (signal.aborted) return;
 
   // Pull a "# Title" off the top if present; the rest is the body.
@@ -108,7 +113,11 @@ async function runBrainstormer(
   await emit({ type: 'status', message: `${def.meta.name} is riffing…` });
   await emit({ type: 'cursor', x: source.x + source.w / 2, y: source.y + source.h / 2 });
 
-  const text = await sidecarGenerate({ system: BRAINSTORMER_SYSTEM, user: describeInputs(request), signal });
+  const text = await sidecarGenerate({
+    system: BRAINSTORMER_SYSTEM,
+    user: describeInputs(request) + briefSuffix(request),
+    signal,
+  });
   if (signal.aborted) return;
   const ideas = text
     .split('\n')

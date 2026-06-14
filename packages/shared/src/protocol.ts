@@ -62,6 +62,11 @@ export interface AgentRunRequest {
   selection?: RunCard[];
   /** Free-space placement hint for the agent's artifact. */
   placement: { x: number; y: number };
+  /**
+   * Optional plain-language instruction steering this run — tone, length,
+   * audience, format, reading level, anything. The agent follows it.
+   */
+  brief?: string;
 }
 
 export type AgentEvent =

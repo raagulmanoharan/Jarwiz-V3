@@ -9,10 +9,11 @@ import type { AgentRunRequest, CardKind, RunCard } from '@jarwiz/shared';
 
 export class RunRequestError extends Error {}
 
-const CARD_KINDS: readonly CardKind[] = ['link', 'youtube', 'image', 'pdf', 'note', 'doc'];
+const CARD_KINDS: readonly CardKind[] = ['link', 'youtube', 'image', 'pdf', 'note', 'doc', 'table'];
 
 const MAX_TEXT_CHARS = 8000;
 const MAX_SELECTION = 12;
+const MAX_BRIEF_CHARS = 1000;
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -86,5 +87,14 @@ export function parseRunRequest(body: unknown): AgentRunRequest {
       .map((entry, i) => parseRunCard(entry, `selection[${i}]`));
   }
 
-  return { source, selection, placement };
+  let brief: string | undefined;
+  if (raw.brief !== undefined) {
+    if (typeof raw.brief !== 'string') {
+      throw new RunRequestError('brief must be a string when present');
+    }
+    const trimmed = raw.brief.trim().slice(0, MAX_BRIEF_CHARS);
+    brief = trimmed || undefined;
+  }
+
+  return { source, selection, placement, brief };
 }

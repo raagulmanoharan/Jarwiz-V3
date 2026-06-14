@@ -63,6 +63,7 @@ export function buildRunRequest(
   editor: Editor,
   source: TLShape,
   context: TLShape[] = [],
+  brief?: string,
 ): AgentRunRequest {
   const sourceProps = source.props as Record<string, unknown>;
   const sourceWidth = typeof sourceProps.w === 'number' ? sourceProps.w : 0;
@@ -72,6 +73,7 @@ export function buildRunRequest(
     source: shapeToRunCard(source),
     selection: selection.length > 0 ? selection : undefined,
     placement: freePlacement(editor, source, sourceWidth),
+    brief: brief?.trim() || undefined,
   };
 }
 

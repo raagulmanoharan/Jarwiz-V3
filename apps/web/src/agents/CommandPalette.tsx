@@ -15,19 +15,24 @@ import { AGENTS, type AgentMeta } from '@jarwiz/shared';
 import { isCardShape } from './runRequest';
 
 interface CommandPaletteProps {
-  /** Pick an agent — same entry point the contextual affordance uses. */
-  onPickAgent: (agent: AgentMeta) => void;
+  /** Pick an agent, with an optional steering brief (tone/length/audience…). */
+  onPickAgent: (agent: AgentMeta, brief?: string) => void;
 }
 
 export function CommandPalette({ onPickAgent }: CommandPaletteProps) {
   const editor = useEditor();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const listRef = useRef<HTMLDivElement>(null);
+  const [brief, setBrief] = useState('');
+  const briefRef = useRef<HTMLTextAreaElement>(null);
 
-  // Focus the list whenever the palette opens so the keyboard path works at once.
+  // Focus the brief whenever the palette opens (you can type an instruction
+  // immediately; arrow keys still navigate the agent list via the dialog).
   useEffect(() => {
-    if (open) listRef.current?.focus();
+    if (open) {
+      setBrief('');
+      briefRef.current?.focus();
+    }
   }, [open]);
 
   // Live "what the agent sees" — the selected cards this run would act on.
@@ -60,9 +65,9 @@ export function CommandPalette({ onPickAgent }: CommandPaletteProps) {
   const pick = useCallback(
     (agent: AgentMeta) => {
       setOpen(false);
-      onPickAgent(agent);
+      onPickAgent(agent, brief.trim() || undefined);
     },
-    [onPickAgent],
+    [onPickAgent, brief],
   );
 
   if (!open) return null;
@@ -84,7 +89,8 @@ export function CommandPalette({ onPickAgent }: CommandPaletteProps) {
           } else if (e.key === 'ArrowUp') {
             e.preventDefault();
             setActive((i) => (i - 1 + AGENTS.length) % AGENTS.length);
-          } else if (e.key === 'Enter') {
+          } else if (e.key === 'Enter' && !e.shiftKey) {
+            // Shift+Enter inserts a newline in the brief; Enter summons.
             e.preventDefault();
             const agent = AGENTS[active];
             if (agent) pick(agent);
@@ -106,7 +112,16 @@ export function CommandPalette({ onPickAgent }: CommandPaletteProps) {
           )}
         </div>
 
-        <div className="jz-palette-list" role="listbox" tabIndex={-1} ref={listRef}>
+        <textarea
+          ref={briefRef}
+          className="jz-palette-brief"
+          value={brief}
+          rows={1}
+          placeholder="Add an instruction — tone, length, audience, format… (optional)"
+          onChange={(e) => setBrief(e.currentTarget.value)}
+        />
+
+        <div className="jz-palette-list" role="listbox" tabIndex={-1}>
           {AGENTS.map((agent, i) => (
             <button
               key={agent.id}

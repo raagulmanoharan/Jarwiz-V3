@@ -43,16 +43,16 @@ export function AgentPresenceLayer() {
   }, [error, notify]);
 
   const runOnShapes = useCallback(
-    (agent: AgentMeta, source: TLShape, context: TLShape[] = []) => {
+    (agent: AgentMeta, source: TLShape, context: TLShape[] = [], brief?: string) => {
       markOnboarded(); // a real summon retires the first-run nudge
-      run(agent, buildRunRequest(editor, source, context));
+      run(agent, buildRunRequest(editor, source, context, brief));
     },
     [editor, run],
   );
 
-  // Summoned: "Ask an agent" on the current selection.
+  // Summoned: "Ask an agent" on the current selection, with an optional brief.
   const handlePickAgent = useCallback(
-    (agent: AgentMeta) => {
+    (agent: AgentMeta, brief?: string) => {
       const shapes = editor
         .getSelectedShapeIds()
         .map((id) => editor.getShape(id))
@@ -63,7 +63,7 @@ export function AgentPresenceLayer() {
         return;
       }
       const [source, ...context] = shapes;
-      if (source) runOnShapes(agent, source, context);
+      if (source) runOnShapes(agent, source, context, brief);
     },
     [editor, notify, runOnShapes],
   );

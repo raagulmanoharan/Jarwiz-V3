@@ -513,11 +513,15 @@ body,
   margin: 0;
 }
 
-/* ─── Table card (structured authoring + cell-fill Autopilot, A1) ────────── */
+/* ─── Table card (structured authoring + cell-fill Autopilot) ───────────── */
+/* Cells wrap to multiple lines; rows are content-height; the card auto-grows
+   its height (ResizeObserver in TableCardShapeUtil). Columns share the width
+   and never clip — adding a column widens the card. */
 
 .jz-table {
   width: 100%;
-  height: 100%;
+  height: auto;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -546,14 +550,12 @@ body,
 }
 
 .jz-table-headcell {
-  border: none;
-  outline: none;
-  background: transparent;
   border-right: 1px solid var(--jz-hairline);
-  padding: 0 12px;
+  padding: 11px 12px;
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-caption-size);
   font-weight: 600;
+  line-height: 1.35;
   letter-spacing: 0.01em;
   color: var(--jz-ink-700);
   min-width: 0;
@@ -564,23 +566,16 @@ body,
 }
 
 .jz-table-headcell-static {
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .jz-table-body {
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
 .jz-table-row {
-  flex: 1;
-  min-height: 0;
   display: grid;
   align-items: stretch;
   border-bottom: 1px solid var(--jz-hairline);
@@ -591,32 +586,24 @@ body,
 }
 
 .jz-table-cell {
-  border: none;
-  outline: none;
-  background: transparent;
   border-right: 1px solid var(--jz-hairline);
-  padding: 0 12px;
+  padding: 10px 12px;
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-body-sm-size);
-  line-height: 1.4;
+  line-height: 1.45;
   color: var(--jz-ink-900);
   min-width: 0;
+  min-height: 40px;
 }
 
 .jz-table-cell:last-child {
   border-right: none;
 }
 
+/* Multi-line, wrapping content — no truncation. */
 .jz-table-cell-static {
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* A new cell value fades in as Autopilot lands it. */
-.jz-table-cell-static {
+  white-space: pre-wrap;
+  word-break: break-word;
   animation: jz-cell-in var(--jz-dur-fast) var(--jz-ease-out);
 }
 
@@ -627,6 +614,54 @@ body,
   to {
     opacity: 1;
   }
+}
+
+/* Editing inputs: borderless, auto-growing textareas that wrap. */
+.jz-table-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  padding: 0;
+  margin: 0;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+  field-sizing: content; /* auto-height to content where supported */
+}
+
+.jz-table-controls {
+  flex: none;
+  display: flex;
+  gap: var(--jz-space-2);
+  padding: 8px 10px;
+  border-top: 1px solid var(--jz-hairline);
+  background: color-mix(in srgb, var(--jz-paper) 40%, var(--jz-surface));
+}
+
+.jz-table-add {
+  border: 1px solid var(--jz-hairline-strong);
+  background: var(--jz-surface-raised);
+  cursor: pointer;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-micro-size);
+  font-weight: 600;
+  color: var(--jz-ink-500);
+  padding: 4px 10px;
+  border-radius: var(--jz-radius-pill);
+  transition:
+    color var(--jz-dur-fast) var(--jz-ease-out),
+    border-color var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-table-add:hover {
+  color: var(--jz-ink-900);
+  border-color: var(--jz-ink-400);
 }
 
 .jz-table-hint {
@@ -1328,6 +1363,31 @@ body,
 
 .jz-palette-context-empty {
   color: var(--jz-ink-400);
+}
+
+.jz-palette-brief {
+  margin: 10px 14px 2px;
+  border: 1px solid var(--jz-hairline-strong);
+  border-radius: var(--jz-radius-sm);
+  background: var(--jz-surface);
+  padding: 8px 11px;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-sm-size);
+  line-height: 1.45;
+  color: var(--jz-ink-900);
+  resize: none;
+  outline: none;
+  field-sizing: content;
+  min-height: 1.45em;
+  max-height: 5em;
+}
+
+.jz-palette-brief::placeholder {
+  color: var(--jz-ink-400);
+}
+
+.jz-palette-brief:focus-visible {
+  border-color: color-mix(in srgb, var(--jz-ink-900) 30%, transparent);
 }
 
 .jz-palette-list {

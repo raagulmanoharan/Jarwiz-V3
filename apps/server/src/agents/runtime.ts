@@ -172,6 +172,13 @@ function serializeEmit(emit: EmitFn): (event: AgentEvent) => Promise<void> {
   };
 }
 
+/** The user's steering brief, appended to the user turn so the agent follows it. */
+export function briefSuffix(request: AgentRunRequest): string {
+  const brief = request.brief?.trim();
+  if (!brief) return '';
+  return `\n\nThe user gave this instruction for THIS run — follow it as you produce the artifact:\n"""\n${brief}\n"""`;
+}
+
 function friendlyApiError(error: unknown): string {
   if (error instanceof Anthropic.AuthenticationError) {
     return "The server Anthropic API key was rejected - check ANTHROPIC_API_KEY.";
@@ -331,7 +338,7 @@ export async function runAgentLoop(
       y: request.source.y + request.source.h / 2,
     });
 
-    const userTurn = await def.buildUserTurn(request);
+    const userTurn = (await def.buildUserTurn(request)) + briefSuffix(request);
     if (signal.aborted) return;
 
     const client = new Anthropic();
