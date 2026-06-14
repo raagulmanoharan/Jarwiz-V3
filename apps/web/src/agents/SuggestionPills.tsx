@@ -47,6 +47,7 @@ export function SuggestionPills({ onAccept }: SuggestionPillsProps) {
       <span className="jz-offer-lead" aria-hidden>
         ✦
       </span>
+      {offer.loading ? <span className="jz-offer-reading">reading…</span> : null}
       {offer.suggestions.map((s) => {
         const agent = getAgent(s.agentId);
         return (

@@ -200,4 +200,17 @@ export async function buildLinkPreview(rawUrl: string): Promise<LinkPreview> {
   return enrichWithHaiku(preview);
 }
 
+/** Fetch a page and return its title + cleaned visible body text (capped). */
+export async function fetchPageText(
+  rawUrl: string,
+  maxChars = 6000,
+): Promise<{ title: string; text: string }> {
+  const { finalUrl, html } = await fetchPublicPage(rawUrl);
+  const $ = cheerio.load(html);
+  $('script, style, noscript, svg, header, footer, nav').remove();
+  const title = $('title').first().text().trim() || finalUrl.hostname;
+  const text = $('body').text().replace(/\s+/g, ' ').trim().slice(0, maxChars);
+  return { title, text };
+}
+
 export { SsrfError } from './ssrf.js';

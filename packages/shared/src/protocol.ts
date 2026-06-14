@@ -133,6 +133,35 @@ export type AutopilotEvent =
   | { type: 'done' }
   | { type: 'error'; message: string };
 
+/* ─── Content-aware suggestions (proactive pills) ───────────────────────── */
+
+/** A proposed agent action, tailored to a dropped artifact's actual content. */
+export interface AgentSuggestion {
+  /** Short pill label, e.g. "Make a compliance checklist". */
+  label: string;
+  /** Which agent does it. */
+  agentId: AgentId;
+  /** Optional steering brief passed to the run. */
+  brief?: string;
+}
+
+/**
+ * POST /api/suggest request — read a dropped artifact and propose tailored
+ * agent-action pills. The server extracts the content (fetch a link/oEmbed a
+ * video / parse a PDF) and asks the model what's worth doing with it.
+ */
+export interface SuggestRequest {
+  kind: 'youtube' | 'link' | 'pdf';
+  url?: string;
+  title?: string;
+  /** A PDF's data URL (the card's src) for server-side text extraction. */
+  pdfDataUrl?: string;
+}
+
+export interface SuggestResponse {
+  suggestions: AgentSuggestion[];
+}
+
 /**
  * POST /api/autopilot/table request — fill the empty cells of a table the user
  * is building (A1). The agent reads the column headers and any rows the user

@@ -7,6 +7,7 @@
  * actual parsed content (e.g. a compliance doc → "Make a compliance checklist").
  */
 
+import type { AgentSuggestion, SuggestRequest } from '@jarwiz/shared';
 import type { Suggestion } from './offers';
 
 type DropKind = 'youtube' | 'link' | 'pdf';
@@ -68,4 +69,28 @@ const CATALOG: Record<DropKind, Suggestion[]> = {
 
 export function suggestionsForDrop(kind: DropKind): Suggestion[] {
   return CATALOG[kind] ?? [];
+}
+
+/**
+ * Ask the server to read the artifact and propose tailored pills. Resolves to a
+ * (possibly empty) Suggestion list — empty means "keep the type-based ones".
+ */
+export async function fetchTailoredSuggestions(req: SuggestRequest): Promise<Suggestion[]> {
+  try {
+    const res = await fetch('/api/suggest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { suggestions?: AgentSuggestion[] };
+    return (data.suggestions ?? []).map((s, i) => ({
+      id: `ai-${i}`,
+      label: s.label,
+      agentId: s.agentId,
+      brief: s.brief,
+    }));
+  } catch {
+    return [];
+  }
 }

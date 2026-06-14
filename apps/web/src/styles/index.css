@@ -811,6 +811,24 @@ body,
   padding: 0 2px;
 }
 
+.jz-offer-reading {
+  font-size: var(--jz-text-micro-size);
+  font-weight: 600;
+  color: var(--jz-ink-400);
+  padding: 0 4px 0 0;
+  animation: jz-reading-pulse 1.3s ease-in-out infinite;
+}
+
+@keyframes jz-reading-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 .jz-offer-pill {
   display: inline-flex;
   align-items: center;

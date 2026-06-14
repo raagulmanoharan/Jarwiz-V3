@@ -18,9 +18,21 @@ import {
   type TLShapeId,
   type VecLike,
 } from 'tldraw';
+import type { SuggestRequest } from '@jarwiz/shared';
 import { domainOf, isHttpUrl } from '../lib/url';
-import { setOffer } from '../agents/offers';
-import { suggestionsForDrop } from '../agents/suggestions';
+import { hasOfferFor, setOffer } from '../agents/offers';
+import { fetchTailoredSuggestions, suggestionsForDrop } from '../agents/suggestions';
+
+type DropKind = 'youtube' | 'link' | 'pdf';
+
+/** Show fast type-based pills now, then upgrade them to content-aware ones. */
+function raiseOffer(id: TLShapeId, kind: DropKind, req: SuggestRequest): void {
+  setOffer(id, suggestionsForDrop(kind), true);
+  void fetchTailoredSuggestions(req).then((tailored) => {
+    if (!hasOfferFor(id)) return; // dismissed, superseded, or accepted meanwhile
+    setOffer(id, tailored.length > 0 ? tailored : suggestionsForDrop(kind), false);
+  });
+}
 import {
   LINK_CARD_SIZE,
   NOTE_CARD_SIZE,
@@ -89,8 +101,7 @@ function placeYouTube(editor: Editor, url: string, videoId: string, center: VecL
     y: center.y - h / 2,
     props: { w, h, videoId, url, title: 'YouTube' },
   });
-  // Proactive: a cluster of agent-action pills for a dropped video.
-  setOffer(id, suggestionsForDrop('youtube'));
+  raiseOffer(id, 'youtube', { kind: 'youtube', url });
 }
 
 function placeLink(editor: Editor, url: string, center: VecLike): void {
@@ -106,8 +117,7 @@ function placeLink(editor: Editor, url: string, center: VecLike): void {
     props: { ...LINK_CARD_SIZE, url, loading: true },
   });
 
-  // Proactive: agent-action pills for a dropped link/article.
-  setOffer(id, suggestionsForDrop('link'));
+  raiseOffer(id, 'link', { kind: 'link', url });
 
   void fetchLinkPreview(url)
     .then((preview) => {
@@ -196,8 +206,7 @@ async function placePdf(editor: Editor, file: File, center: VecLike): Promise<vo
     y: center.y - h / 2,
     props: { w, h, src, name: file.name },
   });
-  // Proactive: agent-action pills for a dropped PDF/document.
-  setOffer(id, suggestionsForDrop('pdf'));
+  raiseOffer(id, 'pdf', { kind: 'pdf', title: file.name, pdfDataUrl: src });
 }
 
 /* ─── Text ──────────────────────────────────────────────────────────────── */

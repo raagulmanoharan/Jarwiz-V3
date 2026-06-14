@@ -31,6 +31,8 @@ export interface Offer {
   shapeId: TLShapeId;
   /** The proposed actions, in priority order. */
   suggestions: Suggestion[];
+  /** True while the server is reading the content to tailor the suggestions. */
+  loading?: boolean;
 }
 
 let offer: Offer | null = null;
@@ -50,10 +52,15 @@ export function getOffer(): Offer | null {
 }
 
 /** Raise an offer (replaces any pending one). Ignores an empty suggestion set. */
-export function setOffer(shapeId: TLShapeId, suggestions: Suggestion[]): void {
+export function setOffer(shapeId: TLShapeId, suggestions: Suggestion[], loading = false): void {
   if (suggestions.length === 0) return;
-  offer = { shapeId, suggestions };
+  offer = { shapeId, suggestions, loading };
   emit();
+}
+
+/** True if there's a pending offer for this exact card (used to avoid races). */
+export function hasOfferFor(shapeId: TLShapeId): boolean {
+  return offer?.shapeId === shapeId;
 }
 
 /**

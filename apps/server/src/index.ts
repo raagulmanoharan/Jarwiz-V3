@@ -31,6 +31,8 @@ import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
 import { streamComment } from './comment.js';
 import { sidecarAvailable } from './sidecar.js';
+import { proposeSuggestions } from './suggest.js';
+import type { SuggestRequest } from '@jarwiz/shared';
 import { handleSyncSocket } from './sync.js';
 import { parseRunRequest, RunRequestError } from './agents/request.js';
 
@@ -231,6 +233,31 @@ app.post('/api/comment', async (c) => {
       await send({ type: 'error', message });
     }
   });
+});
+
+app.post('/api/suggest', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected a JSON body: { kind, url?, title?, pdfDataUrl? }' }, 400);
+  }
+  const raw = body as Partial<SuggestRequest>;
+  if (raw.kind !== 'youtube' && raw.kind !== 'link' && raw.kind !== 'pdf') {
+    return c.json({ error: 'kind must be one of: youtube, link, pdf' }, 400);
+  }
+  const request: SuggestRequest = {
+    kind: raw.kind,
+    url: typeof raw.url === 'string' ? raw.url : undefined,
+    title: typeof raw.title === 'string' ? raw.title.slice(0, 300) : undefined,
+    pdfDataUrl: typeof raw.pdfDataUrl === 'string' ? raw.pdfDataUrl : undefined,
+  };
+  try {
+    const suggestions = await proposeSuggestions(request, c.req.raw.signal);
+    return c.json({ suggestions });
+  } catch {
+    return c.json({ suggestions: [] });
+  }
 });
 
 const port = Number.parseInt(process.env.PORT ?? '3001', 10);
