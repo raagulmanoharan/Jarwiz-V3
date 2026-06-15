@@ -55,7 +55,8 @@ export function AskLayer() {
       const assetId =
         only?.type === 'pdf-card' ? String((only.props as { assetId?: string }).assetId ?? '') : '';
       const soleType = only?.type ?? '';
-      return { ids: shapes.map((s) => s.id), x: pt.x, y: pt.y, count: shapes.length, assetId, soleType };
+      const pdfCount = shapes.filter((s) => s.type === 'pdf-card').length;
+      return { ids: shapes.map((s) => s.id), x: pt.x, y: pt.y, count: shapes.length, assetId, soleType, pdfCount };
     },
     [editor],
   );
@@ -99,6 +100,14 @@ export function AskLayer() {
   const style = { left: selection.x, top: selection.y + 14 } as CSSProperties;
   const showSeeds = !open && selection.count === 1 && Boolean(assetId) && (seeds?.length ?? 0) > 0;
   const followups = !open && selection.count === 1 ? (FOLLOWUPS[selection.soleType] ?? []) : [];
+  // Cross-document affordances when two or more PDFs are selected.
+  const crossDoc =
+    !open && selection.pdfCount >= 2
+      ? [
+          { label: 'Find conflicts', prompt: 'Find conflicts and contradictions between these documents, clause by clause.' },
+          { label: 'Compare clauses', prompt: 'Compare these documents clause by clause, showing where each one stands and where they differ.' },
+        ]
+      : [];
 
   return (
     <div className="jz-ask" style={style} onPointerDown={stopEventPropagation}>
@@ -136,7 +145,7 @@ export function AskLayer() {
                 </button>
               ))
             : null}
-          {followups.map((f) => (
+          {[...followups, ...crossDoc].map((f) => (
             <button
               key={f.label}
               className="jz-ask-seed"

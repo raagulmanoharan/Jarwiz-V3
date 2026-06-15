@@ -23,6 +23,13 @@ const LIST_SYSTEM = `You answer a question about the provided source document(s)
 
 const TABLE_SYSTEM = `You answer a question about the provided source document(s) as a comparison/matrix TABLE. Return ONLY a JSON object {"columns": string[], "rows": string[][]} — the first column names the items/dimensions, one row per item, short cells. Ground cells in the provided content; leave a cell empty rather than inventing. No prose, no markdown, no code fences.`;
 
+const CLAUSE_DIFF_SYSTEM = `You are comparing multiple source documents clause-by-clause to surface overlaps and CONFLICTS. Return ONLY a JSON object {"columns": string[], "rows": string[][]}. Columns MUST be: "Topic / Clause", then one column per source document (use a short version of each document's title), then a final "Conflict?" column. Each row is a topic the documents both address; fill each document's cell with its stance/wording (short, grounded), and set "Conflict?" to "Yes", "No", or "Partial" with a few words on why. Prioritise rows where the documents differ or contradict. Ground every cell in the provided text; leave a cell blank if a document is silent. No prose, no code fences.`;
+
+/** A cross-document conflict/clause-diff request (→ the clause-diff table). */
+function looksLikeDiff(prompt: string): boolean {
+  return /\b(conflict|contradict|differ|discrepan|clause|reconcile|inconsisten|at odds)\b/i.test(prompt);
+}
+
 const SEED_SYSTEM = `You are given the text of a document a user just dropped on a canvas. Propose the 3 or 4 most useful, SPECIFIC questions this reader would want answered about THIS document — the kind that defeat the blank-slate "what do I even ask?" problem. Return ONLY a JSON array of objects {"label": string, "prompt": string}: "label" is a 2–4 word button caption; "prompt" is the full question to ask. Be concrete to this document's actual content (name the clause, the metric, the section) — never generic like "Summarize this". No prose, no code fences.`;
 
 export interface SeedPrompt {
@@ -59,7 +66,10 @@ export async function proposeSeedPrompts(assetId: string, signal: AbortSignal): 
 
 function pickShape(prompt: string): AskShape {
   const p = prompt.toLowerCase();
-  if (/\b(compare|comparison|vs\.?|versus|pros and cons|trade-?offs?|matrix|table|side by side)\b/.test(p)) {
+  if (
+    looksLikeDiff(prompt) ||
+    /\b(compare|comparison|vs\.?|versus|pros and cons|trade-?offs?|matrix|table|side by side)\b/.test(p)
+  ) {
     return 'table';
   }
   if (/\b(list|bullets?|enumerate|steps|checklist|key (points|dates|terms)|what are the)\b/.test(p)) {
@@ -149,7 +159,12 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   const user = `Question:\n${req.prompt}\n\n${context}`;
 
   if (shape === 'table') {
-    const raw = await generate(TABLE_SYSTEM, user, signal);
+    // Cross-document conflict requests get the clause-diff table treatment.
+    const tableSystem =
+      looksLikeDiff(req.prompt) && req.sources.filter((s) => s.assetId).length >= 2
+        ? CLAUSE_DIFF_SYSTEM
+        : TABLE_SYSTEM;
+    const raw = await generate(tableSystem, user, signal);
     if (signal.aborted) return;
     let columns: string[] = [];
     let rows: string[][] = [];
