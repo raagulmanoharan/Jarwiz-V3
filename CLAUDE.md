@@ -102,16 +102,22 @@ this sandbox — heed them or you'll burn an hour:**
 2. **Start servers with the harness's real background mechanism**
    (`run_in_background: true`), not a `(cmd &)` subshell — the latter gets
    reaped between tool calls and the port goes dead (ERR_CONNECTION_REFUSED).
-3. **The sandbox intermittently tears down the page's JS execution context**
-   ("Execution context was destroyed, most likely because of a navigation") —
-   often with *no* `framenavigated` event — when you drive `window.editor`
-   right after load or right after `createShape`. It WORSENS the longer the
-   preview server runs (restart it fresh before a capture run). Mitigations
-   that actually help: a single browser **session** for the whole capture (not
-   a fresh browser per shot); a generous settle (`sleep ~1.3–2.5s`) after load,
-   after clearing, and after seeding; and keeping the seed **small** (one card
-   is far more stable than several). Tight retry-polling of `window.editor`
-   *during* a teardown re-triggers it — prefer fixed settles over hot retries.
+3. **"Execution context was destroyed" is (almost always) YOUR return value,
+   not the sandbox.** tldraw's `Editor` methods are chainable and return the
+   Editor itself, so `page.evaluate(() => window.editor.createShape(...))` —
+   or `.setCamera(...)`, `.select(...)`, `.zoomToFit(...)`, `.deleteShapes(...)`
+   — asks Playwright to serialize a huge circular object across the CDP
+   boundary. That serialization fails and surfaces as *"Execution context was
+   destroyed, most likely because of a navigation"* with **no** real navigation.
+   Proven deterministic: returning the Editor = teardown every time; returning
+   `undefined`/a primitive = clean every time, even with two synced clients.
+   **Fix:** give every editor-mutating evaluate a `{ … }` body so it returns
+   `undefined` (or return `s.id`, a length, etc.). This was previously
+   mis-attributed to a flaky sandbox; it is not. (Independent advice that still
+   holds: start servers as real background tasks, restart a long-running
+   `vite preview` if pages start failing, and block `cdn.tldraw.com` /
+   `fonts.googleapis.com` requests — unreachable here — to keep the console
+   clean.) See `scripts/eval-ui.mjs` for the canonical pattern.
 4. The **empty-state shot is reliable** (no shape creation). Multi-step
    seed→summon captures are flaky here; they work in a normal environment.
 5. ⌘K from a real keypress is eaten by tldraw once the canvas holds a

@@ -139,6 +139,67 @@ async function runBrainstormer(
   await emit({ type: 'done' });
 }
 
+const TABLE_WRITER_SYSTEM = `You are the Writer. The user's request is a comparison/matrix. Build a comparison TABLE from the provided cards. Return ONLY a JSON object {"columns": string[], "rows": string[][]} — one column per dimension (the first column names the items), one row per item, short cells (a few words). No prose, no markdown, no code fences.`;
+
+/** Does the request read as a comparison/matrix (→ a table, not prose)? */
+function looksLikeComparison(request: AgentRunRequest): boolean {
+  const hay = [
+    request.brief ?? '',
+    request.source.title ?? '',
+    request.source.text ?? '',
+    ...(request.selection ?? []).map((c) => `${c.title ?? ''} ${c.text ?? ''}`),
+  ]
+    .join(' ')
+    .toLowerCase();
+  return /\b(compare|comparison|vs\.?|versus|pros and cons|trade-?offs?|matrix|options|table)\b/.test(hay);
+}
+
+async function streamTable(
+  def: AgentDefinition,
+  request: AgentRunRequest,
+  emit: EmitFn,
+  signal: AbortSignal,
+): Promise<void> {
+  const { source, placement, selection } = request;
+  await emit({ type: 'status', message: `${def.meta.name} sees a comparison — building a table…` });
+  await emit({ type: 'cursor', x: source.x + source.w / 2, y: source.y + source.h / 2 });
+
+  const raw = await sidecarGenerate({
+    system: TABLE_WRITER_SYSTEM,
+    user: describeInputs(request) + briefSuffix(request),
+    signal,
+  });
+  if (signal.aborted) return;
+
+  let columns: string[] = [];
+  let rows: string[][] = [];
+  try {
+    const json = JSON.parse(raw.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()) as {
+      columns?: unknown;
+      rows?: unknown;
+    };
+    columns = Array.isArray(json.columns) ? json.columns.map((c) => String(c)) : [];
+    rows = Array.isArray(json.rows)
+      ? json.rows.map((r) => (Array.isArray(r) ? r.map((c) => String(c ?? '')) : []))
+      : [];
+  } catch {
+    /* fall back to a doc if the model didn't return clean JSON */
+  }
+  if (columns.length === 0) return streamDoc(def, request, WRITER_SYSTEM, emit, signal, 'drawn from');
+
+  const cardId = 'card_1';
+  await emit({ type: 'cursor', x: placement.x, y: placement.y });
+  await emit({ type: 'card.create', cardId, kind: 'table', x: placement.x, y: placement.y, columns, rows });
+  await emit({ type: 'status', message: `${def.meta.name} built a table` });
+
+  const inputs = [source.cardId, ...(selection ?? []).map((c) => c.cardId)];
+  for (const fromId of [...new Set(inputs)]) {
+    if (signal.aborted) return;
+    await emit({ type: 'edge.create', fromCardId: fromId, toCardId: cardId, label: 'drawn from' });
+  }
+  await emit({ type: 'done' });
+}
+
 export async function runSidecarLoop(
   def: AgentDefinition,
   request: AgentRunRequest,
@@ -149,7 +210,10 @@ export async function runSidecarLoop(
     case 'brainstormer':
       return runBrainstormer(def, request, emit, signal);
     case 'writer':
-      return streamDoc(def, request, WRITER_SYSTEM, emit, signal, 'drawn from');
+      // Response-shape routing: a comparison brief becomes a table, else a doc.
+      return looksLikeComparison(request)
+        ? streamTable(def, request, emit, signal)
+        : streamDoc(def, request, WRITER_SYSTEM, emit, signal, 'drawn from');
     default: // summarizer
       return streamDoc(def, request, SUMMARIZER_SYSTEM, emit, signal, 'summary');
   }

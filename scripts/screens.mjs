@@ -39,7 +39,7 @@ async function seedAndSettle(page) {
   await clearAndSettle(page);
   await page.evaluate(SEED);
   await sleep(2500);
-  await page.evaluate(() => window.editor.zoomToFit());
+  await page.evaluate(() => { window.editor.zoomToFit(); });
 }
 
 const shapeCount = (page, type) =>
@@ -56,11 +56,9 @@ async function waitFor(fn, { timeout = 25000, every = 250, label = 'condition' }
   throw new Error(`timed out waiting for ${label}`);
 }
 
-// A single seed note keeps the capture stable in this sandbox (more cards =
-// more render churn = more flaky context teardowns). The Writer synthesizes a
-// single source just as well, so the story still reads: brief → draft → edge.
-// Create-only: clearing happens earlier (clearAndSettle), separated by a wait —
-// bundling delete+create in one evaluate with no settle triggers the teardown.
+// One seed note keeps the capture clean and the story legible (brief → draft →
+// edge) — the Writer synthesizes a single source just as well. The IIFE body
+// returns undefined (never the Editor), which is what keeps the evaluate safe.
 const SEED = `(() => {
   window.editor.createShape({ type: 'note-card', x: 200, y: 240,
     props: { w: 260, h: 220, text: 'Async beats meetings — make the case for a writing-first culture.' } });
@@ -70,6 +68,13 @@ const SEED = `(() => {
 /** Fresh page, app mounted, editor live, first-run reset. */
 async function openApp(browser) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  // tldraw's CDN fonts/icons are unreachable here — abort them to keep the
+  // console clean (cosmetic only; the default UI fonts still render).
+  await page.route('**/*', (route) =>
+    /cdn\.tldraw\.com|fonts\.googleapis|fonts\.gstatic/.test(route.request().url())
+      ? route.abort()
+      : route.continue(),
+  );
   await page.addInitScript(() => {
     try {
       localStorage.removeItem('jz-onboarded');
@@ -90,10 +95,10 @@ async function clearAndSettle(page) {
 }
 
 async function openPalette(page) {
-  await page.evaluate(() => window.editor.selectAll());
-  await page.evaluate(() =>
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true })),
-  );
+  await page.evaluate(() => { window.editor.selectAll(); });
+  await page.evaluate(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
+  });
   await page.waitForSelector('.jz-palette', { timeout: 4000 });
 }
 
@@ -138,10 +143,12 @@ async function shotAutopilot(page) {
 }
 
 /**
- * Single-session capture of the milestone states. The empty and autopilot
- * shots are reliable here; the palette/summon shots create multiple shapes and
- * are flaky in this sandbox, so they're best-effort (a failure logs and is
- * skipped rather than aborting the whole run). See the gotchas in CLAUDE.md.
+ * Single-session capture of the milestone states. All shots — including the
+ * multi-shape palette/summon ones — now run reliably: the old "flaky sandbox"
+ * teardowns were `evaluate` returning tldraw's chainable Editor (see the
+ * gotchas in CLAUDE.md), now fixed throughout. The try/catch around the
+ * palette/summon block stays as a thin safety net so a hiccup logs and skips
+ * rather than aborting the whole run.
  */
 async function captureAll(browser) {
   const page = await openApp(browser);
@@ -154,12 +161,12 @@ async function captureAll(browser) {
   // 2) Autopilot — the signature moment (reliable).
   await shotAutopilot(page);
 
-  // 3) Best-effort: ⌘K palette + Writer run (multi-shape, flaky here).
+  // 3) ⌘K palette + Writer run (multi-shape). Reliable now; safety-netted.
   try {
     await clearAndSettle(page);
     await page.evaluate(SEED);
     await sleep(2500);
-    await page.evaluate(() => window.editor.zoomToFit());
+    await page.evaluate(() => { window.editor.zoomToFit(); });
 
     await openPalette(page);
     await page.locator('.jz-palette-item', { hasText: 'Writer' }).hover();
@@ -170,7 +177,7 @@ async function captureAll(browser) {
     await page.locator('.jz-palette-item', { hasText: 'Writer' }).click();
     await waitFor(() => shapeCount(page, 'doc-card').then((n) => n >= 1), { label: 'doc card' });
     await sleep(800);
-    await page.evaluate(() => window.editor.zoomToFit());
+    await page.evaluate(() => { window.editor.zoomToFit(); });
     await sleep(400);
     await page.screenshot({ path: `${OUT}/jz-writer-streaming.png` });
     log('  ✓ jz-writer-streaming.png');
