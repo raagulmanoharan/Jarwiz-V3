@@ -396,11 +396,59 @@ body,
   overflow: hidden;
 }
 
+.jz-pdf-wrap {
+  position: relative;
+  display: block;
+}
+
 .jz-pdf-canvas {
   display: block;
   border-radius: 3px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.18);
   background: #fff;
+}
+
+/* pdf.js text layer — invisible, selectable text aligned over the canvas. */
+.jz-pdf-textlayer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  text-align: initial;
+  transform-origin: 0 0;
+  pointer-events: none;
+  user-select: none;
+  forced-color-adjust: none;
+}
+
+.jz-pdf-textlayer span,
+.jz-pdf-textlayer br {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0 0;
+}
+
+.jz-pdf-selectable .jz-pdf-textlayer {
+  pointer-events: auto;
+  user-select: text;
+}
+
+.jz-pdf-textlayer ::selection {
+  background: color-mix(in srgb, var(--jz-accent, #7a5cff) 32%, transparent);
+}
+
+.jz-pdf-hl {
+  background: color-mix(in srgb, var(--jz-accent, #7a5cff) 32%, transparent);
+  border-radius: 2px;
+}
+
+.jz-pdf-selecthint {
+  flex: none;
+  font-size: 10.5px;
+  color: var(--jz-ink-400, #8a8170);
 }
 
 .jz-pdf-message {
@@ -539,6 +587,27 @@ body,
 
 .jz-cite:hover {
   background: color-mix(in srgb, var(--jz-accent, #7a5cff) 22%, transparent);
+}
+
+/* "Ask about this passage" — on a text selection in a PDF reader */
+.jz-selask {
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 340;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 13px;
+  border: none;
+  border-radius: 999px;
+  background: var(--jz-accent, #7a5cff);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+  pointer-events: auto;
 }
 
 /* ─── Activity timeline (event log) ─────────────────────────────────────── */

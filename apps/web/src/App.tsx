@@ -10,6 +10,7 @@ import {
 import { useSync } from '@tldraw/sync';
 import { AskLayer } from './ask/AskLayer';
 import { AskPreview } from './ask/AskPreview';
+import { SelectionAsk } from './ask/SelectionAsk';
 import { Timeline } from './log/Timeline';
 import { registerIngestion } from './ingest/registerIngestion';
 import { cardShapeUtils } from './shapes';
@@ -28,6 +29,7 @@ function JarwizOverlay() {
       <Topbar />
       <AskLayer />
       <AskPreview />
+      <SelectionAsk />
       <Timeline />
     </>
   );
