@@ -220,3 +220,34 @@ export interface CommentReplyRequest {
   /** The thread so far, oldest first; author is 'you' or an agent's name. */
   thread: Array<{ author: string; text: string }>;
 }
+
+/**
+ * Ask — the one AI verb of the PDF journey (docs/PDF-JOURNEY.md). A free-form
+ * question (or a predefined seed prompt) is run against one or more source
+ * cards; the server picks the response shape and streams an answer card.
+ */
+export interface AskSource {
+  kind: CardKind;
+  /** Server asset id for PDF/file sources — the server reads its text. */
+  assetId?: string;
+  title?: string;
+  /** Inline text for text-bearing sources (doc/table/note responses). */
+  text?: string;
+}
+
+export interface AskRequest {
+  prompt: string;
+  sources: AskSource[];
+}
+
+/** The shape the answer takes; inferred from the prompt + content, steerable. */
+export type AskShape = 'doc' | 'table' | 'list';
+
+/** SSE events for a single Ask response card. */
+export type AskEvent =
+  | { type: 'status'; message: string }
+  | { type: 'card.create'; shape: AskShape; title?: string; columns?: string[]; rows?: string[][] }
+  | { type: 'card.delta'; textDelta: string }
+  | { type: 'card.done' }
+  | { type: 'done' }
+  | { type: 'error'; message: string };

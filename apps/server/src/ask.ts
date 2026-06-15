@@ -1,0 +1,152 @@
+/**
+ * Ask — the one AI pipeline of the PDF journey (docs/PDF-JOURNEY.md). A prompt
+ * (typed, or from a predefined seed pill) runs against one or more source cards.
+ * The server gathers the real source content (PDF text from the blob store),
+ * picks the answer's shape from the prompt, and streams a single response card.
+ *
+ * Shape routing: a comparison/matrix prompt → a table; an enumeration prompt →
+ * a list; otherwise prose. Phrasing steers it ("…as a table").
+ */
+
+import Anthropic from '@anthropic-ai/sdk';
+import type { AskEvent, AskRequest, AskShape } from '@jarwiz/shared';
+import { AGENT_MODEL } from './agents/runtime.js';
+import { extractAssetText } from './assets.js';
+import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
+
+const MAX_TOKENS = 1400;
+const PER_SOURCE_CHARS = 8_000;
+
+const DOC_SYSTEM = `You answer a question about the provided source document(s) on a canvas, as a clear written card. Use clean markdown: an optional short "# " title line, then tight paragraphs (and sub-headings only if it genuinely helps). Ground every claim in the provided content; if the sources don't contain the answer, say so plainly rather than inventing. Be specific and concise — no preamble, no sign-off.`;
+
+const LIST_SYSTEM = `You answer a question about the provided source document(s) as a focused markdown list. Optionally one "# " title line, then "- " bullets (or "1." steps if the question implies order). Each item tight and specific, grounded in the content. If the sources don't support an item, omit it. No preamble.`;
+
+const TABLE_SYSTEM = `You answer a question about the provided source document(s) as a comparison/matrix TABLE. Return ONLY a JSON object {"columns": string[], "rows": string[][]} — the first column names the items/dimensions, one row per item, short cells. Ground cells in the provided content; leave a cell empty rather than inventing. No prose, no markdown, no code fences.`;
+
+function pickShape(prompt: string): AskShape {
+  const p = prompt.toLowerCase();
+  if (/\b(compare|comparison|vs\.?|versus|pros and cons|trade-?offs?|matrix|table|side by side)\b/.test(p)) {
+    return 'table';
+  }
+  if (/\b(list|bullets?|enumerate|steps|checklist|key (points|dates|terms)|what are the)\b/.test(p)) {
+    return 'list';
+  }
+  return 'doc';
+}
+
+async function gatherContext(req: AskRequest): Promise<string> {
+  const parts: string[] = [];
+  let i = 0;
+  for (const s of req.sources) {
+    i += 1;
+    const head = `Source ${i} (${s.kind}${s.title ? `: ${s.title}` : ''}):`;
+    if (s.assetId) {
+      const extracted = await extractAssetText(s.assetId, PER_SOURCE_CHARS);
+      if (extracted?.text) {
+        parts.push(`${head}\n"""\n${extracted.text}\n"""`);
+        continue;
+      }
+      parts.push(`${head}\n(No readable text — likely a scanned/image PDF.)`);
+      continue;
+    }
+    if (s.text?.trim()) parts.push(`${head}\n"""\n${s.text.trim().slice(0, PER_SOURCE_CHARS)}\n"""`);
+    else parts.push(head);
+  }
+  return parts.join('\n\n');
+}
+
+async function generate(system: string, user: string, signal: AbortSignal): Promise<string> {
+  if (process.env.ANTHROPIC_API_KEY?.trim()) {
+    const client = new Anthropic();
+    const msg = await client.messages.create(
+      { model: AGENT_MODEL, max_tokens: MAX_TOKENS, system, messages: [{ role: 'user', content: user }] },
+      { signal },
+    );
+    return msg.content
+      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+      .map((b) => b.text)
+      .join('');
+  }
+  if (sidecarAvailable()) return sidecarGenerate({ system, user, signal });
+  throw new Error('No model available (set ANTHROPIC_API_KEY or install the Claude CLI).');
+}
+
+function chunk(text: string, size = 6): string[] {
+  const words = text.split(/(?<=\s)/);
+  const out: string[] = [];
+  for (let i = 0; i < words.length; i += size) out.push(words.slice(i, i + size).join(''));
+  return out;
+}
+
+const sleep = (ms: number, signal: AbortSignal) =>
+  new Promise<void>((resolve) => {
+    if (signal.aborted) return resolve();
+    const t = setTimeout(done, ms);
+    function done() {
+      signal.removeEventListener('abort', done);
+      clearTimeout(t);
+      resolve();
+    }
+    signal.addEventListener('abort', done, { once: true });
+  });
+
+export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGenerator<AskEvent> {
+  yield { type: 'status', message: 'Reading the source…' };
+  const context = await gatherContext(req);
+  if (signal.aborted) return;
+
+  const shape = pickShape(req.prompt);
+  const user = `Question:\n${req.prompt}\n\n${context}`;
+
+  if (shape === 'table') {
+    const raw = await generate(TABLE_SYSTEM, user, signal);
+    if (signal.aborted) return;
+    let columns: string[] = [];
+    let rows: string[][] = [];
+    try {
+      const json = JSON.parse(raw.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()) as {
+        columns?: unknown;
+        rows?: unknown;
+      };
+      columns = Array.isArray(json.columns) ? json.columns.map((c) => String(c)) : [];
+      rows = Array.isArray(json.rows)
+        ? json.rows.map((r) => (Array.isArray(r) ? r.map((c) => String(c ?? '')) : []))
+        : [];
+    } catch {
+      /* fall through to a doc if the model didn't return clean JSON */
+    }
+    if (columns.length > 0) {
+      yield { type: 'card.create', shape: 'table', columns, rows };
+      yield { type: 'done' };
+      return;
+    }
+    // Not clean JSON — degrade to a written answer.
+    const text = await generate(DOC_SYSTEM, user, signal);
+    yield* streamText('doc', text, signal);
+    return;
+  }
+
+  const system = shape === 'list' ? LIST_SYSTEM : DOC_SYSTEM;
+  const text = await generate(system, user, signal);
+  if (signal.aborted) return;
+  yield* streamText(shape, text, signal);
+}
+
+/** Emit a text answer as create → deltas → done, pulling an optional title. */
+async function* streamText(shape: AskShape, text: string, signal: AbortSignal): AsyncGenerator<AskEvent> {
+  const lines = text.split('\n');
+  let title: string | undefined;
+  let body = text;
+  if (lines[0]?.startsWith('# ')) {
+    title = lines[0].replace(/^#\s+/, '').slice(0, 80);
+    body = lines.slice(1).join('\n').trim();
+  }
+  yield { type: 'card.create', shape, title };
+  for (const piece of chunk(body)) {
+    if (signal.aborted) return;
+    yield { type: 'card.delta', textDelta: piece };
+    await sleep(20, signal);
+  }
+  yield { type: 'card.done' };
+  yield { type: 'done' };
+}

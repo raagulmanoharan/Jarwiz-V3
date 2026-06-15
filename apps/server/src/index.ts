@@ -28,6 +28,8 @@ import type {
 } from '@jarwiz/shared';
 import { buildLinkPreview, SsrfError } from './linkPreview.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset } from './assets.js';
+import { streamAsk } from './ask.js';
+import type { AskRequest } from '@jarwiz/shared';
 import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
 import { streamComment } from './comment.js';
@@ -255,6 +257,43 @@ app.post('/api/comment', async (c) => {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Reply failed';
       await send({ type: 'error', message });
+    }
+  });
+});
+
+/** The Ask pipeline — a prompt against source cards → one auto-shaped answer. */
+app.post('/api/ask', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected JSON: { prompt, sources[] }' }, 400);
+  }
+  const raw = body as Partial<AskRequest>;
+  if (typeof raw.prompt !== 'string' || raw.prompt.trim() === '') {
+    return c.json({ error: 'prompt is required' }, 400);
+  }
+  const request: AskRequest = {
+    prompt: raw.prompt.trim().slice(0, 2000),
+    sources: Array.isArray(raw.sources)
+      ? raw.sources.slice(0, 8).map((s) => ({
+          kind: s?.kind ?? 'note',
+          assetId: typeof s?.assetId === 'string' ? s.assetId : undefined,
+          title: typeof s?.title === 'string' ? s.title.slice(0, 200) : undefined,
+          text: typeof s?.text === 'string' ? s.text.slice(0, 8000) : undefined,
+        }))
+      : [],
+  };
+
+  return streamSSE(c, async (stream) => {
+    const signal = c.req.raw.signal;
+    try {
+      for await (const event of streamAsk(request, signal)) {
+        await stream.writeSSE({ data: JSON.stringify(event) });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Ask failed';
+      await stream.writeSSE({ data: JSON.stringify({ type: 'error', message }) });
     }
   });
 });
