@@ -1,0 +1,68 @@
+/**
+ * Blob storage for uploaded assets (PDFs, later images). Bytes live here on the
+ * server — never in the synced tldraw document, which only holds a reference
+ * (the GET URL). This is the grain tldraw/Figma/Miro all follow: keep large
+ * binaries out of the realtime store. See docs/PDF-JOURNEY.md §6.
+ *
+ * Dev backing is the local filesystem (a temp dir); swapping to S3/R2 in prod
+ * means reimplementing put/get/extractText against the same tiny interface.
+ */
+
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+// pdf-parse's index has a debug self-run guard; import the lib entry directly.
+const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (b: Buffer) => Promise<{ text: string; numpages: number }>;
+
+const ASSET_DIR = process.env.JARWIZ_ASSET_DIR || join(tmpdir(), 'jarwiz-assets');
+/** Asset ids are client-generated; keep them to a safe, path-injection-proof set. */
+const ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
+
+export const MAX_ASSET_BYTES = 25 * 1024 * 1024; // 25 MiB
+
+export function isValidAssetId(id: string): boolean {
+  return ID_RE.test(id);
+}
+
+let ready: Promise<void> | null = null;
+function ensureDir(): Promise<void> {
+  if (!ready) ready = mkdir(ASSET_DIR, { recursive: true }).then(() => undefined);
+  return ready;
+}
+
+export async function putAsset(id: string, bytes: Buffer): Promise<void> {
+  if (!isValidAssetId(id)) throw new Error('invalid asset id');
+  await ensureDir();
+  await writeFile(join(ASSET_DIR, id), bytes);
+}
+
+export async function getAsset(id: string): Promise<Buffer | null> {
+  if (!isValidAssetId(id)) return null;
+  await ensureDir();
+  try {
+    return await readFile(join(ASSET_DIR, id));
+  } catch {
+    return null;
+  }
+}
+
+/** Extract the text + page count from a stored PDF, for the content pass / Ask. */
+export async function extractAssetText(
+  id: string,
+  maxChars = 12_000,
+): Promise<{ text: string; pages: number } | null> {
+  const buf = await getAsset(id);
+  if (!buf) return null;
+  try {
+    const parsed = await pdfParse(buf);
+    return {
+      text: (parsed.text || '').replace(/\s+/g, ' ').trim().slice(0, maxChars),
+      pages: parsed.numpages || 0,
+    };
+  } catch {
+    return null;
+  }
+}

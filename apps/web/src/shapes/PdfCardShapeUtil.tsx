@@ -1,3 +1,11 @@
+/**
+ * The PDF card — a real embedded reader. Renders pages with pdf.js to a canvas
+ * sized to the card (resizing the card rescales the preview), with page
+ * navigation. Bytes live in the server blob store (docs/PDF-JOURNEY.md §6); the
+ * card holds only the asset URL, so the synced document stays light.
+ */
+
+import { useEffect, useRef, useState } from 'react';
 import {
   HTMLContainer,
   Rectangle2d,
@@ -5,19 +13,26 @@ import {
   T,
   resizeBox,
   stopEventPropagation,
-  useIsEditing,
   type RecordProps,
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
+import { pdfjsLib, type PdfDocument } from '../lib/pdfjs';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
+
+export type PdfStatus = 'uploading' | 'ready' | 'error';
 
 export interface PdfCardProps {
   w: number;
   h: number;
-  /** Data URL of the dropped PDF (local-first, persists with the board). */
+  /** GET URL of the stored PDF (server blob); empty while uploading. */
   src: string;
+  /** Server asset id, for content extraction / Ask. */
+  assetId: string;
   name: string;
+  /** Page count once the document loads (0 until known). */
+  pages: number;
+  status: PdfStatus;
 }
 
 declare module '@tldraw/tlschema' {
@@ -28,7 +43,9 @@ declare module '@tldraw/tlschema' {
 
 export type PdfCardShape = TLShape<'pdf-card'>;
 
-export const PDF_CARD_SIZE = { w: 380, h: 480 };
+export const PDF_CARD_SIZE = { w: 420, h: 540 };
+const FOOTER_H = 40;
+const PAD = 10;
 
 export class PdfCardShapeUtil extends ShapeUtil<PdfCardShape> {
   static override type = 'pdf-card' as const;
@@ -37,24 +54,22 @@ export class PdfCardShapeUtil extends ShapeUtil<PdfCardShape> {
     w: T.number,
     h: T.number,
     src: T.string,
+    assetId: T.string,
     name: T.string,
+    pages: T.number,
+    status: T.literalEnum('uploading', 'ready', 'error'),
   };
 
   override getDefaultProps(): PdfCardShape['props'] {
-    return { ...PDF_CARD_SIZE, src: '', name: '' };
+    return { ...PDF_CARD_SIZE, src: '', assetId: '', name: '', pages: 0, status: 'uploading' };
   }
 
   override canResize() {
     return true;
   }
 
-  /** Double-click enters editing — the only state where the preview scrolls. */
-  override canEdit() {
-    return true;
-  }
-
   override onResize(shape: PdfCardShape, info: TLResizeInfo<PdfCardShape>) {
-    return resizeBox(shape, info, { minWidth: 220, minHeight: 220 });
+    return resizeBox(shape, info, { minWidth: 240, minHeight: 240 });
   }
 
   override getGeometry(shape: PdfCardShape) {
@@ -75,53 +90,127 @@ export class PdfCardShapeUtil extends ShapeUtil<PdfCardShape> {
 }
 
 function PdfCardBody({ shape }: { shape: PdfCardShape }) {
-  const isEditing = useIsEditing(shape.id);
-  const { src, name } = shape.props;
+  const { src, name, status, w, h } = shape.props;
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const docRef = useRef<PdfDocument | null>(null);
+  const [pageCount, setPageCount] = useState(shape.props.pages || 0);
+  const [page, setPage] = useState(1);
+  const [loadError, setLoadError] = useState(false);
+
+  const areaW = Math.max(40, w - PAD * 2);
+  const areaH = Math.max(40, h - FOOTER_H - PAD);
+
+  // Load (and cache) the document when the URL becomes available.
+  useEffect(() => {
+    if (status !== 'ready' || !src) return;
+    let cancelled = false;
+    setLoadError(false);
+    const task = pdfjsLib.getDocument({ url: src });
+    task.promise.then(
+      (doc) => {
+        if (cancelled) {
+          doc.destroy();
+          return;
+        }
+        docRef.current = doc;
+        setPageCount(doc.numPages);
+        setPage((p) => Math.min(p, doc.numPages));
+      },
+      () => {
+        if (!cancelled) setLoadError(true);
+      },
+    );
+    return () => {
+      cancelled = true;
+      docRef.current?.destroy();
+      docRef.current = null;
+    };
+  }, [src, status]);
+
+  // Render the current page, fit-to-contain, at the card's current size.
+  useEffect(() => {
+    const doc = docRef.current;
+    const canvas = canvasRef.current;
+    if (!doc || !canvas) return;
+    let renderTask: ReturnType<Awaited<ReturnType<typeof doc.getPage>>['render']> | null = null;
+    let cancelled = false;
+    doc.getPage(page).then((pdfPage) => {
+      if (cancelled) return;
+      const base = pdfPage.getViewport({ scale: 1 });
+      const fit = Math.min(areaW / base.width, areaH / base.height);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const viewport = pdfPage.getViewport({ scale: fit * dpr });
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      canvas.style.width = `${Math.floor(base.width * fit)}px`;
+      canvas.style.height = `${Math.floor(base.height * fit)}px`;
+      renderTask = pdfPage.render({ canvasContext: ctx, viewport });
+      renderTask.promise.catch(() => {});
+    });
+    return () => {
+      cancelled = true;
+      renderTask?.cancel();
+    };
+  }, [page, pageCount, areaW, areaH]);
+
+  const total = pageCount || shape.props.pages || 0;
+  const go = (delta: number) => setPage((p) => Math.max(1, Math.min(total || 1, p + delta)));
 
   return (
-    <div className="jz-card">
-      <div className="jz-pdf-frame">
-        {src ? (
-          <object
-            data={src}
-            type="application/pdf"
-            aria-label={name || 'PDF document'}
-            style={{ pointerEvents: isEditing ? 'all' : 'none' }}
-          >
-            <PdfFallback name={name} src={src} />
-          </object>
+    <div className="jz-card jz-pdf-card">
+      <div className="jz-pdf-stage" style={{ padding: PAD }}>
+        {status === 'uploading' ? (
+          <PdfMessage label={`Uploading ${name || 'PDF'}…`} spinner />
+        ) : status === 'error' ? (
+          <PdfMessage label={`Couldn't upload ${name || 'this PDF'}`} />
+        ) : loadError ? (
+          <PdfMessage label="Couldn't render this PDF" />
         ) : (
-          <PdfFallback name={name} src="" />
+          <canvas ref={canvasRef} className="jz-pdf-canvas" />
         )}
       </div>
-      <div className="jz-pdf-footer">
+      <div className="jz-pdf-footer" onPointerDown={stopEventPropagation}>
         <PdfGlyph />
-        <span className="jz-pdf-name">{name || 'Document.pdf'}</span>
-        <span className="jz-yt-hint" style={{ marginLeft: 'auto' }}>
-          {isEditing ? 'scrolling' : 'double-click to scroll'}
+        <span className="jz-pdf-name" title={name}>
+          {name || 'Document.pdf'}
         </span>
+        {status === 'ready' && total > 0 ? (
+          <span className="jz-pdf-pager">
+            <button
+              className="jz-pdf-nav"
+              aria-label="Previous page"
+              disabled={page <= 1}
+              onPointerDown={stopEventPropagation}
+              onClick={() => go(-1)}
+            >
+              ‹
+            </button>
+            <span className="jz-pdf-count">
+              {page} / {total}
+            </span>
+            <button
+              className="jz-pdf-nav"
+              aria-label="Next page"
+              disabled={page >= total}
+              onPointerDown={stopEventPropagation}
+              onClick={() => go(1)}
+            >
+              ›
+            </button>
+          </span>
+        ) : null}
       </div>
     </div>
   );
 }
 
-function PdfFallback({ name, src }: { name: string; src: string }) {
+function PdfMessage({ label, spinner = false }: { label: string; spinner?: boolean }) {
   return (
-    <div className="jz-pdf-fallback">
-      <PdfGlyph size={26} />
-      <span>{name || 'PDF document'}</span>
-      {src ? (
-        <a
-          href={src}
-          download={name || 'document.pdf'}
-          style={{ pointerEvents: 'all', color: 'inherit' }}
-          onPointerDown={stopEventPropagation}
-        >
-          No inline preview — download instead
-        </a>
-      ) : (
-        <span>No preview available</span>
-      )}
+    <div className="jz-pdf-message">
+      {spinner ? <span className="jz-pdf-spinner" aria-hidden /> : <PdfGlyph size={26} />}
+      <span>{label}</span>
     </div>
   );
 }

@@ -27,6 +27,7 @@ import type {
   TableAutopilotRequest,
 } from '@jarwiz/shared';
 import { buildLinkPreview, SsrfError } from './linkPreview.js';
+import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset } from './assets.js';
 import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
 import { streamComment } from './comment.js';
@@ -47,6 +48,28 @@ const app = new Hono();
 app.use(logger());
 
 app.get('/api/health', (c) => c.json({ ok: true }));
+
+/**
+ * Asset blob storage. The client PUTs uploaded bytes here and stores only the
+ * GET URL on the card, keeping large binaries out of the synced document.
+ */
+app.put('/api/assets/:id', async (c) => {
+  const id = c.req.param('id');
+  if (!isValidAssetId(id)) return c.json({ error: 'invalid asset id' }, 400);
+  const body = await c.req.arrayBuffer();
+  if (body.byteLength === 0) return c.json({ error: 'empty body' }, 400);
+  if (body.byteLength > MAX_ASSET_BYTES) return c.json({ error: 'asset too large' }, 413);
+  await putAsset(id, Buffer.from(body));
+  return c.json({ ok: true, url: `/api/assets/${id}` });
+});
+
+app.get('/api/assets/:id', async (c) => {
+  const buf = await getAsset(c.req.param('id'));
+  if (!buf) return c.notFound();
+  return new Response(new Uint8Array(buf), {
+    headers: { 'Content-Type': 'application/pdf', 'Cache-Control': 'private, max-age=3600' },
+  });
+});
 
 /**
  * What this server can do right now. Output is "live" (real Claude) when an

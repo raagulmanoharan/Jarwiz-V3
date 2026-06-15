@@ -8,24 +8,21 @@ import {
   type TLComponents,
 } from 'tldraw';
 import { useSync } from '@tldraw/sync';
-import { AgentPresenceLayer } from './agents/AgentPresenceLayer';
-import { abortAutopilot } from './agents/autopilotStore';
-import { clearFromPool } from './agents/cluster';
-import { clearThread } from './agents/comments';
 import { registerIngestion } from './ingest/registerIngestion';
 import { cardShapeUtils } from './shapes';
 import { EmptyState } from './ui/EmptyState';
-import { FirstRunHint } from './ui/FirstRunHint';
 import { Topbar } from './ui/Topbar';
 
-/** Everything Jarwiz floats over the canvas, in one overlay slot. */
+/**
+ * Everything Jarwiz floats over the canvas, in one overlay slot. While we
+ * perfect the PDF journey, the agent/cluster/comment surfaces are intentionally
+ * left out — only the PDF flow is wired up (docs/PDF-JOURNEY.md).
+ */
 function JarwizOverlay() {
   return (
     <>
       <EmptyState />
       <Topbar />
-      <AgentPresenceLayer />
-      <FirstRunHint />
     </>
   );
 }
@@ -53,14 +50,6 @@ const components: TLComponents = {
 
 const handleMount = (editor: Editor) => {
   registerIngestion(editor);
-  // Clean up per-card state when a card is deleted: stop any in-flight Autopilot
-  // session and drop its comment thread, so we don't leak controllers or grow
-  // localStorage with threads whose card no longer exists.
-  editor.sideEffects.registerAfterDeleteHandler('shape', (shape) => {
-    abortAutopilot(shape.id);
-    clearThread(shape.id);
-    clearFromPool([shape.id]);
-  });
   // Dev convenience + e2e hook: reach the editor from the console.
   (window as unknown as { editor: Editor }).editor = editor;
 };
@@ -105,7 +94,7 @@ function SyncedBoard({ room }: { room: string }) {
 function LocalBoard() {
   return (
     <Tldraw
-      persistenceKey="jarwiz-board"
+      persistenceKey="jarwiz-pdf-v1"
       shapeUtils={cardShapeUtils}
       components={components}
       onMount={handleMount}
