@@ -213,4 +213,77 @@ export async function fetchPageText(
   return { title, text };
 }
 
+const YT_OEMBED_TIMEOUT_MS = 6_000;
+
+async function youTubeOEmbed(url: string): Promise<{ title?: string; author?: string }> {
+  try {
+    const endpoint = new URL('https://www.youtube.com/oembed');
+    endpoint.searchParams.set('url', url);
+    endpoint.searchParams.set('format', 'json');
+    const res = await fetch(endpoint, {
+      signal: AbortSignal.timeout(YT_OEMBED_TIMEOUT_MS),
+      headers: { accept: 'application/json' },
+    });
+    if (!res.ok) return {};
+    const j = (await res.json()) as { title?: string; author_name?: string };
+    return { title: j.title, author: j.author_name };
+  } catch {
+    return {};
+  }
+}
+
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, '&')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+}
+
+/**
+ * Read what we honestly can from a YouTube video: the title/author (oEmbed,
+ * reliable) and, best-effort, the caption transcript scraped from the watch
+ * page. When captions aren't available the text says so plainly rather than
+ * pretending — the agent should never fabricate what's said in a video.
+ */
+export async function fetchYouTubeText(
+  rawUrl: string,
+  maxChars = 6000,
+): Promise<{ title: string; text: string; hasTranscript: boolean }> {
+  const meta = await youTubeOEmbed(rawUrl);
+  const title = meta.title?.trim() || 'YouTube video';
+  let transcript = '';
+  try {
+    const { html } = await fetchPublicPage(rawUrl);
+    const match = html.match(/"captionTracks":(\[.*?\])/s);
+    if (match?.[1]) {
+      const tracks = JSON.parse(match[1]) as Array<{ baseUrl?: string; languageCode?: string }>;
+      const track = tracks.find((t) => t.languageCode?.startsWith('en')) ?? tracks[0];
+      if (track?.baseUrl) {
+        const { html: xml } = await fetchPublicPage(track.baseUrl);
+        transcript = [...xml.matchAll(/<text[^>]*>(.*?)<\/text>/gs)]
+          .map((m) => decodeEntities((m[1] ?? '').replace(/<[^>]+>/g, ' ')))
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, maxChars);
+      }
+    }
+  } catch {
+    /* transcript unavailable — fall back to metadata */
+  }
+  if (transcript) {
+    const by = meta.author ? ` by ${meta.author}` : '';
+    return { title, text: `Transcript of the video "${title}"${by}:\n${transcript}`, hasTranscript: true };
+  }
+  const by = meta.author ? ` by ${meta.author}` : '';
+  return {
+    title,
+    text: `This is the YouTube video "${title}"${by}. No captions/transcript are available to read, so only the title and author are known — the spoken content can't be seen.`,
+    hasTranscript: false,
+  };
+}
+
 export { SsrfError } from './ssrf.js';

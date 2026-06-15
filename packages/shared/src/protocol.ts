@@ -214,6 +214,9 @@ export interface CommentReplyRequest {
   cardKind: CardKind;
   cardTitle?: string;
   cardText?: string;
+  /** The card's source URL (link/youtube cards) so the server can fetch the
+   *  real content — page text or a video transcript — to reply from. */
+  cardUrl?: string;
   /** The thread so far, oldest first; author is 'you' or an agent's name. */
   thread: Array<{ author: string; text: string }>;
 }

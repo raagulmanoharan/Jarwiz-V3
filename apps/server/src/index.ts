@@ -216,6 +216,7 @@ app.post('/api/comment', async (c) => {
     cardKind: raw.cardKind,
     cardTitle: typeof raw.cardTitle === 'string' ? raw.cardTitle.slice(0, 200) : undefined,
     cardText: typeof raw.cardText === 'string' ? raw.cardText.slice(0, 4000) : undefined,
+    cardUrl: typeof raw.cardUrl === 'string' ? raw.cardUrl.slice(0, 2000) : undefined,
     thread: raw.thread
       .slice(-20)
       .map((m) => ({ author: String(m?.author ?? 'you'), text: String(m?.text ?? '').slice(0, 1000) })),

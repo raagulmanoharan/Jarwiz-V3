@@ -9,18 +9,44 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getAgent, type AutopilotEvent, type CommentReplyRequest } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
+import { fetchPageText, fetchYouTubeText } from './linkPreview.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 
 const COMMENT_MAX_TOKENS = 320;
 
 function systemPrompt(agentName: string, tagline: string): string {
-  return `You are ${agentName}, an agent on the Jarwiz canvas (your specialty: ${tagline}). A human left a comment on a card and is talking to you in its thread. Reply the way a sharp teammate would in a comment: conversational, specific, and SHORT — 1 to 3 sentences, no headings, no preamble, no sign-off. Answer their actual question or react usefully to the card. If they're asking you to make something substantial (a draft, sources, a table), say briefly what you'd do and that they can summon you on the card to do it — don't try to produce the artifact here. Never invent specific facts you can't stand behind.`;
+  return `You are ${agentName}, an agent on the Jarwiz canvas (your specialty: ${tagline}). A human left a comment on a card and is talking to you in its thread. Reply the way a sharp teammate would in a comment: conversational, specific, and SHORT — 1 to 3 sentences, no headings, no preamble, no sign-off. Answer their actual question or react usefully to the card, working from the card's own content and URL provided below — never ask the user to paste a link or content that is already on the card. If they're asking you to make something substantial (a full draft, sources, a table), say briefly what you'd do and that they can summon you on the card to do it — don't try to produce the artifact here. Never invent specific facts you can't stand behind: if the card's content isn't actually available to you (for example a video with no transcript), say so plainly and offer what you can from the title.`;
+}
+
+/**
+ * Cards that point at a URL (link/youtube) usually arrive with no body text.
+ * Fetch the real content server-side — page text or a video transcript — so the
+ * agent replies from substance instead of asking for a link it already has.
+ */
+async function enrichContent(request: CommentReplyRequest): Promise<CommentReplyRequest> {
+  if (request.cardText?.trim()) return request;
+  const url = request.cardUrl?.trim();
+  if (!url) return request;
+  try {
+    if (request.cardKind === 'youtube') {
+      const { title, text } = await fetchYouTubeText(url, 4_000);
+      return { ...request, cardTitle: request.cardTitle?.trim() || title, cardText: text };
+    }
+    if (request.cardKind === 'link') {
+      const { title, text } = await fetchPageText(url, 4_000);
+      return { ...request, cardTitle: request.cardTitle?.trim() || title, cardText: text || undefined };
+    }
+  } catch {
+    /* keep the original request if the fetch fails */
+  }
+  return request;
 }
 
 function buildUserTurn(request: CommentReplyRequest): string {
   const parts: string[] = [];
   parts.push(`The card (${request.cardKind}):`);
   if (request.cardTitle?.trim()) parts.push(`  title: ${request.cardTitle.trim()}`);
+  if (request.cardUrl?.trim()) parts.push(`  url: ${request.cardUrl.trim()}`);
   if (request.cardText?.trim()) parts.push(`  content: """\n${request.cardText.trim()}\n"""`);
   parts.push('', 'Thread so far (oldest first):');
   for (const m of request.thread) parts.push(`  ${m.author}: ${m.text}`);
@@ -59,6 +85,11 @@ export async function* streamComment(
 ): AsyncGenerator<AutopilotEvent> {
   const hasKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
   const meta = getAgent(request.agentId);
+
+  // Pull in the card's real content (page text / video transcript) before we
+  // generate — only in live mode, where a reply is actually produced.
+  if (hasKey || sidecarAvailable()) request = await enrichContent(request);
+  if (signal.aborted) return;
 
   if (!hasKey) {
     // Real reply via the CLI sidecar; fall back to the scripted stand-in.

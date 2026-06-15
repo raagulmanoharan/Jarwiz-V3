@@ -58,6 +58,7 @@ export function useCommentReply() {
             cardKind: shape ? cardKindOf(shape.type) : 'note',
             cardTitle: typeof props.title === 'string' ? props.title : undefined,
             cardText: cardTextOf(props),
+            cardUrl: typeof props.url === 'string' ? props.url : undefined,
             thread,
           }),
           signal: controller.signal,
