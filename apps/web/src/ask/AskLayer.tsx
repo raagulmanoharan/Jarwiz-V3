@@ -16,7 +16,7 @@ const ASKABLE = new Set(['pdf-card', 'doc-card', 'table-card', 'note-card']);
 
 export function AskLayer() {
   const editor = useEditor();
-  const { ask, isAsking, error } = useAsk();
+  const { ask, isAsking } = useAsk();
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -128,7 +128,6 @@ export function AskLayer() {
           </button>
         </>
       )}
-      {error ? <span className="jz-ask-error">{error}</span> : null}
     </div>
   );
 }

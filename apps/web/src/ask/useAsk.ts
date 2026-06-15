@@ -1,11 +1,12 @@
 /**
  * The Ask pipeline, client side. Given a prompt and one or more source cards,
- * opens an SSE connection to /api/ask, creates a single response card adjacent
- * to the sources (a doc or a table — the server picks), streams the answer in,
- * and draws a provenance edge from each source to the answer.
+ * opens an SSE connection to /api/ask and streams the answer into a floating
+ * preview (askPreview store) — NOT straight onto the canvas. The user judges it
+ * and commits with "Add to canvas" (commitPreview), which creates the answer
+ * card adjacent to the sources and draws a provenance edge from each.
  *
  * This is the one AI interaction of the PDF journey (docs/PDF-JOURNEY.md): the
- * same code path serves a typed question and a predefined seed pill.
+ * same path serves a typed question and a predefined seed pill.
  */
 
 import { useCallback, useRef, useState } from 'react';
@@ -20,8 +21,9 @@ import {
 } from 'tldraw';
 import type { AskEvent, AskSource } from '@jarwiz/shared';
 import { DOC_CARD_SIZE, TABLE_CARD_SIZE, type DocCardShape, type TableCardShape } from '../shapes';
-import { startStreaming, stopStreaming } from '../agents/streaming';
+import { stopStreaming } from '../agents/streaming';
 import { setResponsePdfSource } from '../pdf/provenance';
+import { appendPreviewText, clearPreview, getPreview, setPreview, updatePreview } from './askPreview';
 
 /** Build the server-side source descriptor from a card shape. */
 function toSource(shape: TLShape): AskSource | null {
@@ -47,7 +49,6 @@ function toSource(shape: TLShape): AskSource | null {
 export function useAsk() {
   const editor = useEditor();
   const [isAsking, setIsAsking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const ask = useCallback(
@@ -63,24 +64,52 @@ export function useAsk() {
         .filter((s): s is AskSource => Boolean(s));
       if (sources.length === 0) return;
 
-      // Place the answer just to the right of the sources' combined bounds.
       const boxes = sourceIds
         .map((id) => editor.getShapePageBounds(id))
         .filter((b): b is NonNullable<typeof b> => Boolean(b));
       const placeX = boxes.length ? Math.max(...boxes.map((b) => b.maxX)) + 72 : 0;
       const placeY = boxes.length ? Math.min(...boxes.map((b) => b.minY)) : 0;
-      // Citations on the answer flip this source PDF (the first PDF in the set).
       const pdfSourceId = sourceShapes.find((s) => s.type === 'pdf-card')?.id ?? null;
 
       setIsAsking(true);
-      setError(null);
+      // Seed an empty preview so the panel opens immediately with a status.
+      setPreview({
+        shape: 'doc',
+        text: '',
+        status: 'streaming',
+        placeX,
+        placeY,
+        sourceIds,
+        pdfSourceId,
+      });
+
       abortRef.current?.abort();
       abortRef.current = new AbortController();
       const { signal } = abortRef.current;
 
-      let responseId: TLShapeId | null = null;
       const apply = (event: AskEvent) => {
-        responseId = applyAskEvent(editor, event, { placeX, placeY, sourceIds, responseId, pdfSourceId });
+        switch (event.type) {
+          case 'card.create':
+            updatePreview({
+              shape: event.shape,
+              title: event.title,
+              columns: event.columns,
+              rows: event.rows,
+              text: '',
+              status: event.shape === 'table' ? 'done' : 'streaming',
+            });
+            break;
+          case 'card.delta':
+            appendPreviewText(event.textDelta);
+            break;
+          case 'card.done':
+          case 'done':
+            updatePreview({ status: 'done' });
+            break;
+          case 'error':
+            updatePreview({ status: 'error', error: event.message });
+            break;
+        }
       };
 
       try {
@@ -114,10 +143,12 @@ export function useAsk() {
           for (const line of lines) flush(line);
         }
         flush(buffer);
+        updatePreview({ status: 'done' });
       } catch (err) {
-        if (err instanceof Error && err.name !== 'AbortError') setError(err.message);
+        if (err instanceof Error && err.name !== 'AbortError') {
+          updatePreview({ status: 'error', error: err.message });
+        }
       } finally {
-        if (responseId) stopStreaming(responseId);
         setIsAsking(false);
       }
     },
@@ -129,68 +160,44 @@ export function useAsk() {
     setIsAsking(false);
   }, []);
 
-  return { ask, isAsking, error, abort };
+  return { ask, isAsking, abort };
 }
 
-interface AskCtx {
-  placeX: number;
-  placeY: number;
-  sourceIds: TLShapeId[];
-  responseId: TLShapeId | null;
-  pdfSourceId: TLShapeId | null;
-}
+/**
+ * Commit the current preview to the canvas — create the answer card at its
+ * placement, draw a provenance edge from each source, and wire citations.
+ * Returns the new shape id, or null if there was nothing to add.
+ */
+export function commitPreview(editor: Editor): TLShapeId | null {
+  const p = getPreview();
+  if (!p || p.status === 'error') return null;
 
-function applyAskEvent(editor: Editor, event: AskEvent, ctx: AskCtx): TLShapeId | null {
-  switch (event.type) {
-    case 'card.create': {
-      const id = createShapeId();
-      if (ctx.pdfSourceId) setResponsePdfSource(id, ctx.pdfSourceId);
-      if (event.shape === 'table') {
-        const columns = event.columns ?? [];
-        const rows = event.rows ?? [];
-        editor.createShape<TableCardShape>({
-          id,
-          type: 'table-card',
-          x: ctx.placeX,
-          y: ctx.placeY,
-          props: {
-            w: TABLE_CARD_SIZE.w,
-            h: Math.max(TABLE_CARD_SIZE.h, 56 + rows.length * 44),
-            columns,
-            rows,
-          },
-        });
-      } else {
-        editor.createShape<DocCardShape>({
-          id,
-          type: 'doc-card',
-          x: ctx.placeX,
-          y: ctx.placeY,
-          props: { w: DOC_CARD_SIZE.w, h: DOC_CARD_SIZE.h, title: event.title ?? '', text: '' },
-        });
-        startStreaming(id);
-      }
-      for (const from of ctx.sourceIds) createEdge(editor, from, id);
-      return id;
-    }
-    case 'card.delta': {
-      if (!ctx.responseId) return ctx.responseId;
-      const shape = editor.getShape(ctx.responseId);
-      if (shape && 'text' in (shape.props as object)) {
-        editor.updateShape({
-          id: ctx.responseId,
-          type: shape.type,
-          props: { text: (shape.props as { text: string }).text + event.textDelta },
-        } as Parameters<typeof editor.updateShape>[0]);
-      }
-      return ctx.responseId;
-    }
-    case 'card.done':
-      if (ctx.responseId) stopStreaming(ctx.responseId);
-      return ctx.responseId;
-    default:
-      return ctx.responseId;
+  const id = createShapeId();
+  if (p.pdfSourceId) setResponsePdfSource(id, p.pdfSourceId);
+
+  if (p.shape === 'table') {
+    const columns = p.columns ?? [];
+    const rows = p.rows ?? [];
+    editor.createShape<TableCardShape>({
+      id,
+      type: 'table-card',
+      x: p.placeX,
+      y: p.placeY,
+      props: { w: TABLE_CARD_SIZE.w, h: Math.max(TABLE_CARD_SIZE.h, 56 + rows.length * 44), columns, rows },
+    });
+  } else {
+    editor.createShape<DocCardShape>({
+      id,
+      type: 'doc-card',
+      x: p.placeX,
+      y: p.placeY,
+      props: { w: DOC_CARD_SIZE.w, h: DOC_CARD_SIZE.h, title: p.title ?? '', text: p.text },
+    });
   }
+  for (const from of p.sourceIds) createEdge(editor, from, id);
+  stopStreaming(id);
+  clearPreview();
+  return id;
 }
 
 /** A neutral provenance arrow from a source card to the answer. */

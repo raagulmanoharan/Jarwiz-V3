@@ -9,6 +9,7 @@ import {
 } from 'tldraw';
 import { useSync } from '@tldraw/sync';
 import { AskLayer } from './ask/AskLayer';
+import { AskPreview } from './ask/AskPreview';
 import { registerIngestion } from './ingest/registerIngestion';
 import { cardShapeUtils } from './shapes';
 import { EmptyState } from './ui/EmptyState';
@@ -25,6 +26,7 @@ function JarwizOverlay() {
       <EmptyState />
       <Topbar />
       <AskLayer />
+      <AskPreview />
     </>
   );
 }

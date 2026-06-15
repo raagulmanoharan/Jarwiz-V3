@@ -541,6 +541,130 @@ body,
   background: color-mix(in srgb, var(--jz-accent, #7a5cff) 22%, transparent);
 }
 
+/* ─── Ask preview (confirm before adding to canvas) ─────────────────────── */
+.jz-preview {
+  position: absolute;
+  z-index: 320;
+  width: 340px;
+  max-height: 420px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--jz-line);
+  border-radius: 12px;
+  background: var(--jz-surface, #fff);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.jz-preview-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 8px 12px;
+  border-bottom: 1px solid var(--jz-line);
+}
+
+.jz-preview-tag {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--jz-ink-400, #8a8170);
+}
+
+.jz-preview-x {
+  border: none;
+  background: transparent;
+  color: var(--jz-ink-400, #8a8170);
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.jz-preview-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 14px;
+}
+
+.jz-preview-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--jz-ink-800, #211d16);
+}
+
+.jz-preview-doc {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--jz-ink-700, #2f2a20);
+}
+
+.jz-preview-error {
+  font-size: 12.5px;
+  color: var(--jz-danger, #c0392b);
+}
+
+.jz-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.jz-preview-table th,
+.jz-preview-table td {
+  border: 1px solid var(--jz-line);
+  padding: 4px 7px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.jz-preview-table th {
+  background: var(--jz-ink-50, #f5f1e8);
+  font-weight: 600;
+}
+
+.jz-preview-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--jz-line);
+}
+
+.jz-preview-discard {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--jz-line);
+  border-radius: 8px;
+  background: var(--jz-surface, #fff);
+  color: var(--jz-ink-500, #6b6356);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.jz-preview-add {
+  height: 28px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 8px;
+  background: var(--jz-accent, #7a5cff);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.jz-preview-add:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* ─── Ask affordance ────────────────────────────────────────────────────── */
 .jz-ask {
   position: absolute;
