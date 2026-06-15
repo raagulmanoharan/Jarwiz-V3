@@ -20,20 +20,27 @@ import {
 } from 'tldraw';
 import type { SuggestRequest } from '@jarwiz/shared';
 import { domainOf, isHttpUrl } from '../lib/url';
-import { isSoleOffer, setOffer } from '../agents/offers';
+import { artifactOfferId, hasOffer, upsertOffer } from '../agents/offers';
 import { noteDrop } from '../agents/cluster';
 import { fetchTailoredSuggestions, suggestionsForDrop } from '../agents/suggestions';
 
 type DropKind = 'youtube' | 'link' | 'pdf';
 
-/** Show fast type-based pills now, then upgrade them to content-aware ones. */
+/** Show fast type-based pills now, then upgrade them to content-aware ones.
+ *  Each artifact keeps its OWN offer; a cluster offer is separate, so the two
+ *  coexist. */
 function raiseOffer(id: TLShapeId, kind: DropKind, req: SuggestRequest): void {
-  setOffer([id], suggestionsForDrop(kind), true);
+  const offerId = artifactOfferId(id);
+  upsertOffer({ id: offerId, kind: 'artifact', shapeIds: [id], suggestions: suggestionsForDrop(kind), loading: true });
   void fetchTailoredSuggestions(req).then((tailored) => {
-    // Only upgrade if this is still this card's sole offer (not superseded by a
-    // newer drop, dismissed, or absorbed into a cluster offer).
-    if (!isSoleOffer(id)) return;
-    setOffer([id], tailored.length > 0 ? tailored : suggestionsForDrop(kind), false);
+    if (!hasOffer(offerId)) return; // dismissed or accepted meanwhile
+    upsertOffer({
+      id: offerId,
+      kind: 'artifact',
+      shapeIds: [id],
+      suggestions: tailored.length > 0 ? tailored : suggestionsForDrop(kind),
+      loading: false,
+    });
   });
   // Feed the clustering heuristic (surface-level: title/domain only, instant).
   noteDrop({ id, kind, title: req.title, url: req.url });

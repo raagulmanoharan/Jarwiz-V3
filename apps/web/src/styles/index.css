@@ -852,6 +852,21 @@ body,
   animation: jz-reading-pulse 1.3s ease-in-out infinite;
 }
 
+/* The cluster's cross-cutting pills read as a slightly stronger, distinct band. */
+.jz-offer-cluster {
+  box-shadow: var(--jz-e4);
+  border: 1px solid var(--jz-hairline-strong);
+}
+
+.jz-offer-clusterlabel {
+  font-size: var(--jz-text-micro-size);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--jz-ink-500);
+  padding: 0 2px;
+}
+
 @keyframes jz-reading-pulse {
   0%,
   100% {

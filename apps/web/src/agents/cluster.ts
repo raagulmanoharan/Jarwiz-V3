@@ -43,6 +43,23 @@ let candidate: ClusterCandidate | null = null;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
+/** Clusters the user has already formed — new related drops join these. */
+interface FormedCluster {
+  offerId: string;
+  ids: Set<TLShapeId>;
+  keys: Set<string>;
+  theme: string;
+}
+let formed: FormedCluster[] = [];
+const joinListeners = new Set<(e: { offerId: string; shapeId: TLShapeId; theme: string }) => void>();
+
+/** Signal keys for matching: significant keywords + a domain marker. */
+function signalKeys(d: DropRecord): Set<string> {
+  const keys = new Set(d.keywords);
+  if (d.domain) keys.add(`dom:${d.domain}`);
+  return keys;
+}
+
 function keywordsOf(label: string): string[] {
   return [
     ...new Set(
@@ -113,8 +130,45 @@ export function noteDrop(d: { id: TLShapeId; kind: string; title?: string; url?:
     keywords: keywordsOf(`${label} ${domain ?? ''}`),
     ts: Date.now(),
   };
+
+  // Whenever something new is added, check it against already-formed clusters —
+  // if it shares the thread, it joins (and gets the cluster's pills too).
+  const recKeys = signalKeys(record);
+  for (const f of formed) {
+    if (!f.ids.has(record.id) && [...recKeys].some((k) => f.keys.has(k))) {
+      f.ids.add(record.id);
+      recKeys.forEach((k) => f.keys.add(k));
+      pool = pool.filter((p) => p.id !== record.id);
+      recompute();
+      joinListeners.forEach((l) => l({ offerId: f.offerId, shapeId: record.id, theme: f.theme }));
+      return;
+    }
+  }
+
   pool = [...pool.filter((p) => p.id !== d.id), record];
   recompute();
+}
+
+/** Listen for a new drop joining an existing cluster. */
+export function onClusterJoin(
+  cb: (e: { offerId: string; shapeId: TLShapeId; theme: string }) => void,
+): () => void {
+  joinListeners.add(cb);
+  return () => {
+    joinListeners.delete(cb);
+  };
+}
+
+/** Register a freshly-formed cluster so later related drops can join it. */
+export function formCluster(offerId: string, ids: TLShapeId[], theme: string): void {
+  const keys = new Set<string>();
+  for (const d of pool) if (ids.includes(d.id)) signalKeys(d).forEach((k) => keys.add(k));
+  formed.push({ offerId, ids: new Set(ids), keys, theme });
+  clearFromPool(ids); // they're clustered now — stop offering them as a candidate
+}
+
+export function dissolveCluster(offerId: string): void {
+  formed = formed.filter((f) => f.offerId !== offerId);
 }
 
 /** Remove drops from the pool (e.g. after they've been clustered or deleted). */
