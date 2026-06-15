@@ -7,6 +7,7 @@
 
 import { createShapeId, type Editor, type TLShapeId, type VecLike } from 'tldraw';
 import { uploadAsset } from '../lib/uploadAsset';
+import { logEvent } from '../log/eventLog';
 import { PDF_CARD_SIZE, type PdfCardShape } from '../shapes';
 
 const MULTI_FILE_CASCADE = 28;
@@ -53,7 +54,10 @@ function placePdf(editor: Editor, file: File, center: VecLike): void {
     .then(({ assetId, url }) => {
       updatePdf(editor, id, { src: url, assetId, status: 'ready' });
       // Select the card so its Ask affordance + content pills surface at once.
-      if (editor.getShape(id)) editor.select(id);
+      if (editor.getShape(id)) {
+        editor.select(id);
+        logEvent(editor, { kind: 'pdf', label: `Added ${file.name}`, shapeIds: [id] });
+      }
     })
     .catch(() => updatePdf(editor, id, { status: 'error' }));
 }

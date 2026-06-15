@@ -9,6 +9,8 @@ import type { AskShape } from '@jarwiz/shared';
 
 export interface AskPreview {
   shape: AskShape;
+  /** The question that produced this answer (for the activity log). */
+  prompt: string;
   title?: string;
   text: string;
   columns?: string[];

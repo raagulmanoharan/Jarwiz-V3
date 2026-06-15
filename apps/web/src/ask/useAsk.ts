@@ -24,6 +24,7 @@ import { DOC_CARD_SIZE, TABLE_CARD_SIZE, type DocCardShape, type TableCardShape 
 import { stopStreaming } from '../agents/streaming';
 import { setResponsePdfSource } from '../pdf/provenance';
 import { appendPreviewText, clearPreview, getPreview, setPreview, updatePreview } from './askPreview';
+import { logEvent } from '../log/eventLog';
 
 /** Build the server-side source descriptor from a card shape. */
 function toSource(shape: TLShape): AskSource | null {
@@ -75,6 +76,7 @@ export function useAsk() {
       // Seed an empty preview so the panel opens immediately with a status.
       setPreview({
         shape: 'doc',
+        prompt: trimmed,
         text: '',
         status: 'streaming',
         placeX,
@@ -196,6 +198,12 @@ export function commitPreview(editor: Editor): TLShapeId | null {
   }
   for (const from of p.sourceIds) createEdge(editor, from, id);
   stopStreaming(id);
+  logEvent(editor, {
+    kind: 'artefact',
+    label: p.prompt || (p.title ?? 'Answer'),
+    detail: p.shape === 'table' ? 'Table' : p.title || 'Doc',
+    shapeIds: [id, ...p.sourceIds],
+  });
   clearPreview();
   return id;
 }
