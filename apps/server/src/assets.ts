@@ -29,6 +29,8 @@ const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (
   opts?: PdfParseOptions,
 ) => Promise<{ text: string; numpages: number }>;
 
+import { ocrPdfPages } from './ocr.js';
+
 const ASSET_DIR = process.env.JARWIZ_ASSET_DIR || join(tmpdir(), 'jarwiz-assets');
 /** Asset ids are client-generated; keep them to a safe, path-injection-proof set. */
 const ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
@@ -70,10 +72,11 @@ export async function extractAssetText(
   if (!buf) return null;
   try {
     const parsed = await pdfParse(buf);
-    return {
-      text: (parsed.text || '').replace(/\s+/g, ' ').trim().slice(0, maxChars),
-      pages: parsed.numpages || 0,
-    };
+    const text = (parsed.text || '').replace(/\s+/g, ' ').trim();
+    if (text) return { text: text.slice(0, maxChars), pages: parsed.numpages || 0 };
+    // No text layer — likely scanned. Fall back to OCR.
+    const ocr = await ocrPdfPages(buf);
+    return { text: ocr.join(' ').replace(/\s+/g, ' ').trim().slice(0, maxChars), pages: parsed.numpages || ocr.length };
   } catch {
     return null;
   }
@@ -103,7 +106,9 @@ export async function extractAssetPages(id: string, maxCharsPerPage = 4_000): Pr
   };
   try {
     await pdfParse(buf, { pagerender });
-    return pages;
+    if (pages.some((p) => p.trim())) return pages;
+    // No text layer on any page — likely scanned. Fall back to OCR.
+    return await ocrPdfPages(buf, undefined, maxCharsPerPage);
   } catch {
     return [];
   }
