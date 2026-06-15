@@ -8,8 +8,8 @@ Run them yourself (with `npm run dev` up, or a `vite preview` build for the UI
 suite):
 
 ```bash
-node scripts/eval-server.mjs   # backend endpoints + response shapes
-node scripts/eval-ui.mjs       # real-browser user flows (Playwright)
+node scripts/eval-server.mjs   # backend endpoints + response shapes (10 checks)
+node scripts/eval-ui.mjs       # real-browser user flows (Playwright, 12 checks)
 ```
 
 ---
@@ -19,10 +19,17 @@ node scripts/eval-ui.mjs       # real-browser user flows (Playwright)
 - **Infinite tldraw 5.1 board** with seven custom card shapes — note, doc,
   table, link, image, PDF, YouTube (`apps/web/src/shapes/*`). Each is a real
   `ShapeUtil` with its own geometry and editing surface.
-  *Verified:* `Local board mounts + roster`.
-- **Ingestion by drop/paste** — URLs, files (PDF/image), and text become the
-  right card type automatically (`apps/web/src/ingest`).
-  *Verified:* `Drop → suggestion pills` (a dropped URL becomes a link card).
+  *Verified:* `Local board mounts + roster`; the media shapes render correctly —
+  `YouTube URL → youtube-card` (videoId parsed, player embedded),
+  `URL → link-card + preview` (title fills from the preview endpoint),
+  `image-card renders image` (img loads), `pdf-card renders frame+footer`.
+- **Ingestion by drop/paste** — URLs route to a **youtube-card** (watch/shorts/
+  youtu.be) or a **link-card** (loading skeleton → live preview), and files
+  become **image** or **pdf** cards (`apps/web/src/ingest`).
+  *Verified:* `Drop → suggestion pills`, `YouTube URL → youtube-card`,
+  `URL → link-card + preview`. (Link previews use the SSRF-guarded
+  `/api/link/preview`; when an origin is unreachable they degrade gracefully to
+  the domain name.)
 
 ## Live agents
 

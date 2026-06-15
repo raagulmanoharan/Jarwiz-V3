@@ -200,6 +200,51 @@ async function main() {
     return [hasBtn === 1 && clusterPills >= 3, `button=${hasBtn} clusterPills=${clusterPills}`];
   });
 
+  // 9. YouTube URL drop → youtube-card with a parsed videoId + embedded player
+  await check('YouTube URL → youtube-card', async () => {
+    const page = await open(); await clearBoard(page);
+    await pe(page, async () => { await window.editor.putExternalContent({ type: 'url', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', point: { x: 0, y: 0 } }); });
+    await sleep(1200);
+    const videoId = await pe(page, () => { const s = window.editor.getCurrentPageShapes().find((x) => x.type === 'youtube-card'); return s ? s.props.videoId : ''; });
+    const iframe = await page.locator('.jz-yt-frame iframe').count();
+    await page.close();
+    return [videoId === 'dQw4w9WgXcQ' && iframe === 1, `videoId=${videoId} iframe=${iframe}`];
+  });
+
+  // 10. Regular URL drop → link-card whose title fills from the preview endpoint
+  await check('URL → link-card + preview', async () => {
+    const page = await open(); await clearBoard(page);
+    await pe(page, async () => { await window.editor.putExternalContent({ type: 'url', url: 'https://example.com/', point: { x: 0, y: 0 } }); });
+    const titled = await page.waitForFunction(() => { const s = window.editor.getCurrentPageShapes().find((x) => x.type === 'link-card'); return Boolean(s && s.props.title); }, { timeout: 12000 }).then(() => true).catch(() => false);
+    const title = await pe(page, () => { const s = window.editor.getCurrentPageShapes().find((x) => x.type === 'link-card'); return s ? s.props.title : ''; });
+    const media = await page.locator('.jz-link-media, .jz-link-body').count();
+    await page.close();
+    return [titled && media >= 1, `title="${title}"`];
+  });
+
+  // 11. image-card renders a loaded <img>
+  await check('image-card renders image', async () => {
+    const page = await open(); await clearBoard(page);
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    await pe(page, (src) => { window.editor.createShape({ type: 'image-card', x: 120, y: 120, props: { w: 360, h: 300, src, name: 'pixel.png' } }); }, png);
+    await sleep(700);
+    const ok = await page.waitForFunction(() => { const i = document.querySelector('.jz-image-frame img'); return Boolean(i && i.complete && i.naturalWidth > 0); }, { timeout: 5000 }).then(() => true).catch(() => false);
+    await page.close();
+    return [ok, ok ? 'img loaded' : 'no loaded img'];
+  });
+
+  // 12. pdf-card renders the frame + named footer
+  await check('pdf-card renders frame+footer', async () => {
+    const page = await open(); await clearBoard(page);
+    const pdf = 'data:application/pdf;base64,JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PC9UeXBlL0NhdGFsb2c+PgplbmRvYmoKdHJhaWxlcgo8PC9Sb290IDEgMCBSPj4KJSVFT0Y=';
+    await pe(page, (src) => { window.editor.createShape({ type: 'pdf-card', x: 120, y: 120, props: { w: 380, h: 480, src, name: 'doc.pdf' } }); }, pdf);
+    await sleep(700);
+    const frame = await page.locator('.jz-pdf-frame').count();
+    const name = (await page.locator('.jz-pdf-name').first().textContent().catch(() => '')) || '';
+    await page.close();
+    return [frame === 1 && /doc\.pdf/.test(name), `frame=${frame} name="${name}"`];
+  });
+
   await browser.close();
   const ok = results.filter((r) => r.ok).length;
   console.log(`\n${ok}/${results.length} passed`);
