@@ -6,7 +6,7 @@
  */
 
 import { useSyncExternalStore, type CSSProperties } from 'react';
-import { stopEventPropagation, useEditor, useValue } from 'tldraw';
+import { Box, stopEventPropagation, useEditor, useValue } from 'tldraw';
 import { DocMarkdown } from '../ui/DocMarkdown';
 import { setPdfPage } from '../pdf/pdfView';
 import { clearPreview, getPreview, subscribePreview } from './askPreview';
@@ -16,12 +16,30 @@ export function AskPreview() {
   const editor = useEditor();
   const preview = useSyncExternalStore(subscribePreview, getPreview, getPreview);
 
-  // Anchor at the card's would-be placement, following pan/zoom.
+  // Anchor next to the source(s), but always clamped fully on-screen — the
+  // preview is a confirm step, so it must never render where you can't reach it.
   const anchor = useValue(
     'jarwiz ask preview anchor',
     () => {
       if (!preview) return null;
-      return editor.pageToViewport({ x: preview.placeX, y: preview.placeY });
+      const PW = 340;
+      const PH = 360;
+      const MARGIN = 16;
+      const vp = editor.getViewportScreenBounds();
+      const boxes = preview.sourceIds
+        .map((id) => editor.getShapePageBounds(id))
+        .filter((b): b is Box => Boolean(b));
+      let x = vp.w / 2 - PW / 2;
+      let y = vp.h / 2 - PH / 2;
+      if (boxes.length) {
+        const union = boxes.reduce((acc, b) => acc.union(b), boxes[0]!.clone());
+        const tr = editor.pageToViewport({ x: union.maxX, y: union.minY });
+        x = tr.x + 24;
+        y = tr.y;
+      }
+      x = Math.max(MARGIN, Math.min(x, vp.w - PW - MARGIN));
+      y = Math.max(MARGIN, Math.min(y, vp.h - PH - MARGIN));
+      return { x, y };
     },
     [editor, preview],
   );
@@ -38,7 +56,13 @@ export function AskPreview() {
 
   const add = () => {
     const id = commitPreview(editor);
-    if (id) editor.select(id);
+    if (!id) return;
+    editor.select(id);
+    // Bring the freshly-placed card into view if it landed off-screen.
+    const b = editor.getShapePageBounds(id);
+    if (b && !editor.getViewportPageBounds().contains(b)) {
+      editor.zoomToBounds(b, { inset: 120, animation: { duration: 220 } });
+    }
   };
 
   return (

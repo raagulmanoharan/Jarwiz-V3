@@ -65,11 +65,7 @@ export function useAsk() {
         .filter((s): s is AskSource => Boolean(s));
       if (sources.length === 0) return;
 
-      const boxes = sourceIds
-        .map((id) => editor.getShapePageBounds(id))
-        .filter((b): b is NonNullable<typeof b> => Boolean(b));
-      const placeX = boxes.length ? Math.max(...boxes.map((b) => b.maxX)) + 72 : 0;
-      const placeY = boxes.length ? Math.min(...boxes.map((b) => b.minY)) : 0;
+      const { x: placeX, y: placeY } = placeNear(editor, sourceIds, DOC_CARD_SIZE.w, DOC_CARD_SIZE.h);
       const pdfSourceId = sourceShapes.find((s) => s.type === 'pdf-card')?.id ?? null;
 
       setIsAsking(true);
@@ -178,22 +174,32 @@ export function commitPreview(editor: Editor): TLShapeId | null {
   if (p.pdfSourceId) setResponsePdfSource(id, p.pdfSourceId);
 
   if (p.shape === 'table') {
-    const columns = p.columns ?? [];
-    const rows = p.rows ?? [];
+    const columns = (p.columns ?? []).slice(0, 6);
+    const rows = (p.rows ?? []).slice(0, 14).map((r) => r.slice(0, 6));
+    // Bounded height; the body scrolls if the content is taller.
+    const h = Math.min(460, Math.max(TABLE_CARD_SIZE.h, 52 + rows.length * 56));
+    const at = placeNear(editor, p.sourceIds, TABLE_CARD_SIZE.w, h);
     editor.createShape<TableCardShape>({
       id,
       type: 'table-card',
-      x: p.placeX,
-      y: p.placeY,
-      props: { w: TABLE_CARD_SIZE.w, h: Math.max(TABLE_CARD_SIZE.h, 56 + rows.length * 44), columns, rows },
+      x: at.x,
+      y: at.y,
+      props: { w: TABLE_CARD_SIZE.w, h, columns, rows },
     });
   } else {
+    const at = placeNear(editor, p.sourceIds, DOC_CARD_SIZE.w, DOC_CARD_SIZE.h);
     editor.createShape<DocCardShape>({
       id,
       type: 'doc-card',
-      x: p.placeX,
-      y: p.placeY,
-      props: { w: DOC_CARD_SIZE.w, h: DOC_CARD_SIZE.h, title: p.title ?? '', text: p.text },
+      x: at.x,
+      y: at.y,
+      props: {
+        w: DOC_CARD_SIZE.w,
+        h: DOC_CARD_SIZE.h,
+        title: p.title ?? '',
+        text: p.text,
+        sourcePdfId: p.pdfSourceId ?? '',
+      },
     });
   }
   for (const from of p.sourceIds) createEdge(editor, from, id);
@@ -206,6 +212,38 @@ export function commitPreview(editor: Editor): TLShapeId | null {
   });
   clearPreview();
   return id;
+}
+
+/**
+ * A non-overlapping spot for a new card, just right of the source(s). If that
+ * column is occupied, slide down past whatever's there — so generated artefacts
+ * tile instead of piling on top of each other.
+ */
+export function placeNear(
+  editor: Editor,
+  sourceIds: TLShapeId[],
+  w: number,
+  h: number,
+): { x: number; y: number } {
+  const boxes = sourceIds
+    .map((id) => editor.getShapePageBounds(id))
+    .filter((b): b is NonNullable<ReturnType<typeof editor.getShapePageBounds>> => Boolean(b));
+  const center = editor.getViewportPageBounds().center;
+  let x = boxes.length ? Math.max(...boxes.map((b) => b.maxX)) + 72 : center.x - w / 2;
+  let y = boxes.length ? Math.min(...boxes.map((b) => b.minY)) : center.y - h / 2;
+
+  const GAP = 28;
+  const others = editor
+    .getCurrentPageShapes()
+    .filter((s) => s.type !== 'arrow' && !sourceIds.includes(s.id))
+    .map((s) => editor.getShapePageBounds(s.id))
+    .filter((b): b is NonNullable<ReturnType<typeof editor.getShapePageBounds>> => Boolean(b));
+  const hits = (ry: number) =>
+    others.some((b) => x < b.maxX + GAP && x + w > b.minX - GAP && ry < b.maxY + GAP && ry + h > b.minY - GAP);
+
+  let guard = 0;
+  while (hits(y) && guard++ < 80) y += 48;
+  return { x, y };
 }
 
 /** A neutral provenance arrow from a source card to the answer. */

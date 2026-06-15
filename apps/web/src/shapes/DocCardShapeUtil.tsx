@@ -11,6 +11,7 @@ import {
   type RecordProps,
   type TLResizeInfo,
   type TLShape,
+  type TLShapeId,
 } from 'tldraw';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { useAutopilot } from '../agents/useAutopilot';
@@ -25,6 +26,8 @@ export interface DocCardProps {
   h: number;
   text: string;
   title?: string;
+  /** Source PDF shape id, so [p.N] citations survive reload (not a session map). */
+  sourcePdfId: string;
 }
 
 declare module '@tldraw/tlschema' {
@@ -45,10 +48,11 @@ export class DocCardShapeUtil extends ShapeUtil<DocCardShape> {
     h: T.number,
     text: T.string,
     title: T.string,
+    sourcePdfId: T.string,
   };
 
   override getDefaultProps(): DocCardShape['props'] {
-    return { ...DOC_CARD_SIZE, text: '', title: '' };
+    return { ...DOC_CARD_SIZE, text: '', title: '', sourcePdfId: '' };
   }
 
   override canResize() {
@@ -148,7 +152,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
           <DocMarkdown
             content={text}
             onCite={(page) => {
-              const pdfId = getResponsePdfSource(shape.id);
+              const pdfId = (shape.props.sourcePdfId as TLShapeId) || getResponsePdfSource(shape.id);
               if (!pdfId || !editor.getShape(pdfId)) return;
               setPdfPage(pdfId, page);
               editor.select(pdfId);

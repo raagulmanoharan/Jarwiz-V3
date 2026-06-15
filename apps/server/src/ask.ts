@@ -158,13 +158,17 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
         columns?: unknown;
         rows?: unknown;
       };
-      columns = Array.isArray(json.columns) ? json.columns.map((c) => String(c)) : [];
+      columns = Array.isArray(json.columns) ? json.columns.map((c) => String(c).slice(0, 60)) : [];
       rows = Array.isArray(json.rows)
-        ? json.rows.map((r) => (Array.isArray(r) ? r.map((c) => String(c ?? '')) : []))
+        ? json.rows.map((r) => (Array.isArray(r) ? r.map((c) => String(c ?? '').slice(0, 200)) : []))
         : [];
     } catch {
       /* fall through to a doc if the model didn't return clean JSON */
     }
+    // A useful comparison is compact — cap runaway tables so a card can't grow
+    // to thousands of pixels and wreck the canvas.
+    columns = columns.slice(0, 6);
+    rows = rows.slice(0, 14).map((r) => r.slice(0, 6));
     if (columns.length > 0) {
       yield { type: 'card.create', shape: 'table', columns, rows };
       yield { type: 'done' };

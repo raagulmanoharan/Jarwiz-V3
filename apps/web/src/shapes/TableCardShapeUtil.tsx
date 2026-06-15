@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import {
   HTMLContainer,
   Rectangle2d,
@@ -102,27 +102,6 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
   const isFilling = streamingSet.has(shape.id);
   const autopilot = useAutopilot();
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  // Auto-fit the card's height to its (wrapping, multi-line) content. The root
-  // is height:auto, so its scrollHeight is the natural content height; push it
-  // back onto the shape so geometry/selection match what's rendered.
-  useLayoutEffect(() => {
-    const el = rootRef.current;
-    if (!el) return;
-    const measure = () => {
-      if (editor.isIn('select.resizing')) return; // don't fight an active resize
-      const needed = Math.ceil(el.scrollHeight);
-      const cur = editor.getShape<TableCardShape>(shape.id);
-      if (cur && needed > 0 && Math.abs(needed - cur.props.h) > 1) {
-        editor.updateShape<TableCardShape>({ id: shape.id, type: 'table-card', props: { h: needed } });
-      }
-    };
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    measure();
-    return () => ro.disconnect();
-  }, [editor, shape.id]);
 
   const gridCols = `repeat(${Math.max(1, columns.length)}, minmax(0, 1fr))`;
 
@@ -161,7 +140,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
   const isEmpty = rows.every((r) => r.every((c) => !c.trim())) && columns.every((c) => !c.trim());
 
   return (
-    <div className={`jz-table${isFilling ? ' jz-table-filling' : ''}`} ref={rootRef}>
+    <div className={`jz-table${isFilling ? ' jz-table-filling' : ''}`}>
       <div className="jz-table-head" style={{ gridTemplateColumns: gridCols }}>
         {columns.map((label, col) =>
           isEditing ? (
