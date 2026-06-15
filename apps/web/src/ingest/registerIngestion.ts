@@ -50,7 +50,11 @@ function placePdf(editor: Editor, file: File, center: VecLike): void {
   });
 
   void uploadAsset(file, 'pdf')
-    .then(({ assetId, url }) => updatePdf(editor, id, { src: url, assetId, status: 'ready' }))
+    .then(({ assetId, url }) => {
+      updatePdf(editor, id, { src: url, assetId, status: 'ready' });
+      // Select the card so its Ask affordance + content pills surface at once.
+      if (editor.getShape(id)) editor.select(id);
+    })
     .catch(() => updatePdf(editor, id, { status: 'error' }));
 }
 

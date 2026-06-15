@@ -495,9 +495,37 @@ body,
   transform: translateX(-50%);
   z-index: 300;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
   gap: 8px;
+  max-width: 460px;
   pointer-events: auto;
+}
+
+.jz-ask-seed {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--jz-line);
+  border-radius: 999px;
+  background: var(--jz-surface, #fff);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+  color: var(--jz-ink-600, #4a4438);
+  font-size: 12.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.jz-ask-seed:hover {
+  border-color: var(--jz-accent, #7a5cff);
+  color: var(--jz-ink-800, #211d16);
+}
+
+.jz-ask-seed:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .jz-ask-pill {

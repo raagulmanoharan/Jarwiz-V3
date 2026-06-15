@@ -23,6 +23,40 @@ const LIST_SYSTEM = `You answer a question about the provided source document(s)
 
 const TABLE_SYSTEM = `You answer a question about the provided source document(s) as a comparison/matrix TABLE. Return ONLY a JSON object {"columns": string[], "rows": string[][]} — the first column names the items/dimensions, one row per item, short cells. Ground cells in the provided content; leave a cell empty rather than inventing. No prose, no markdown, no code fences.`;
 
+const SEED_SYSTEM = `You are given the text of a document a user just dropped on a canvas. Propose the 3 or 4 most useful, SPECIFIC questions this reader would want answered about THIS document — the kind that defeat the blank-slate "what do I even ask?" problem. Return ONLY a JSON array of objects {"label": string, "prompt": string}: "label" is a 2–4 word button caption; "prompt" is the full question to ask. Be concrete to this document's actual content (name the clause, the metric, the section) — never generic like "Summarize this". No prose, no code fences.`;
+
+export interface SeedPrompt {
+  label: string;
+  prompt: string;
+}
+
+/** Predefined, content-aware Ask prompts for a freshly dropped PDF. */
+export async function proposeSeedPrompts(assetId: string, signal: AbortSignal): Promise<SeedPrompt[]> {
+  const extracted = await extractAssetText(assetId, 8_000);
+  if (!extracted?.text) return [];
+  let raw: string;
+  try {
+    raw = await generate(SEED_SYSTEM, `Document text:\n"""\n${extracted.text}\n"""`, signal);
+  } catch {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(raw.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim());
+    if (!Array.isArray(parsed)) return [];
+    const out: SeedPrompt[] = [];
+    for (const item of parsed) {
+      if (!item || typeof item !== 'object') continue;
+      const label = String((item as Record<string, unknown>).label ?? '').trim();
+      const prompt = String((item as Record<string, unknown>).prompt ?? '').trim();
+      if (label && prompt) out.push({ label: label.slice(0, 32), prompt: prompt.slice(0, 400) });
+      if (out.length >= 4) break;
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 function pickShape(prompt: string): AskShape {
   const p = prompt.toLowerCase();
   if (/\b(compare|comparison|vs\.?|versus|pros and cons|trade-?offs?|matrix|table|side by side)\b/.test(p)) {

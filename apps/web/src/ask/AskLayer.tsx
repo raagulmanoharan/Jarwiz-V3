@@ -7,9 +7,10 @@
  * Selecting two or more cards asks across them — that selection is the cluster.
  */
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { Box, stopEventPropagation, useEditor, useValue } from 'tldraw';
 import { useAsk } from './useAsk';
+import { ensureSeedPrompts, getSeedPrompts, subscribeSeed, type SeedPrompt } from './seedPrompts';
 
 const ASKABLE = new Set(['pdf-card', 'doc-card', 'table-card', 'note-card']);
 
@@ -35,9 +36,24 @@ export function AskLayer() {
       if (boxes.length === 0) return null;
       const union = boxes.reduce((acc, b) => acc.union(b), boxes[0]!.clone());
       const pt = editor.pageToViewport({ x: union.midX, y: union.maxY });
-      return { ids: shapes.map((s) => s.id), x: pt.x, y: pt.y, count: shapes.length };
+      // A single PDF card carries seed prompts (keyed by its asset id).
+      const only = shapes.length === 1 ? shapes[0]! : null;
+      const assetId =
+        only?.type === 'pdf-card' ? String((only.props as { assetId?: string }).assetId ?? '') : '';
+      return { ids: shapes.map((s) => s.id), x: pt.x, y: pt.y, count: shapes.length, assetId };
     },
     [editor],
+  );
+
+  // Seed prompts for a selected single PDF — fetched once, subscribed for updates.
+  const assetId = selection?.assetId ?? '';
+  useEffect(() => {
+    if (assetId) ensureSeedPrompts(assetId);
+  }, [assetId]);
+  const seeds = useSyncExternalStore(
+    subscribeSeed,
+    () => (assetId ? getSeedPrompts(assetId) : undefined),
+    () => undefined,
   );
 
   // Collapse the input whenever the selection changes or clears.
@@ -60,7 +76,13 @@ export function AskLayer() {
     setOpen(false);
   };
 
+  const runSeed = (seed: SeedPrompt) => {
+    if (isAsking) return;
+    void ask(seed.prompt, selection.ids);
+  };
+
   const style = { left: selection.x, top: selection.y + 14 } as CSSProperties;
+  const showSeeds = !open && selection.count === 1 && Boolean(assetId) && (seeds?.length ?? 0) > 0;
 
   return (
     <div className="jz-ask" style={style} onPointerDown={stopEventPropagation}>
@@ -84,12 +106,27 @@ export function AskLayer() {
           </button>
         </div>
       ) : (
-        <button className="jz-ask-pill" onClick={() => setOpen(true)}>
-          <span className="jz-ask-spark" aria-hidden>
-            ✦
-          </span>
-          {isAsking ? 'Asking…' : selection.count > 1 ? `Ask across ${selection.count}` : 'Ask AI'}
-        </button>
+        <>
+          {showSeeds
+            ? seeds!.slice(0, 3).map((seed) => (
+                <button
+                  key={seed.label}
+                  className="jz-ask-seed"
+                  title={seed.prompt}
+                  disabled={isAsking}
+                  onClick={() => runSeed(seed)}
+                >
+                  {seed.label}
+                </button>
+              ))
+            : null}
+          <button className="jz-ask-pill" onClick={() => setOpen(true)}>
+            <span className="jz-ask-spark" aria-hidden>
+              ✦
+            </span>
+            {isAsking ? 'Asking…' : selection.count > 1 ? `Ask across ${selection.count}` : 'Ask AI'}
+          </button>
+        </>
       )}
       {error ? <span className="jz-ask-error">{error}</span> : null}
     </div>

@@ -28,7 +28,7 @@ import type {
 } from '@jarwiz/shared';
 import { buildLinkPreview, SsrfError } from './linkPreview.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset } from './assets.js';
-import { streamAsk } from './ask.js';
+import { proposeSeedPrompts, streamAsk } from './ask.js';
 import type { AskRequest } from '@jarwiz/shared';
 import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
@@ -296,6 +296,26 @@ app.post('/api/ask', async (c) => {
       await stream.writeSSE({ data: JSON.stringify({ type: 'error', message }) });
     }
   });
+});
+
+/** Predefined, content-aware Ask prompts for a dropped PDF (the blank-slate on-ramp). */
+app.post('/api/seed-prompts', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected JSON: { assetId }' }, 400);
+  }
+  const assetId = (body as { assetId?: unknown })?.assetId;
+  if (typeof assetId !== 'string' || !isValidAssetId(assetId)) {
+    return c.json({ error: 'valid assetId required' }, 400);
+  }
+  try {
+    const prompts = await proposeSeedPrompts(assetId, c.req.raw.signal);
+    return c.json({ prompts });
+  } catch (error) {
+    return c.json({ prompts: [], error: error instanceof Error ? error.message : 'failed' });
+  }
 });
 
 app.post('/api/suggest', async (c) => {
