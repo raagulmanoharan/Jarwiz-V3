@@ -52,9 +52,20 @@ app.use(logger());
 app.get('/api/health', (c) => c.json({ ok: true }));
 
 /**
- * Asset blob storage. The client PUTs uploaded bytes here and stores only the
- * GET URL on the card, keeping large binaries out of the synced document.
+ * Asset blob storage. The client first asks for an upload URL (presign), then
+ * uploads bytes directly to it — the Miro/Figma pattern. In dev the upload URL
+ * is our own PUT endpoint; swapping to S3/R2 means returning a signed bucket URL
+ * here and nothing else changes. The card stores only the GET URL, keeping
+ * large binaries out of the synced document.
  */
+app.post('/api/assets/presign', async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as { prefix?: unknown };
+  const prefix =
+    typeof body.prefix === 'string' && /^[a-z]{1,12}$/.test(body.prefix) ? body.prefix : 'asset';
+  const assetId = `${prefix}_${randomUUID()}`;
+  return c.json({ assetId, uploadUrl: `/api/assets/${assetId}`, getUrl: `/api/assets/${assetId}`, method: 'PUT' });
+});
+
 app.put('/api/assets/:id', async (c) => {
   const id = c.req.param('id');
   if (!isValidAssetId(id)) return c.json({ error: 'invalid asset id' }, 400);
