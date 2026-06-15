@@ -455,6 +455,34 @@ body,
   min-width: 0;
 }
 
+.jz-pdf-pwrow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.jz-pdf-pw {
+  height: 28px;
+  width: 150px;
+  padding: 0 10px;
+  border: 1px solid var(--jz-line);
+  border-radius: 8px;
+  font-size: 12.5px;
+  outline: none;
+}
+
+.jz-pdf-unlock {
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--jz-accent, #7a5cff);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .jz-pdf-pager {
   margin-left: auto;
   display: flex;
@@ -487,6 +515,30 @@ body,
   min-width: 44px;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+/* Inline page citation chip on answer cards */
+.jz-cite {
+  display: inline-flex;
+  align-items: center;
+  height: 17px;
+  margin: 0 1px;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--jz-accent, #7a5cff) 35%, transparent);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--jz-accent, #7a5cff) 12%, transparent);
+  color: var(--jz-accent, #7a5cff);
+  font-size: 10.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: all;
+  vertical-align: baseline;
+}
+
+.jz-cite:hover {
+  background: color-mix(in srgb, var(--jz-accent, #7a5cff) 22%, transparent);
 }
 
 /* ─── Ask affordance ────────────────────────────────────────────────────── */

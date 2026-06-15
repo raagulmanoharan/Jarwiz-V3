@@ -15,7 +15,19 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 // pdf-parse's index has a debug self-run guard; import the lib entry directly.
-const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (b: Buffer) => Promise<{ text: string; numpages: number }>;
+type PdfParseOptions = { pagerender?: (pageData: PdfPageData) => Promise<string> };
+interface PdfTextItem {
+  str: string;
+}
+interface PdfPageData {
+  getTextContent(opts: { normalizeWhitespace: boolean; disableCombineTextItems: boolean }): Promise<{
+    items: PdfTextItem[];
+  }>;
+}
+const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (
+  b: Buffer,
+  opts?: PdfParseOptions,
+) => Promise<{ text: string; numpages: number }>;
 
 const ASSET_DIR = process.env.JARWIZ_ASSET_DIR || join(tmpdir(), 'jarwiz-assets');
 /** Asset ids are client-generated; keep them to a safe, path-injection-proof set. */
@@ -64,5 +76,35 @@ export async function extractAssetText(
     };
   } catch {
     return null;
+  }
+}
+
+/**
+ * Extract text page-by-page, so Ask can cite pages. Returns one trimmed string
+ * per page (index 0 = page 1). Empty array if nothing is readable.
+ */
+export async function extractAssetPages(id: string, maxCharsPerPage = 4_000): Promise<string[]> {
+  const buf = await getAsset(id);
+  if (!buf) return [];
+  const pages: string[] = [];
+  const pagerender = async (pageData: PdfPageData): Promise<string> => {
+    const content = await pageData.getTextContent({
+      normalizeWhitespace: true,
+      disableCombineTextItems: false,
+    });
+    const text = content.items
+      .map((i) => i.str)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, maxCharsPerPage);
+    pages.push(text);
+    return text;
+  };
+  try {
+    await pdfParse(buf, { pagerender });
+    return pages;
+  } catch {
+    return [];
   }
 }

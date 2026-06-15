@@ -21,6 +21,7 @@ import {
 import type { AskEvent, AskSource } from '@jarwiz/shared';
 import { DOC_CARD_SIZE, TABLE_CARD_SIZE, type DocCardShape, type TableCardShape } from '../shapes';
 import { startStreaming, stopStreaming } from '../agents/streaming';
+import { setResponsePdfSource } from '../pdf/provenance';
 
 /** Build the server-side source descriptor from a card shape. */
 function toSource(shape: TLShape): AskSource | null {
@@ -68,6 +69,8 @@ export function useAsk() {
         .filter((b): b is NonNullable<typeof b> => Boolean(b));
       const placeX = boxes.length ? Math.max(...boxes.map((b) => b.maxX)) + 72 : 0;
       const placeY = boxes.length ? Math.min(...boxes.map((b) => b.minY)) : 0;
+      // Citations on the answer flip this source PDF (the first PDF in the set).
+      const pdfSourceId = sourceShapes.find((s) => s.type === 'pdf-card')?.id ?? null;
 
       setIsAsking(true);
       setError(null);
@@ -77,7 +80,7 @@ export function useAsk() {
 
       let responseId: TLShapeId | null = null;
       const apply = (event: AskEvent) => {
-        responseId = applyAskEvent(editor, event, { placeX, placeY, sourceIds, responseId });
+        responseId = applyAskEvent(editor, event, { placeX, placeY, sourceIds, responseId, pdfSourceId });
       };
 
       try {
@@ -134,12 +137,14 @@ interface AskCtx {
   placeY: number;
   sourceIds: TLShapeId[];
   responseId: TLShapeId | null;
+  pdfSourceId: TLShapeId | null;
 }
 
 function applyAskEvent(editor: Editor, event: AskEvent, ctx: AskCtx): TLShapeId | null {
   switch (event.type) {
     case 'card.create': {
       const id = createShapeId();
+      if (ctx.pdfSourceId) setResponsePdfSource(id, ctx.pdfSourceId);
       if (event.shape === 'table') {
         const columns = event.columns ?? [];
         const rows = event.rows ?? [];

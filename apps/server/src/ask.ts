@@ -11,7 +11,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { AskEvent, AskRequest, AskShape } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
-import { extractAssetText } from './assets.js';
+import { extractAssetPages, extractAssetText } from './assets.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 
 const MAX_TOKENS = 1400;
@@ -68,13 +68,26 @@ function pickShape(prompt: string): AskShape {
   return 'doc';
 }
 
-async function gatherContext(req: AskRequest): Promise<string> {
+async function gatherContext(req: AskRequest): Promise<{ context: string; citable: boolean }> {
   const parts: string[] = [];
+  let citable = false;
   let i = 0;
   for (const s of req.sources) {
     i += 1;
     const head = `Source ${i} (${s.kind}${s.title ? `: ${s.title}` : ''}):`;
     if (s.assetId) {
+      // Page-tagged text lets the model cite pages as [p.N].
+      const pages = await extractAssetPages(s.assetId, 3_500);
+      if (pages.length > 0 && pages.some((p) => p)) {
+        citable = true;
+        const tagged = pages
+          .map((p, idx) => (p ? `[p.${idx + 1}] ${p}` : ''))
+          .filter(Boolean)
+          .join('\n')
+          .slice(0, PER_SOURCE_CHARS * 2);
+        parts.push(`${head}\n"""\n${tagged}\n"""`);
+        continue;
+      }
       const extracted = await extractAssetText(s.assetId, PER_SOURCE_CHARS);
       if (extracted?.text) {
         parts.push(`${head}\n"""\n${extracted.text}\n"""`);
@@ -86,8 +99,11 @@ async function gatherContext(req: AskRequest): Promise<string> {
     if (s.text?.trim()) parts.push(`${head}\n"""\n${s.text.trim().slice(0, PER_SOURCE_CHARS)}\n"""`);
     else parts.push(head);
   }
-  return parts.join('\n\n');
+  return { context: parts.join('\n\n'), citable };
 }
+
+const CITE_DIRECTIVE =
+  '\n\nThe source text is tagged with [p.N] page markers. When a statement draws on a specific page, cite it inline as [p.N] (use the marker from the text). Cite the page where the fact actually appears; do not invent page numbers.';
 
 async function generate(system: string, user: string, signal: AbortSignal): Promise<string> {
   if (process.env.ANTHROPIC_API_KEY?.trim()) {
@@ -126,7 +142,7 @@ const sleep = (ms: number, signal: AbortSignal) =>
 
 export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGenerator<AskEvent> {
   yield { type: 'status', message: 'Reading the source…' };
-  const context = await gatherContext(req);
+  const { context, citable } = await gatherContext(req);
   if (signal.aborted) return;
 
   const shape = pickShape(req.prompt);
@@ -160,7 +176,8 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
     return;
   }
 
-  const system = shape === 'list' ? LIST_SYSTEM : DOC_SYSTEM;
+  const base = shape === 'list' ? LIST_SYSTEM : DOC_SYSTEM;
+  const system = citable ? base + CITE_DIRECTIVE : base;
   const text = await generate(system, user, signal);
   if (signal.aborted) return;
   yield* streamText(shape, text, signal);

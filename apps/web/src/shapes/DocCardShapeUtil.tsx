@@ -16,6 +16,8 @@ import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { useAutopilot } from '../agents/useAutopilot';
 import { useMention } from '../agents/useMention';
 import { DocMarkdown } from '../ui/DocMarkdown';
+import { getResponsePdfSource } from '../pdf/provenance';
+import { setPdfPage } from '../pdf/pdfView';
 import { DOC_RADIUS, roundedRectPath } from './cardGeometry';
 
 export interface DocCardProps {
@@ -142,7 +144,21 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
         <div className="jz-doc-title">{title || 'Document'}</div>
       </div>
       <div className={`jz-doc-content${text ? '' : ' jz-doc-placeholder'}`}>
-        {text ? <DocMarkdown content={text} /> : 'Double-click to edit'}
+        {text ? (
+          <DocMarkdown
+            content={text}
+            onCite={(page) => {
+              const pdfId = getResponsePdfSource(shape.id);
+              if (!pdfId || !editor.getShape(pdfId)) return;
+              setPdfPage(pdfId, page);
+              editor.select(pdfId);
+              const bounds = editor.getShapePageBounds(pdfId);
+              if (bounds) editor.zoomToBounds(bounds, { animation: { duration: 220 }, inset: 80 });
+            }}
+          />
+        ) : (
+          'Double-click to edit'
+        )}
         {isStreaming && <span className="jz-stream-caret" aria-hidden />}
       </div>
     </div>

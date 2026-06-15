@@ -5,7 +5,7 @@
  * card holds only the asset URL, so the synced document stays light.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import {
   HTMLContainer,
   Rectangle2d,
@@ -18,6 +18,7 @@ import {
   type TLShape,
 } from 'tldraw';
 import { pdfjsLib, type PdfDocument } from '../lib/pdfjs';
+import { getPdfPage, setPdfPage, subscribePdfView } from '../pdf/pdfView';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 
 export type PdfStatus = 'uploading' | 'ready' | 'error';
@@ -94,18 +95,34 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const docRef = useRef<PdfDocument | null>(null);
   const [pageCount, setPageCount] = useState(shape.props.pages || 0);
-  const [page, setPage] = useState(1);
+  // Current page lives in the shared view store so citations can flip it.
+  const page = useSyncExternalStore(
+    subscribePdfView,
+    () => getPdfPage(shape.id),
+    () => 1,
+  );
   const [loadError, setLoadError] = useState(false);
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const [password, setPassword] = useState('');
+  const [pwError, setPwError] = useState(false);
+  const [attempt, setAttempt] = useState('');
 
   const areaW = Math.max(40, w - PAD * 2);
   const areaH = Math.max(40, h - FOOTER_H - PAD);
 
-  // Load (and cache) the document when the URL becomes available.
+  // Load (and cache) the document when the URL becomes available. Encrypted
+  // PDFs surface a password prompt in the card; the entered password retries.
   useEffect(() => {
     if (status !== 'ready' || !src) return;
     let cancelled = false;
     setLoadError(false);
-    const task = pdfjsLib.getDocument({ url: src });
+    const task = pdfjsLib.getDocument(attempt ? { url: src, password: attempt } : { url: src });
+    task.onPassword = (updatePassword: (pw: string) => void, reason: number) => {
+      // reason 1 = NEED_PASSWORD, 2 = INCORRECT_PASSWORD
+      if (cancelled) return;
+      setNeedsPassword(true);
+      setPwError(reason === 2);
+    };
     task.promise.then(
       (doc) => {
         if (cancelled) {
@@ -113,11 +130,15 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
           return;
         }
         docRef.current = doc;
+        setNeedsPassword(false);
+        setPwError(false);
         setPageCount(doc.numPages);
-        setPage((p) => Math.min(p, doc.numPages));
+        if (getPdfPage(shape.id) > doc.numPages) setPdfPage(shape.id, doc.numPages);
       },
       () => {
-        if (!cancelled) setLoadError(true);
+        if (!cancelled && !task.onPassword) setLoadError(true);
+        // onPassword path keeps the prompt up rather than showing a render error
+        if (!cancelled && !needsPassword) setLoadError(true);
       },
     );
     return () => {
@@ -125,7 +146,7 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
       docRef.current?.destroy();
       docRef.current = null;
     };
-  }, [src, status]);
+  }, [src, status, attempt, shape.id]);
 
   // Render the current page, fit-to-contain, at the card's current size.
   useEffect(() => {
@@ -156,7 +177,11 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
   }, [page, pageCount, areaW, areaH]);
 
   const total = pageCount || shape.props.pages || 0;
-  const go = (delta: number) => setPage((p) => Math.max(1, Math.min(total || 1, p + delta)));
+  const go = (delta: number) => setPdfPage(shape.id, Math.max(1, Math.min(total || 1, page + delta)));
+
+  const unlock = () => {
+    if (password.trim()) setAttempt(password);
+  };
 
   return (
     <div className="jz-card jz-pdf-card">
@@ -165,6 +190,27 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
           <PdfMessage label={`Uploading ${name || 'PDF'}…`} spinner />
         ) : status === 'error' ? (
           <PdfMessage label={`Couldn't upload ${name || 'this PDF'}`} />
+        ) : needsPassword ? (
+          <div className="jz-pdf-message" onPointerDown={stopEventPropagation}>
+            <PdfGlyph size={26} />
+            <span>{pwError ? 'Wrong password — try again' : 'This PDF is password-protected'}</span>
+            <div className="jz-pdf-pwrow">
+              <input
+                type="password"
+                className="jz-pdf-pw"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.currentTarget.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') unlock();
+                }}
+                onPointerDown={stopEventPropagation}
+              />
+              <button className="jz-pdf-unlock" onClick={unlock}>
+                Unlock
+              </button>
+            </div>
+          </div>
         ) : loadError ? (
           <PdfMessage label="Couldn't render this PDF" />
         ) : (
