@@ -12,9 +12,15 @@ import { Box, stopEventPropagation, useEditor, useValue } from 'tldraw';
 import { useAsk } from './useAsk';
 import { ensureSeedPrompts, getSeedPrompts, subscribeSeed, type SeedPrompt } from './seedPrompts';
 
-const ASKABLE = new Set(['pdf-card', 'doc-card', 'table-card', 'note-card']);
+const ASKABLE = new Set(['pdf-card', 'doc-card', 'table-card', 'diagram-card', 'note-card']);
 
-/** One-tap refinements on an answer card — iterate without retyping. */
+/** Answer cards that refine in place — a same-type tweak rewrites the selected
+ *  card rather than spawning a new one (useAsk passes it as the target). */
+const RESPONSE_CARDS = new Set(['doc-card', 'table-card', 'diagram-card']);
+
+/** One-tap refinements on an answer card — iterate without retyping. The
+ *  prose/table/diagram chips name the format unambiguously so the server routes
+ *  a format change to a NEW card, while same-type tweaks update in place. */
 const FOLLOWUPS: Record<string, Array<{ label: string; prompt: string }>> = {
   'pdf-card': [
     { label: 'Diagram', prompt: 'Create a diagram that captures how this document works.' },
@@ -23,14 +29,19 @@ const FOLLOWUPS: Record<string, Array<{ label: string; prompt: string }>> = {
   ],
   'doc-card': [
     { label: 'Shorter', prompt: 'Rewrite this more concisely, keeping the key points.' },
-    { label: 'Go deeper', prompt: 'Expand this with more detail and specifics from the source.' },
+    { label: 'Go deeper', prompt: 'Expand this with more detail and specifics.' },
     { label: 'As a table', prompt: 'Reformat the key points of this as a comparison table.' },
     { label: 'As a diagram', prompt: 'Turn the key points of this into a diagram.' },
   ],
   'table-card': [
-    { label: 'As prose', prompt: 'Summarize this table as a short written explanation.' },
+    { label: 'Add a row', prompt: 'Add another relevant row to this comparison.' },
     { label: 'As a diagram', prompt: 'Turn this comparison into a diagram.' },
-    { label: 'Go deeper', prompt: 'Expand this comparison with more detail from the source.' },
+    { label: 'As prose', prompt: 'Rewrite the key points as a short written summary.' },
+  ],
+  'diagram-card': [
+    { label: 'Add detail', prompt: 'Add more nodes and detail to this, keeping the same kind of diagram.' },
+    { label: 'Simplify', prompt: 'Simplify this to just the essential nodes, keeping the same kind of diagram.' },
+    { label: 'As prose', prompt: 'Rewrite the key points as a short written summary.' },
   ],
 };
 
@@ -92,16 +103,21 @@ export function AskLayer() {
 
   if (!selection) return null;
 
+  // A single selected answer card is the in-place refinement target — typing a
+  // tweak ("add a node", "make it shorter") rewrites it instead of branching.
+  const targetId =
+    selection.count === 1 && RESPONSE_CARDS.has(selection.soleType) ? selection.ids[0] : null;
+
   const submit = () => {
     if (!value.trim() || isAsking) return;
-    void ask(value, selection.ids);
+    void ask(value, selection.ids, { targetId });
     setValue('');
     setOpen(false);
   };
 
   const runSeed = (seed: SeedPrompt) => {
     if (isAsking) return;
-    void ask(seed.prompt, selection.ids);
+    void ask(seed.prompt, selection.ids, { targetId });
   };
 
   const style = { left: selection.x, top: selection.y + 14 } as CSSProperties;
@@ -125,7 +141,11 @@ export function AskLayer() {
             className="jz-ask-input"
             value={value}
             placeholder={
-              selection.count > 1 ? `Ask across ${selection.count} cards…` : 'Ask anything about this…'
+              selection.count > 1
+                ? `Ask across ${selection.count} cards…`
+                : targetId
+                  ? 'Tweak this, or ask anything…'
+                  : 'Ask anything about this…'
             }
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => {

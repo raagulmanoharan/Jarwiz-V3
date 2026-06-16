@@ -238,6 +238,13 @@ export interface AskSource {
 export interface AskRequest {
   prompt: string;
   sources: AskSource[];
+  /**
+   * The shape of the card being refined, when the prompt targets an existing
+   * answer (an in-place tweak — "add a node", "make it shorter"). The server
+   * keeps this shape unless the prompt explicitly asks for a different format,
+   * so a refinement regenerates the same card rather than spawning a new one.
+   */
+  currentShape?: AskShape;
 }
 
 /**

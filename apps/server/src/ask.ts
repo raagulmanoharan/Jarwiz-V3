@@ -68,6 +68,14 @@ function wantsChecklist(prompt: string): boolean {
   return /\b(action items?|actions?|to-?dos?|task list|checklist|next steps|follow[- ]ups?)\b/i.test(prompt);
 }
 
+/** An explicit "as written prose / in words" request (→ a doc card). Lets a
+ *  refinement of a table/diagram convert back to prose ("as a short write-up"). */
+function looksLikeProse(prompt: string): boolean {
+  return /\b(prose|in writing|short write[- ]?up|written (summary|explanation|form|prose|account)|as an? (essay|narrative|paragraph)|in paragraphs?)\b/i.test(
+    prompt,
+  );
+}
+
 const SEED_SYSTEM = `You are given the text of a document a user just dropped on a canvas. Propose the 3 or 4 most useful, SPECIFIC questions this reader would want answered about THIS document — the kind that defeat the blank-slate "what do I even ask?" problem. Return ONLY a JSON array of objects {"label": string, "prompt": string}: "label" is a 2–4 word button caption; "prompt" is the full question to ask. Be concrete to this document's actual content (name the clause, the metric, the section) — never generic like "Summarize this". No prose, no code fences.`;
 
 export interface SeedPrompt {
@@ -102,12 +110,15 @@ export async function proposeSeedPrompts(assetId: string, signal: AbortSignal): 
   }
 }
 
-function pickShape(prompt: string): AskShape {
+function pickShape(prompt: string, current?: AskShape): AskShape {
   const p = prompt.toLowerCase();
   // Affinity + diagram are explicit visual intents — check them before the
   // text/table fallbacks so "diagram of the table" still draws a diagram.
   if (looksLikeAffinity(prompt)) return 'affinity';
   if (looksLikeDiagram(prompt)) return 'diagram';
+  // An explicit "as prose" request wins over the keep-current fallback, so a
+  // table/diagram can be turned back into a written card on demand.
+  if (looksLikeProse(prompt)) return 'doc';
   if (
     looksLikeDiff(prompt) ||
     /\b(compare|comparison|vs\.?|versus|pros and cons|trade-?offs?|matrix|table|side by side)\b/.test(p)
@@ -121,6 +132,11 @@ function pickShape(prompt: string): AskShape {
   ) {
     return 'list';
   }
+  // No explicit format named. When refining an existing answer, keep its shape
+  // so a tweak ("add a node", "make it shorter") regenerates that same card
+  // in place rather than producing a different artefact. Affinity boards are a
+  // multi-card layout, not a single refinable card — never keep them here.
+  if (current && current !== 'affinity') return current;
   return 'doc';
 }
 
@@ -235,7 +251,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   const { context, citable } = await gatherContext(req);
   if (signal.aborted) return;
 
-  const shape = pickShape(req.prompt);
+  const shape = pickShape(req.prompt, req.currentShape);
   const user = `Question:\n${req.prompt}\n\n${context}`;
 
   if (shape === 'affinity') {

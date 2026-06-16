@@ -16,7 +16,7 @@ import {
   type TLShape,
   type TLShapeId,
 } from 'tldraw';
-import type { AskEvent, AskSource } from '@jarwiz/shared';
+import type { AskEvent, AskShape, AskSource } from '@jarwiz/shared';
 import {
   DIAGRAM_CARD_SIZE,
   DOC_CARD_SIZE,
@@ -31,6 +31,25 @@ import { startStreaming, stopStreaming } from '../agents/streaming';
 import { setResponsePdfSource } from '../pdf/provenance';
 import { clearDraft, getDraft, setDraft, updateDraft } from './draft';
 import { logEvent } from '../log/eventLog';
+
+/** The answer card kinds that can be refined in place, and the AskShape we send
+ *  to the server as the "keep this format" hint for each. */
+const REFINABLE: Record<string, AskShape> = {
+  'doc-card': 'doc',
+  'table-card': 'table',
+  'diagram-card': 'diagram',
+};
+
+/** Does a server-chosen shape land on the SAME card kind we're refining? A
+ *  doc-card hosts both prose ('doc') and bullets/checklists ('list'), so either
+ *  updates it in place; a format change (e.g. 'table') falls through to a new
+ *  card. Returns true only when the existing card should be regenerated. */
+function isInPlace(cardType: string | undefined, shape: AskShape): boolean {
+  if (cardType === 'doc-card') return shape === 'doc' || shape === 'list';
+  if (cardType === 'table-card') return shape === 'table';
+  if (cardType === 'diagram-card') return shape === 'diagram';
+  return false;
+}
 
 /** Build the server-side source descriptor from a card shape. */
 function toSource(shape: TLShape): AskSource | null {
@@ -48,6 +67,10 @@ function toSource(shape: TLShape): AskSource | null {
       const text = [cols, ...rows].map((r) => `| ${r.join(' | ')} |`).join('\n');
       return { kind: 'table', title: String(p.title ?? ''), text };
     }
+    case 'diagram-card':
+      // The diagram's own Mermaid source is the context a refinement builds on
+      // ("add a node" works off the existing graph). Sent as a doc source.
+      return { kind: 'doc', title: String(p.title ?? ''), text: String(p.code ?? '') };
     default:
       return null;
   }
@@ -59,7 +82,7 @@ export function useAsk() {
   const abortRef = useRef<AbortController | null>(null);
 
   const ask = useCallback(
-    async (prompt: string, sourceIds: TLShapeId[]) => {
+    async (prompt: string, sourceIds: TLShapeId[], opts?: { targetId?: TLShapeId | null }) => {
       const trimmed = prompt.trim();
       if (!trimmed || sourceIds.length === 0 || isAsking || getDraft()) return;
 
@@ -70,6 +93,13 @@ export function useAsk() {
       if (sources.length === 0) return;
 
       const pdfSourceId = sourceShapes.find((s) => s.type === 'pdf-card')?.id ?? null;
+
+      // In-place regeneration: when the prompt targets an existing answer card,
+      // we tell the server its current shape so a same-type tweak keeps that
+      // format, and we overwrite the card live instead of spawning a new one.
+      const targetType = opts?.targetId ? editor.getShape(opts.targetId)?.type : undefined;
+      const targetId = targetType && REFINABLE[targetType] ? opts!.targetId! : null;
+      const currentShape: AskShape | undefined = targetType ? REFINABLE[targetType] : undefined;
 
       setIsAsking(true);
       abortRef.current?.abort();
@@ -86,6 +116,9 @@ export function useAsk() {
       let affinity: { laneX: number; laneY: number; cols: Map<number, { x: number; ynext: number }> } | null =
         null;
       let lastFollow = 0;
+      // When regenerating in place, a single history mark wraps the clear +
+      // every streamed delta so one Cmd+Z restores the card's previous content.
+      let inPlaceMark: string | null = null;
 
       const framed = () => (affinity ? createdIds : cardId ? [cardId] : []);
 
@@ -126,6 +159,38 @@ export function useAsk() {
       const apply = (event: AskEvent) => {
         switch (event.type) {
           case 'card.create': {
+            // Refinement that keeps the card's format → regenerate in place:
+            // mark history, clear the existing card, and stream the new version
+            // into it. No new shape, no provenance edges, no Keep/Discard draft
+            // (the change is instant and Cmd+Z restores the old content).
+            if (targetId && isInPlace(targetType, event.shape) && editor.getShape(targetId)) {
+              cardId = targetId;
+              createdIds = [targetId];
+              inPlaceMark = editor.markHistoryStoppingPoint('regenerate-card');
+              const t = editor.getShape(targetId)!;
+              if (t.type === 'diagram-card') {
+                editor.updateShape<DiagramCardShape>({
+                  id: targetId,
+                  type: 'diagram-card',
+                  props: { code: '' },
+                });
+              } else if (t.type === 'table-card') {
+                cols = (event.columns ?? []).slice(0, 6);
+                rows = Array.from({ length: event.rowCount ?? 0 }, () => cols.map(() => ''));
+                editor.updateShape<TableCardShape>({
+                  id: targetId,
+                  type: 'table-card',
+                  props: { columns: cols, rows },
+                });
+              } else {
+                // Keep the existing title; a regenerated "# " line overwrites it
+                // via card.title, but a plain tweak ("shorter") keeps it intact.
+                editor.updateShape<DocCardShape>({ id: targetId, type: 'doc-card', props: { text: '' } });
+              }
+              startStreaming(targetId);
+              follow();
+              break;
+            }
             if (event.shape === 'affinity') {
               const at = placeInLane(editor, sourceIds, AFFINITY_NOTE_W * 3 + AFFINITY_CLUSTER_GAP * 2, 360);
               affinity = { laneX: at.x, laneY: at.y, cols: new Map() };
@@ -264,7 +329,7 @@ export function useAsk() {
         const res = await fetch('/api/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: trimmed, sources }),
+          body: JSON.stringify({ prompt: trimmed, sources, currentShape }),
           signal,
         });
         if (!res.ok || !res.body) {
@@ -299,6 +364,9 @@ export function useAsk() {
           if (getDraft()) updateDraft({ status: 'error', error: err.message });
         }
       } finally {
+        // Collapse the in-place regeneration (clear + all deltas) into one undo
+        // step so Cmd+Z restores the card's content from before this refinement.
+        if (inPlaceMark) editor.squashToMark(inPlaceMark);
         setIsAsking(false);
       }
     },
@@ -333,6 +401,9 @@ export function finalizeDraft(editor: Editor): TLShapeId | null {
     shapeIds: [d.id, ...(d.groupIds ?? []), ...d.sourceIds],
   });
   clearDraft();
+  // Select the kept answer so its refinement affordance is immediately at hand —
+  // typing a same-type tweak regenerates this card in place.
+  editor.select(d.id, ...(d.groupIds ?? []));
   return d.id;
 }
 
