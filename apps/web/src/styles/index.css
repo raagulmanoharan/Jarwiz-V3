@@ -1080,6 +1080,124 @@ body,
   pointer-events: auto;
 }
 
+/* "Combining N · Doc · Table · Image" — what a multi-select Ask will fuse. */
+.jz-ask-combining {
+  flex-basis: 100%;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--jz-ink-500, #6b6557);
+  background: var(--jz-surface, #fff);
+  border: 1px solid var(--jz-line);
+  border-radius: 999px;
+  padding: 3px 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+  align-self: center;
+  margin: 0 auto;
+  max-width: max-content;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Disambiguation bubble ──────────────────────────────────────────────── */
+.jz-clarify {
+  position: absolute;
+  transform: translateX(-50%);
+  z-index: 320;
+  width: 320px;
+  max-width: 92vw;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 14px 12px;
+  background: var(--jz-surface, #fff);
+  border: 1px solid var(--jz-line);
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  pointer-events: auto;
+}
+
+.jz-clarify-q {
+  display: flex;
+  gap: 7px;
+  font-size: 13.5px;
+  font-weight: 560;
+  line-height: 1.4;
+  color: var(--jz-ink-800, #211d16);
+}
+
+.jz-clarify-spark {
+  color: var(--jz-accent, #7a5cff);
+  flex: none;
+}
+
+.jz-clarify-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.jz-clarify-opt {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 11px;
+  border: 1px solid var(--jz-line);
+  border-radius: 999px;
+  background: var(--jz-surface, #fff);
+  color: var(--jz-ink-700, #2f2a20);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.jz-clarify-opt:hover {
+  border-color: var(--jz-accent, #7a5cff);
+  color: var(--jz-ink-900, #1a1710);
+}
+
+.jz-clarify-opt:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.jz-clarify-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-top: 1px solid var(--jz-hairline);
+  padding-top: 10px;
+}
+
+.jz-clarify-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12.5px;
+  color: var(--jz-ink-800, #211d16);
+}
+
+.jz-clarify-dismiss {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--jz-ink-400, #9a948a);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.jz-clarify-dismiss:hover {
+  color: var(--jz-ink-700, #2f2a20);
+  background: var(--jz-hairline);
+}
+
 .jz-ask-seed {
   display: inline-flex;
   align-items: center;

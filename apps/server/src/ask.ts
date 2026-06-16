@@ -9,7 +9,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import type { AskEvent, AskRequest, AskShape } from '@jarwiz/shared';
+import type { AskEvent, AskRequest, AskShape, AskSource } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
 import { extractAssetPages, extractAssetText } from './assets.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
@@ -76,6 +76,66 @@ function looksLikeProse(prompt: string): boolean {
   );
 }
 
+/* ─── Disambiguation ────────────────────────────────────────────────────────
+ * A cheap gate decides whether a request is even worth questioning; only then
+ * do we spend a triage call. We bias hard toward acting — over-asking is worse
+ * than a reversible wrong guess (Keep/Discard + undo already cover that). */
+
+const TRIAGE_SYSTEM = `You triage a user's request about some canvas sources and decide if it is clear enough to act on. Respond with ONLY a JSON object — no prose, no code fences.
+- If you can tell what single artifact to produce, return {"clear": true}.
+- If it is genuinely ambiguous (no clear verb or output, or it could reasonably mean very different things with these sources), return {"clear": false, "question": "<one short question, max ~12 words>", "options": ["<2-4 short, concrete artifact choices>"]}.
+Strongly prefer {"clear": true}; only ask when truly unsure. Options must be tappable artifact choices like "Comparison table", "Summary doc", "Diagram", "Sticky notes" — not open-ended.`;
+
+/** Cheap gate: is this request vague enough that a triage call is worth it?
+ *  A recognizable verb/output word means it's clear — never ask. */
+function looksAmbiguous(prompt: string, sources: AskSource[]): boolean {
+  const p = prompt.trim().toLowerCase();
+  const hasVerb =
+    /\b(summari|compare|comparison|versus|\bvs\b|list|bullet|table|matrix|diagram|flow|chart|mind ?map|timeline|gantt|sequence|brainstorm|cluster|affinity|extract|action|checklist|to-?do|write|draft|explain|describe|outline|rewrite|shorten|expand|translate|plan|map out|turn (this|these) into|as an?)\b/.test(
+      p,
+    );
+  if (hasVerb) return false;
+  const words = p.split(/\s+/).filter(Boolean);
+  if (words.length <= 4) return true; // "do this", "these two", "help" …
+  if (/^(do something|something|anything|help|fix|make (it|this) better|use these|work with these|what (can|should)|any ideas|ideas|combine|merge)\b/.test(p))
+    return true;
+  // Several sources of different kinds, with no clear verb → likely unclear.
+  const kinds = new Set(sources.map((s) => s.kind));
+  return sources.length >= 2 && kinds.size >= 2;
+}
+
+/** Run a triage pass when (and only when) the request looks ambiguous. Returns a
+ *  question + options to ask, or null to proceed. Failures degrade to proceed. */
+async function maybeClarify(
+  req: AskRequest,
+  signal: AbortSignal,
+): Promise<{ question: string; options: string[] } | null> {
+  if (!looksAmbiguous(req.prompt, req.sources)) return null;
+  const srcDesc =
+    req.sources.map((s, i) => `${i + 1}. ${s.kind}${s.title ? ` "${s.title}"` : ''}`).join('\n') || '(none)';
+  let raw: string;
+  try {
+    raw = await generate(TRIAGE_SYSTEM, `Request: "${req.prompt}"\n\nSelected sources:\n${srcDesc}`, signal);
+  } catch {
+    return null; // never block the ask on triage
+  }
+  try {
+    const j = JSON.parse(raw.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()) as {
+      clear?: unknown;
+      question?: unknown;
+      options?: unknown;
+    };
+    if (j.clear === false && typeof j.question === 'string' && Array.isArray(j.options)) {
+      const options = j.options.map((o) => String(o).slice(0, 40).trim()).filter(Boolean).slice(0, 4);
+      const question = j.question.trim().slice(0, 160);
+      if (question && options.length >= 2) return { question, options };
+    }
+  } catch {
+    /* not clean JSON — proceed */
+  }
+  return null;
+}
+
 const SEED_SYSTEM = `You are given the text of a document a user just dropped on a canvas. Propose the 3 or 4 most useful, SPECIFIC questions this reader would want answered about THIS document — the kind that defeat the blank-slate "what do I even ask?" problem. Return ONLY a JSON array of objects {"label": string, "prompt": string}: "label" is a 2–4 word button caption; "prompt" is the full question to ask. Be concrete to this document's actual content (name the clause, the metric, the section) — never generic like "Summarize this". No prose, no code fences.`;
 
 export interface SeedPrompt {
@@ -140,13 +200,49 @@ function pickShape(prompt: string, current?: AskShape): AskShape {
   return 'doc';
 }
 
-async function gatherContext(req: AskRequest): Promise<{ context: string; citable: boolean }> {
+/** A vision input destined for an Anthropic image block. */
+interface ImageInput {
+  mediaType: 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp';
+  data: string;
+  title: string;
+}
+
+/** At most this many images per Ask (keeps the request and token cost bounded). */
+const MAX_IMAGES = 4;
+/** Skip an image whose base64 is larger than the model accepts (~5MB raw). */
+const MAX_IMAGE_CHARS = 7_000_000;
+
+/** Parse a `data:image/...;base64,...` URL into an Anthropic image input. */
+function parseImageDataUrl(dataUrl: string, title: string): ImageInput | null {
+  const m = /^data:(image\/(?:png|jpe?g|gif|webp));base64,(.+)$/i.exec(dataUrl);
+  if (!m) return null;
+  let mediaType = m[1]!.toLowerCase();
+  if (mediaType === 'image/jpg') mediaType = 'image/jpeg';
+  const data = m[2]!;
+  if (data.length > MAX_IMAGE_CHARS) return null;
+  return { mediaType: mediaType as ImageInput['mediaType'], data, title };
+}
+
+async function gatherContext(
+  req: AskRequest,
+): Promise<{ context: string; citable: boolean; images: ImageInput[] }> {
   const parts: string[] = [];
+  const images: ImageInput[] = [];
   let citable = false;
   let i = 0;
   for (const s of req.sources) {
     i += 1;
     const head = `Source ${i} (${s.kind}${s.title ? `: ${s.title}` : ''}):`;
+    if (s.kind === 'image' && s.dataUrl) {
+      const img = images.length < MAX_IMAGES ? parseImageDataUrl(s.dataUrl, s.title || `Image ${i}`) : null;
+      if (img) {
+        images.push(img);
+        parts.push(`${head}\n(Image attached — provided as a vision input.)`);
+      } else {
+        parts.push(`${head}\n(Image could not be read.)`);
+      }
+      continue;
+    }
     if (s.assetId) {
       // Page-tagged text lets the model cite pages as [p.N].
       const pages = await extractAssetPages(s.assetId, 3_500);
@@ -171,17 +267,49 @@ async function gatherContext(req: AskRequest): Promise<{ context: string; citabl
     if (s.text?.trim()) parts.push(`${head}\n"""\n${s.text.trim().slice(0, PER_SOURCE_CHARS)}\n"""`);
     else parts.push(head);
   }
-  return { context: parts.join('\n\n'), citable };
+  return { context: parts.join('\n\n'), citable, images };
 }
 
 const CITE_DIRECTIVE =
   '\n\nThe source text is tagged with [p.N] page markers. When a statement draws on a specific page, cite it inline as [p.N] (use the marker from the text). Cite the page where the fact actually appears; do not invent page numbers.';
 
-async function generate(system: string, user: string, signal: AbortSignal): Promise<string> {
+/** Build the user message content — a plain string, or text + image blocks when
+ *  vision inputs are present (API path only). */
+function buildContent(user: string, images: ImageInput[]): Anthropic.MessageParam['content'] {
+  if (images.length === 0) return user;
+  return [
+    { type: 'text', text: user },
+    ...images.map(
+      (im): Anthropic.ImageBlockParam => ({
+        type: 'image',
+        source: { type: 'base64', media_type: im.mediaType, data: im.data },
+      }),
+    ),
+  ];
+}
+
+/** The dev sidecar is text-only — fold a note about any images into the prompt. */
+function withImageNote(user: string, images: ImageInput[]): string {
+  if (images.length === 0) return user;
+  const names = images.map((im) => im.title).join(', ');
+  return `${user}\n\n[${images.length} image(s) attached: ${names}. They are NOT visible in this text-only mode — answer from the text, and say plainly if the image is essential and you cannot see it.]`;
+}
+
+async function generate(
+  system: string,
+  user: string,
+  signal: AbortSignal,
+  images: ImageInput[] = [],
+): Promise<string> {
   if (process.env.ANTHROPIC_API_KEY?.trim()) {
     const client = new Anthropic();
     const msg = await client.messages.create(
-      { model: AGENT_MODEL, max_tokens: MAX_TOKENS, system, messages: [{ role: 'user', content: user }] },
+      {
+        model: AGENT_MODEL,
+        max_tokens: MAX_TOKENS,
+        system,
+        messages: [{ role: 'user', content: buildContent(user, images) }],
+      },
       { signal },
     );
     return msg.content
@@ -189,7 +317,7 @@ async function generate(system: string, user: string, signal: AbortSignal): Prom
       .map((b) => b.text)
       .join('');
   }
-  if (sidecarAvailable()) return sidecarGenerate({ system, user, signal });
+  if (sidecarAvailable()) return sidecarGenerate({ system, user: withImageNote(user, images), signal });
   throw new Error('No model available (set ANTHROPIC_API_KEY or install the Claude CLI).');
 }
 
@@ -200,11 +328,21 @@ async function generate(system: string, user: string, signal: AbortSignal): Prom
  * sidecar (dev only) can't token-stream, so it generates once and chunks the
  * result to approximate the same feel.
  */
-async function* generateStream(system: string, user: string, signal: AbortSignal): AsyncGenerator<string> {
+async function* generateStream(
+  system: string,
+  user: string,
+  signal: AbortSignal,
+  images: ImageInput[] = [],
+): AsyncGenerator<string> {
   if (process.env.ANTHROPIC_API_KEY?.trim()) {
     const client = new Anthropic();
     const stream = client.messages.stream(
-      { model: AGENT_MODEL, max_tokens: MAX_TOKENS, system, messages: [{ role: 'user', content: user }] },
+      {
+        model: AGENT_MODEL,
+        max_tokens: MAX_TOKENS,
+        system,
+        messages: [{ role: 'user', content: buildContent(user, images) }],
+      },
       { signal },
     );
     for await (const event of stream) {
@@ -216,7 +354,7 @@ async function* generateStream(system: string, user: string, signal: AbortSignal
     return;
   }
   if (sidecarAvailable()) {
-    const text = await sidecarGenerate({ system, user, signal });
+    const text = await sidecarGenerate({ system, user: withImageNote(user, images), signal });
     for (const piece of chunk(text)) {
       if (signal.aborted) return;
       yield piece;
@@ -248,19 +386,31 @@ const sleep = (ms: number, signal: AbortSignal) =>
 
 export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGenerator<AskEvent> {
   yield { type: 'status', message: 'Reading the source…' };
-  const { context, citable } = await gatherContext(req);
+  const { context, citable, images } = await gatherContext(req);
   if (signal.aborted) return;
+
+  // Disambiguation: if the request is genuinely unclear, ask one short question
+  // (with tappable options) instead of guessing. Skipped once the user answers.
+  if (!req.skipClarify) {
+    const clarify = await maybeClarify(req, signal);
+    if (signal.aborted) return;
+    if (clarify) {
+      yield { type: 'clarify', question: clarify.question, options: clarify.options };
+      yield { type: 'done' };
+      return;
+    }
+  }
 
   const shape = pickShape(req.prompt, req.currentShape);
   const user = `Question:\n${req.prompt}\n\n${context}`;
 
   if (shape === 'affinity') {
-    yield* streamAffinity(user, signal);
+    yield* streamAffinity(user, signal, images);
     return;
   }
 
   if (shape === 'diagram') {
-    yield* streamDiagram(user, signal);
+    yield* streamDiagram(user, signal, images);
     return;
   }
 
@@ -270,7 +420,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
       looksLikeDiff(req.prompt) && req.sources.filter((s) => s.assetId).length >= 2
         ? CLAUSE_DIFF_SYSTEM
         : TABLE_SYSTEM;
-    const raw = await generate(tableSystem, user, signal);
+    const raw = await generate(tableSystem, user, signal, images);
     if (signal.aborted) return;
     let columns: string[] = [];
     let rows: string[][] = [];
@@ -306,14 +456,14 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
       return;
     }
     // Not clean JSON — degrade to a written answer.
-    yield* streamDoc('doc', DOC_SYSTEM, user, signal);
+    yield* streamDoc('doc', DOC_SYSTEM, user, signal, images);
     return;
   }
 
   const base = shape === 'list' ? LIST_SYSTEM : DOC_SYSTEM;
   let system = citable ? base + CITE_DIRECTIVE : base;
   if (wantsChecklist(req.prompt)) system += CHECKLIST_DIRECTIVE;
-  yield* streamDoc(shape, system, user, signal);
+  yield* streamDoc(shape, system, user, signal, images);
 }
 
 /**
@@ -322,9 +472,13 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
  * doesn't parse the Mermaid — the diagram card validates/renders it, falling
  * back to the raw source if it doesn't parse.
  */
-async function* streamDiagram(user: string, signal: AbortSignal): AsyncGenerator<AskEvent> {
+async function* streamDiagram(
+  user: string,
+  signal: AbortSignal,
+  images: ImageInput[] = [],
+): AsyncGenerator<AskEvent> {
   yield { type: 'card.create', shape: 'diagram' };
-  for await (const delta of generateStream(DIAGRAM_SYSTEM, user, signal)) {
+  for await (const delta of generateStream(DIAGRAM_SYSTEM, user, signal, images)) {
     if (signal.aborted) return;
     yield { type: 'card.delta', textDelta: delta };
   }
@@ -337,8 +491,12 @@ async function* streamDiagram(user: string, signal: AbortSignal): AsyncGenerator
  * emit them cluster-by-cluster, note-by-note, so the canvas fills with sticky
  * notes that group themselves in real time.
  */
-async function* streamAffinity(user: string, signal: AbortSignal): AsyncGenerator<AskEvent> {
-  const raw = await generate(AFFINITY_SYSTEM, user, signal);
+async function* streamAffinity(
+  user: string,
+  signal: AbortSignal,
+  images: ImageInput[] = [],
+): AsyncGenerator<AskEvent> {
+  const raw = await generate(AFFINITY_SYSTEM, user, signal, images);
   if (signal.aborted) return;
   let clusters: Array<{ label: string; notes: string[] }> = [];
   try {
@@ -364,7 +522,7 @@ async function* streamAffinity(user: string, signal: AbortSignal): AsyncGenerato
   clusters = clusters.slice(0, 6).map((c) => ({ label: c.label, notes: c.notes.slice(0, 6) }));
   if (clusters.length === 0) {
     // No clean JSON — degrade to a written answer so the ask isn't lost.
-    yield* streamDoc('doc', DOC_SYSTEM, user, signal);
+    yield* streamDoc('doc', DOC_SYSTEM, user, signal, images);
     return;
   }
   yield { type: 'card.create', shape: 'affinity' };
@@ -392,13 +550,14 @@ async function* streamDoc(
   system: string,
   user: string,
   signal: AbortSignal,
+  images: ImageInput[] = [],
 ): AsyncGenerator<AskEvent> {
   yield { type: 'card.create', shape };
   // Buffer only until the first line resolves (a "# Title" goes to the card's
   // title); everything after streams straight into the body as it arrives.
   let buf = '';
   let titleResolved = false;
-  for await (const delta of generateStream(system, user, signal)) {
+  for await (const delta of generateStream(system, user, signal, images)) {
     if (signal.aborted) return;
     if (titleResolved) {
       yield { type: 'card.delta', textDelta: delta };

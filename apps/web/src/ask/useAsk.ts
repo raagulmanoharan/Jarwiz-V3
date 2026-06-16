@@ -31,6 +31,7 @@ import { startStreaming, stopStreaming } from '../agents/streaming';
 import { setResponsePdfSource } from '../pdf/provenance';
 import { clearDraft, getDraft, setDraft, updateDraft } from './draft';
 import { clearRegen, setRegen } from './regen';
+import { clearClarify, setClarify } from './clarify';
 import { logEvent } from '../log/eventLog';
 
 /** The AbortController of the Ask currently in flight, so a floating control
@@ -80,6 +81,13 @@ function toSource(shape: TLShape): AskSource | null {
       // The diagram's own Mermaid source is the context a refinement builds on
       // ("add a node" works off the existing graph). Sent as a doc source.
       return { kind: 'doc', title: String(p.title ?? ''), text: String(p.code ?? '') };
+    case 'image-card': {
+      // An image is a vision input — sent as its data URL (the model sees it on
+      // the API path; the dev sidecar notes it but can't).
+      const src = String(p.src ?? '');
+      if (!src.startsWith('data:image/')) return null;
+      return { kind: 'image', title: String(p.name ?? ''), dataUrl: src };
+    }
     default:
       return null;
   }
@@ -91,9 +99,14 @@ export function useAsk() {
   const abortRef = useRef<AbortController | null>(null);
 
   const ask = useCallback(
-    async (prompt: string, sourceIds: TLShapeId[], opts?: { targetId?: TLShapeId | null }) => {
+    async (
+      prompt: string,
+      sourceIds: TLShapeId[],
+      opts?: { targetId?: TLShapeId | null; skipClarify?: boolean },
+    ) => {
       const trimmed = prompt.trim();
       if (!trimmed || sourceIds.length === 0 || isAsking || getDraft()) return;
+      clearClarify(); // a fresh ask supersedes any pending question
 
       const sourceShapes = sourceIds
         .map((id) => editor.getShape(id))
@@ -169,6 +182,18 @@ export function useAsk() {
 
       const apply = (event: AskEvent) => {
         switch (event.type) {
+          case 'clarify': {
+            // Ambiguous request — surface the question instead of guessing. The
+            // run ends here; ClarifyLayer re-asks with the answer folded in.
+            setClarify({
+              question: event.question,
+              options: event.options,
+              prompt: trimmed,
+              sourceIds,
+              targetId,
+            });
+            break;
+          }
           case 'card.create': {
             // Refinement that keeps the card's format → regenerate in place:
             // mark history, clear the existing card, and stream the new version
@@ -341,7 +366,7 @@ export function useAsk() {
         const res = await fetch('/api/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: trimmed, sources, currentShape }),
+          body: JSON.stringify({ prompt: trimmed, sources, currentShape, skipClarify: opts?.skipClarify }),
           signal,
         });
         if (!res.ok || !res.body) {

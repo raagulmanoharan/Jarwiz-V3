@@ -178,7 +178,31 @@ card with five live checkboxes from the notes (rendered correctly; the harness's
   and columns (a corner × per header, a × per row in a trailing gutter), on top of
   the existing cell editing and Tab-to-fill. Eval: `eval-table.mjs` (7/7).
 
-## 8. Coverage gaps (not yet evaluated here)
+## 8. Combine sources + disambiguation (new)
+
+Three capabilities landed together (`eval-combine.mjs`, 4/4):
+
+- **Images as context (vision).** Image cards are now Ask sources — selecting an
+  image (alone or with other cards) shows the Ask affordance, and the image is
+  sent to the model as a vision input on the API path. (The dev sidecar is
+  text-only, so it notes the image but can't see it; verified it degrades to a
+  card rather than erroring.)
+- **Multi-source combining affordance.** A multi-select shows "Combining N · Doc ·
+  Image · …", so it's clear what a single Ask will fuse.
+- **Disambiguation.** When a request is genuinely ambiguous, the server returns one
+  short question with tappable options instead of guessing (a cheap heuristic gate
+  + a triage pass — biased hard toward acting, so clear requests never get asked).
+  Answering re-runs the same Ask with the answer folded in and both sources wired
+  to the result.
+
+![Combining + clarify](assets/qa/combine-clarify.png)
+![Answered](assets/qa/combine-answered.png)
+
+_Server routing verified by curl: "do something with these" (doc + image) → a
+`clarify` event with options; "summarize this document" → straight to a doc, no
+question._
+
+## 9. Coverage gaps (not yet evaluated here)
 
 The older agent surface — Summarizer / Writer / Brainstormer / Researcher,
 @mention, the ⌘K command palette, comment threads with agent voice, and

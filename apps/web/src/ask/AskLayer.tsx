@@ -12,7 +12,17 @@ import { Box, stopEventPropagation, useEditor, useValue } from 'tldraw';
 import { useAsk } from './useAsk';
 import { ensureSeedPrompts, getSeedPrompts, subscribeSeed, type SeedPrompt } from './seedPrompts';
 
-const ASKABLE = new Set(['pdf-card', 'doc-card', 'table-card', 'diagram-card', 'note-card']);
+const ASKABLE = new Set(['pdf-card', 'doc-card', 'table-card', 'diagram-card', 'note-card', 'image-card']);
+
+/** Human label per card type — for the "Combining N" affordance on a multi-select. */
+const KIND_LABEL: Record<string, string> = {
+  'pdf-card': 'PDF',
+  'doc-card': 'Doc',
+  'table-card': 'Table',
+  'diagram-card': 'Diagram',
+  'note-card': 'Note',
+  'image-card': 'Image',
+};
 
 /** Answer cards that refine in place — a same-type tweak rewrites the selected
  *  card rather than spawning a new one (useAsk passes it as the target). */
@@ -74,7 +84,9 @@ export function AskLayer() {
         only?.type === 'pdf-card' ? String((only.props as { assetId?: string }).assetId ?? '') : '';
       const soleType = only?.type ?? '';
       const pdfCount = shapes.filter((s) => s.type === 'pdf-card').length;
-      return { ids: shapes.map((s) => s.id), x: pt.x, y: pt.y, count: shapes.length, assetId, soleType, pdfCount };
+      // A readable summary of what a multi-select would combine, e.g. "Doc · Table · Image".
+      const kindLabel = [...new Set(shapes.map((s) => KIND_LABEL[s.type] ?? 'Card'))].join(' · ');
+      return { ids: shapes.map((s) => s.id), x: pt.x, y: pt.y, count: shapes.length, assetId, soleType, pdfCount, kindLabel };
     },
     [editor],
   );
@@ -134,6 +146,11 @@ export function AskLayer() {
 
   return (
     <div className="jz-ask" style={style} onPointerDown={stopEventPropagation}>
+      {selection.count > 1 ? (
+        <div className="jz-ask-combining" title={selection.kindLabel}>
+          Combining {selection.count} · {selection.kindLabel}
+        </div>
+      ) : null}
       {open ? (
         <div className="jz-ask-form">
           <input

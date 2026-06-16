@@ -233,6 +233,10 @@ export interface AskSource {
   title?: string;
   /** Inline text for text-bearing sources (doc/table/note responses). */
   text?: string;
+  /** Data URL of an image source (`data:image/...;base64,...`). Sent to the
+   *  model as a vision input on the API path; noted but unseen on the dev
+   *  sidecar (which is text-only). */
+  dataUrl?: string;
 }
 
 export interface AskRequest {
@@ -245,6 +249,11 @@ export interface AskRequest {
    * so a refinement regenerates the same card rather than spawning a new one.
    */
   currentShape?: AskShape;
+  /**
+   * Set once the user has answered a clarifying question — skips the
+   * disambiguation pass so the (now-specific) request runs straight through.
+   */
+  skipClarify?: boolean;
 }
 
 /**
@@ -268,6 +277,10 @@ export type AskShape = 'doc' | 'table' | 'list' | 'diagram' | 'affinity';
  *    `affinity.note` events (a sticky in that group). */
 export type AskEvent =
   | { type: 'status'; message: string }
+  /** The request was genuinely ambiguous — ask the user a short question with a
+   *  few tappable options before making anything. The run ends after this; the
+   *  client re-asks with the answer folded in (and `skipClarify`). */
+  | { type: 'clarify'; question: string; options: string[] }
   | { type: 'card.create'; shape: AskShape; title?: string; columns?: string[]; rowCount?: number }
   | { type: 'card.title'; title: string }
   | { type: 'card.delta'; textDelta: string }

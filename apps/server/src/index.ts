@@ -293,6 +293,9 @@ app.post('/api/ask', async (c) => {
           assetId: typeof s?.assetId === 'string' ? s.assetId : undefined,
           title: typeof s?.title === 'string' ? s.title.slice(0, 200) : undefined,
           text: typeof s?.text === 'string' ? s.text.slice(0, 8000) : undefined,
+          // Image data URL for vision sources (validated/parsed in ask.ts).
+          dataUrl:
+            typeof s?.dataUrl === 'string' && s.dataUrl.startsWith('data:image/') ? s.dataUrl : undefined,
         }))
       : [],
     // The shape of the card being refined in place — keeps a same-type tweak on
@@ -300,6 +303,8 @@ app.post('/api/ask', async (c) => {
     currentShape: SHAPES.includes(raw.currentShape as (typeof SHAPES)[number])
       ? raw.currentShape
       : undefined,
+    // Set once the user answered a clarifying question — skips re-triage.
+    skipClarify: raw.skipClarify === true,
   };
 
   return streamSSE(c, async (stream) => {
