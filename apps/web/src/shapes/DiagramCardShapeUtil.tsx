@@ -21,8 +21,6 @@ import {
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { renderMermaid, stripFences } from '../lib/mermaid';
 import { useFitHeight } from './useFitHeight';
-import { MAX_CARD_H, isExpanded, subscribeExpand } from './cardExpand';
-import { ExpandToggle } from './ExpandToggle';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 
 export interface DiagramCardProps {
@@ -86,7 +84,6 @@ function DiagramCardBody({ shape }: { shape: DiagramCardShape }) {
   const { code, title } = shape.props;
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
   const isStreaming = streamingSet.has(shape.id);
-  const expanded = useSyncExternalStore(subscribeExpand, () => isExpanded(shape.id), () => false);
 
   const [svg, setSvg] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -115,17 +112,13 @@ function DiagramCardBody({ shape }: { shape: DiagramCardShape }) {
     };
   }, [code, isStreaming, shape.id]);
 
-  // Grow to fit the rendered diagram; clamp very tall diagrams behind Expand.
+  // A diagram is always shown whole — the card grows to fit the rendered SVG
+  // (no maxHeight clamp, no Expand toggle), so nothing is scrolled or truncated.
   const fitRef = useRef<HTMLDivElement | null>(null);
-  const overflowing = useFitHeight(shape.id, fitRef, [svg, code, isStreaming, failed], {
-    streaming: isStreaming,
-    expanded,
-    maxHeight: MAX_CARD_H,
-  });
-  const collapsed = overflowing && !expanded && !isStreaming;
+  useFitHeight(shape.id, fitRef, [svg, code, isStreaming, failed], { streaming: isStreaming });
 
   return (
-    <div className={`jz-diagram${collapsed ? ' jz-card-collapsed' : ''}`} ref={fitRef}>
+    <div className="jz-diagram" ref={fitRef}>
       <div className="jz-diagram-head">
         <span className="jz-diagram-kind" aria-hidden>
           ◆
@@ -146,7 +139,6 @@ function DiagramCardBody({ shape }: { shape: DiagramCardShape }) {
           <div className="jz-diagram-empty">Generating diagram…</div>
         )}
       </div>
-      {overflowing && !isStreaming ? <ExpandToggle shapeId={shape.id} expanded={expanded} /> : null}
     </div>
   );
 }

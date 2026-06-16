@@ -2737,9 +2737,12 @@ body,
 }
 
 .jz-diagram-body {
-  flex: 1 1 auto;
+  /* Lay out at the diagram's natural height (not clipped to the card box) so
+     useFitHeight measures the true content height and grows the card to show
+     the whole diagram — never scrolled or truncated. */
+  flex: none;
   padding: var(--jz-space-5) var(--jz-space-6);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .jz-diagram-svg {
