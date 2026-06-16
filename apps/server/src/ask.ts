@@ -131,6 +131,40 @@ async function generate(system: string, user: string, signal: AbortSignal): Prom
   throw new Error('No model available (set ANTHROPIC_API_KEY or install the Claude CLI).');
 }
 
+/**
+ * Stream the answer as text deltas. With an API key (the production path) this
+ * is genuine token-by-token streaming via the Anthropic SDK, so the canvas fills
+ * as the model writes and a long answer never waits on one big call. The CLI
+ * sidecar (dev only) can't token-stream, so it generates once and chunks the
+ * result to approximate the same feel.
+ */
+async function* generateStream(system: string, user: string, signal: AbortSignal): AsyncGenerator<string> {
+  if (process.env.ANTHROPIC_API_KEY?.trim()) {
+    const client = new Anthropic();
+    const stream = client.messages.stream(
+      { model: AGENT_MODEL, max_tokens: MAX_TOKENS, system, messages: [{ role: 'user', content: user }] },
+      { signal },
+    );
+    for await (const event of stream) {
+      if (signal.aborted) return;
+      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+        yield event.delta.text;
+      }
+    }
+    return;
+  }
+  if (sidecarAvailable()) {
+    const text = await sidecarGenerate({ system, user, signal });
+    for (const piece of chunk(text)) {
+      if (signal.aborted) return;
+      yield piece;
+      await sleep(18, signal);
+    }
+    return;
+  }
+  throw new Error('No model available (set ANTHROPIC_API_KEY or install the Claude CLI).');
+}
+
 function chunk(text: string, size = 6): string[] {
   const words = text.split(/(?<=\s)/);
   const out: string[] = [];
@@ -221,18 +255,33 @@ async function* streamDoc(
   signal: AbortSignal,
 ): AsyncGenerator<AskEvent> {
   yield { type: 'card.create', shape };
-  const text = await generate(system, user, signal);
-  if (signal.aborted) return;
-  const lines = text.split('\n');
-  let body = text;
-  if (lines[0]?.startsWith('# ')) {
-    yield { type: 'card.title', title: lines[0].replace(/^#\s+/, '').slice(0, 80) };
-    body = lines.slice(1).join('\n').trim();
-  }
-  for (const piece of chunk(body)) {
+  // Buffer only until the first line resolves (a "# Title" goes to the card's
+  // title); everything after streams straight into the body as it arrives.
+  let buf = '';
+  let titleResolved = false;
+  for await (const delta of generateStream(system, user, signal)) {
     if (signal.aborted) return;
-    yield { type: 'card.delta', textDelta: piece };
-    await sleep(18, signal);
+    if (titleResolved) {
+      yield { type: 'card.delta', textDelta: delta };
+      continue;
+    }
+    buf += delta;
+    const nl = buf.indexOf('\n');
+    if (nl === -1) continue;
+    titleResolved = true;
+    const firstLine = buf.slice(0, nl);
+    const rest = buf.slice(nl + 1);
+    if (firstLine.startsWith('# ')) {
+      yield { type: 'card.title', title: firstLine.replace(/^#\s+/, '').slice(0, 80) };
+      if (rest) yield { type: 'card.delta', textDelta: rest };
+    } else {
+      yield { type: 'card.delta', textDelta: buf };
+    }
+    buf = '';
+  }
+  if (!titleResolved && buf) {
+    if (buf.startsWith('# ')) yield { type: 'card.title', title: buf.replace(/^#\s+/, '').slice(0, 80) };
+    else yield { type: 'card.delta', textDelta: buf };
   }
   yield { type: 'card.done' };
   yield { type: 'done' };

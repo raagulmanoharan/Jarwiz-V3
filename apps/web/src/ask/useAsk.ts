@@ -77,7 +77,7 @@ export function useAsk() {
         const now = Date.now();
         if (now - lastFollow < 280) return;
         lastFollow = now;
-        followCard(editor, cardId);
+        followCard(editor, cardId, sourceIds);
       };
 
       const apply = (event: AskEvent) => {
@@ -120,7 +120,7 @@ export function useAsk() {
             startStreaming(id);
             const arrowIds = sourceIds.map((from) => createEdge(editor, from, id)).filter(Boolean) as TLShapeId[];
             setDraft({ id, arrowIds, status: 'streaming', prompt: trimmed, sourceIds, shape: event.shape, pdfSourceId });
-            frameCard(editor, id);
+            frameCard(editor, id, sourceIds);
             break;
           }
           case 'card.title': {
@@ -243,22 +243,30 @@ export function discardDraft(editor: Editor): void {
 
 /* ── camera ──────────────────────────────────────────────────────────────── */
 
-/** Frame a card comfortably in view (used when the draft first appears). */
-function frameCard(editor: Editor, id: TLShapeId): void {
-  const b = editor.getShapePageBounds(id);
-  if (b) editor.zoomToBounds(b, { animation: { duration: 360, easing: (t) => 1 - Math.pow(1 - t, 3) }, targetZoom: 0.9 });
+const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
+/** Combined bounds of the response and the source(s) it came from. */
+function pairBounds(editor: Editor, responseId: TLShapeId, sourceIds: TLShapeId[]) {
+  const boxes = [responseId, ...sourceIds]
+    .map((id) => editor.getShapePageBounds(id))
+    .filter((b): b is NonNullable<ReturnType<typeof editor.getShapePageBounds>> => Boolean(b));
+  if (boxes.length === 0) return null;
+  return boxes.reduce((acc, b) => acc.union(b), boxes[0]!.clone());
 }
 
-/** Pan to keep a growing card's latest content in view, without yanking zoom. */
-function followCard(editor: Editor, id: TLShapeId): void {
-  const b = editor.getShapePageBounds(id);
-  if (!b) return;
-  const vp = editor.getViewportPageBounds();
-  const pad = 100 / editor.getZoomLevel();
-  if (b.maxY > vp.maxY - pad) {
-    const y = b.maxY - vp.h / 2 + pad;
-    editor.centerOnPoint({ x: vp.center.x, y }, { animation: { duration: 250 } });
-  }
+/** Frame the source + response together, centred (used when the draft appears). */
+function frameCard(editor: Editor, responseId: TLShapeId, sourceIds: TLShapeId[]): void {
+  const u = pairBounds(editor, responseId, sourceIds);
+  if (u) editor.zoomToBounds(u, { animation: { duration: 420, easing: easeOutCubic }, inset: 130 });
+}
+
+/** Keep the source + response centred as the response grows — re-frame only
+ *  when the pair has outgrown the viewport, so it doesn't jitter when it fits. */
+function followCard(editor: Editor, responseId: TLShapeId, sourceIds: TLShapeId[]): void {
+  const u = pairBounds(editor, responseId, sourceIds);
+  if (!u) return;
+  if (editor.getViewportPageBounds().contains(u)) return;
+  editor.zoomToBounds(u, { animation: { duration: 280, easing: easeOutCubic }, inset: 130 });
 }
 
 /* ── layout ──────────────────────────────────────────────────────────────── */
