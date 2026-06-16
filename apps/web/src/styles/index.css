@@ -610,6 +610,120 @@ body,
   pointer-events: auto;
 }
 
+/* ─── Expand / collapse on tall answer cards ────────────────────────────── */
+.jz-card-more {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 54px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+  pointer-events: none;
+}
+
+.jz-card-collapsed .jz-card-more {
+  background: linear-gradient(to bottom, transparent, var(--jz-surface, #fff) 78%);
+}
+
+.jz-card-more-open {
+  height: auto;
+  position: relative;
+  padding: 6px 0 10px;
+}
+
+.jz-card-expand {
+  pointer-events: all;
+  height: 24px;
+  padding: 0 14px;
+  border: 1px solid var(--jz-line);
+  border-radius: 999px;
+  background: var(--jz-surface, #fff);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+  color: var(--jz-ink-600, #4a4438);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.jz-card-expand:hover {
+  border-color: var(--jz-accent, #7a5cff);
+  color: var(--jz-accent, #7a5cff);
+}
+
+/* ─── Streaming draft controls (Keep / Discard) ─────────────────────────── */
+.jz-draft {
+  position: absolute;
+  transform: translateX(-50%);
+  z-index: 330;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 8px 0 12px;
+  border: 1px solid var(--jz-line);
+  border-radius: 999px;
+  background: var(--jz-surface, #fff);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+  pointer-events: auto;
+}
+
+.jz-draft-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--jz-accent, #7a5cff);
+  animation: jz-draft-pulse 1s ease-in-out infinite;
+}
+
+@keyframes jz-draft-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jz-draft-dot {
+    animation: none;
+  }
+}
+
+.jz-draft-label {
+  font-size: 12.5px;
+  color: var(--jz-ink-500, #6b6356);
+}
+
+.jz-draft-err {
+  font-size: 12px;
+  color: var(--jz-danger, #c0392b);
+  max-width: 240px;
+}
+
+.jz-draft-discard {
+  height: 26px;
+  padding: 0 12px;
+  border: 1px solid var(--jz-line);
+  border-radius: 999px;
+  background: var(--jz-surface, #fff);
+  color: var(--jz-ink-500, #6b6356);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.jz-draft-keep {
+  height: 26px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--jz-accent, #7a5cff);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* ─── Activity timeline (event log) ─────────────────────────────────────── */
 /* Collapsed clock chip, top-right. */
 .jz-tl-fab {
@@ -1157,7 +1271,7 @@ body,
 
 .jz-table {
   width: 100%;
-  height: auto;
+  height: 100%;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -1749,12 +1863,9 @@ body,
   color: var(--jz-ink-700);
 }
 
-/* Read mode: the card grows to its content (Miro text-box behaviour) — no
-   fixed height, no scroll. */
-.jz-doc-auto {
-  height: auto;
-}
-
+/* Read mode: content lays out at its natural height inside the fixed-width card.
+   The shape height is fitted to it (Miro text-box behaviour), and clipped past
+   the threshold when collapsed. */
 .jz-doc-auto .jz-doc-content {
   flex: none;
   overflow: visible;

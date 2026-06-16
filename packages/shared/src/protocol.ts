@@ -243,11 +243,15 @@ export interface AskRequest {
 /** The shape the answer takes; inferred from the prompt + content, steerable. */
 export type AskShape = 'doc' | 'table' | 'list';
 
-/** SSE events for a single Ask response card. */
+/** SSE events for a single Ask response card. Tables build live: a `card.create`
+ *  carries the columns and the eventual row count, then `table.cell` events fill
+ *  cells one by one. Docs/lists stream as `card.delta` text. */
 export type AskEvent =
   | { type: 'status'; message: string }
-  | { type: 'card.create'; shape: AskShape; title?: string; columns?: string[]; rows?: string[][] }
+  | { type: 'card.create'; shape: AskShape; title?: string; columns?: string[]; rowCount?: number }
+  | { type: 'card.title'; title: string }
   | { type: 'card.delta'; textDelta: string }
+  | { type: 'table.cell'; r: number; c: number; text: string }
   | { type: 'card.done' }
   | { type: 'done' }
   | { type: 'error'; message: string };

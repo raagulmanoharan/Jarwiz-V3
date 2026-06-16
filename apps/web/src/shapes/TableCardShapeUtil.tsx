@@ -15,6 +15,8 @@ import {
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { useAutopilot } from '../agents/useAutopilot';
 import { useFitHeight } from './useFitHeight';
+import { MAX_CARD_H, isExpanded, subscribeExpand } from './cardExpand';
+import { ExpandToggle } from './ExpandToggle';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 
 export interface TableCardProps {
@@ -103,9 +105,16 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
   const isFilling = streamingSet.has(shape.id);
   const autopilot = useAutopilot();
-  // Grow the card to fit all rows (no scroll) — Miro text-box behaviour.
+  const expanded = useSyncExternalStore(subscribeExpand, () => isExpanded(shape.id), () => false);
+  // Grow to fit all rows; clamp past the threshold once settled (collapsible).
   const fitRef = useRef<HTMLDivElement | null>(null);
-  useFitHeight(shape.id, fitRef, [columns, rows]);
+  const overflowing = useFitHeight(shape.id, fitRef, [columns, rows], {
+    enabled: !isEditing,
+    streaming: isFilling,
+    expanded,
+    maxHeight: MAX_CARD_H,
+  });
+  const collapsed = overflowing && !expanded && !isFilling;
 
   const gridCols = `repeat(${Math.max(1, columns.length)}, minmax(0, 1fr))`;
 
@@ -144,7 +153,10 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
   const isEmpty = rows.every((r) => r.every((c) => !c.trim())) && columns.every((c) => !c.trim());
 
   return (
-    <div className={`jz-table${isFilling ? ' jz-table-filling' : ''}`} ref={fitRef}>
+    <div
+      className={`jz-table${isFilling ? ' jz-table-filling' : ''}${collapsed ? ' jz-card-collapsed' : ''}`}
+      ref={fitRef}
+    >
       <div className="jz-table-head" style={{ gridTemplateColumns: gridCols }}>
         {columns.map((label, col) =>
           isEditing ? (
@@ -224,6 +236,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
           Double-click, then press Tab to fill
         </div>
       ) : null}
+      {overflowing && !isFilling ? <ExpandToggle shapeId={shape.id} expanded={expanded} /> : null}
     </div>
   );
 }

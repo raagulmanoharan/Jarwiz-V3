@@ -1,12 +1,9 @@
 /**
- * The Ask pipeline, client side. Given a prompt and one or more source cards,
- * opens an SSE connection to /api/ask and streams the answer into a floating
- * preview (askPreview store) — NOT straight onto the canvas. The user judges it
- * and commits with "Add to canvas" (commitPreview), which creates the answer
- * card adjacent to the sources and draws a provenance edge from each.
- *
- * This is the one AI interaction of the PDF journey (docs/PDF-JOURNEY.md): the
- * same path serves a typed question and a predefined seed pill.
+ * The Ask pipeline, client side. The answer streams straight onto the canvas as
+ * a live "draft" card in its source's lane — doc text grows, a table builds
+ * column header then fills cell by cell — while the camera gently follows. The
+ * draft's Keep / Discard controls (DraftControls) let the user confirm or throw
+ * it away. The same path serves a typed question and a predefined seed pill.
  */
 
 import { useCallback, useRef, useState } from 'react';
@@ -21,9 +18,9 @@ import {
 } from 'tldraw';
 import type { AskEvent, AskSource } from '@jarwiz/shared';
 import { DOC_CARD_SIZE, TABLE_CARD_SIZE, type DocCardShape, type TableCardShape } from '../shapes';
-import { stopStreaming } from '../agents/streaming';
+import { startStreaming, stopStreaming } from '../agents/streaming';
 import { setResponsePdfSource } from '../pdf/provenance';
-import { appendPreviewText, clearPreview, getPreview, setPreview, updatePreview } from './askPreview';
+import { clearDraft, getDraft, setDraft, updateDraft } from './draft';
 import { logEvent } from '../log/eventLog';
 
 /** Build the server-side source descriptor from a card shape. */
@@ -55,57 +52,114 @@ export function useAsk() {
   const ask = useCallback(
     async (prompt: string, sourceIds: TLShapeId[]) => {
       const trimmed = prompt.trim();
-      if (!trimmed || sourceIds.length === 0 || isAsking) return;
+      if (!trimmed || sourceIds.length === 0 || isAsking || getDraft()) return;
 
       const sourceShapes = sourceIds
         .map((id) => editor.getShape(id))
         .filter((s): s is TLShape => Boolean(s));
-      const sources = sourceShapes
-        .map((s) => toSource(s))
-        .filter((s): s is AskSource => Boolean(s));
+      const sources = sourceShapes.map((s) => toSource(s)).filter((s): s is AskSource => Boolean(s));
       if (sources.length === 0) return;
 
-      const { x: placeX, y: placeY } = placeInLane(editor, sourceIds, DOC_CARD_SIZE.w, DOC_CARD_SIZE.h);
       const pdfSourceId = sourceShapes.find((s) => s.type === 'pdf-card')?.id ?? null;
 
       setIsAsking(true);
-      // Seed an empty preview so the panel opens immediately with a status.
-      setPreview({
-        shape: 'doc',
-        prompt: trimmed,
-        text: '',
-        status: 'streaming',
-        placeX,
-        placeY,
-        sourceIds,
-        pdfSourceId,
-      });
-
       abortRef.current?.abort();
       abortRef.current = new AbortController();
       const { signal } = abortRef.current;
 
+      let cardId: TLShapeId | null = null;
+      let cols: string[] = [];
+      let rows: string[][] = [];
+      let lastFollow = 0;
+
+      const follow = () => {
+        if (!cardId) return;
+        const now = Date.now();
+        if (now - lastFollow < 280) return;
+        lastFollow = now;
+        followCard(editor, cardId);
+      };
+
       const apply = (event: AskEvent) => {
         switch (event.type) {
-          case 'card.create':
-            updatePreview({
-              shape: event.shape,
-              title: event.title,
-              columns: event.columns,
-              rows: event.rows,
-              text: '',
-              status: event.shape === 'table' ? 'done' : 'streaming',
-            });
+          case 'card.create': {
+            const id = createShapeId();
+            cardId = id;
+            const at = placeInLane(
+              editor,
+              sourceIds,
+              event.shape === 'table' ? TABLE_CARD_SIZE.w : DOC_CARD_SIZE.w,
+              event.shape === 'table' ? TABLE_CARD_SIZE.h : DOC_CARD_SIZE.h,
+            );
+            if (event.shape === 'table') {
+              cols = (event.columns ?? []).slice(0, 6);
+              rows = Array.from({ length: event.rowCount ?? 0 }, () => cols.map(() => ''));
+              editor.createShape<TableCardShape>({
+                id,
+                type: 'table-card',
+                x: at.x,
+                y: at.y,
+                props: { w: TABLE_CARD_SIZE.w, h: TABLE_CARD_SIZE.h, columns: cols, rows },
+              });
+            } else {
+              editor.createShape<DocCardShape>({
+                id,
+                type: 'doc-card',
+                x: at.x,
+                y: at.y,
+                props: {
+                  w: DOC_CARD_SIZE.w,
+                  h: DOC_CARD_SIZE.h,
+                  title: event.title ?? '',
+                  text: '',
+                  sourcePdfId: pdfSourceId ?? '',
+                },
+              });
+            }
+            if (pdfSourceId) setResponsePdfSource(id, pdfSourceId);
+            startStreaming(id);
+            const arrowIds = sourceIds.map((from) => createEdge(editor, from, id)).filter(Boolean) as TLShapeId[];
+            setDraft({ id, arrowIds, status: 'streaming', prompt: trimmed, sourceIds, shape: event.shape, pdfSourceId });
+            frameCard(editor, id);
             break;
-          case 'card.delta':
-            appendPreviewText(event.textDelta);
+          }
+          case 'card.title': {
+            if (cardId && editor.getShape(cardId)?.type === 'doc-card') {
+              editor.updateShape<DocCardShape>({ id: cardId, type: 'doc-card', props: { title: event.title } });
+            }
             break;
+          }
+          case 'card.delta': {
+            if (!cardId) break;
+            const s = editor.getShape(cardId);
+            if (s && 'text' in (s.props as object)) {
+              editor.updateShape({
+                id: cardId,
+                type: s.type,
+                props: { text: (s.props as { text: string }).text + event.textDelta },
+              } as Parameters<typeof editor.updateShape>[0]);
+            }
+            follow();
+            break;
+          }
+          case 'table.cell': {
+            if (!cardId) break;
+            if (rows[event.r]) {
+              rows = rows.map((r) => [...r]);
+              rows[event.r]![event.c] = event.text;
+              editor.updateShape<TableCardShape>({ id: cardId, type: 'table-card', props: { rows } });
+            }
+            follow();
+            break;
+          }
           case 'card.done':
+            if (cardId) stopStreaming(cardId);
+            break;
           case 'done':
-            updatePreview({ status: 'done' });
+            updateDraft({ status: 'done' });
             break;
           case 'error':
-            updatePreview({ status: 'error', error: event.message });
+            updateDraft({ status: 'error', error: event.message });
             break;
         }
       };
@@ -141,10 +195,12 @@ export function useAsk() {
           for (const line of lines) flush(line);
         }
         flush(buffer);
-        updatePreview({ status: 'done' });
+        if (cardId) stopStreaming(cardId);
+        updateDraft({ status: 'done' });
       } catch (err) {
+        if (cardId) stopStreaming(cardId);
         if (err instanceof Error && err.name !== 'AbortError') {
-          updatePreview({ status: 'error', error: err.message });
+          if (getDraft()) updateDraft({ status: 'error', error: err.message });
         }
       } finally {
         setIsAsking(false);
@@ -161,64 +217,56 @@ export function useAsk() {
   return { ask, isAsking, abort };
 }
 
-/**
- * Commit the current preview to the canvas — create the answer card at its
- * placement, draw a provenance edge from each source, and wire citations.
- * Returns the new shape id, or null if there was nothing to add.
- */
-export function commitPreview(editor: Editor): TLShapeId | null {
-  const p = getPreview();
-  if (!p || p.status === 'error') return null;
-
-  const id = createShapeId();
-  if (p.pdfSourceId) setResponsePdfSource(id, p.pdfSourceId);
-
-  if (p.shape === 'table') {
-    const columns = (p.columns ?? []).slice(0, 6);
-    const rows = (p.rows ?? []).slice(0, 14).map((r) => r.slice(0, 6));
-    // Initial estimate only — the card auto-fits to its full content on mount.
-    const h = Math.max(TABLE_CARD_SIZE.h, 52 + rows.length * 56);
-    const at = placeInLane(editor, p.sourceIds, TABLE_CARD_SIZE.w, h);
-    editor.createShape<TableCardShape>({
-      id,
-      type: 'table-card',
-      x: at.x,
-      y: at.y,
-      props: { w: TABLE_CARD_SIZE.w, h, columns, rows },
-    });
-  } else {
-    const at = placeInLane(editor, p.sourceIds, DOC_CARD_SIZE.w, DOC_CARD_SIZE.h);
-    editor.createShape<DocCardShape>({
-      id,
-      type: 'doc-card',
-      x: at.x,
-      y: at.y,
-      props: {
-        w: DOC_CARD_SIZE.w,
-        h: DOC_CARD_SIZE.h,
-        title: p.title ?? '',
-        text: p.text,
-        sourcePdfId: p.pdfSourceId ?? '',
-      },
-    });
-  }
-  for (const from of p.sourceIds) createEdge(editor, from, id);
-  stopStreaming(id);
+/** Keep the streamed draft — log it and drop the draft state (the card stays). */
+export function finalizeDraft(editor: Editor): TLShapeId | null {
+  const d = getDraft();
+  if (!d || d.status === 'error') return null;
+  stopStreaming(d.id);
   logEvent(editor, {
     kind: 'artefact',
-    label: p.prompt || (p.title ?? 'Answer'),
-    detail: p.shape === 'table' ? 'Table' : p.title || 'Doc',
-    shapeIds: [id, ...p.sourceIds],
+    label: d.prompt,
+    detail: d.shape === 'table' ? 'Table' : 'Doc',
+    shapeIds: [d.id, ...d.sourceIds],
   });
-  clearPreview();
-  return id;
+  clearDraft();
+  return d.id;
 }
+
+/** Throw the streamed draft away — delete the card and its provenance edges. */
+export function discardDraft(editor: Editor): void {
+  const d = getDraft();
+  if (!d) return;
+  stopStreaming(d.id);
+  editor.deleteShapes([d.id, ...d.arrowIds]);
+  clearDraft();
+}
+
+/* ── camera ──────────────────────────────────────────────────────────────── */
+
+/** Frame a card comfortably in view (used when the draft first appears). */
+function frameCard(editor: Editor, id: TLShapeId): void {
+  const b = editor.getShapePageBounds(id);
+  if (b) editor.zoomToBounds(b, { animation: { duration: 360, easing: (t) => 1 - Math.pow(1 - t, 3) }, targetZoom: 0.9 });
+}
+
+/** Pan to keep a growing card's latest content in view, without yanking zoom. */
+function followCard(editor: Editor, id: TLShapeId): void {
+  const b = editor.getShapePageBounds(id);
+  if (!b) return;
+  const vp = editor.getViewportPageBounds();
+  const pad = 100 / editor.getZoomLevel();
+  if (b.maxY > vp.maxY - pad) {
+    const y = b.maxY - vp.h / 2 + pad;
+    editor.centerOnPoint({ x: vp.center.x, y }, { animation: { duration: 250 } });
+  }
+}
+
+/* ── layout ──────────────────────────────────────────────────────────────── */
 
 /**
  * Stitch-style per-source lanes: each source establishes a horizontal lane at
  * its top edge, and its answers are appended to the right end of THAT lane. So
- * every document gets its own row and the work fans out left-to-right within it,
- * instead of one global strip mixing unrelated threads.
+ * every document gets its own row and the work fans out left-to-right within it.
  */
 export function placeInLane(
   editor: Editor,
@@ -240,12 +288,10 @@ export function placeInLane(
     .map((id) => bounds(id))
     .filter((b): b is NonNullable<ReturnType<typeof bounds>> => Boolean(b));
   const GAP = 48;
-  const LANE_TOL = Math.max(80, h * 0.6); // same lane ≈ same top edge
-  // The lane is the source's row; align to its top.
+  const LANE_TOL = Math.max(80, h * 0.6);
   const laneTop = srcBounds.length
     ? Math.min(...srcBounds.map((b) => b.minY))
     : Math.min(...all.map((b) => b.minY));
-  // Append past the rightmost card already in this lane (fall back to source).
   const sameLane = all.filter((b) => Math.abs(b.minY - laneTop) < LANE_TOL);
   const anchor = sameLane.length ? sameLane : srcBounds;
   const x = (anchor.length ? Math.max(...anchor.map((b) => b.maxX)) : Math.max(...all.map((b) => b.maxX))) + GAP;
@@ -253,21 +299,14 @@ export function placeInLane(
 }
 
 /** A quiet provenance link — a gently curved, dotted, low-key arrow that only
- *  stands out when you click it (tldraw's selection highlight). */
-function createEdge(editor: Editor, fromId: TLShapeId, toId: TLShapeId): void {
-  if (!editor.getShape(fromId) || !editor.getShape(toId)) return;
+ *  stands out when you click it. Returns the arrow id (for discard). */
+function createEdge(editor: Editor, fromId: TLShapeId, toId: TLShapeId): TLShapeId | null {
+  if (!editor.getShape(fromId) || !editor.getShape(toId)) return null;
   const arrowId = createShapeId();
   editor.createShape<TLArrowShape>({
     id: arrowId,
     type: 'arrow',
-    props: {
-      color: 'grey',
-      size: 's',
-      dash: 'dotted',
-      bend: 28, // a soft, rounded curve rather than a hard straight line
-      arrowheadStart: 'none',
-      arrowheadEnd: 'arrow',
-    },
+    props: { color: 'grey', size: 's', dash: 'dotted', bend: 28, arrowheadStart: 'none', arrowheadEnd: 'arrow' },
   });
   editor.createBindings([
     {
@@ -285,4 +324,5 @@ function createEdge(editor: Editor, fromId: TLShapeId, toId: TLShapeId): void {
       props: { terminal: 'end', normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false, snap: 'none' },
     },
   ]);
+  return arrowId;
 }

@@ -9,7 +9,7 @@ import {
 } from 'tldraw';
 import { useSync } from '@tldraw/sync';
 import { AskLayer } from './ask/AskLayer';
-import { AskPreview } from './ask/AskPreview';
+import { DraftControls } from './ask/DraftControls';
 import { SelectionAsk } from './ask/SelectionAsk';
 import { Timeline } from './log/Timeline';
 import { registerIngestion } from './ingest/registerIngestion';
@@ -28,7 +28,7 @@ function JarwizOverlay() {
       <EmptyState />
       <Topbar />
       <AskLayer />
-      <AskPreview />
+      <DraftControls />
       <SelectionAsk />
       <Timeline />
     </>

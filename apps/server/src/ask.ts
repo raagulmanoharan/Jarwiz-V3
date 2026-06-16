@@ -185,37 +185,54 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
     columns = columns.slice(0, 6);
     rows = rows.slice(0, 14).map((r) => r.slice(0, 6));
     if (columns.length > 0) {
-      yield { type: 'card.create', shape: 'table', columns, rows };
+      // Build live: header first, then fill cells one by one so the user sees
+      // the table forming in real time.
+      yield { type: 'card.create', shape: 'table', columns, rowCount: rows.length };
+      for (let r = 0; r < rows.length; r++) {
+        for (let c = 0; c < columns.length; c++) {
+          if (signal.aborted) return;
+          yield { type: 'table.cell', r, c, text: rows[r]?.[c] ?? '' };
+          await sleep(28, signal);
+        }
+      }
+      yield { type: 'card.done' };
       yield { type: 'done' };
       return;
     }
     // Not clean JSON — degrade to a written answer.
-    const text = await generate(DOC_SYSTEM, user, signal);
-    yield* streamText('doc', text, signal);
+    yield* streamDoc('doc', DOC_SYSTEM, user, signal);
     return;
   }
 
   const base = shape === 'list' ? LIST_SYSTEM : DOC_SYSTEM;
   const system = citable ? base + CITE_DIRECTIVE : base;
-  const text = await generate(system, user, signal);
-  if (signal.aborted) return;
-  yield* streamText(shape, text, signal);
+  yield* streamDoc(shape, system, user, signal);
 }
 
-/** Emit a text answer as create → deltas → done, pulling an optional title. */
-async function* streamText(shape: AskShape, text: string, signal: AbortSignal): AsyncGenerator<AskEvent> {
+/**
+ * Create the doc card up front (the shape is known from the prompt), then
+ * generate and stream the body in — so the card appears immediately and fills
+ * live rather than popping in complete after a blank wait.
+ */
+async function* streamDoc(
+  shape: AskShape,
+  system: string,
+  user: string,
+  signal: AbortSignal,
+): AsyncGenerator<AskEvent> {
+  yield { type: 'card.create', shape };
+  const text = await generate(system, user, signal);
+  if (signal.aborted) return;
   const lines = text.split('\n');
-  let title: string | undefined;
   let body = text;
   if (lines[0]?.startsWith('# ')) {
-    title = lines[0].replace(/^#\s+/, '').slice(0, 80);
+    yield { type: 'card.title', title: lines[0].replace(/^#\s+/, '').slice(0, 80) };
     body = lines.slice(1).join('\n').trim();
   }
-  yield { type: 'card.create', shape, title };
   for (const piece of chunk(body)) {
     if (signal.aborted) return;
     yield { type: 'card.delta', textDelta: piece };
-    await sleep(20, signal);
+    await sleep(18, signal);
   }
   yield { type: 'card.done' };
   yield { type: 'done' };

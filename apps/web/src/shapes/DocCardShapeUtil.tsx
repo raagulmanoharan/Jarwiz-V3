@@ -20,6 +20,8 @@ import { DocMarkdown } from '../ui/DocMarkdown';
 import { getResponsePdfSource } from '../pdf/provenance';
 import { setPdfPage } from '../pdf/pdfView';
 import { useFitHeight } from './useFitHeight';
+import { MAX_CARD_H, isExpanded, subscribeExpand, toggleExpand } from './cardExpand';
+import { ExpandToggle } from './ExpandToggle';
 import { DOC_RADIUS, roundedRectPath } from './cardGeometry';
 
 export interface DocCardProps {
@@ -93,9 +95,16 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
   const isStreaming = streamingSet.has(shape.id);
   const autopilot = useAutopilot();
   const mention = useMention();
-  // Grow the card to fit its content (no scroll) while it's being read.
+  const expanded = useSyncExternalStore(subscribeExpand, () => isExpanded(shape.id), () => false);
+  // Grow to fit content; once settled, clamp past the threshold (collapsible).
   const fitRef = useRef<HTMLDivElement | null>(null);
-  useFitHeight(shape.id, fitRef, [text, title], !isEditing);
+  const overflowing = useFitHeight(shape.id, fitRef, [text, title], {
+    enabled: !isEditing,
+    streaming: isStreaming,
+    expanded,
+    maxHeight: MAX_CARD_H,
+  });
+  const collapsed = overflowing && !expanded && !isStreaming;
 
   if (isEditing) {
     return (
@@ -147,7 +156,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
   }
 
   return (
-    <div className="jz-doc jz-doc-auto" ref={fitRef}>
+    <div className={`jz-doc jz-doc-auto${collapsed ? ' jz-card-collapsed' : ''}`} ref={fitRef}>
       <div className="jz-doc-header">
         <div className="jz-doc-title">{title || 'Document'}</div>
       </div>
@@ -169,6 +178,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
         )}
         {isStreaming && <span className="jz-stream-caret" aria-hidden />}
       </div>
+      {overflowing && !isStreaming ? <ExpandToggle shapeId={shape.id} expanded={expanded} /> : null}
     </div>
   );
 }
