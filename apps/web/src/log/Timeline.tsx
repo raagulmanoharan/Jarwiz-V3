@@ -16,10 +16,20 @@ import {
   type LogEvent,
 } from './eventLog';
 
+function ClockIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden>
+      <circle cx="8.5" cy="8.5" r="6.4" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M8.5 4.8V8.6L11 10.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function Timeline() {
   const editor = useEditor();
   const events = useSyncExternalStore(subscribeLog, getEvents, getEvents);
   const hovered = useSyncExternalStore(subscribeLog, getHoveredEvent, getHoveredEvent);
+  const [open, setOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
   // Viewport boxes for the hovered event's surviving shapes (follows pan/zoom).
@@ -52,25 +62,43 @@ export function Timeline() {
         />
       ))}
 
-      <div className="jz-timeline">
-        <div className="jz-tl-title">Activity</div>
-        <div className="jz-tl-list">
-          {[...events].reverse().map((ev) => (
-            <TimelineItem
-              key={ev.id}
-              ev={ev}
-              confirming={confirmId === ev.id}
-              onHover={(on) => setHoveredEvent(on ? ev.id : null)}
-              onClick={() => setConfirmId(ev.id)}
-              onCancel={() => setConfirmId(null)}
-              onConfirm={() => {
-                revertToEvent(editor, ev.id);
-                setConfirmId(null);
-              }}
-            />
-          ))}
+      {/* Collapsed: a clock chip in the top-right that opens the activity log. */}
+      <button
+        className={`jz-tl-fab${open ? ' jz-tl-fab-on' : ''}`}
+        title="Activity"
+        aria-label="Activity"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <ClockIcon />
+        <span className="jz-tl-fab-count">{events.length}</span>
+      </button>
+
+      {open ? (
+        <div className="jz-timeline">
+          <div className="jz-tl-head">
+            <span className="jz-tl-title">Activity</span>
+            <button className="jz-tl-close" aria-label="Close" onClick={() => setOpen(false)}>
+              ✕
+            </button>
+          </div>
+          <div className="jz-tl-list">
+            {[...events].reverse().map((ev) => (
+              <TimelineItem
+                key={ev.id}
+                ev={ev}
+                confirming={confirmId === ev.id}
+                onHover={(on) => setHoveredEvent(on ? ev.id : null)}
+                onClick={() => setConfirmId(ev.id)}
+                onCancel={() => setConfirmId(null)}
+                onConfirm={() => {
+                  revertToEvent(editor, ev.id);
+                  setConfirmId(null);
+                }}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
     </>
   );
 }

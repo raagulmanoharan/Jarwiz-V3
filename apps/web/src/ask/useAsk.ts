@@ -65,7 +65,7 @@ export function useAsk() {
         .filter((s): s is AskSource => Boolean(s));
       if (sources.length === 0) return;
 
-      const { x: placeX, y: placeY } = placeInStrip(editor, sourceIds, DOC_CARD_SIZE.w, DOC_CARD_SIZE.h);
+      const { x: placeX, y: placeY } = placeInLane(editor, sourceIds, DOC_CARD_SIZE.w, DOC_CARD_SIZE.h);
       const pdfSourceId = sourceShapes.find((s) => s.type === 'pdf-card')?.id ?? null;
 
       setIsAsking(true);
@@ -178,7 +178,7 @@ export function commitPreview(editor: Editor): TLShapeId | null {
     const rows = (p.rows ?? []).slice(0, 14).map((r) => r.slice(0, 6));
     // Bounded height; the body scrolls if the content is taller.
     const h = Math.min(460, Math.max(TABLE_CARD_SIZE.h, 52 + rows.length * 56));
-    const at = placeInStrip(editor, p.sourceIds, TABLE_CARD_SIZE.w, h);
+    const at = placeInLane(editor, p.sourceIds, TABLE_CARD_SIZE.w, h);
     editor.createShape<TableCardShape>({
       id,
       type: 'table-card',
@@ -187,7 +187,7 @@ export function commitPreview(editor: Editor): TLShapeId | null {
       props: { w: TABLE_CARD_SIZE.w, h, columns, rows },
     });
   } else {
-    const at = placeInStrip(editor, p.sourceIds, DOC_CARD_SIZE.w, DOC_CARD_SIZE.h);
+    const at = placeInLane(editor, p.sourceIds, DOC_CARD_SIZE.w, DOC_CARD_SIZE.h);
     editor.createShape<DocCardShape>({
       id,
       type: 'doc-card',
@@ -215,11 +215,12 @@ export function commitPreview(editor: Editor): TLShapeId | null {
 }
 
 /**
- * Stitch-style layout: every artefact is appended to the right end of a single
- * top-aligned strip. New cards line up next to each other, sharing the source's
- * top edge, so the board reads as a left-to-right flow instead of a scatter.
+ * Stitch-style per-source lanes: each source establishes a horizontal lane at
+ * its top edge, and its answers are appended to the right end of THAT lane. So
+ * every document gets its own row and the work fans out left-to-right within it,
+ * instead of one global strip mixing unrelated threads.
  */
-export function placeInStrip(
+export function placeInLane(
   editor: Editor,
   sourceIds: TLShapeId[],
   w: number,
@@ -239,22 +240,34 @@ export function placeInStrip(
     .map((id) => bounds(id))
     .filter((b): b is NonNullable<ReturnType<typeof bounds>> => Boolean(b));
   const GAP = 48;
-  // Top edge: align to the source (or the strip's top if no source bounds).
-  const topY = srcBounds.length
+  const LANE_TOL = Math.max(80, h * 0.6); // same lane ≈ same top edge
+  // The lane is the source's row; align to its top.
+  const laneTop = srcBounds.length
     ? Math.min(...srcBounds.map((b) => b.minY))
     : Math.min(...all.map((b) => b.minY));
-  const x = Math.max(...all.map((b) => b.maxX)) + GAP;
-  return { x, y: topY };
+  // Append past the rightmost card already in this lane (fall back to source).
+  const sameLane = all.filter((b) => Math.abs(b.minY - laneTop) < LANE_TOL);
+  const anchor = sameLane.length ? sameLane : srcBounds;
+  const x = (anchor.length ? Math.max(...anchor.map((b) => b.maxX)) : Math.max(...all.map((b) => b.maxX))) + GAP;
+  return { x, y: laneTop };
 }
 
-/** A neutral provenance arrow from a source card to the answer. */
+/** A quiet provenance link — a gently curved, dotted, low-key arrow that only
+ *  stands out when you click it (tldraw's selection highlight). */
 function createEdge(editor: Editor, fromId: TLShapeId, toId: TLShapeId): void {
   if (!editor.getShape(fromId) || !editor.getShape(toId)) return;
   const arrowId = createShapeId();
   editor.createShape<TLArrowShape>({
     id: arrowId,
     type: 'arrow',
-    props: { color: 'violet', size: 's', dash: 'solid', arrowheadEnd: 'triangle' },
+    props: {
+      color: 'grey',
+      size: 's',
+      dash: 'dotted',
+      bend: 28, // a soft, rounded curve rather than a hard straight line
+      arrowheadStart: 'none',
+      arrowheadEnd: 'arrow',
+    },
   });
   editor.createBindings([
     {
