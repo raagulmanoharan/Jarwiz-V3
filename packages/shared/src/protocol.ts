@@ -240,18 +240,33 @@ export interface AskRequest {
   sources: AskSource[];
 }
 
-/** The shape the answer takes; inferred from the prompt + content, steerable. */
-export type AskShape = 'doc' | 'table' | 'list';
+/**
+ * The shape the answer takes; inferred from the prompt + content, steerable.
+ *  - `doc`/`list` — written prose or bullets. A checklist is a `doc`/`list`
+ *    whose items are `- [ ]` task lines; it is NOT a separate shape.
+ *  - `table` — a comparison/matrix grid.
+ *  - `diagram` — a Mermaid diagram; the server picks the subtype (flowchart,
+ *    sequence, mindmap, ER, gantt, …) from the prompt and emits Mermaid code.
+ *  - `affinity` — clustered sticky notes (an affinity diagram): not one card but
+ *    a set of `note` cards grouped into labelled clusters.
+ */
+export type AskShape = 'doc' | 'table' | 'list' | 'diagram' | 'affinity';
 
-/** SSE events for a single Ask response card. Tables build live: a `card.create`
- *  carries the columns and the eventual row count, then `table.cell` events fill
- *  cells one by one. Docs/lists stream as `card.delta` text. */
+/** SSE events for a single Ask response.
+ *  - Tables build live: `card.create` carries the columns + row count, then
+ *    `table.cell` events fill cells one by one.
+ *  - Docs/lists/diagrams stream as `card.delta` text (a diagram streams its
+ *    Mermaid source, rendered to SVG once `card.done` lands).
+ *  - Affinity diagrams emit `affinity.cluster` (a labelled group) followed by
+ *    `affinity.note` events (a sticky in that group). */
 export type AskEvent =
   | { type: 'status'; message: string }
   | { type: 'card.create'; shape: AskShape; title?: string; columns?: string[]; rowCount?: number }
   | { type: 'card.title'; title: string }
   | { type: 'card.delta'; textDelta: string }
   | { type: 'table.cell'; r: number; c: number; text: string }
+  | { type: 'affinity.cluster'; index: number; label: string }
+  | { type: 'affinity.note'; cluster: number; text: string }
   | { type: 'card.done' }
   | { type: 'done' }
   | { type: 'error'; message: string };

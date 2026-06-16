@@ -2663,4 +2663,152 @@ body,
   .jz-mention {
     animation-name: jz-fade-in;
   }
+  .jz-dock-btn {
+    transition: none;
+  }
+}
+
+/* ─── Task lists (checklists inside doc cards) ──────────────────────────── */
+.jz-md-tasklist {
+  list-style: none;
+  padding-left: 0;
+}
+
+.jz-md-task {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--jz-space-3);
+}
+
+.jz-md-checkbox {
+  margin: 0;
+  margin-top: 3px;
+  flex: none;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--jz-accent, #7a5cff);
+  cursor: pointer;
+}
+
+.jz-md-task-done {
+  color: var(--jz-ink-400);
+  text-decoration: line-through;
+}
+
+/* ─── Diagram card (Mermaid) ────────────────────────────────────────────── */
+.jz-diagram {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--jz-radius-lg);
+  box-shadow: var(--jz-e2);
+  overflow: hidden;
+  font-family: var(--jz-font-ui);
+  background: var(--jz-surface);
+  border: 1px solid var(--jz-hairline-strong);
+  box-sizing: border-box;
+}
+
+.jz-diagram-head {
+  flex: none;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: var(--jz-space-2);
+  padding: var(--jz-space-3) var(--jz-space-6);
+  border-bottom: 1px solid var(--jz-hairline);
+}
+
+.jz-diagram-kind {
+  color: var(--jz-accent, #7a5cff);
+  font-size: 11px;
+}
+
+.jz-diagram-title {
+  font-family: var(--jz-font-display);
+  font-size: var(--jz-text-title-size);
+  line-height: var(--jz-text-title-lh);
+  font-weight: 540;
+  color: var(--jz-ink-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jz-diagram-body {
+  flex: 1 1 auto;
+  padding: var(--jz-space-5) var(--jz-space-6);
+  overflow: hidden;
+}
+
+.jz-diagram-svg {
+  display: flex;
+  justify-content: center;
+}
+
+.jz-diagram-svg svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.jz-diagram-code {
+  margin: 0;
+  font-family: var(--jz-font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--jz-ink-600);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.jz-diagram-code-raw {
+  color: var(--jz-ink-700);
+}
+
+.jz-diagram-empty {
+  font-size: var(--jz-text-body-size);
+  color: var(--jz-ink-400);
+}
+
+/* ─── Sticky-note dock (add a note anywhere) ────────────────────────────── */
+.jz-dock {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 300;
+  display: flex;
+  gap: 8px;
+}
+
+.jz-dock-btn {
+  pointer-events: all;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px 0 11px;
+  border: 1px solid var(--jz-line, var(--jz-hairline-strong));
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e2);
+  color: var(--jz-ink-700);
+  font-family: var(--jz-font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform var(--jz-dur-fast) var(--jz-ease-out),
+    border-color var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-dock-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--jz-accent, #7a5cff);
+  color: var(--jz-accent, #7a5cff);
+}
+
+.jz-dock-icon {
+  font-size: 15px;
+  line-height: 1;
 }

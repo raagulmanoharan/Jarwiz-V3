@@ -15,6 +15,7 @@ import { Timeline } from './log/Timeline';
 import { registerIngestion } from './ingest/registerIngestion';
 import { cardShapeUtils } from './shapes';
 import { EmptyState } from './ui/EmptyState';
+import { StickyDock } from './ui/StickyDock';
 import { Topbar } from './ui/Topbar';
 
 /**
@@ -30,6 +31,7 @@ function JarwizOverlay() {
       <AskLayer />
       <DraftControls />
       <SelectionAsk />
+      <StickyDock />
       <Timeline />
     </>
   );
@@ -102,7 +104,7 @@ function SyncedBoard({ room }: { room: string }) {
 function LocalBoard() {
   return (
     <Tldraw
-      persistenceKey="jarwiz-pdf-v1"
+      persistenceKey="jarwiz-pdf-v2"
       shapeUtils={cardShapeUtils}
       components={components}
       onMount={handleMount}

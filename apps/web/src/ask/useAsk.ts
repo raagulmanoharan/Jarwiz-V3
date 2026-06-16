@@ -17,7 +17,16 @@ import {
   type TLShapeId,
 } from 'tldraw';
 import type { AskEvent, AskSource } from '@jarwiz/shared';
-import { DOC_CARD_SIZE, TABLE_CARD_SIZE, type DocCardShape, type TableCardShape } from '../shapes';
+import {
+  DIAGRAM_CARD_SIZE,
+  DOC_CARD_SIZE,
+  TABLE_CARD_SIZE,
+  affinityColor,
+  type DiagramCardShape,
+  type DocCardShape,
+  type NoteCardShape,
+  type TableCardShape,
+} from '../shapes';
 import { startStreaming, stopStreaming } from '../agents/streaming';
 import { setResponsePdfSource } from '../pdf/provenance';
 import { clearDraft, getDraft, setDraft, updateDraft } from './draft';
@@ -70,28 +79,73 @@ export function useAsk() {
       let cardId: TLShapeId | null = null;
       let cols: string[] = [];
       let rows: string[][] = [];
+      // Affinity diagrams aren't one card — they're a board of sticky notes laid
+      // out in labelled columns. `createdIds` is every shape made (for framing),
+      // `affinity` holds the per-cluster layout cursors.
+      let createdIds: TLShapeId[] = [];
+      let affinity: { laneX: number; laneY: number; cols: Map<number, { x: number; ynext: number }> } | null =
+        null;
       let lastFollow = 0;
 
+      const framed = () => (affinity ? createdIds : cardId ? [cardId] : []);
+
       const follow = () => {
-        if (!cardId) return;
+        const ids = framed();
+        if (ids.length === 0) return;
         const now = Date.now();
         if (now - lastFollow < 280) return;
         lastFollow = now;
-        followCard(editor, cardId, sourceIds);
+        followCard(editor, ids, sourceIds);
+      };
+
+      // Register an affinity sticky: the first one becomes the draft anchor (and
+      // gets the provenance edges); the rest join its group.
+      const registerAffinity = (id: TLShapeId) => {
+        createdIds.push(id);
+        const d = getDraft();
+        if (!d) {
+          const arrowIds = sourceIds
+            .map((from) => createEdge(editor, from, id))
+            .filter(Boolean) as TLShapeId[];
+          setDraft({
+            id,
+            groupIds: [],
+            arrowIds,
+            status: 'streaming',
+            prompt: trimmed,
+            sourceIds,
+            shape: 'affinity',
+            pdfSourceId,
+          });
+          frameCard(editor, [id], sourceIds);
+        } else {
+          updateDraft({ groupIds: createdIds.filter((x) => x !== d.id) });
+        }
       };
 
       const apply = (event: AskEvent) => {
         switch (event.type) {
           case 'card.create': {
+            if (event.shape === 'affinity') {
+              const at = placeInLane(editor, sourceIds, AFFINITY_NOTE_W * 3 + AFFINITY_CLUSTER_GAP * 2, 360);
+              affinity = { laneX: at.x, laneY: at.y, cols: new Map() };
+              createdIds = [];
+              break;
+            }
             const id = createShapeId();
             cardId = id;
-            const at = placeInLane(
-              editor,
-              sourceIds,
-              event.shape === 'table' ? TABLE_CARD_SIZE.w : DOC_CARD_SIZE.w,
-              event.shape === 'table' ? TABLE_CARD_SIZE.h : DOC_CARD_SIZE.h,
-            );
-            if (event.shape === 'table') {
+            createdIds = [id];
+            if (event.shape === 'diagram') {
+              const at = placeInLane(editor, sourceIds, DIAGRAM_CARD_SIZE.w, DIAGRAM_CARD_SIZE.h);
+              editor.createShape<DiagramCardShape>({
+                id,
+                type: 'diagram-card',
+                x: at.x,
+                y: at.y,
+                props: { w: DIAGRAM_CARD_SIZE.w, h: DIAGRAM_CARD_SIZE.h, code: '', title: trimmed.slice(0, 70) },
+              });
+            } else if (event.shape === 'table') {
+              const at = placeInLane(editor, sourceIds, TABLE_CARD_SIZE.w, TABLE_CARD_SIZE.h);
               cols = (event.columns ?? []).slice(0, 6);
               rows = Array.from({ length: event.rowCount ?? 0 }, () => cols.map(() => ''));
               editor.createShape<TableCardShape>({
@@ -102,6 +156,7 @@ export function useAsk() {
                 props: { w: TABLE_CARD_SIZE.w, h: TABLE_CARD_SIZE.h, columns: cols, rows },
               });
             } else {
+              const at = placeInLane(editor, sourceIds, DOC_CARD_SIZE.w, DOC_CARD_SIZE.h);
               editor.createShape<DocCardShape>({
                 id,
                 type: 'doc-card',
@@ -120,7 +175,7 @@ export function useAsk() {
             startStreaming(id);
             const arrowIds = sourceIds.map((from) => createEdge(editor, from, id)).filter(Boolean) as TLShapeId[];
             setDraft({ id, arrowIds, status: 'streaming', prompt: trimmed, sourceIds, shape: event.shape, pdfSourceId });
-            frameCard(editor, id, sourceIds);
+            frameCard(editor, [id], sourceIds);
             break;
           }
           case 'card.title': {
@@ -132,7 +187,14 @@ export function useAsk() {
           case 'card.delta': {
             if (!cardId) break;
             const s = editor.getShape(cardId);
-            if (s && 'text' in (s.props as object)) {
+            if (!s) break;
+            if (s.type === 'diagram-card') {
+              editor.updateShape<DiagramCardShape>({
+                id: cardId,
+                type: 'diagram-card',
+                props: { code: (s.props as { code: string }).code + event.textDelta },
+              });
+            } else if ('text' in (s.props as object)) {
               editor.updateShape({
                 id: cardId,
                 type: s.type,
@@ -152,11 +214,45 @@ export function useAsk() {
             follow();
             break;
           }
+          case 'affinity.cluster': {
+            if (!affinity) break;
+            const colX = affinity.laneX + event.index * (AFFINITY_NOTE_W + AFFINITY_CLUSTER_GAP);
+            const id = createShapeId();
+            editor.createShape<NoteCardShape>({
+              id,
+              type: 'note-card',
+              x: colX,
+              y: affinity.laneY,
+              props: { w: AFFINITY_NOTE_W, h: AFFINITY_LABEL_H, text: event.label, color: affinityColor(event.index) },
+            });
+            affinity.cols.set(event.index, { x: colX, ynext: affinity.laneY + AFFINITY_LABEL_H + AFFINITY_GAP });
+            registerAffinity(id);
+            follow();
+            break;
+          }
+          case 'affinity.note': {
+            if (!affinity) break;
+            const col = affinity.cols.get(event.cluster);
+            if (!col) break;
+            const id = createShapeId();
+            editor.createShape<NoteCardShape>({
+              id,
+              type: 'note-card',
+              x: col.x,
+              y: col.ynext,
+              props: { w: AFFINITY_NOTE_W, h: AFFINITY_NOTE_H, text: event.text, color: affinityColor(event.cluster) },
+            });
+            col.ynext += AFFINITY_NOTE_H + AFFINITY_GAP;
+            registerAffinity(id);
+            follow();
+            break;
+          }
           case 'card.done':
             if (cardId) stopStreaming(cardId);
             break;
           case 'done':
             updateDraft({ status: 'done' });
+            if (affinity && createdIds.length > 0) frameCard(editor, createdIds, sourceIds);
             break;
           case 'error':
             updateDraft({ status: 'error', error: event.message });
@@ -217,6 +313,14 @@ export function useAsk() {
   return { ask, isAsking, abort };
 }
 
+const ARTEFACT_LABEL: Record<string, string> = {
+  table: 'Table',
+  diagram: 'Diagram',
+  affinity: 'Sticky notes',
+  list: 'List',
+  doc: 'Doc',
+};
+
 /** Keep the streamed draft — log it and drop the draft state (the card stays). */
 export function finalizeDraft(editor: Editor): TLShapeId | null {
   const d = getDraft();
@@ -225,19 +329,19 @@ export function finalizeDraft(editor: Editor): TLShapeId | null {
   logEvent(editor, {
     kind: 'artefact',
     label: d.prompt,
-    detail: d.shape === 'table' ? 'Table' : 'Doc',
-    shapeIds: [d.id, ...d.sourceIds],
+    detail: ARTEFACT_LABEL[d.shape] ?? 'Doc',
+    shapeIds: [d.id, ...(d.groupIds ?? []), ...d.sourceIds],
   });
   clearDraft();
   return d.id;
 }
 
-/** Throw the streamed draft away — delete the card and its provenance edges. */
+/** Throw the streamed draft away — delete the card(s) and provenance edges. */
 export function discardDraft(editor: Editor): void {
   const d = getDraft();
   if (!d) return;
   stopStreaming(d.id);
-  editor.deleteShapes([d.id, ...d.arrowIds]);
+  editor.deleteShapes([d.id, ...(d.groupIds ?? []), ...d.arrowIds]);
   clearDraft();
 }
 
@@ -245,9 +349,9 @@ export function discardDraft(editor: Editor): void {
 
 const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
-/** Combined bounds of the response and the source(s) it came from. */
-function pairBounds(editor: Editor, responseId: TLShapeId, sourceIds: TLShapeId[]) {
-  const boxes = [responseId, ...sourceIds]
+/** Combined bounds of the response shape(s) and the source(s) they came from. */
+function pairBounds(editor: Editor, responseIds: TLShapeId[], sourceIds: TLShapeId[]) {
+  const boxes = [...responseIds, ...sourceIds]
     .map((id) => editor.getShapePageBounds(id))
     .filter((b): b is NonNullable<ReturnType<typeof editor.getShapePageBounds>> => Boolean(b));
   if (boxes.length === 0) return null;
@@ -255,19 +359,28 @@ function pairBounds(editor: Editor, responseId: TLShapeId, sourceIds: TLShapeId[
 }
 
 /** Frame the source + response together, centred (used when the draft appears). */
-function frameCard(editor: Editor, responseId: TLShapeId, sourceIds: TLShapeId[]): void {
-  const u = pairBounds(editor, responseId, sourceIds);
+function frameCard(editor: Editor, responseIds: TLShapeId[], sourceIds: TLShapeId[]): void {
+  const u = pairBounds(editor, responseIds, sourceIds);
   if (u) editor.zoomToBounds(u, { animation: { duration: 420, easing: easeOutCubic }, inset: 130 });
 }
 
 /** Keep the source + response centred as the response grows — re-frame only
  *  when the pair has outgrown the viewport, so it doesn't jitter when it fits. */
-function followCard(editor: Editor, responseId: TLShapeId, sourceIds: TLShapeId[]): void {
-  const u = pairBounds(editor, responseId, sourceIds);
+function followCard(editor: Editor, responseIds: TLShapeId[], sourceIds: TLShapeId[]): void {
+  const u = pairBounds(editor, responseIds, sourceIds);
   if (!u) return;
   if (editor.getViewportPageBounds().contains(u)) return;
   editor.zoomToBounds(u, { animation: { duration: 280, easing: easeOutCubic }, inset: 130 });
 }
+
+/* ── affinity layout ───────────────────────────────────────────────────────
+ * Sticky notes laid out in labelled columns — a heading sticky per cluster,
+ * its notes stacked beneath it. */
+const AFFINITY_NOTE_W = 200;
+const AFFINITY_LABEL_H = 40;
+const AFFINITY_NOTE_H = 96;
+const AFFINITY_GAP = 12;
+const AFFINITY_CLUSTER_GAP = 28;
 
 /* ── layout ──────────────────────────────────────────────────────────────── */
 

@@ -7,13 +7,18 @@
 import type { TLShapeId } from 'tldraw';
 
 export interface Draft {
+  /** The anchor shape — a single answer card, or the first sticky of an
+   *  affinity board. Controls float under it. */
   id: TLShapeId;
+  /** Other shapes that belong to this artefact (affinity stickies/labels);
+   *  kept and discarded together with `id`. */
+  groupIds?: TLShapeId[];
   arrowIds: TLShapeId[];
   status: 'streaming' | 'done' | 'error';
   error?: string;
   prompt: string;
   sourceIds: TLShapeId[];
-  shape: 'doc' | 'table' | 'list';
+  shape: 'doc' | 'table' | 'list' | 'diagram' | 'affinity';
   pdfSourceId: TLShapeId | null;
 }
 

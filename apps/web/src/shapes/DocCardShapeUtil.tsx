@@ -8,6 +8,7 @@ import {
   stopEventPropagation,
   useEditor,
   useIsEditing,
+  type Editor,
   type RecordProps,
   type TLResizeInfo,
   type TLShape,
@@ -85,6 +86,25 @@ export class DocCardShapeUtil extends ShapeUtil<DocCardShape> {
       </HTMLContainer>
     );
   }
+}
+
+/** A markdown task line, capturing leading bullet, checkbox state, and the rest. */
+const TASK_LINE_RE = /^(\s*[-*]\s+)\[([ xX])\](\s+.*)$/;
+
+/** Flip the Nth task line (`- [ ]` ↔ `- [x]`) in the card's source text. */
+function toggleTask(editor: Editor, shape: DocCardShape, ordinal: number, checked: boolean): void {
+  let n = -1;
+  const next = shape.props.text
+    .split('\n')
+    .map((line) => {
+      const m = line.match(TASK_LINE_RE);
+      if (!m) return line;
+      n += 1;
+      if (n !== ordinal) return line;
+      return `${m[1]}[${checked ? 'x' : ' '}]${m[3]}`;
+    })
+    .join('\n');
+  editor.updateShape<DocCardShape>({ id: shape.id, type: 'doc-card', props: { text: next } });
 }
 
 function DocCardBody({ shape }: { shape: DocCardShape }) {
@@ -172,6 +192,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
               const bounds = editor.getShapePageBounds(pdfId);
               if (bounds) editor.zoomToBounds(bounds, { animation: { duration: 220 }, inset: 80 });
             }}
+            onToggleTask={isStreaming ? undefined : (ordinal, checked) => toggleTask(editor, shape, ordinal, checked)}
           />
         ) : (
           'Double-click to edit'

@@ -8,6 +8,7 @@
  *   pdf-card → 'pdf', note-card → 'note', doc-card → 'doc'.
  */
 
+import { DiagramCardShapeUtil } from './DiagramCardShapeUtil';
 import { DocCardShapeUtil } from './DocCardShapeUtil';
 import { ImageCardShapeUtil } from './ImageCardShapeUtil';
 import { LinkCardShapeUtil } from './LinkCardShapeUtil';
@@ -16,10 +17,18 @@ import { PdfCardShapeUtil } from './PdfCardShapeUtil';
 import { TableCardShapeUtil } from './TableCardShapeUtil';
 import { YouTubeCardShapeUtil } from './YouTubeCardShapeUtil';
 
+export { DiagramCardShapeUtil, DIAGRAM_CARD_SIZE, type DiagramCardShape } from './DiagramCardShapeUtil';
 export { DocCardShapeUtil, DOC_CARD_SIZE, type DocCardShape } from './DocCardShapeUtil';
 export { ImageCardShapeUtil, type ImageCardShape } from './ImageCardShapeUtil';
 export { LinkCardShapeUtil, LINK_CARD_SIZE, type LinkCardShape } from './LinkCardShapeUtil';
-export { NoteCardShapeUtil, NOTE_CARD_SIZE, type NoteCardShape } from './NoteCardShapeUtil';
+export {
+  NoteCardShapeUtil,
+  NOTE_CARD_SIZE,
+  NOTE_PAPER,
+  AFFINITY_COLORS,
+  affinityColor,
+  type NoteCardShape,
+} from './NoteCardShapeUtil';
 export { PdfCardShapeUtil, PDF_CARD_SIZE, type PdfCardShape } from './PdfCardShapeUtil';
 export {
   TableCardShapeUtil,
@@ -38,4 +47,5 @@ export const cardShapeUtils = [
   NoteCardShapeUtil,
   DocCardShapeUtil,
   TableCardShapeUtil,
+  DiagramCardShapeUtil,
 ] as const;

@@ -25,9 +25,47 @@ const TABLE_SYSTEM = `You answer a question about the provided source document(s
 
 const CLAUSE_DIFF_SYSTEM = `You are comparing multiple source documents clause-by-clause to surface overlaps and CONFLICTS. Return ONLY a JSON object {"columns": string[], "rows": string[][]}. Columns MUST be: "Topic / Clause", then one column per source document (use a short version of each document's title), then a final "Conflict?" column. Each row is a topic the documents both address; fill each document's cell with its stance/wording (short, grounded), and set "Conflict?" to "Yes", "No", or "Partial" with a few words on why. Prioritise rows where the documents differ or contradict. Ground every cell in the provided text; leave a cell blank if a document is silent. No prose, no code fences.`;
 
+const DIAGRAM_SYSTEM = `You turn the user's request and the source document(s) into ONE diagram, expressed as Mermaid source. First choose the Mermaid diagram type that best fits the intent:
+- "flowchart TD" — a process, decision, or how something flows step to step
+- "sequenceDiagram" — messages/interactions between actors over time
+- "classDiagram" — data/object structures and their relationships
+- "stateDiagram-v2" — states and the transitions between them (a lifecycle)
+- "erDiagram" — entities and their relationships (a data model)
+- "mindmap" — a hierarchical breakdown of one topic into sub-ideas
+- "timeline" — chronological events or milestones
+- "gantt" — scheduled tasks with dates
+- "journey" — a user's steps and how they feel at each
+
+Output ONLY valid Mermaid source: no prose, no explanation, NO \`\`\` code fences. Put the diagram-type keyword on the very first line. Keep node labels short and ground every node in the provided content. Aim for 6–18 nodes — clear beats exhaustive. Wrap any label containing punctuation or spaces in double quotes. Never invent facts that aren't in the sources.`;
+
+const AFFINITY_SYSTEM = `You run an affinity-mapping exercise: turn the request and the source(s) into clustered sticky notes. Return ONLY a JSON object {"clusters": [{"label": string, "notes": string[]}]}. Make 3–6 clusters; each has a short 1–4 word "label" (the theme) and 2–6 short "notes" (each one idea, a few words). Group related ideas under the same theme. Ground notes in the provided content when a source is given; otherwise brainstorm sensible ideas for the request. No prose, no code fences.`;
+
+/** Steers a doc/list answer to render as an interactive markdown checklist. */
+const CHECKLIST_DIRECTIVE =
+  '\n\nFormat the actionable items as a markdown task list: every item on its own line beginning with "- [ ] " (an unchecked checkbox), one concrete action each. Use "- [x] " only for items the sources say are already done. An optional "# " title line is fine; otherwise no prose, no intro, no sign-off.';
+
 /** A cross-document conflict/clause-diff request (→ the clause-diff table). */
 function looksLikeDiff(prompt: string): boolean {
   return /\b(conflict|contradict|differ|discrepan|clause|reconcile|inconsisten|at odds)\b/i.test(prompt);
+}
+
+/** A "draw / visualise this as a diagram" request (→ a Mermaid diagram card). */
+function looksLikeDiagram(prompt: string): boolean {
+  return /\b(diagram|flow ?chart|sequence diagram|mind ?map|org chart|gantt|class diagram|er diagram|entity[- ]relationship|state diagram|user journey|journey map|process (map|flow)|visuali[sz]e|sketch|draw)\b/i.test(
+    prompt,
+  );
+}
+
+/** An affinity-mapping / brainstorm request (→ clustered sticky notes). */
+function looksLikeAffinity(prompt: string): boolean {
+  return /\b(affinity|brainstorm|sticky notes?|cluster|group (the |these )?ideas|ideate|generate ideas|mind ?dump)\b/i.test(
+    prompt,
+  );
+}
+
+/** An "action items / to-dos / next steps" request (→ a checklist inside a card). */
+function wantsChecklist(prompt: string): boolean {
+  return /\b(action items?|actions?|to-?dos?|task list|checklist|next steps|follow[- ]ups?)\b/i.test(prompt);
 }
 
 const SEED_SYSTEM = `You are given the text of a document a user just dropped on a canvas. Propose the 3 or 4 most useful, SPECIFIC questions this reader would want answered about THIS document — the kind that defeat the blank-slate "what do I even ask?" problem. Return ONLY a JSON array of objects {"label": string, "prompt": string}: "label" is a 2–4 word button caption; "prompt" is the full question to ask. Be concrete to this document's actual content (name the clause, the metric, the section) — never generic like "Summarize this". No prose, no code fences.`;
@@ -66,13 +104,21 @@ export async function proposeSeedPrompts(assetId: string, signal: AbortSignal): 
 
 function pickShape(prompt: string): AskShape {
   const p = prompt.toLowerCase();
+  // Affinity + diagram are explicit visual intents — check them before the
+  // text/table fallbacks so "diagram of the table" still draws a diagram.
+  if (looksLikeAffinity(prompt)) return 'affinity';
+  if (looksLikeDiagram(prompt)) return 'diagram';
   if (
     looksLikeDiff(prompt) ||
     /\b(compare|comparison|vs\.?|versus|pros and cons|trade-?offs?|matrix|table|side by side)\b/.test(p)
   ) {
     return 'table';
   }
-  if (/\b(list|bullets?|enumerate|steps|checklist|key (points|dates|terms)|what are the)\b/.test(p)) {
+  // A checklist is a list whose items are task lines; both route to 'list'.
+  if (
+    wantsChecklist(prompt) ||
+    /\b(list|bullets?|enumerate|steps|key (points|dates|terms)|what are the)\b/.test(p)
+  ) {
     return 'list';
   }
   return 'doc';
@@ -192,6 +238,16 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   const shape = pickShape(req.prompt);
   const user = `Question:\n${req.prompt}\n\n${context}`;
 
+  if (shape === 'affinity') {
+    yield* streamAffinity(user, signal);
+    return;
+  }
+
+  if (shape === 'diagram') {
+    yield* streamDiagram(user, signal);
+    return;
+  }
+
   if (shape === 'table') {
     // Cross-document conflict requests get the clause-diff table treatment.
     const tableSystem =
@@ -239,8 +295,75 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   }
 
   const base = shape === 'list' ? LIST_SYSTEM : DOC_SYSTEM;
-  const system = citable ? base + CITE_DIRECTIVE : base;
+  let system = citable ? base + CITE_DIRECTIVE : base;
+  if (wantsChecklist(req.prompt)) system += CHECKLIST_DIRECTIVE;
   yield* streamDoc(shape, system, user, signal);
+}
+
+/**
+ * Stream a Mermaid diagram. The model writes the Mermaid source token by token
+ * (the card shows it forming, then renders it to SVG on `card.done`). The server
+ * doesn't parse the Mermaid — the diagram card validates/renders it, falling
+ * back to the raw source if it doesn't parse.
+ */
+async function* streamDiagram(user: string, signal: AbortSignal): AsyncGenerator<AskEvent> {
+  yield { type: 'card.create', shape: 'diagram' };
+  for await (const delta of generateStream(DIAGRAM_SYSTEM, user, signal)) {
+    if (signal.aborted) return;
+    yield { type: 'card.delta', textDelta: delta };
+  }
+  yield { type: 'card.done' };
+  yield { type: 'done' };
+}
+
+/**
+ * Build an affinity diagram: the model returns themed clusters of ideas, and we
+ * emit them cluster-by-cluster, note-by-note, so the canvas fills with sticky
+ * notes that group themselves in real time.
+ */
+async function* streamAffinity(user: string, signal: AbortSignal): AsyncGenerator<AskEvent> {
+  const raw = await generate(AFFINITY_SYSTEM, user, signal);
+  if (signal.aborted) return;
+  let clusters: Array<{ label: string; notes: string[] }> = [];
+  try {
+    const json = JSON.parse(raw.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()) as {
+      clusters?: unknown;
+    };
+    if (Array.isArray(json.clusters)) {
+      clusters = json.clusters
+        .map((c) => {
+          const obj = (c ?? {}) as Record<string, unknown>;
+          const label = String(obj.label ?? '').slice(0, 40);
+          const notes = Array.isArray(obj.notes)
+            ? obj.notes.map((n) => String(n ?? '').slice(0, 160)).filter(Boolean)
+            : [];
+          return { label, notes };
+        })
+        .filter((c) => c.label && c.notes.length > 0);
+    }
+  } catch {
+    /* fall through */
+  }
+  // Keep it to a readable board — cap clusters and notes per cluster.
+  clusters = clusters.slice(0, 6).map((c) => ({ label: c.label, notes: c.notes.slice(0, 6) }));
+  if (clusters.length === 0) {
+    // No clean JSON — degrade to a written answer so the ask isn't lost.
+    yield* streamDoc('doc', DOC_SYSTEM, user, signal);
+    return;
+  }
+  yield { type: 'card.create', shape: 'affinity' };
+  for (let i = 0; i < clusters.length; i++) {
+    if (signal.aborted) return;
+    yield { type: 'affinity.cluster', index: i, label: clusters[i]!.label };
+    await sleep(60, signal);
+    for (const note of clusters[i]!.notes) {
+      if (signal.aborted) return;
+      yield { type: 'affinity.note', cluster: i, text: note };
+      await sleep(80, signal);
+    }
+  }
+  yield { type: 'card.done' };
+  yield { type: 'done' };
 }
 
 /**

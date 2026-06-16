@@ -21,6 +21,8 @@ export interface NoteCardProps {
   w: number;
   h: number;
   text: string;
+  /** Paper tint — clusters in an affinity diagram share a colour. */
+  color: string;
 }
 
 declare module '@tldraw/tlschema' {
@@ -34,7 +36,15 @@ export type NoteCardShape = TLShape<'note-card'>;
 export const NOTE_CARD_SIZE = { w: 220, h: 220 };
 
 /** Tinted paper, per the design tokens. */
-const NOTE_PAPER = '#fbf6e9';
+export const NOTE_PAPER = '#fbf6e9';
+
+/** Soft tints for affinity-diagram clusters; cycled by cluster index. */
+export const AFFINITY_COLORS = ['#fef0c7', '#dcefe1', '#dde7fb', '#fbe0e6', '#ece1f7', '#fbeada'] as const;
+
+/** Pick a stable cluster tint by index. */
+export function affinityColor(index: number): string {
+  return AFFINITY_COLORS[index % AFFINITY_COLORS.length]!;
+}
 
 export class NoteCardShapeUtil extends ShapeUtil<NoteCardShape> {
   static override type = 'note-card' as const;
@@ -43,10 +53,11 @@ export class NoteCardShapeUtil extends ShapeUtil<NoteCardShape> {
     w: T.number,
     h: T.number,
     text: T.string,
+    color: T.string,
   };
 
   override getDefaultProps(): NoteCardShape['props'] {
-    return { ...NOTE_CARD_SIZE, text: '' };
+    return { ...NOTE_CARD_SIZE, text: '', color: NOTE_PAPER };
   }
 
   override canResize() {
@@ -81,14 +92,14 @@ export class NoteCardShapeUtil extends ShapeUtil<NoteCardShape> {
 function NoteCardBody({ shape }: { shape: NoteCardShape }) {
   const editor = useEditor();
   const isEditing = useIsEditing(shape.id);
-  const { text } = shape.props;
+  const { text, color } = shape.props;
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
   const isStreaming = streamingSet.has(shape.id);
   const autopilot = useAutopilot();
   const mention = useMention();
 
   return (
-    <div className="jz-note" style={{ background: NOTE_PAPER }}>
+    <div className="jz-note" style={{ background: color || NOTE_PAPER }}>
       {isEditing ? (
         <textarea
           autoFocus

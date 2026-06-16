@@ -16,13 +16,20 @@ const ASKABLE = new Set(['pdf-card', 'doc-card', 'table-card', 'note-card']);
 
 /** One-tap refinements on an answer card — iterate without retyping. */
 const FOLLOWUPS: Record<string, Array<{ label: string; prompt: string }>> = {
+  'pdf-card': [
+    { label: 'Diagram', prompt: 'Create a diagram that captures how this document works.' },
+    { label: 'Brainstorm', prompt: 'Brainstorm ideas from this document as clustered sticky notes.' },
+    { label: 'Action items', prompt: 'Extract the action items from this document as a checklist.' },
+  ],
   'doc-card': [
     { label: 'Shorter', prompt: 'Rewrite this more concisely, keeping the key points.' },
     { label: 'Go deeper', prompt: 'Expand this with more detail and specifics from the source.' },
     { label: 'As a table', prompt: 'Reformat the key points of this as a comparison table.' },
+    { label: 'As a diagram', prompt: 'Turn the key points of this into a diagram.' },
   ],
   'table-card': [
     { label: 'As prose', prompt: 'Summarize this table as a short written explanation.' },
+    { label: 'As a diagram', prompt: 'Turn this comparison into a diagram.' },
     { label: 'Go deeper', prompt: 'Expand this comparison with more detail from the source.' },
   ],
 };

@@ -1,20 +1,32 @@
 /**
  * Minimal markdown renderer for doc cards.
  *
- * Handles: headings, bold, italics, lists, line breaks. Renders as HTML with
- * safe className hooks for styling. No external dependencies.
+ * Handles: headings, bold, italics, lists, task lists (- [ ] / - [x]), line
+ * breaks. Renders as HTML with safe className hooks for styling. Task items
+ * render as live checkboxes; toggling one calls `onToggleTask` with the task's
+ * ordinal (its order among all task lines) so the card can rewrite its source.
+ * No external dependencies.
  */
+
+import { stopEventPropagation } from 'tldraw';
 
 interface DocMarkdownProps {
   content: string;
   /** When set, [p.N] citations render as clickable chips that flip the source. */
   onCite?: (page: number) => void;
+  /** When set, `- [ ]` items render as checkboxes; toggling calls this. */
+  onToggleTask?: (ordinal: number, checked: boolean) => void;
 }
 
-export function DocMarkdown({ content, onCite }: DocMarkdownProps) {
+/** Matches a markdown task line, capturing the checked state and the label. */
+const TASK_RE = /^\[([ xX])\]\s+(.*)$/;
+
+export function DocMarkdown({ content, onCite, onToggleTask }: DocMarkdownProps) {
   const lines = content.split('\n');
   const elements: React.ReactNode[] = [];
   let i = 0;
+  // Running index across ALL task lines, so a toggle maps to the right source line.
+  let taskOrdinal = 0;
 
   while (i < lines.length) {
     const line = lines[i] ?? '';
@@ -48,19 +60,42 @@ export function DocMarkdown({ content, onCite }: DocMarkdownProps) {
       continue;
     }
 
-    // Lists
+    // Lists (including task lists: "- [ ] …" / "- [x] …")
     if (line.startsWith('- ')) {
       const listItems: React.ReactNode[] = [];
+      let hasTask = false;
       while (i < lines.length) {
         const currentLine = lines[i] ?? '';
         if (!currentLine.startsWith('- ')) break;
-        listItems.push(
-          <li key={`li-${i}`}>{renderInline(currentLine.slice(2), onCite)}</li>,
-        );
+        const body = currentLine.slice(2);
+        const task = body.match(TASK_RE);
+        if (task) {
+          hasTask = true;
+          const checked = task[1] !== ' ';
+          const ordinal = taskOrdinal++;
+          listItems.push(
+            <li key={`li-${i}`} className="jz-md-task">
+              <input
+                type="checkbox"
+                className="jz-md-checkbox"
+                checked={checked}
+                disabled={!onToggleTask}
+                style={{ pointerEvents: 'all' }}
+                onPointerDown={stopEventPropagation}
+                onChange={() => onToggleTask?.(ordinal, !checked)}
+              />
+              <span className={checked ? 'jz-md-task-done' : undefined}>
+                {renderInline(task[2] ?? '', onCite)}
+              </span>
+            </li>,
+          );
+        } else {
+          listItems.push(<li key={`li-${i}`}>{renderInline(body, onCite)}</li>);
+        }
         i++;
       }
       elements.push(
-        <ul key={`ul-${elements.length}`} className="jz-md-ul">
+        <ul key={`ul-${elements.length}`} className={hasTask ? 'jz-md-ul jz-md-tasklist' : 'jz-md-ul'}>
           {listItems}
         </ul>,
       );
