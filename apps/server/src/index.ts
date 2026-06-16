@@ -284,6 +284,7 @@ app.post('/api/ask', async (c) => {
   if (typeof raw.prompt !== 'string' || raw.prompt.trim() === '') {
     return c.json({ error: 'prompt is required' }, 400);
   }
+  const SHAPES = ['doc', 'table', 'list', 'diagram', 'affinity'] as const;
   const request: AskRequest = {
     prompt: raw.prompt.trim().slice(0, 2000),
     sources: Array.isArray(raw.sources)
@@ -294,6 +295,11 @@ app.post('/api/ask', async (c) => {
           text: typeof s?.text === 'string' ? s.text.slice(0, 8000) : undefined,
         }))
       : [],
+    // The shape of the card being refined in place — keeps a same-type tweak on
+    // the same format. Whitelisted so a bad value can't steer the router.
+    currentShape: SHAPES.includes(raw.currentShape as (typeof SHAPES)[number])
+      ? raw.currentShape
+      : undefined,
   };
 
   return streamSSE(c, async (stream) => {
