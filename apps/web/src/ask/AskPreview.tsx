@@ -58,10 +58,14 @@ export function AskPreview() {
     const id = commitPreview(editor);
     if (!id) return;
     editor.select(id);
-    // Bring the freshly-placed card into view if it landed off-screen.
+    // Stitch-style: smoothly pan + zoom to frame the new artefact (capped so a
+    // small card doesn't blow up), with a little context around it.
     const b = editor.getShapePageBounds(id);
-    if (b && !editor.getViewportPageBounds().contains(b)) {
-      editor.zoomToBounds(b, { inset: 120, animation: { duration: 220 } });
+    if (b) {
+      editor.zoomToBounds(b, {
+        animation: { duration: 480, easing: (t) => 1 - Math.pow(1 - t, 3) },
+        targetZoom: 0.9, // a touch of breathing room; neighbours peek in
+      });
     }
   };
 
