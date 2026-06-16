@@ -139,16 +139,16 @@ card with five live checkboxes from the notes (rendered correctly; the harness's
    shots). Move them clear of the card's body — below its bottom edge or to the
    side — or reveal on hover.
 
-3. **[P2] In-place regeneration has no progress/cancel affordance.** By design it
-   skips the Keep/Discard draft, so apart from the streaming caret there's no
-   "regenerating…" indicator and no way to stop a long one (only Cmd+Z after).
-   Add a small inline "regenerating…" pill with a cancel, especially given sidecar
-   latency.
+3. **[P2 · FIXED] In-place regeneration has no progress/cancel affordance.** Now
+   shows a "Regenerating…" pill with a **Cancel** under the card while it streams
+   (`RegenControls`). Cancel aborts the model call and bails the history mark, so
+   the card's previous content is restored exactly. _Eval: `eval-regen-cancel.mjs`,
+   3/3._
 
-4. **[P2] Dev sidecar latency is high and variable** (one checklist call took
-   122s). Production uses the streaming Anthropic API (much faster, already wired),
-   so this is dev-only — but it argues for a visible cancel on long Asks and a more
-   generous/feedback-driven wait in tooling.
+4. **[P2 · FIXED] No real cancel on long Asks.** "Stop & discard" on a streaming
+   draft now actually aborts the in-flight model call (`cancelActiveAsk`), not just
+   hides the card. (Dev sidecar latency remains high/variable; production uses the
+   streaming Anthropic API.)
 
 5. **[P2] Affinity can over-generate** (one brainstorm produced ~31 notes across 5
    clusters). Readable but dense. Consider capping notes/cluster or laying clusters
@@ -170,7 +170,15 @@ card with five live checkboxes from the notes (rendered correctly; the harness's
 
 ---
 
-## 7. Coverage gaps (not yet evaluated here)
+## 7. Follow-up changes landed after this pass
+
+- **In-place regen progress + cancel** (findings 3 & 4) — `RegenControls` pill with
+  Cancel; "Stop & discard" now truly aborts the model. Evals: `eval-regen-cancel.mjs` (3/3).
+- **Full table editing** — table cards now support add/edit/**delete** for both rows
+  and columns (a corner × per header, a × per row in a trailing gutter), on top of
+  the existing cell editing and Tab-to-fill. Eval: `eval-table.mjs` (7/7).
+
+## 8. Coverage gaps (not yet evaluated here)
 
 The older agent surface — Summarizer / Writer / Brainstormer / Researcher,
 @mention, the ⌘K command palette, comment threads with agent voice, and

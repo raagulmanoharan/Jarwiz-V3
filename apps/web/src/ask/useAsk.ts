@@ -30,7 +30,16 @@ import {
 import { startStreaming, stopStreaming } from '../agents/streaming';
 import { setResponsePdfSource } from '../pdf/provenance';
 import { clearDraft, getDraft, setDraft, updateDraft } from './draft';
+import { clearRegen, setRegen } from './regen';
 import { logEvent } from '../log/eventLog';
+
+/** The AbortController of the Ask currently in flight, so a floating control
+ *  (RegenControls / DraftControls) can truly cancel the model call from afar. */
+let activeAbort: AbortController | null = null;
+/** Cancel the in-flight Ask, if any (aborts the fetch/model stream). */
+export function cancelActiveAsk(): void {
+  activeAbort?.abort();
+}
 
 /** The answer card kinds that can be refined in place, and the AskShape we send
  *  to the server as the "keep this format" hint for each. */
@@ -104,7 +113,9 @@ export function useAsk() {
       setIsAsking(true);
       abortRef.current?.abort();
       abortRef.current = new AbortController();
-      const { signal } = abortRef.current;
+      const ac = abortRef.current;
+      activeAbort = ac;
+      const { signal } = ac;
 
       let cardId: TLShapeId | null = null;
       let cols: string[] = [];
@@ -188,6 +199,7 @@ export function useAsk() {
                 editor.updateShape<DocCardShape>({ id: targetId, type: 'doc-card', props: { text: '' } });
               }
               startStreaming(targetId);
+              setRegen({ id: targetId, status: 'streaming' });
               follow();
               break;
             }
@@ -364,9 +376,18 @@ export function useAsk() {
           if (getDraft()) updateDraft({ status: 'error', error: err.message });
         }
       } finally {
-        // Collapse the in-place regeneration (clear + all deltas) into one undo
-        // step so Cmd+Z restores the card's content from before this refinement.
-        if (inPlaceMark) editor.squashToMark(inPlaceMark);
+        if (inPlaceMark) {
+          if (signal.aborted) {
+            // Cancelled mid-regeneration → restore the card's previous content.
+            editor.bailToMark(inPlaceMark);
+          } else {
+            // Collapse the clear + all deltas into one undo step, so a single
+            // Cmd+Z restores the card's content from before this refinement.
+            editor.squashToMark(inPlaceMark);
+          }
+        }
+        clearRegen();
+        if (activeAbort === ac) activeAbort = null;
         setIsAsking(false);
       }
     },
@@ -407,10 +428,12 @@ export function finalizeDraft(editor: Editor): TLShapeId | null {
   return d.id;
 }
 
-/** Throw the streamed draft away — delete the card(s) and provenance edges. */
+/** Throw the streamed draft away — abort the model call, then delete the
+ *  card(s) and provenance edges. */
 export function discardDraft(editor: Editor): void {
   const d = getDraft();
   if (!d) return;
+  cancelActiveAsk(); // stop the model stream, not just hide the card
   stopStreaming(d.id);
   editor.deleteShapes([d.id, ...(d.groupIds ?? []), ...d.arrowIds]);
   clearDraft();

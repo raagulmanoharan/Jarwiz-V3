@@ -148,8 +148,32 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
       },
     });
   };
+  const removeRow = (row: number) => {
+    if (rows.length <= 1) return; // keep at least one row
+    editor.updateShape<TableCardShape>({
+      id: shape.id,
+      type: 'table-card',
+      props: { rows: rows.filter((_, i) => i !== row) },
+    });
+  };
+  const removeColumn = (col: number) => {
+    if (columns.length <= 1) return; // keep at least one column
+    const nextCount = columns.length - 1;
+    editor.updateShape<TableCardShape>({
+      id: shape.id,
+      type: 'table-card',
+      props: {
+        columns: columns.filter((_, i) => i !== col),
+        rows: rows.map((r) => r.filter((_, i) => i !== col)),
+        // Reclaim the removed column's width so the rest don't stretch oddly.
+        w: Math.max(nextCount * MIN_COL_W, Math.round((shape.props.w * nextCount) / columns.length)),
+      },
+    });
+  };
 
   const cellKeys = (e: React.KeyboardEvent) => autopilot.onKeyDown(shape.id, e);
+  // In edit mode a trailing 32px gutter column holds each row's delete control.
+  const gridColsEdit = isEditing ? `${gridCols} 32px` : gridCols;
   const isEmpty = rows.every((r) => r.every((c) => !c.trim())) && columns.every((c) => !c.trim());
 
   return (
@@ -157,33 +181,48 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
       className={`jz-table${isFilling ? ' jz-table-filling' : ''}${collapsed ? ' jz-card-collapsed' : ''}`}
       ref={fitRef}
     >
-      <div className="jz-table-head" style={{ gridTemplateColumns: gridCols }}>
+      <div className="jz-table-head" style={{ gridTemplateColumns: gridColsEdit }}>
         {columns.map((label, col) =>
           isEditing ? (
-            <textarea
-              key={col}
-              className="jz-table-headcell jz-table-input"
-              value={label}
-              rows={1}
-              placeholder={`Column ${col + 1}`}
-              style={{ pointerEvents: 'all' }}
-              onChange={(e) => setHeader(col, e.currentTarget.value)}
-              onKeyDown={cellKeys}
-              onPointerDown={stopEventPropagation}
-              onPointerMove={stopEventPropagation}
-              onPointerUp={stopEventPropagation}
-            />
+            <div key={col} className="jz-table-headcell jz-table-headcell-edit">
+              <textarea
+                className="jz-table-input"
+                value={label}
+                rows={1}
+                placeholder={`Column ${col + 1}`}
+                style={{ pointerEvents: 'all' }}
+                onChange={(e) => setHeader(col, e.currentTarget.value)}
+                onKeyDown={cellKeys}
+                onPointerDown={stopEventPropagation}
+                onPointerMove={stopEventPropagation}
+                onPointerUp={stopEventPropagation}
+              />
+              {columns.length > 1 ? (
+                <button
+                  className="jz-table-del jz-table-del-col"
+                  title="Delete column"
+                  aria-label="Delete column"
+                  tabIndex={-1}
+                  style={{ pointerEvents: 'all' }}
+                  onPointerDown={stopEventPropagation}
+                  onClick={() => removeColumn(col)}
+                >
+                  ×
+                </button>
+              ) : null}
+            </div>
           ) : (
             <div key={col} className="jz-table-headcell jz-table-headcell-static">
               {label || `Column ${col + 1}`}
             </div>
           ),
         )}
+        {isEditing ? <div className="jz-table-gutter jz-table-gutter-head" /> : null}
       </div>
 
       <div className="jz-table-body">
         {rows.map((cells, row) => (
-          <div key={row} className="jz-table-row" style={{ gridTemplateColumns: gridCols }}>
+          <div key={row} className="jz-table-row" style={{ gridTemplateColumns: gridColsEdit }}>
             {cells.map((cell, col) =>
               isEditing ? (
                 <textarea
@@ -204,6 +243,23 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
                 </div>
               ),
             )}
+            {isEditing ? (
+              <div className="jz-table-gutter">
+                {rows.length > 1 ? (
+                  <button
+                    className="jz-table-del jz-table-del-row"
+                    title="Delete row"
+                    aria-label="Delete row"
+                    tabIndex={-1}
+                    style={{ pointerEvents: 'all' }}
+                    onPointerDown={stopEventPropagation}
+                    onClick={() => removeRow(row)}
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         ))}
       </div>

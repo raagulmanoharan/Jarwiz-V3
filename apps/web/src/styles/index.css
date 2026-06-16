@@ -1424,6 +1424,57 @@ body,
   user-select: none;
 }
 
+/* ── Table editing: per-column / per-row delete ─────────────────────────────
+   In edit mode each header cell carries a corner ×, and a trailing 32px gutter
+   column holds each row's ×. Both are quiet until hovered. */
+.jz-table-headcell-edit {
+  position: relative;
+  padding-right: 24px;
+}
+
+.jz-table-gutter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid var(--jz-hairline);
+  background: color-mix(in srgb, var(--jz-paper) 30%, var(--jz-surface));
+}
+
+.jz-table-gutter-head {
+  background: transparent;
+  border-left: 1px solid var(--jz-hairline);
+}
+
+.jz-table-del {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--jz-ink-300);
+  font-size: 15px;
+  line-height: 1;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition:
+    color var(--jz-dur-fast) var(--jz-ease-out),
+    background var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-table-del:hover {
+  color: #d3455b;
+  background: color-mix(in srgb, #d3455b 14%, transparent);
+}
+
+.jz-table-del-col {
+  position: absolute;
+  top: 4px;
+  right: 3px;
+}
+
 /* ─── Agent presence layer ──────────────────────────────────────────────── */
 
 /* Dot used in the Ask-an-agent menu per item. */
