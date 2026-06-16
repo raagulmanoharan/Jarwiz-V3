@@ -176,8 +176,8 @@ export function commitPreview(editor: Editor): TLShapeId | null {
   if (p.shape === 'table') {
     const columns = (p.columns ?? []).slice(0, 6);
     const rows = (p.rows ?? []).slice(0, 14).map((r) => r.slice(0, 6));
-    // Bounded height; the body scrolls if the content is taller.
-    const h = Math.min(460, Math.max(TABLE_CARD_SIZE.h, 52 + rows.length * 56));
+    // Initial estimate only — the card auto-fits to its full content on mount.
+    const h = Math.max(TABLE_CARD_SIZE.h, 52 + rows.length * 56);
     const at = placeInLane(editor, p.sourceIds, TABLE_CARD_SIZE.w, h);
     editor.createShape<TableCardShape>({
       id,

@@ -1157,7 +1157,7 @@ body,
 
 .jz-table {
   width: 100%;
-  height: 100%;
+  height: auto;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -1209,9 +1209,6 @@ body,
 .jz-table-body {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
 }
 
 .jz-table-row {
@@ -1750,6 +1747,17 @@ body,
   font-size: var(--jz-text-body-size);
   line-height: var(--jz-text-body-lh);
   color: var(--jz-ink-700);
+}
+
+/* Read mode: the card grows to its content (Miro text-box behaviour) — no
+   fixed height, no scroll. */
+.jz-doc-auto {
+  height: auto;
+}
+
+.jz-doc-auto .jz-doc-content {
+  flex: none;
+  overflow: visible;
 }
 
 .jz-doc-content.jz-doc-placeholder {

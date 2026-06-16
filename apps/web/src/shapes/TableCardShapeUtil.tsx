@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useRef, useSyncExternalStore } from 'react';
 import {
   HTMLContainer,
   Rectangle2d,
@@ -14,6 +14,7 @@ import {
 } from 'tldraw';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { useAutopilot } from '../agents/useAutopilot';
+import { useFitHeight } from './useFitHeight';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 
 export interface TableCardProps {
@@ -102,6 +103,9 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
   const isFilling = streamingSet.has(shape.id);
   const autopilot = useAutopilot();
+  // Grow the card to fit all rows (no scroll) — Miro text-box behaviour.
+  const fitRef = useRef<HTMLDivElement | null>(null);
+  useFitHeight(shape.id, fitRef, [columns, rows]);
 
   const gridCols = `repeat(${Math.max(1, columns.length)}, minmax(0, 1fr))`;
 
@@ -140,7 +144,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
   const isEmpty = rows.every((r) => r.every((c) => !c.trim())) && columns.every((c) => !c.trim());
 
   return (
-    <div className={`jz-table${isFilling ? ' jz-table-filling' : ''}`}>
+    <div className={`jz-table${isFilling ? ' jz-table-filling' : ''}`} ref={fitRef}>
       <div className="jz-table-head" style={{ gridTemplateColumns: gridCols }}>
         {columns.map((label, col) =>
           isEditing ? (

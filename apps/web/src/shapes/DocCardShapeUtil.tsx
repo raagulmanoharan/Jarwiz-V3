@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useRef, useSyncExternalStore } from 'react';
 import {
   HTMLContainer,
   Rectangle2d,
@@ -19,6 +19,7 @@ import { useMention } from '../agents/useMention';
 import { DocMarkdown } from '../ui/DocMarkdown';
 import { getResponsePdfSource } from '../pdf/provenance';
 import { setPdfPage } from '../pdf/pdfView';
+import { useFitHeight } from './useFitHeight';
 import { DOC_RADIUS, roundedRectPath } from './cardGeometry';
 
 export interface DocCardProps {
@@ -92,6 +93,9 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
   const isStreaming = streamingSet.has(shape.id);
   const autopilot = useAutopilot();
   const mention = useMention();
+  // Grow the card to fit its content (no scroll) while it's being read.
+  const fitRef = useRef<HTMLDivElement | null>(null);
+  useFitHeight(shape.id, fitRef, [text, title], !isEditing);
 
   if (isEditing) {
     return (
@@ -143,7 +147,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
   }
 
   return (
-    <div className="jz-doc">
+    <div className="jz-doc jz-doc-auto" ref={fitRef}>
       <div className="jz-doc-header">
         <div className="jz-doc-title">{title || 'Document'}</div>
       </div>
