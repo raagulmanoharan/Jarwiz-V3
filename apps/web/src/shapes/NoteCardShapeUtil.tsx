@@ -15,6 +15,7 @@ import {
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { useAutopilot } from '../agents/useAutopilot';
 import { useMention } from '../agents/useMention';
+import { useTypingPause } from '../agents/useTypingPause';
 import { NOTE_RADIUS, roundedRectPath } from './cardGeometry';
 
 export interface NoteCardProps {
@@ -97,16 +98,20 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
   const isStreaming = streamingSet.has(shape.id);
   const autopilot = useAutopilot();
   const mention = useMention();
+  const [paused, resetPause] = useTypingPause(isEditing ? text : '', 1800);
+  const showNudge = isEditing && paused && !isStreaming;
 
   return (
     <div className="jz-note" style={{ background: color || NOTE_PAPER }}>
       {isEditing ? (
+        <>
         <textarea
           autoFocus
           value={text}
           placeholder="Write something… (Tab to continue, @ to call an agent)"
           style={{ pointerEvents: 'all' }}
           onKeyDown={(e) => {
+            if (e.key === 'Tab') resetPause();
             if (mention.onKeyDown(shape.id, e)) return;
             autopilot.onKeyDown(shape.id, e);
           }}
@@ -128,6 +133,12 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
           onPointerMove={stopEventPropagation}
           onPointerUp={stopEventPropagation}
         />
+        {showNudge && (
+          <div className="jz-autopilot-nudge" aria-hidden>
+            <span className="jz-autopilot-nudge-spark">✦</span>Tab
+          </div>
+        )}
+        </>
       ) : (
         <div className={`jz-note-text${text ? '' : ' jz-note-placeholder'}`}>
           {text || 'Double-click to write'}

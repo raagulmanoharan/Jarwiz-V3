@@ -14,6 +14,7 @@ import {
 } from 'tldraw';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { useAutopilot } from '../agents/useAutopilot';
+import { useTypingPause } from '../agents/useTypingPause';
 import { useFitHeight } from './useFitHeight';
 import { MAX_CARD_H, isExpanded, subscribeExpand } from './cardExpand';
 import { ExpandToggle } from './ExpandToggle';
@@ -171,7 +172,17 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
     });
   };
 
-  const cellKeys = (e: React.KeyboardEvent) => autopilot.onKeyDown(shape.id, e);
+  const [paused, resetPause] = useTypingPause(
+    isEditing ? rows.map((r) => r.join('|')).join('\n') + '\n' + columns.join('|') : '',
+    1800,
+  );
+  const hasEmptyCells = rows.some((r) => r.some((c) => !c.trim()));
+  const showNudge = isEditing && paused && hasEmptyCells && !isFilling;
+
+  const cellKeys = (e: React.KeyboardEvent) => {
+    if (e.key === 'Tab') resetPause();
+    autopilot.onKeyDown(shape.id, e);
+  };
   // In edit mode a trailing 32px gutter column holds each row's delete control.
   const gridColsEdit = isEditing ? `${gridCols} 32px` : gridCols;
   const isEmpty = rows.every((r) => r.every((c) => !c.trim())) && columns.every((c) => !c.trim());
@@ -284,6 +295,11 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
           >
             + Column
           </button>
+          {showNudge && (
+            <div className="jz-autopilot-nudge jz-autopilot-nudge--table" aria-hidden>
+              <span className="jz-autopilot-nudge-spark">✦</span>Tab to fill
+            </div>
+          )}
         </div>
       ) : null}
 

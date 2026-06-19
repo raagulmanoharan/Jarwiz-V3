@@ -1322,6 +1322,7 @@ body,
 
 /* Note card — sticky-note style, tinted paper */
 .jz-note {
+  position: relative;
   width: 100%;
   height: 100%;
   border-radius: 4px 4px 14px 4px;
@@ -1522,6 +1523,42 @@ body,
   color: var(--jz-ink-400);
   pointer-events: none;
   user-select: none;
+}
+
+/* ─── Ambient autopilot nudge ───────────────────────────────────────────────
+   A subtle "✦ Tab" badge that fades in after ~1.8 s of writing pause across
+   doc cards, note cards, and table cells. Absolute-positioned over the writing
+   surface; the --table variant is inline in the table controls bar. */
+.jz-autopilot-nudge {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px 2px 7px;
+  border-radius: var(--jz-radius-full);
+  background: var(--jz-surface-raised);
+  border: 1px solid var(--jz-hairline-strong);
+  font-size: 11px;
+  font-family: var(--jz-font-ui);
+  color: var(--jz-ink-500);
+  pointer-events: none;
+  user-select: none;
+  z-index: 10;
+  animation: jz-fade-in var(--jz-dur-base) var(--jz-ease-out) both;
+  box-shadow: var(--jz-e1);
+}
+
+.jz-autopilot-nudge--table {
+  position: static;
+  margin-left: auto;
+  box-shadow: none;
+}
+
+.jz-autopilot-nudge-spark {
+  font-size: 9px;
+  color: var(--jz-accent, #7a5cff);
 }
 
 /* ── Table editing: per-column / per-row delete ─────────────────────────────
@@ -1953,6 +1990,7 @@ body,
 /* ─── Document card — the editorial artifact ────────────────────────────── */
 
 .jz-doc {
+  position: relative;
   width: 100%;
   height: 100%;
   display: flex;

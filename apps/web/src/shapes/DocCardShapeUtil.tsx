@@ -17,6 +17,7 @@ import {
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { useAutopilot } from '../agents/useAutopilot';
 import { useMention } from '../agents/useMention';
+import { useTypingPause } from '../agents/useTypingPause';
 import { DocMarkdown } from '../ui/DocMarkdown';
 import { getResponsePdfSource } from '../pdf/provenance';
 import { setPdfPage } from '../pdf/pdfView';
@@ -116,6 +117,10 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
   const autopilot = useAutopilot();
   const mention = useMention();
   const expanded = useSyncExternalStore(subscribeExpand, () => isExpanded(shape.id), () => false);
+  // Pause detection — resets whenever title or text changes; `reset` is called on Tab
+  // so the nudge disappears the instant autopilot (or the cold-start clarify) fires.
+  const [paused, resetPause] = useTypingPause(isEditing ? `${title}|${text}` : '', 1800);
+  const showNudge = isEditing && paused && !isStreaming;
   // Grow to fit content; once settled, clamp past the threshold (collapsible).
   const fitRef = useRef<HTMLDivElement | null>(null);
   const overflowing = useFitHeight(shape.id, fitRef, [text, title], {
@@ -154,6 +159,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
           className="jz-doc-textarea"
           style={{ pointerEvents: 'all' }}
           onKeyDown={(e) => {
+            if (e.key === 'Tab') resetPause();
             if (mention.onKeyDown(shape.id, e)) return;
             autopilot.onKeyDown(shape.id, e);
           }}
@@ -171,6 +177,11 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
           onPointerMove={stopEventPropagation}
           onPointerUp={stopEventPropagation}
         />
+        {showNudge && (
+          <div className="jz-autopilot-nudge" aria-hidden>
+            <span className="jz-autopilot-nudge-spark">✦</span>Tab
+          </div>
+        )}
       </div>
     );
   }
