@@ -121,6 +121,21 @@ export interface AutopilotRequest {
   title?: string;
   /** The existing card text up to the caret — the agent continues from here. */
   text: string;
+  /**
+   * Nearby board content for grounding — connected cards first, then selected,
+   * nearby, and board-wide. Capped and truncated before sending. When text is
+   * empty (cold start), the agent writes an opener grounded in this context.
+   */
+  boardContext?: AutopilotBoardCard[];
+}
+
+/** One board card serialised compactly for Autopilot context. */
+export interface AutopilotBoardCard {
+  kind: string;
+  title?: string;
+  text: string;
+  /** How the card was reached — used for relevance ordering. */
+  relation: 'connected' | 'selected' | 'nearby' | 'board';
 }
 
 /**

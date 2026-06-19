@@ -15,8 +15,10 @@
  */
 
 import type { Editor, TLShapeId } from 'tldraw';
-import { getAgent, type AutopilotEvent, type TableAutopilotEvent } from '@jarwiz/shared';
+import { getArrowBindings, type TLArrowShape } from 'tldraw';
+import { getAgent, type AutopilotBoardCard, type AutopilotEvent, type TableAutopilotEvent } from '@jarwiz/shared';
 import { startStreaming, stopStreaming } from './streaming';
+import { setClarify } from '../ask/clarify';
 
 export const AUTOPILOT_AGENT = getAgent('writer');
 
@@ -100,6 +102,105 @@ async function readSSE<T>(body: ReadableStream<Uint8Array>, onEvent: (e: T) => v
   handle(buffer);
 }
 
+/* ─── Board context gathering ───────────────────────────────────────────── */
+
+const CARD_TYPES = new Set([
+  'doc-card', 'note-card', 'table-card', 'diagram-card',
+  'link-card', 'pdf-card', 'youtube-card',
+]);
+const MAX_CONTEXT_CARDS = 8;
+const MAX_TEXT_CHARS = 450;
+
+function extractCardText(shape: ReturnType<Editor['getShape']>): string | null {
+  if (!shape) return null;
+  const p = shape.props as Record<string, unknown>;
+  switch (shape.type) {
+    case 'doc-card':
+    case 'note-card':
+      return typeof p.text === 'string' ? p.text : null;
+    case 'diagram-card':
+      return typeof p.code === 'string' ? p.code : null;
+    case 'table-card': {
+      const cols = Array.isArray(p.columns) ? (p.columns as string[]) : [];
+      const rows = Array.isArray(p.rows) ? (p.rows as string[][]) : [];
+      const header = cols.join(' | ');
+      const body = rows.map((r) => r.join(' | ')).join('\n');
+      return header ? `${header}\n${body}` : body;
+    }
+    case 'link-card': {
+      const title = typeof p.title === 'string' ? p.title : '';
+      const desc = typeof p.description === 'string' ? p.description : '';
+      return [title, desc].filter(Boolean).join('\n') || null;
+    }
+    case 'pdf-card':
+      return typeof p.name === 'string' ? `(PDF: ${p.name})` : '(PDF document)';
+    case 'youtube-card':
+      return typeof p.title === 'string' ? `(Video: ${p.title})` : '(YouTube video)';
+    default:
+      return null;
+  }
+}
+
+function shapeToCard(
+  shape: ReturnType<Editor['getShape']>,
+  relation: AutopilotBoardCard['relation'],
+): AutopilotBoardCard | null {
+  if (!shape || !CARD_TYPES.has(shape.type)) return null;
+  const text = extractCardText(shape);
+  if (text === null) return null;
+  const p = shape.props as Record<string, unknown>;
+  const kind = shape.type.replace('-card', '');
+  const title = typeof p.title === 'string' && p.title.trim() ? p.title.trim() : undefined;
+  return { kind, title, text: text.slice(0, MAX_TEXT_CHARS), relation };
+}
+
+function gatherBoardContext(editor: Editor, cardId: TLShapeId): AutopilotBoardCard[] {
+  const seen = new Set<TLShapeId>([cardId]);
+  const result: AutopilotBoardCard[] = [];
+
+  const push = (id: TLShapeId, relation: AutopilotBoardCard['relation']) => {
+    if (seen.has(id) || result.length >= MAX_CONTEXT_CARDS) return;
+    seen.add(id);
+    const card = shapeToCard(editor.getShape(id), relation);
+    if (card) result.push(card);
+  };
+
+  // 1. Connected — shapes on the other end of any arrow touching this card.
+  const arrows = editor.getCurrentPageShapes().filter((s) => s.type === 'arrow') as TLArrowShape[];
+  for (const arrow of arrows) {
+    const b = getArrowBindings(editor, arrow);
+    if (b.start?.toId === cardId && b.end?.toId) push(b.end.toId, 'connected');
+    if (b.end?.toId === cardId && b.start?.toId) push(b.start.toId, 'connected');
+  }
+
+  // 2. Selected — other cards in the current selection.
+  for (const id of editor.getSelectedShapeIds()) push(id, 'selected');
+
+  // 3. Nearby — cards whose page-bounds centre is within 700px of ours.
+  const bounds = editor.getShapePageBounds(cardId);
+  if (bounds) {
+    const { midX: cx, midY: cy } = bounds;
+    const all = editor.getCurrentPageShapes();
+    const byDist = all
+      .filter((s) => !seen.has(s.id) && CARD_TYPES.has(s.type))
+      .map((s) => {
+        const b = editor.getShapePageBounds(s.id);
+        if (!b) return null;
+        const dx = b.midX - cx;
+        const dy = b.midY - cy;
+        return { id: s.id, dist: Math.sqrt(dx * dx + dy * dy) };
+      })
+      .filter((x): x is { id: TLShapeId; dist: number } => x !== null && x.dist <= 700)
+      .sort((a, b) => a.dist - b.dist);
+    for (const { id } of byDist) push(id, 'nearby');
+  }
+
+  // 4. Board — remaining cards anywhere on the page.
+  for (const s of editor.getCurrentPageShapes()) push(s.id, 'board');
+
+  return result;
+}
+
 /* ─── Prose continue (A0) ───────────────────────────────────────────────── */
 
 export async function continueProse(editor: Editor, cardId: TLShapeId): Promise<void> {
@@ -110,6 +211,28 @@ export async function continueProse(editor: Editor, cardId: TLShapeId): Promise<
   const kind = shape.type === 'note-card' ? 'note' : 'doc';
   const props = shape.props as { text: string; title?: string };
   const baseText = props.text;
+  const title = props.title;
+  const boardContext = gatherBoardContext(editor, cardId);
+
+  // Cold start with nothing to go on: ask what the doc is about.
+  const isColdStart = !baseText.trim() && !title?.trim() && boardContext.length === 0;
+  if (isColdStart) {
+    setClarify({
+      question: 'What do you want to write?',
+      options: ['Meeting notes', 'Project brief', 'Team update', 'Technical spec'],
+      prompt: '',
+      sourceIds: [cardId],
+      targetId: null,
+      onAnswer: (answer) => {
+        // Set the answer as the doc title so the model has something to open with.
+        if (shape.type === 'doc-card') {
+          editor.updateShape({ id: cardId, type: 'doc-card', props: { title: answer } });
+        }
+        void continueProse(editor, cardId);
+      },
+    });
+    return;
+  }
 
   editor.markHistoryStoppingPoint('autopilot'); // whole fill = one undo
   const controller = new AbortController();
@@ -123,7 +246,12 @@ export async function continueProse(editor: Editor, cardId: TLShapeId): Promise<
     const res = await fetch('/api/autopilot', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind, text: baseText, title: props.title }),
+      body: JSON.stringify({
+        kind,
+        text: baseText,
+        title,
+        boardContext: boardContext.length > 0 ? boardContext : undefined,
+      }),
       signal: controller.signal,
     });
     if (!res.ok || !res.body) throw new Error('autopilot request failed');

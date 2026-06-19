@@ -28,6 +28,10 @@ export function ClarifyLayer() {
     const c = clarify;
     clearClarify();
     setCustom('');
+    if (c.onAnswer) {
+      c.onAnswer(a);
+      return;
+    }
     void ask(`${c.prompt}\n\n(${a})`, c.sourceIds, { targetId: c.targetId, skipClarify: true });
   };
 

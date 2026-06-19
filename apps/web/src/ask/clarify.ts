@@ -15,6 +15,11 @@ export interface Clarify {
   prompt: string;
   sourceIds: TLShapeId[];
   targetId: TLShapeId | null;
+  /**
+   * When set, the answering action calls this instead of re-running Ask.
+   * Used by Autopilot cold-start to handle the answer differently.
+   */
+  onAnswer?: (answer: string) => void;
 }
 
 const store = createUiStore<Clarify>();
