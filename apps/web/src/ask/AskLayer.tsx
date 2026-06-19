@@ -10,11 +10,15 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { Box, stopEventPropagation, useEditor, useValue } from 'tldraw';
 import { useAsk } from './useAsk';
+import { useCardAnchor } from './useCardAnchor';
+import { getRegen, subscribeRegen } from './regen';
+import { getClarify, subscribeClarify } from './clarify';
 import { ensureSeedPrompts, getSeedPrompts, subscribeSeed, type SeedPrompt } from './seedPrompts';
 
 const ASKABLE = new Set(['pdf-card', 'doc-card', 'table-card', 'diagram-card', 'note-card', 'image-card']);
 
-/** Human label per card type — for the "Combining N" affordance on a multi-select. */
+/** Human label per card type — folded into the pill on a multi-select so it's
+ *  clear what an Ask will combine ("Ask across 2 · Doc · Image"). */
 const KIND_LABEL: Record<string, string> = {
   'pdf-card': 'PDF',
   'doc-card': 'Doc',
@@ -86,10 +90,16 @@ export function AskLayer() {
       const pdfCount = shapes.filter((s) => s.type === 'pdf-card').length;
       // A readable summary of what a multi-select would combine, e.g. "Doc · Table · Image".
       const kindLabel = [...new Set(shapes.map((s) => KIND_LABEL[s.type] ?? 'Card'))].join(' · ');
-      return { ids: shapes.map((s) => s.id), x: pt.x, y: pt.y, count: shapes.length, assetId, soleType, pdfCount, kindLabel };
+      return { ids: shapes.map((s) => s.id), count: shapes.length, assetId, soleType, pdfCount, kindLabel };
     },
     [editor],
   );
+  // Shared anchor maths (bounds → viewport → clamp), used by every affordance.
+  const anchor = useCardAnchor(selection?.ids ?? null, { dy: 14 });
+  // The selection spot is shared: when a clarifying question or an in-place
+  // regeneration is showing there, it owns the slot — don't stack the pill on it.
+  const regen = useSyncExternalStore(subscribeRegen, getRegen, getRegen);
+  const clarify = useSyncExternalStore(subscribeClarify, getClarify, getClarify);
 
   // Seed prompts for a selected single PDF — fetched once, subscribed for updates.
   const assetId = selection?.assetId ?? '';
@@ -113,7 +123,9 @@ export function AskLayer() {
     if (open) inputRef.current?.focus();
   }, [open]);
 
-  if (!selection) return null;
+  if (!selection || !anchor) return null;
+  // Mutual exclusion: a pending question or a running regeneration owns this spot.
+  if (clarify || regen) return null;
 
   // A single selected answer card is the in-place refinement target — typing a
   // tweak ("add a node", "make it shorter") rewrites it instead of branching.
@@ -132,7 +144,7 @@ export function AskLayer() {
     void ask(seed.prompt, selection.ids, { targetId });
   };
 
-  const style = { left: selection.x, top: selection.y + 14 } as CSSProperties;
+  const style = { left: anchor.x, top: anchor.y } as CSSProperties;
   const showSeeds = !open && selection.count === 1 && Boolean(assetId) && (seeds?.length ?? 0) > 0;
   const followups = !open && selection.count === 1 ? (FOLLOWUPS[selection.soleType] ?? []) : [];
   // Cross-document affordances when two or more PDFs are selected.
@@ -146,11 +158,6 @@ export function AskLayer() {
 
   return (
     <div className="jz-ask" style={style} onPointerDown={stopEventPropagation}>
-      {selection.count > 1 ? (
-        <div className="jz-ask-combining" title={selection.kindLabel}>
-          Combining {selection.count} · {selection.kindLabel}
-        </div>
-      ) : null}
       {open ? (
         <div className="jz-ask-form">
           <input
@@ -204,7 +211,11 @@ export function AskLayer() {
             <span className="jz-ask-spark" aria-hidden>
               ✦
             </span>
-            {isAsking ? 'Asking…' : selection.count > 1 ? `Ask across ${selection.count}` : 'Ask AI'}
+            {isAsking
+              ? 'Asking…'
+              : selection.count > 1
+                ? `Ask across ${selection.count} · ${selection.kindLabel}`
+                : 'Ask AI'}
           </button>
         </>
       )}

@@ -7,6 +7,7 @@
  */
 
 import type { TLShapeId } from 'tldraw';
+import { createUiStore } from './uiStore';
 
 export interface Regen {
   /** The card being regenerated in place. */
@@ -14,23 +15,8 @@ export interface Regen {
   status: 'streaming';
 }
 
-let regen: Regen | null = null;
-const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((cb) => cb());
-
-export function subscribeRegen(cb: () => void): () => void {
-  listeners.add(cb);
-  return () => listeners.delete(cb);
-}
-export function getRegen(): Regen | null {
-  return regen;
-}
-export function setRegen(next: Regen | null): void {
-  regen = next;
-  emit();
-}
-export function clearRegen(): void {
-  if (regen === null) return;
-  regen = null;
-  emit();
-}
+const store = createUiStore<Regen>();
+export const subscribeRegen = store.subscribe;
+export const getRegen = store.get;
+export const setRegen = store.set;
+export const clearRegen = store.clear;

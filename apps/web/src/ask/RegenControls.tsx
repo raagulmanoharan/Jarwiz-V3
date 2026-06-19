@@ -7,28 +7,14 @@
  */
 
 import { useSyncExternalStore, type CSSProperties } from 'react';
-import { stopEventPropagation, useEditor, useValue } from 'tldraw';
+import { stopEventPropagation } from 'tldraw';
 import { getRegen, subscribeRegen } from './regen';
+import { useCardAnchor } from './useCardAnchor';
 import { cancelActiveAsk } from './useAsk';
 
 export function RegenControls() {
-  const editor = useEditor();
   const regen = useSyncExternalStore(subscribeRegen, getRegen, getRegen);
-
-  const anchor = useValue(
-    'jarwiz regen controls anchor',
-    () => {
-      if (!regen) return null;
-      const b = editor.getShapePageBounds(regen.id);
-      if (!b) return null;
-      const p = editor.pageToViewport({ x: b.midX, y: b.maxY });
-      const vp = editor.getViewportScreenBounds();
-      const x = Math.max(90, Math.min(p.x, vp.w - 90));
-      const y = Math.max(40, Math.min(p.y + 12, vp.h - 44));
-      return { x, y };
-    },
-    [editor, regen],
-  );
+  const anchor = useCardAnchor(regen?.id ?? null);
 
   if (!regen || !anchor) return null;
   const style = { left: anchor.x, top: anchor.y } as CSSProperties;

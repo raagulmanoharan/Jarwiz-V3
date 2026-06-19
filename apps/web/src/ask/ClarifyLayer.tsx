@@ -6,32 +6,18 @@
  */
 
 import { useState, useSyncExternalStore, type CSSProperties } from 'react';
-import { Box, stopEventPropagation, useEditor, useValue } from 'tldraw';
+import { stopEventPropagation } from 'tldraw';
 import { clearClarify, getClarify, subscribeClarify } from './clarify';
+import { useCardAnchor } from './useCardAnchor';
 import { useAsk } from './useAsk';
 
 export function ClarifyLayer() {
-  const editor = useEditor();
   const { ask, isAsking } = useAsk();
   const clarify = useSyncExternalStore(subscribeClarify, getClarify, getClarify);
   const [custom, setCustom] = useState('');
-
-  // Anchor under the union of the source cards this question is about.
-  const anchor = useValue(
-    'jarwiz clarify anchor',
-    () => {
-      if (!clarify) return null;
-      const boxes = clarify.sourceIds
-        .map((id) => editor.getShapePageBounds(id))
-        .filter((b): b is Box => Boolean(b));
-      if (boxes.length === 0) return null;
-      const union = boxes.reduce((acc, b) => acc.union(b), boxes[0]!.clone());
-      const p = editor.pageToViewport({ x: union.midX, y: union.maxY });
-      const vp = editor.getViewportScreenBounds();
-      return { x: Math.max(180, Math.min(p.x, vp.w - 180)), y: Math.min(p.y + 14, vp.h - 80) };
-    },
-    [editor, clarify],
-  );
+  // Anchor under the union of the source cards this question is about. The wide
+  // bubble needs more horizontal margin to stay on-screen.
+  const anchor = useCardAnchor(clarify?.sourceIds ?? null, { dy: 14, margin: 170 });
 
   if (!clarify || !anchor) return null;
   const style = { left: anchor.x, top: anchor.y } as CSSProperties;

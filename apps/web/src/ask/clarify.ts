@@ -6,6 +6,7 @@
  */
 
 import type { TLShapeId } from 'tldraw';
+import { createUiStore } from './uiStore';
 
 export interface Clarify {
   question: string;
@@ -16,23 +17,8 @@ export interface Clarify {
   targetId: TLShapeId | null;
 }
 
-let clarify: Clarify | null = null;
-const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((cb) => cb());
-
-export function subscribeClarify(cb: () => void): () => void {
-  listeners.add(cb);
-  return () => listeners.delete(cb);
-}
-export function getClarify(): Clarify | null {
-  return clarify;
-}
-export function setClarify(next: Clarify | null): void {
-  clarify = next;
-  emit();
-}
-export function clearClarify(): void {
-  if (clarify === null) return;
-  clarify = null;
-  emit();
-}
+const store = createUiStore<Clarify>();
+export const subscribeClarify = store.subscribe;
+export const getClarify = store.get;
+export const setClarify = store.set;
+export const clearClarify = store.clear;

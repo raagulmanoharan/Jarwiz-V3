@@ -5,6 +5,7 @@
  */
 
 import type { TLShapeId } from 'tldraw';
+import { createUiStore } from './uiStore';
 
 export interface Draft {
   /** The anchor shape — a single answer card, or the first sticky of an
@@ -22,28 +23,9 @@ export interface Draft {
   pdfSourceId: TLShapeId | null;
 }
 
-let draft: Draft | null = null;
-const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((cb) => cb());
-
-export function subscribeDraft(cb: () => void): () => void {
-  listeners.add(cb);
-  return () => listeners.delete(cb);
-}
-export function getDraft(): Draft | null {
-  return draft;
-}
-export function setDraft(next: Draft | null): void {
-  draft = next;
-  emit();
-}
-export function updateDraft(patch: Partial<Draft>): void {
-  if (!draft) return;
-  draft = { ...draft, ...patch };
-  emit();
-}
-export function clearDraft(): void {
-  if (draft === null) return;
-  draft = null;
-  emit();
-}
+const store = createUiStore<Draft>();
+export const subscribeDraft = store.subscribe;
+export const getDraft = store.get;
+export const setDraft = store.set;
+export const updateDraft = store.update;
+export const clearDraft = store.clear;

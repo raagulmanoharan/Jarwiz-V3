@@ -63,8 +63,9 @@ async function run() {
   await page.evaluate(() => { window.editor.zoomToFit(); });
   await selectMany(page, [doc, img2]);
   await sleep(900);
-  const combiningTxt = (await page.locator('.jz-ask-combining').innerText().catch(() => '')).trim();
-  record('multi-select shows "Combining N · …"', /Combining 2/.test(combiningTxt) && /Image/.test(combiningTxt) && /Doc/.test(combiningTxt), combiningTxt);
+  // The combining summary lives in the Ask pill itself ("Ask across 2 · Doc · Image").
+  const pillTxt = (await page.locator('.jz-ask-pill').innerText().catch(() => '')).trim();
+  record('multi-select pill shows "Ask across N · …"', /across 2/.test(pillTxt) && /Image/.test(pillTxt) && /Doc/.test(pillTxt), pillTxt);
   await page.screenshot({ path: `${OUT}/jz-combine-multiselect.png` });
 
   // ── C. Ambiguous request → clarifying question → answer → card ────────────

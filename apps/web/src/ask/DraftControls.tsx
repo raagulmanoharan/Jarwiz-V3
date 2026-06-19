@@ -6,28 +6,15 @@
  */
 
 import { useSyncExternalStore, type CSSProperties } from 'react';
-import { stopEventPropagation, useEditor, useValue } from 'tldraw';
+import { stopEventPropagation, useEditor } from 'tldraw';
 import { getDraft, subscribeDraft } from './draft';
+import { useCardAnchor } from './useCardAnchor';
 import { discardDraft, finalizeDraft } from './useAsk';
 
 export function DraftControls() {
   const editor = useEditor();
   const draft = useSyncExternalStore(subscribeDraft, getDraft, getDraft);
-
-  const anchor = useValue(
-    'jarwiz draft controls anchor',
-    () => {
-      if (!draft) return null;
-      const b = editor.getShapePageBounds(draft.id);
-      if (!b) return null;
-      const p = editor.pageToViewport({ x: b.midX, y: b.maxY });
-      const vp = editor.getViewportScreenBounds();
-      const x = Math.max(90, Math.min(p.x, vp.w - 90));
-      const y = Math.max(40, Math.min(p.y + 12, vp.h - 44));
-      return { x, y };
-    },
-    [editor, draft],
-  );
+  const anchor = useCardAnchor(draft?.id ?? null);
 
   if (!draft || !anchor) return null;
   const style = { left: anchor.x, top: anchor.y } as CSSProperties;
