@@ -157,7 +157,7 @@ export function AskLayer() {
       : [];
 
   return (
-    <div className="jz-ask" style={style} onPointerDown={stopEventPropagation}>
+    <div className="jz-asklayer" style={style} onPointerDown={stopEventPropagation}>
       {open ? (
         <div className="jz-ask-form">
           <input
@@ -183,6 +183,16 @@ export function AskLayer() {
         </div>
       ) : (
         <>
+          <button className="jz-ask-pill" onClick={() => setOpen(true)}>
+            <span className="jz-ask-spark" aria-hidden>
+              ✦
+            </span>
+            {isAsking
+              ? 'Asking…'
+              : selection.count > 1
+                ? `Ask across ${selection.count} · ${selection.kindLabel}`
+                : 'Ask AI'}
+          </button>
           {showSeeds
             ? seeds!.slice(0, 3).map((seed) => (
                 <button
@@ -207,16 +217,6 @@ export function AskLayer() {
               {f.label}
             </button>
           ))}
-          <button className="jz-ask-pill" onClick={() => setOpen(true)}>
-            <span className="jz-ask-spark" aria-hidden>
-              ✦
-            </span>
-            {isAsking
-              ? 'Asking…'
-              : selection.count > 1
-                ? `Ask across ${selection.count} · ${selection.kindLabel}`
-                : 'Ask AI'}
-          </button>
         </>
       )}
     </div>
