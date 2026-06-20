@@ -16,6 +16,7 @@ import { CanvasStylePanel, CanvasToolbar } from './ui/CanvasToolbar';
 const tldrawAssetUrls = getAssetUrlsByImport();
 import { useSync } from '@tldraw/sync';
 import { AskLayer } from './ask/AskLayer';
+import { PromptBar } from './ask/PromptBar';
 import { ClarifyLayer } from './ask/ClarifyLayer';
 import { DraftControls } from './ask/DraftControls';
 import { RegenControls } from './ask/RegenControls';
@@ -46,6 +47,7 @@ function JarwizOverlay() {
       <RegenControls />
       <SelectionAsk />
       <StickyDock />
+      <PromptBar />
       <Timeline />
     </>
   );

@@ -21,7 +21,7 @@ import { ensureSeedPrompts, getSeedPrompts, subscribeSeed, type SeedPrompt } fro
 // Rich cards plus native primitives (canvas pivot P1): a selected shape, label,
 // or hand-drawn cluster is askable, so "create something from this" works on a
 // sketch, not just cards.
-const ASKABLE = new Set([
+export const ASKABLE = new Set([
   'pdf-card', 'doc-card', 'table-card', 'diagram-card', 'note-card', 'image-card',
   'geo', 'text', 'note', 'arrow', 'frame',
 ]);

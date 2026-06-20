@@ -3036,6 +3036,75 @@ body,
   line-height: 1;
 }
 
+/* ─── Prompt bar (bottom-centre agent query box, Stitch-style) ───────────── */
+.jz-promptbar {
+  position: absolute;
+  left: 50%;
+  bottom: 70px; /* sits just above the primitive toolbar */
+  transform: translateX(-50%);
+  z-index: 320;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--jz-space-3);
+  width: min(var(--pb-max, 600px), calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 8px 8px 8px 16px;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e4);
+  border: 1px solid var(--jz-hairline);
+}
+
+.jz-promptbar-spark {
+  flex: none;
+  color: #d97706;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.jz-promptbar-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-size);
+  color: var(--jz-ink-900);
+}
+
+.jz-promptbar-input::placeholder {
+  color: var(--jz-ink-400);
+}
+
+.jz-promptbar-send {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-ink-900);
+  color: #faf6ec;
+  font-size: 16px;
+  cursor: pointer;
+  transition:
+    transform var(--jz-dur-fast) var(--jz-ease-out),
+    opacity var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-promptbar-send:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.jz-promptbar-send:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 /* ─── Board chip + switcher (topbar multi-board nav) ────────────────────── */
 
 .jz-board-chip-wrap {

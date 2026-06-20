@@ -130,14 +130,19 @@ export function useAsk() {
       opts?: { targetId?: TLShapeId | null; skipClarify?: boolean },
     ) => {
       const trimmed = prompt.trim();
-      if (!trimmed || sourceIds.length === 0 || isAsking || getDraft()) return;
+      // A sourceless ask is allowed — a free-standing query from the prompt bar
+      // drops its answer on the canvas. Only the selection-grounded paths require
+      // sources, so we don't gate on sourceIds being non-empty here.
+      if (!trimmed || isAsking || getDraft()) return;
       clearClarify(); // a fresh ask supersedes any pending question
 
       const sourceShapes = sourceIds
         .map((id) => editor.getShape(id))
         .filter((s): s is TLShape => Boolean(s));
       const sources = sourceShapes.map((s) => toSource(editor, s)).filter((s): s is AskSource => Boolean(s));
-      if (sources.length === 0) return;
+      // If a selection was given but none of it is usable as a source, don't run
+      // (a no-op selection). A deliberately sourceless ask (no ids) proceeds.
+      if (sourceIds.length > 0 && sources.length === 0) return;
 
       const pdfSourceId = sourceShapes.find((s) => s.type === 'pdf-card')?.id ?? null;
 
