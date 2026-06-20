@@ -30,7 +30,7 @@ Rules (follow exactly):
 - Match the existing voice, tense, person, and formatting. Markdown in → markdown out; plain sticky note → stay terse.
 - If the text ends mid-word or mid-sentence, complete it seamlessly. If it ends at a clean break, begin the next natural unit (next sentence, bullet, or short paragraph).
 - Empty card (cold start): write a short, concrete opening paragraph or set of bullets that fits the title and board context. Start immediately — no preamble.
-- Board context: use nearby cards as grounding material. When you draw on them, add a brief inline citation like "(from [Card title])". Only cite cards you actually used.
+- Board context: use the nearby cards AND canvas objects (shapes, free text, labelled connectors, and frames/sections the user drew) as grounding material — a hand-drawn flowchart is real context, not decoration. When you draw on something, add a brief inline citation like "(from [title or short quote])". Only cite what you actually used.
 - Keep it bounded: a sentence or two, a few bullets, or one short paragraph — enough for momentum. The user presses Tab again for more.
 - Start your output with the exact whitespace to join cleanly: a leading space to continue a sentence, a newline to start a new line or bullet.
 - Be honest and concrete; never invent specific facts, names, quotes, or statistics you can't stand behind.`;
@@ -46,7 +46,7 @@ function buildUserTurn(request: AutopilotRequest): string {
   if (request.title?.trim()) parts.push(`Document title: ${request.title.trim()}`, '');
 
   if (request.boardContext && request.boardContext.length > 0) {
-    parts.push('Board context — nearby cards you may draw from (cite what you use):');
+    parts.push('Board context — nearby cards and canvas objects you may draw from (cite what you use):');
     for (const card of request.boardContext) parts.push('', formatBoardCard(card));
     parts.push('');
   }

@@ -14,8 +14,8 @@
  * fill = one undo; insert-only.
  */
 
-import type { Editor, TLShapeId } from 'tldraw';
-import { getArrowBindings, type TLArrowShape } from 'tldraw';
+import type { Editor, TLShapeId, TLRichText } from 'tldraw';
+import { getArrowBindings, renderPlaintextFromRichText, type TLArrowShape } from 'tldraw';
 import { getAgent, type AutopilotBoardCard, type AutopilotEvent, type TableAutopilotEvent } from '@jarwiz/shared';
 import { startStreaming, stopStreaming } from './streaming';
 import { setClarify } from '../ask/clarify';
@@ -104,17 +104,35 @@ async function readSSE<T>(body: ReadableStream<Uint8Array>, onEvent: (e: T) => v
 
 /* ─── Board context gathering ───────────────────────────────────────────── */
 
+/** Rich Jarwiz cards. */
 const CARD_TYPES = new Set([
   'doc-card', 'note-card', 'table-card', 'diagram-card',
   'link-card', 'pdf-card', 'youtube-card',
 ]);
+/** Native tldraw primitives that carry text the agent should read (canvas pivot
+ *  P1). The card model used to make these invisible — a flowchart you drew gave
+ *  the AI nothing. Now geo shapes, free text, sticky notes, labelled connectors,
+ *  and frame names all become context. */
+const PRIMITIVE_TYPES = new Set(['geo', 'text', 'note', 'arrow', 'frame']);
+const CONTEXT_TYPES = new Set([...CARD_TYPES, ...PRIMITIVE_TYPES]);
 const MAX_CONTEXT_CARDS = 8;
 const MAX_TEXT_CHARS = 450;
 
-function extractCardText(shape: ReturnType<Editor['getShape']>): string | null {
+/** Flatten a tldraw rich-text doc to plain text; safe on missing/garbage input. */
+function plainText(editor: Editor, richText: unknown): string {
+  if (!richText || typeof richText !== 'object') return '';
+  try {
+    return renderPlaintextFromRichText(editor, richText as TLRichText).trim();
+  } catch {
+    return '';
+  }
+}
+
+function extractCardText(editor: Editor, shape: ReturnType<Editor['getShape']>): string | null {
   if (!shape) return null;
   const p = shape.props as Record<string, unknown>;
   switch (shape.type) {
+    // ── Rich cards ──────────────────────────────────────────────────────
     case 'doc-card':
     case 'note-card':
       return typeof p.text === 'string' ? p.text : null;
@@ -136,22 +154,45 @@ function extractCardText(shape: ReturnType<Editor['getShape']>): string | null {
       return typeof p.name === 'string' ? `(PDF: ${p.name})` : '(PDF document)';
     case 'youtube-card':
       return typeof p.title === 'string' ? `(Video: ${p.title})` : '(YouTube video)';
+    // ── Native primitives ───────────────────────────────────────────────
+    case 'geo':
+    case 'text':
+    case 'note': {
+      const t = plainText(editor, p.richText);
+      return t || null; // an unlabelled box/sketch carries no text — skip it
+    }
+    case 'arrow': {
+      // A labelled connector is semantic ("depends on", "blocks"); an unlabelled
+      // one is pure structure and is already captured by following the arrow.
+      const t = plainText(editor, p.richText);
+      return t || null;
+    }
+    case 'frame':
+      return typeof p.name === 'string' && p.name.trim() ? `(Section: ${p.name.trim()})` : null;
     default:
       return null;
   }
 }
 
+/** The agent-facing kind label for a shape. */
+function kindFor(type: string): string {
+  if (type.endsWith('-card')) return type.replace('-card', '');
+  if (type === 'geo') return 'shape';
+  if (type === 'arrow') return 'connector';
+  return type; // 'text' | 'note' | 'frame'
+}
+
 function shapeToCard(
+  editor: Editor,
   shape: ReturnType<Editor['getShape']>,
   relation: AutopilotBoardCard['relation'],
 ): AutopilotBoardCard | null {
-  if (!shape || !CARD_TYPES.has(shape.type)) return null;
-  const text = extractCardText(shape);
+  if (!shape || !CONTEXT_TYPES.has(shape.type)) return null;
+  const text = extractCardText(editor, shape);
   if (text === null) return null;
   const p = shape.props as Record<string, unknown>;
-  const kind = shape.type.replace('-card', '');
   const title = typeof p.title === 'string' && p.title.trim() ? p.title.trim() : undefined;
-  return { kind, title, text: text.slice(0, MAX_TEXT_CHARS), relation };
+  return { kind: kindFor(shape.type), title, text: text.slice(0, MAX_TEXT_CHARS), relation };
 }
 
 function gatherBoardContext(editor: Editor, cardId: TLShapeId): AutopilotBoardCard[] {
@@ -161,11 +202,12 @@ function gatherBoardContext(editor: Editor, cardId: TLShapeId): AutopilotBoardCa
   const push = (id: TLShapeId, relation: AutopilotBoardCard['relation']) => {
     if (seen.has(id) || result.length >= MAX_CONTEXT_CARDS) return;
     seen.add(id);
-    const card = shapeToCard(editor.getShape(id), relation);
+    const card = shapeToCard(editor, editor.getShape(id), relation);
     if (card) result.push(card);
   };
 
-  // 1. Connected — shapes on the other end of any arrow touching this card.
+  // 1. Connected — shapes on the other end of any connector touching this card
+  //    (cards AND primitives — a doc wired to a hand-drawn box is "connected").
   const arrows = editor.getCurrentPageShapes().filter((s) => s.type === 'arrow') as TLArrowShape[];
   for (const arrow of arrows) {
     const b = getArrowBindings(editor, arrow);
@@ -173,16 +215,16 @@ function gatherBoardContext(editor: Editor, cardId: TLShapeId): AutopilotBoardCa
     if (b.end?.toId === cardId && b.start?.toId) push(b.start.toId, 'connected');
   }
 
-  // 2. Selected — other cards in the current selection.
+  // 2. Selected — other shapes in the current selection.
   for (const id of editor.getSelectedShapeIds()) push(id, 'selected');
 
-  // 3. Nearby — cards whose page-bounds centre is within 700px of ours.
+  // 3. Nearby — text-bearing shapes whose centre is within 700px of ours.
   const bounds = editor.getShapePageBounds(cardId);
   if (bounds) {
     const { midX: cx, midY: cy } = bounds;
     const all = editor.getCurrentPageShapes();
     const byDist = all
-      .filter((s) => !seen.has(s.id) && CARD_TYPES.has(s.type))
+      .filter((s) => !seen.has(s.id) && CONTEXT_TYPES.has(s.type))
       .map((s) => {
         const b = editor.getShapePageBounds(s.id);
         if (!b) return null;
@@ -195,7 +237,7 @@ function gatherBoardContext(editor: Editor, cardId: TLShapeId): AutopilotBoardCa
     for (const { id } of byDist) push(id, 'nearby');
   }
 
-  // 4. Board — remaining cards anywhere on the page.
+  // 4. Board — remaining text-bearing shapes anywhere on the page.
   for (const s of editor.getCurrentPageShapes()) push(s.id, 'board');
 
   return result;

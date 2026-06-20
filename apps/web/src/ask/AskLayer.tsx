@@ -15,10 +15,16 @@ import { getRegen, subscribeRegen } from './regen';
 import { getClarify, subscribeClarify } from './clarify';
 import { ensureSeedPrompts, getSeedPrompts, subscribeSeed, type SeedPrompt } from './seedPrompts';
 
-const ASKABLE = new Set(['pdf-card', 'doc-card', 'table-card', 'diagram-card', 'note-card', 'image-card']);
+// Rich cards plus native primitives (canvas pivot P1): a selected shape, label,
+// or hand-drawn cluster is askable, so "create something from this" works on a
+// sketch, not just cards.
+const ASKABLE = new Set([
+  'pdf-card', 'doc-card', 'table-card', 'diagram-card', 'note-card', 'image-card',
+  'geo', 'text', 'note', 'arrow', 'frame',
+]);
 
-/** Human label per card type — folded into the pill on a multi-select so it's
- *  clear what an Ask will combine ("Ask across 2 · Doc · Image"). */
+/** Human label per shape type — folded into the pill on a multi-select so it's
+ *  clear what an Ask will combine ("Ask across 2 · Doc · Shape"). */
 const KIND_LABEL: Record<string, string> = {
   'pdf-card': 'PDF',
   'doc-card': 'Doc',
@@ -26,6 +32,11 @@ const KIND_LABEL: Record<string, string> = {
   'diagram-card': 'Diagram',
   'note-card': 'Note',
   'image-card': 'Image',
+  geo: 'Shape',
+  text: 'Text',
+  note: 'Note',
+  arrow: 'Connector',
+  frame: 'Section',
 };
 
 /** Answer cards that refine in place — a same-type tweak rewrites the selected

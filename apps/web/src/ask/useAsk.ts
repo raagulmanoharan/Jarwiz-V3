@@ -10,9 +10,11 @@ import { useCallback, useRef, useState } from 'react';
 import {
   createBindingId,
   createShapeId,
+  renderPlaintextFromRichText,
   useEditor,
   type Editor,
   type TLArrowShape,
+  type TLRichText,
   type TLShape,
   type TLShapeId,
 } from 'tldraw';
@@ -61,8 +63,19 @@ function isInPlace(cardType: string | undefined, shape: AskShape): boolean {
   return false;
 }
 
-/** Build the server-side source descriptor from a card shape. */
-function toSource(shape: TLShape): AskSource | null {
+/** Flatten a tldraw rich-text doc to plain text; safe on missing input. */
+function plainText(editor: Editor, richText: unknown): string {
+  if (!richText || typeof richText !== 'object') return '';
+  try {
+    return renderPlaintextFromRichText(editor, richText as TLRichText).trim();
+  } catch {
+    return '';
+  }
+}
+
+/** Build the server-side source descriptor from a shape — a rich card or a
+ *  native primitive (canvas pivot P1: a selected sketch/box/label is askable). */
+function toSource(editor: Editor, shape: TLShape): AskSource | null {
   const p = shape.props as Record<string, unknown>;
   switch (shape.type) {
     case 'pdf-card':
@@ -88,6 +101,18 @@ function toSource(shape: TLShape): AskSource | null {
       if (!src.startsWith('data:image/')) return null;
       return { kind: 'image', title: String(p.name ?? ''), dataUrl: src };
     }
+    // ── Native primitives — selected shapes/text/connectors become context ──
+    case 'geo':
+    case 'text':
+    case 'note':
+    case 'arrow': {
+      const text = plainText(editor, p.richText);
+      return text ? { kind: 'note', text } : null; // unlabelled = no content to send
+    }
+    case 'frame': {
+      const name = typeof p.name === 'string' ? p.name.trim() : '';
+      return name ? { kind: 'note', text: `Section: ${name}` } : null;
+    }
     default:
       return null;
   }
@@ -111,7 +136,7 @@ export function useAsk() {
       const sourceShapes = sourceIds
         .map((id) => editor.getShape(id))
         .filter((s): s is TLShape => Boolean(s));
-      const sources = sourceShapes.map((s) => toSource(s)).filter((s): s is AskSource => Boolean(s));
+      const sources = sourceShapes.map((s) => toSource(editor, s)).filter((s): s is AskSource => Boolean(s));
       if (sources.length === 0) return;
 
       const pdfSourceId = sourceShapes.find((s) => s.type === 'pdf-card')?.id ?? null;
