@@ -78,6 +78,37 @@ body,
   background: var(--jz-surface-raised);
 }
 
+/* Calm the re-enabled primitive toolbar + style panel (canvas pivot P0) into the
+   warm paper aesthetic: our surfaces, radius, shadow, and ink. We retint tldraw's
+   own CSS custom properties so its components inherit the look without us
+   restyling every inner element. */
+.jarwiz-app .tlui-toolbar__tools,
+.jarwiz-app .tlui-style-panel {
+  --color-panel: var(--jz-surface-raised);
+  --color-low: var(--jz-surface-raised);
+  --color-muted-1: color-mix(in srgb, var(--jz-ink-900) 5%, transparent);
+  --color-muted-2: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
+  --color-hint: var(--jz-ink-300);
+  --color-text: var(--jz-ink-900);
+  --color-text-1: var(--jz-ink-900);
+  --color-selected: var(--jz-ink-900);
+  --color-selected-contrast: var(--jz-surface-raised);
+  border-radius: var(--jz-radius-lg);
+  box-shadow: var(--jz-e3);
+  font-family: var(--jz-font-ui);
+}
+
+.jarwiz-app .tlui-style-panel {
+  background: var(--jz-surface-raised);
+  border: 1px solid var(--jz-hairline);
+}
+
+/* Active tool: use Jarwiz ink rather than the default tldraw blue. */
+.jarwiz-app .tlui-button[data-isactive='true'] {
+  background: color-mix(in srgb, var(--jz-ink-900) 9%, transparent);
+  color: var(--jz-ink-900);
+}
+
 /* ─── Wordmark chip ─────────────────────────────────────────────────────── */
 
 .jz-topbar {

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@jarwiz/shared": "0.0.0",
+    "@tldraw/assets": "5.1.0",
     "@tldraw/sync": "^5.1.0",
     "mermaid": "^11.15.0",
     "pdfjs-dist": "^4.10.38",

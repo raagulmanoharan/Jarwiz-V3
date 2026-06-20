@@ -7,6 +7,13 @@ import {
   type TLAssetStore,
   type TLComponents,
 } from 'tldraw';
+import { getAssetUrlsByImport } from '@tldraw/assets/imports.vite';
+import { CanvasStylePanel, CanvasToolbar } from './ui/CanvasToolbar';
+
+// Self-host tldraw's UI icons, fonts, and translations (Vite bundles them) so the
+// re-enabled toolbar / style panel render without reaching cdn.tldraw.com — which
+// a self-hosted product (and restricted networks) can't depend on.
+const tldrawAssetUrls = getAssetUrlsByImport();
 import { useSync } from '@tldraw/sync';
 import { AskLayer } from './ask/AskLayer';
 import { ClarifyLayer } from './ask/ClarifyLayer';
@@ -45,13 +52,15 @@ function JarwizOverlay() {
 }
 
 /**
- * Calm the tldraw chrome: keep selection and zoom/navigation, drop the
- * style panel, menus, debug chrome, and helper buttons.
+ * Calm the tldraw chrome. The canvas pivot (docs/CANVAS-PIVOT.md, P0) re-enables
+ * the primitive toolbar — curated to FigJam essentials — and the style panel, so
+ * shapes/text/connectors are creatable and tweakable. We still drop the menus,
+ * debug chrome, and helper buttons to keep the surface quiet.
  */
 const components: TLComponents = {
   InFrontOfTheCanvas: JarwizOverlay,
-  Toolbar: null, // selection is the default tool; agents own presence
-  StylePanel: null,
+  Toolbar: CanvasToolbar,
+  StylePanel: CanvasStylePanel,
   MainMenu: null,
   PageMenu: null,
   MenuPanel: null,
@@ -103,7 +112,13 @@ function SyncedBoard({ room }: { room: string }) {
     bindingUtils: syncBindingUtils,
   });
   return (
-    <Tldraw store={store} shapeUtils={cardShapeUtils} components={components} onMount={handleMount} />
+    <Tldraw
+      store={store}
+      assetUrls={tldrawAssetUrls}
+      shapeUtils={cardShapeUtils}
+      components={components}
+      onMount={handleMount}
+    />
   );
 }
 
@@ -120,6 +135,7 @@ function LocalBoard() {
     <Tldraw
       key={board?.id ?? 'legacy'}
       persistenceKey={persistenceKey}
+      assetUrls={tldrawAssetUrls}
       shapeUtils={cardShapeUtils}
       components={components}
       onMount={handleMount}
