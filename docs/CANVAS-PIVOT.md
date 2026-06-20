@@ -152,6 +152,14 @@ agents can see and build primitives:
 Bigger than a week; phase it so value lands early and the risky AI surface comes
 after the cheap human win.
 
+> **Status:** P0 ✅, P1 ✅, P2 ✅ shipped. Humans have the full FigJam toolbar +
+> styleable shapes/connectors/text/frames (self-hosted assets); the AI reads
+> every primitive as context (autopilot + Ask); and "◇ Flowchart" has an agent
+> build a real, editable graph of native shapes + connectors from a selection.
+> Verified by `eval-canvas-p0` (8/8), `eval-canvas-p1` (4/4), `eval-canvas-p2`
+> (5/5); Week 1 + writing-partner still green. P3 (native-canvas craft — mixed
+> templates, "tidy this diagram", connector unification) remains.
+
 ```
 P0  Human primitives        →  P1  AI sees primitives  →  P2  AI builds primitives  →  P3  Native canvas craft
 Toolbar + shapes + style       Context + Ask-any          Runtime tools + emission     Mixed templates, ambient

@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { Box, stopEventPropagation, useEditor, useValue } from 'tldraw';
 import { useAsk } from './useAsk';
+import { useDiagram } from '../agents/useDiagram';
 import { useCardAnchor } from './useCardAnchor';
 import { getRegen, subscribeRegen } from './regen';
 import { getClarify, subscribeClarify } from './clarify';
@@ -73,6 +74,7 @@ const FOLLOWUPS: Record<string, Array<{ label: string; prompt: string }>> = {
 export function AskLayer() {
   const editor = useEditor();
   const { ask, isAsking } = useAsk();
+  const { diagram, isDiagramming } = useDiagram();
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -203,6 +205,14 @@ export function AskLayer() {
               : selection.count > 1
                 ? `Ask across ${selection.count} · ${selection.kindLabel}`
                 : 'Ask AI'}
+          </button>
+          <button
+            className="jz-ask-seed"
+            title="Build an editable flowchart from this (shapes + connectors you can tweak)"
+            disabled={isDiagramming || isAsking}
+            onClick={() => diagram('Turn this into a flowchart.', selection.ids)}
+          >
+            {isDiagramming ? 'Diagramming…' : '◇ Flowchart'}
           </button>
           {showSeeds
             ? seeds!.slice(0, 3).map((seed) => (

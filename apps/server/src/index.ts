@@ -29,9 +29,10 @@ import type {
 import { buildLinkPreview, SsrfError } from './linkPreview.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset } from './assets.js';
 import { proposeSeedPrompts, streamAsk } from './ask.js';
-import type { AskRequest } from '@jarwiz/shared';
+import type { AskRequest, DiagramRequest } from '@jarwiz/shared';
 import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
+import { generateDiagram } from './diagram.js';
 import { streamComment } from './comment.js';
 import { sidecarAvailable } from './sidecar.js';
 import { proposeClusterSuggestions, proposeSuggestions } from './suggest.js';
@@ -318,6 +319,37 @@ app.post('/api/ask', async (c) => {
       await stream.writeSSE({ data: JSON.stringify({ type: 'error', message }) });
     }
   });
+});
+
+app.post('/api/diagram', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected JSON: { prompt, sources? }' }, 400);
+  }
+  const raw = body as Partial<DiagramRequest>;
+  if (typeof raw.prompt !== 'string' && !Array.isArray(raw.sources)) {
+    return c.json({ error: 'prompt or sources is required' }, 400);
+  }
+  const request: DiagramRequest = {
+    prompt: typeof raw.prompt === 'string' ? raw.prompt.trim().slice(0, 2000) : '',
+    sources: Array.isArray(raw.sources)
+      ? raw.sources.slice(0, 8).map((s) => ({
+          kind: s?.kind ?? 'note',
+          title: typeof s?.title === 'string' ? s.title.slice(0, 200) : undefined,
+          text: typeof s?.text === 'string' ? s.text.slice(0, 8000) : undefined,
+        }))
+      : undefined,
+  };
+
+  try {
+    const spec = await generateDiagram(request, c.req.raw.signal);
+    return c.json(spec);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Diagram failed';
+    return c.json({ error: message }, 500);
+  }
 });
 
 /** Predefined, content-aware Ask prompts for a dropped PDF (the blank-slate on-ramp). */

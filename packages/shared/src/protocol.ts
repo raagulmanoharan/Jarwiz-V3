@@ -271,6 +271,37 @@ export interface AskRequest {
   skipClarify?: boolean;
 }
 
+/* ─── Diagram (canvas pivot P2 — the AI builds primitives) ───────────────────
+ * "Turn this into a flowchart": the model returns a graph spec and the client
+ * lays it out as native tldraw shapes + connectors (not a card, not Mermaid).
+ * This is the agent authoring real, editable primitives the user can then tweak.
+ */
+
+export interface DiagramNode {
+  /** Stable id used to wire edges; opaque to the user. */
+  id: string;
+  label: string;
+  /** Node silhouette — maps to a tldraw geo shape. */
+  shape?: 'rectangle' | 'ellipse' | 'diamond';
+}
+
+export interface DiagramEdge {
+  from: string;
+  to: string;
+  label?: string;
+}
+
+export interface DiagramSpec {
+  nodes: DiagramNode[];
+  edges: DiagramEdge[];
+}
+
+export interface DiagramRequest {
+  prompt: string;
+  /** Optional grounding — the selected cards/primitives the diagram is built from. */
+  sources?: AskSource[];
+}
+
 /**
  * The shape the answer takes; inferred from the prompt + content, steerable.
  *  - `doc`/`list` — written prose or bullets. A checklist is a `doc`/`list`
