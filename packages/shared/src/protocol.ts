@@ -302,6 +302,29 @@ export interface DiagramRequest {
   sources?: AskSource[];
 }
 
+/* ─── Cluster & summarise (Big Rocks 2.1 — synthesis) ────────────────────────
+ * Start from the user's OWN stickies and synthesise backward: group them into
+ * named themes and write a short "themes so far" summary. Distinct from the
+ * affinity diagram, which starts from a prompt.
+ */
+
+export interface ClusterRequest {
+  /** The selected sticky notes' text, in selection order. */
+  items: string[];
+}
+
+export interface ClusterTheme {
+  name: string;
+  /** Indices into the request `items` that belong to this theme. */
+  members: number[];
+}
+
+export interface ClusterResult {
+  themes: ClusterTheme[];
+  /** A short markdown synthesis ("3 themes emerged: …"). */
+  summary: string;
+}
+
 /**
  * The shape the answer takes; inferred from the prompt + content, steerable.
  *  - `doc`/`list` — written prose or bullets. A checklist is a `doc`/`list`

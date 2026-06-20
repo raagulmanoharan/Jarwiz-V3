@@ -12,6 +12,7 @@ import { Box, stopEventPropagation, useEditor, useValue } from 'tldraw';
 import { useAsk } from './useAsk';
 import { useDiagram } from '../agents/useDiagram';
 import { canTidy, useTidy } from '../agents/useTidy';
+import { useCluster } from '../agents/useCluster';
 import { useCardAnchor } from './useCardAnchor';
 import { getRegen, subscribeRegen } from './regen';
 import { getClarify, subscribeClarify } from './clarify';
@@ -77,6 +78,7 @@ export function AskLayer() {
   const { ask, isAsking } = useAsk();
   const { diagram, isDiagramming } = useDiagram();
   const { tidy } = useTidy();
+  const { cluster, isClustering } = useCluster();
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -103,9 +105,10 @@ export function AskLayer() {
         only?.type === 'pdf-card' ? String((only.props as { assetId?: string }).assetId ?? '') : '';
       const soleType = only?.type ?? '';
       const pdfCount = shapes.filter((s) => s.type === 'pdf-card').length;
+      const noteCount = shapes.filter((s) => s.type === 'note-card').length;
       // A readable summary of what a multi-select would combine, e.g. "Doc · Table · Image".
       const kindLabel = [...new Set(shapes.map((s) => KIND_LABEL[s.type] ?? 'Card'))].join(' · ');
-      return { ids: shapes.map((s) => s.id), count: shapes.length, assetId, soleType, pdfCount, kindLabel };
+      return { ids: shapes.map((s) => s.id), count: shapes.length, assetId, soleType, pdfCount, noteCount, kindLabel };
     },
     [editor],
   );
@@ -162,6 +165,8 @@ export function AskLayer() {
   const style = { left: anchor.x, top: anchor.y } as CSSProperties;
   // A connected multi-selection (a flowchart) can be auto-laid-out in place.
   const showTidy = !open && selection.count >= 2 && canTidy(editor, selection.ids);
+  // ≥3 sticky notes → offer to cluster them into named themes + a summary.
+  const showCluster = !open && (selection.noteCount ?? 0) >= 3;
   const showSeeds = !open && selection.count === 1 && Boolean(assetId) && (seeds?.length ?? 0) > 0;
   const followups = !open && selection.count === 1 ? (FOLLOWUPS[selection.soleType] ?? []) : [];
   // Cross-document affordances when two or more PDFs are selected.
@@ -225,6 +230,16 @@ export function AskLayer() {
               onClick={() => tidy(selection.ids)}
             >
               ⤢ Tidy
+            </button>
+          ) : null}
+          {showCluster ? (
+            <button
+              className="jz-ask-seed"
+              title="Group these notes into named themes and summarise them"
+              disabled={isClustering}
+              onClick={() => cluster()}
+            >
+              {isClustering ? 'Clustering…' : '✦ Cluster & summarise'}
             </button>
           ) : null}
           {showSeeds

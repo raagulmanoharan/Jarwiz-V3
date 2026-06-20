@@ -58,7 +58,13 @@ Each template is a pre-seeded set of cards with placeholder text, laid out spati
 
 The PM insight that's hardest to articulate but most true: *"Stop generating new content and get better at making sense of my content."* Generation is table stakes. Synthesis is the moat.
 
-### 2.1 Cluster stickies → named themes
+### 2.1 Cluster stickies → named themes ✅ shipped
+> **Status:** Select ≥3 sticky notes → "✦ Cluster & summarise" on the Ask
+> affordance. `/api/cluster` groups them into 2–4 named themes; the client lays
+> them out as a color-coded affinity board (notes restacked into per-theme
+> columns under a text header) plus a "Themes" summary doc, one undo. Verified by
+> `scripts/eval-cluster.mjs` (6/6).
+
 **Problem:** A brainstorm session ends with 18 stickies. A PM then spends 30 minutes grouping them by hand, naming the clusters, writing a "themes so far" summary. This is exactly what AI should absorb.  
 **Requirement:** Select a group of note cards → "Cluster & summarise" action in the Ask layer. The agent groups them spatially into named clusters (affinity board pattern, already buildable with existing affinity output shape), then produces a summary doc card with "3 themes emerged: …".  
 **This is different from the existing affinity diagram:** that starts from a prompt. This starts from *the user's own stickies* and synthesises backward.  

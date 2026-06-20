@@ -29,10 +29,11 @@ import type {
 import { buildLinkPreview, SsrfError } from './linkPreview.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset } from './assets.js';
 import { proposeSeedPrompts, streamAsk } from './ask.js';
-import type { AskRequest, DiagramRequest } from '@jarwiz/shared';
+import type { AskRequest, ClusterRequest, DiagramRequest } from '@jarwiz/shared';
 import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
 import { generateDiagram } from './diagram.js';
+import { generateClusters } from './cluster.js';
 import { streamComment } from './comment.js';
 import { sidecarAvailable } from './sidecar.js';
 import { proposeClusterSuggestions, proposeSuggestions } from './suggest.js';
@@ -348,6 +349,28 @@ app.post('/api/diagram', async (c) => {
     return c.json(spec);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Diagram failed';
+    return c.json({ error: message }, 500);
+  }
+});
+
+app.post('/api/cluster', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected JSON: { items: string[] }' }, 400);
+  }
+  const raw = body as Partial<ClusterRequest>;
+  if (!Array.isArray(raw.items) || raw.items.some((i) => typeof i !== 'string')) {
+    return c.json({ error: 'Expected { items: string[] }' }, 400);
+  }
+  const request: ClusterRequest = { items: raw.items.slice(0, 30).map((s) => s.slice(0, 1000)) };
+
+  try {
+    const result = await generateClusters(request, c.req.raw.signal);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Cluster failed';
     return c.json({ error: message }, 500);
   }
 });
