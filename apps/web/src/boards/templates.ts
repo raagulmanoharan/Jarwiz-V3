@@ -5,6 +5,8 @@
  */
 
 import type { Editor } from 'tldraw';
+import type { DiagramSpec } from '@jarwiz/shared';
+import { buildFlowchart } from '../agents/flowLayout';
 
 export interface Template {
   id: string;
@@ -14,6 +16,12 @@ export interface Template {
 }
 
 export const TEMPLATES: Template[] = [
+  {
+    id: 'flowchart',
+    emoji: '◇',
+    label: 'Flowchart',
+    description: 'An editable starter flow — native shapes + connectors. Drag, restyle, and extend.',
+  },
   {
     id: 'problem-bets',
     emoji: '🎯',
@@ -48,8 +56,39 @@ export const TEMPLATES: Template[] = [
 
 const nid = () => 'shape:' + Math.random().toString(36).slice(2, 14);
 
+/** A native-primitive starter flow (canvas pivot P3 — mixed-primitive template). */
+const STARTER_FLOW: DiagramSpec = {
+  nodes: [
+    { id: 'a', label: 'Start', shape: 'ellipse' },
+    { id: 'b', label: 'Do the work', shape: 'rectangle' },
+    { id: 'c', label: 'Looks good?', shape: 'diamond' },
+    { id: 'd', label: 'Ship it', shape: 'rectangle' },
+    { id: 'e', label: 'Done', shape: 'ellipse' },
+  ],
+  edges: [
+    { from: 'a', to: 'b' },
+    { from: 'b', to: 'c' },
+    { from: 'c', to: 'd', label: 'yes' },
+    { from: 'c', to: 'b', label: 'no' },
+    { from: 'd', to: 'e' },
+  ],
+};
+
 /** Apply template shapes to the canvas, centred, with the board name in the primary card title. */
 export function applyTemplate(editor: Editor, templateId: string, boardName: string): void {
+  // The flowchart starter needs bound connectors, so it goes through the shared
+  // flow builder rather than the plain createShapes path.
+  if (templateId === 'flowchart') {
+    editor.markHistoryStoppingPoint('apply-template');
+    const ids = buildFlowchart(editor, STARTER_FLOW, { x: -300, y: -260 });
+    if (ids.length) {
+      editor.select(...ids);
+      const b = editor.getSelectionPageBounds();
+      if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 80 });
+      editor.selectNone();
+    }
+    return;
+  }
   const shapes = buildShapes(templateId, boardName);
   if (!shapes.length) return;
   editor.createShapes(shapes);

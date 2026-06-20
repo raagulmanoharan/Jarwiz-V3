@@ -11,6 +11,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties }
 import { Box, stopEventPropagation, useEditor, useValue } from 'tldraw';
 import { useAsk } from './useAsk';
 import { useDiagram } from '../agents/useDiagram';
+import { canTidy, useTidy } from '../agents/useTidy';
 import { useCardAnchor } from './useCardAnchor';
 import { getRegen, subscribeRegen } from './regen';
 import { getClarify, subscribeClarify } from './clarify';
@@ -75,6 +76,7 @@ export function AskLayer() {
   const editor = useEditor();
   const { ask, isAsking } = useAsk();
   const { diagram, isDiagramming } = useDiagram();
+  const { tidy } = useTidy();
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -158,6 +160,8 @@ export function AskLayer() {
   };
 
   const style = { left: anchor.x, top: anchor.y } as CSSProperties;
+  // A connected multi-selection (a flowchart) can be auto-laid-out in place.
+  const showTidy = !open && selection.count >= 2 && canTidy(editor, selection.ids);
   const showSeeds = !open && selection.count === 1 && Boolean(assetId) && (seeds?.length ?? 0) > 0;
   const followups = !open && selection.count === 1 ? (FOLLOWUPS[selection.soleType] ?? []) : [];
   // Cross-document affordances when two or more PDFs are selected.
@@ -214,6 +218,15 @@ export function AskLayer() {
           >
             {isDiagramming ? 'Diagramming…' : '◇ Flowchart'}
           </button>
+          {showTidy ? (
+            <button
+              className="jz-ask-seed"
+              title="Auto-layout these connected shapes into a clean flow"
+              onClick={() => tidy(selection.ids)}
+            >
+              ⤢ Tidy
+            </button>
+          ) : null}
           {showSeeds
             ? seeds!.slice(0, 3).map((seed) => (
                 <button

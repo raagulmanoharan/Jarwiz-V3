@@ -9,31 +9,15 @@
 
 import { useCallback, useRef, useState } from 'react';
 import {
-  createBindingId,
-  createShapeId,
   renderPlaintextFromRichText,
-  toRichText,
   useEditor,
   type Editor,
-  type TLArrowShape,
-  type TLDefaultColorStyle,
   type TLRichText,
   type TLShape,
   type TLShapeId,
 } from 'tldraw';
-import type { AskSource, DiagramNode, DiagramSpec } from '@jarwiz/shared';
-
-const NODE_W = 172;
-const NODE_H = 76;
-const GAP_X = 56;
-const GAP_Y = 72;
-
-/** Per node-kind tldraw styling — a calm, legible flowchart palette. */
-const NODE_STYLE: Record<NonNullable<DiagramNode['shape']>, { geo: string; color: TLDefaultColorStyle }> = {
-  rectangle: { geo: 'rectangle', color: 'blue' },
-  diamond: { geo: 'diamond', color: 'orange' },
-  ellipse: { geo: 'ellipse', color: 'green' },
-};
+import type { AskSource, DiagramSpec } from '@jarwiz/shared';
+import { buildFlowchart } from './flowLayout';
 
 function plainText(editor: Editor, richText: unknown): string {
   if (!richText || typeof richText !== 'object') return '';
@@ -62,91 +46,6 @@ function sourceFromShape(editor: Editor, shape: TLShape): AskSource | null {
     return t ? { kind: 'note', text: t } : null;
   }
   return null;
-}
-
-/** Longest-path depth per node (bounded so cycles can't loop). Roots → row 0. */
-function layoutDepths(spec: DiagramSpec): Map<string, number> {
-  const depth = new Map<string, number>();
-  for (const n of spec.nodes) depth.set(n.id, 0);
-  const cap = spec.nodes.length;
-  for (let i = 0; i < cap; i++) {
-    for (const e of spec.edges) {
-      const next = (depth.get(e.from) ?? 0) + 1;
-      if (next <= cap && next > (depth.get(e.to) ?? 0)) depth.set(e.to, next);
-    }
-  }
-  return depth;
-}
-
-/** Place the spec's shapes + connectors on the board, return the created ids. */
-function buildFlowchart(editor: Editor, spec: DiagramSpec, origin: { x: number; y: number }): TLShapeId[] {
-  const depth = layoutDepths(spec);
-  // Compress depths to consecutive rows so a back-edge can't leave a huge gap.
-  const usedDepths = [...new Set(spec.nodes.map((n) => depth.get(n.id) ?? 0))].sort((a, b) => a - b);
-  const rank = new Map(usedDepths.map((d, i) => [d, i]));
-  // Group nodes by row (compressed depth), preserving spec order within a row.
-  const rows = new Map<number, DiagramNode[]>();
-  for (const n of spec.nodes) {
-    const d = rank.get(depth.get(n.id) ?? 0) ?? 0;
-    (rows.get(d) ?? rows.set(d, []).get(d)!).push(n);
-  }
-  const maxCols = Math.max(...[...rows.values()].map((r) => r.length), 1);
-  const totalW = maxCols * NODE_W + (maxCols - 1) * GAP_X;
-
-  const nodeId = new Map<string, TLShapeId>();
-  const created: TLShapeId[] = [];
-
-  editor.markHistoryStoppingPoint('build-flowchart');
-
-  for (const [d, nodesInRow] of [...rows.entries()].sort((a, b) => a[0] - b[0])) {
-    const rowW = nodesInRow.length * NODE_W + (nodesInRow.length - 1) * GAP_X;
-    const rowX = origin.x + (totalW - rowW) / 2;
-    nodesInRow.forEach((n, i) => {
-      const id = createShapeId();
-      nodeId.set(n.id, id);
-      created.push(id);
-      const style = NODE_STYLE[n.shape ?? 'rectangle'];
-      editor.createShape({
-        id,
-        type: 'geo',
-        x: rowX + i * (NODE_W + GAP_X),
-        y: origin.y + d * (NODE_H + GAP_Y),
-        props: {
-          geo: style.geo,
-          w: NODE_W,
-          h: NODE_H,
-          color: style.color,
-          fill: 'solid',
-          size: 's',
-          richText: toRichText(n.label),
-        },
-      } as Parameters<typeof editor.createShape>[0]);
-    });
-  }
-
-  for (const e of spec.edges) {
-    const from = nodeId.get(e.from);
-    const to = nodeId.get(e.to);
-    if (!from || !to) continue;
-    const arrowId = createShapeId();
-    editor.createShape<TLArrowShape>({
-      id: arrowId,
-      type: 'arrow',
-      props: {
-        color: 'black',
-        size: 's',
-        dash: 'solid',
-        arrowheadEnd: 'triangle',
-        ...(e.label ? { richText: toRichText(e.label) } : {}),
-      },
-    });
-    editor.createBindings([
-      { id: createBindingId(), type: 'arrow', fromId: arrowId, toId: from, props: { terminal: 'start', normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false, snap: 'none' } },
-      { id: createBindingId(), type: 'arrow', fromId: arrowId, toId: to, props: { terminal: 'end', normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false, snap: 'none' } },
-    ]);
-  }
-
-  return created;
 }
 
 export function useDiagram() {
@@ -193,6 +92,7 @@ export function useDiagram() {
         if (!res.ok) throw new Error(`diagram failed (${res.status})`);
         const spec = (await res.json()) as DiagramSpec;
         if (!spec?.nodes?.length) return;
+        editor.markHistoryStoppingPoint('build-flowchart'); // whole build = one undo
         const ids = buildFlowchart(editor, spec, origin);
         if (ids.length) {
           editor.select(...ids);
