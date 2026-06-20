@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useSyncExternalStore } from 'react';
 import {
   Tldraw,
   defaultBindingUtils,
@@ -16,6 +16,8 @@ import { SelectionAsk } from './ask/SelectionAsk';
 import { Timeline } from './log/Timeline';
 import { registerIngestion } from './ingest/registerIngestion';
 import { cardShapeUtils } from './shapes';
+import { BoardEntry } from './boards/BoardEntry';
+import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
 import { EmptyState } from './ui/EmptyState';
 import { StickyDock } from './ui/StickyDock';
 import { Topbar } from './ui/Topbar';
@@ -29,6 +31,7 @@ function JarwizOverlay() {
   return (
     <>
       <EmptyState />
+      <BoardEntry />
       <Topbar />
       <AskLayer />
       <ClarifyLayer />
@@ -104,11 +107,19 @@ function SyncedBoard({ room }: { room: string }) {
   );
 }
 
-/** The default single-player board, persisted locally in the browser. */
+/** The default single-player board, persisted locally in the browser.
+ *  Keyed on the active board id so tldraw remounts cleanly on switch. */
 function LocalBoard() {
+  const board = useSyncExternalStore(subscribeBoards, getActiveBoard, getActiveBoard);
+  const persistenceKey = useSyncExternalStore(
+    subscribeBoards,
+    getActivePersistenceKey,
+    getActivePersistenceKey,
+  );
   return (
     <Tldraw
-      persistenceKey="jarwiz-pdf-v2"
+      key={board?.id ?? 'legacy'}
+      persistenceKey={persistenceKey}
       shapeUtils={cardShapeUtils}
       components={components}
       onMount={handleMount}

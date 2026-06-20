@@ -14,9 +14,18 @@ Every rock below is in service of one of those three things.
 
 ---
 
-## Week 1 — Make it safe to invest in
+## Week 1 — Make it safe to invest in ✅ shipped
 
 The single biggest drop-off risk: "I spent an hour here and I don't know if it'll be there tomorrow." Fix that first. Everything else is built on trust.
+
+> **Status (shipped):** All three rocks landed. Multi-board with per-board
+> localStorage persistence + a topbar switcher (create/switch/rename/delete);
+> the "What are you working on?" onboarding dialog on new boards; and five
+> starter templates. Backward-compatible — the existing canvas migrates to a
+> "My workspace" board on the legacy persistence key, so nothing is lost on
+> upgrade. Verified by `scripts/eval-week1.mjs` (8/8), including the critical
+> persistence-isolation check (switching boards restores each board's own
+> canvas).
 
 ### 1.1 Multi-board with names
 **Problem:** One infinite canvas means everything from every project lives in one place. By week two it's chaos.  
