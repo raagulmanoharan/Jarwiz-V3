@@ -16,9 +16,8 @@ import { ToolRail } from './ui/ToolRail';
 // a self-hosted product (and restricted networks) can't depend on.
 const tldrawAssetUrls = getAssetUrlsByImport();
 import { useSync } from '@tldraw/sync';
-import { AskLayer } from './ask/AskLayer';
 import { PromptBar } from './ask/PromptBar';
-import { ProvenanceLayer } from './ask/ProvenanceLayer';
+import { CardActionBar } from './ask/CardActionBar';
 import { DiscussLayer } from './ask/DiscussLayer';
 import { ClarifyLayer } from './ask/ClarifyLayer';
 import { DraftControls } from './ask/DraftControls';
@@ -45,12 +44,11 @@ function JarwizOverlay() {
       <EmptyState />
       <BoardEntry />
       <Topbar />
-      <AskLayer />
+      <CardActionBar />
       <ClarifyLayer />
       <DraftControls />
       <RegenControls />
       <SelectionAsk />
-      <ProvenanceLayer />
       <DiscussLayer />
       <AgentCursorLayer />
       <AgentTaskLayer />

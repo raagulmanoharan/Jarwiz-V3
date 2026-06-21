@@ -3629,8 +3629,117 @@ body,
   background: transparent;
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-body-size);
+  line-height: 1.45;
+  color: var(--jz-ink-900);
+  resize: none;
+  min-height: 42px;
+  max-height: 120px;
+  padding: 6px 0;
+  align-self: center;
+}
+
+/* ─── Card action bar (fixed, below the header — predictable per-card actions) ─ */
+.jz-cardbar {
+  position: absolute;
+  left: 50%;
+  top: 60px;
+  transform: translateX(-50%);
+  z-index: 311;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: min(680px, calc(100vw - 40px));
+  padding: 5px 7px;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  border: 1px solid var(--jz-hairline);
+  animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
+}
+
+.jz-cardbar-name {
+  font-size: var(--jz-text-caption-size);
+  font-weight: 600;
+  color: var(--jz-ink-500);
+  padding: 0 6px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jz-cardbar-sep { width: 1px; height: 18px; background: var(--jz-hairline-strong); margin: 0 2px; }
+.jz-cardbar-group { position: relative; }
+
+.jz-cardbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  cursor: pointer;
+  padding: 6px 11px;
+  border-radius: var(--jz-radius-pill);
+  background: transparent;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-sm-size);
+  font-weight: 600;
+  color: var(--jz-ink-700);
+  white-space: nowrap;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-cardbar-btn:hover,
+.jz-cardbar-btn--open,
+.jz-cardbar-btn--on {
+  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
   color: var(--jz-ink-900);
 }
+
+.jz-cardbar-caret { font-size: 9px; opacity: 0.6; }
+
+.jz-cardbar-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 5;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--jz-space-2);
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e4);
+  border: 1px solid var(--jz-hairline);
+  animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
+}
+
+.jz-cardbar-item {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: var(--jz-radius-sm);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-sm-size);
+  color: var(--jz-ink-900);
+  white-space: nowrap;
+}
+
+.jz-cardbar-item:hover { background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent); }
+
+/* Discuss panel header (opened from the card action bar) */
+.jz-discuss-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--jz-hairline);
+}
+.jz-discuss-title { font-size: var(--jz-text-micro-size); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--jz-ink-400); }
+.jz-discuss-close { border: none; background: transparent; cursor: pointer; color: var(--jz-ink-400); font-size: 11px; }
 
 .jz-promptbar-input::placeholder {
   color: var(--jz-ink-400);

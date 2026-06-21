@@ -8,10 +8,27 @@ import type { TLShapeId } from 'tldraw';
 import type { ReviseTurn } from '@jarwiz/shared';
 
 let threads: ReadonlyMap<TLShapeId, ReviseTurn[]> = new Map();
+let openCardId: TLShapeId | null = null;
 const listeners = new Set<() => void>();
 
 function notify() {
   listeners.forEach((l) => l());
+}
+
+/** Which card's discussion panel is open (driven by the top action bar). */
+export function getOpenDiscuss(): TLShapeId | null {
+  return openCardId;
+}
+
+export function toggleDiscuss(id: TLShapeId): void {
+  openCardId = openCardId === id ? null : id;
+  notify();
+}
+
+export function closeDiscuss(): void {
+  if (openCardId === null) return;
+  openCardId = null;
+  notify();
 }
 
 export function getThread(id: TLShapeId): ReviseTurn[] {

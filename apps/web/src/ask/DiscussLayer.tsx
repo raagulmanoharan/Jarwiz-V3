@@ -8,7 +8,7 @@
 import { useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { stopEventPropagation, useEditor, useValue } from 'tldraw';
 import { getAgent } from '@jarwiz/shared';
-import { addTurn, getThread, getThreads, subscribeDiscuss } from './discuss';
+import { addTurn, closeDiscuss, getOpenDiscuss, getThread, getThreads, subscribeDiscuss } from './discuss';
 import { readSSE } from '../agents/sse';
 import { startStreaming, stopStreaming } from '../agents/streaming';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from '../agents/presence';
@@ -20,25 +20,24 @@ type Delta = { type: 'delta'; textDelta: string } | { type: 'done' } | { type: '
 export function DiscussLayer() {
   const editor = useEditor();
   useSyncExternalStore(subscribeDiscuss, getThreads, getThreads);
-  const [open, setOpen] = useState(false);
+  const openId = useSyncExternalStore(subscribeDiscuss, getOpenDiscuss, getOpenDiscuss);
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // The top action bar's Discuss button opens this; anchor the panel at the card.
   const target = useValue(
     'jz discuss target',
     () => {
-      const ids = editor.getSelectedShapeIds();
-      if (ids.length !== 1) return null;
-      const id = ids[0]!;
-      const shape = editor.getShape(id);
+      if (!openId) return null;
+      const shape = editor.getShape(openId);
       if (!shape || shape.type !== 'doc-card') return null;
-      const b = editor.getShapePageBounds(id);
+      const b = editor.getShapePageBounds(openId);
       if (!b) return null;
       const p = editor.pageToViewport({ x: b.maxX, y: b.minY });
       const vp = editor.getViewportScreenBounds();
-      return { id, x: Math.min(p.x + 8, vp.w - 300), y: Math.max(8, p.y) };
+      return { id: openId, x: Math.min(p.x + 8, vp.w - 300), y: Math.max(96, Math.min(p.y, vp.h - 320)) };
     },
-    [editor],
+    [editor, openId],
   );
 
   if (!target) return null;
@@ -99,14 +98,11 @@ export function DiscussLayer() {
 
   return (
     <div className="jz-discuss" style={style} onPointerDown={stopEventPropagation}>
-      <button
-        className={`jz-discuss-chip${open ? ' jz-discuss-chip--open' : ''}`}
-        onClick={() => setOpen((v) => !v)}
-      >
-        💬 Discuss{thread.length ? ` · ${thread.filter((t) => t.role === 'you').length}` : ''}
-      </button>
-      {open ? (
-        <div className="jz-discuss-panel">
+      <div className="jz-discuss-panel">
+        <div className="jz-discuss-head">
+          <span className="jz-discuss-title">Discuss</span>
+          <button className="jz-discuss-close" aria-label="Close" onClick={() => closeDiscuss()}>✕</button>
+        </div>
           <div className="jz-discuss-thread">
             {thread.length === 0 ? (
               <p className="jz-discuss-empty">Push back on this draft — the agent revises it in place.</p>
@@ -139,8 +135,7 @@ export function DiscussLayer() {
               {busy ? '…' : 'Send'}
             </button>
           </div>
-        </div>
-      ) : null}
+      </div>
     </div>
   );
 }

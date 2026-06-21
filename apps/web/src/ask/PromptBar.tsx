@@ -36,6 +36,18 @@ const TOOLS: Array<{ mode: AnalyzeMode; glyph: string; label: string; hint: stri
 
 const COACH_KEY = 'jz-coach-agents';
 
+/** Content-question starters per card kind — editable next-best prompts. These
+ *  are open-ended QUESTIONS, deliberately distinct from the top bar's transforms. */
+const STARTERS: Record<string, string[]> = {
+  'doc-card': ["What's the weakest part of this?", "What's missing here?", 'Summarise this in 3 bullets'],
+  'note-card': ['Expand this into a doc', "What's the counter-argument?"],
+  'table-card': ['Which option wins, and why?', "What's missing from this table?"],
+  'pdf-card': ['Summarise the key points', 'What should I worry about here?'],
+  'diagram-card': ['Explain this flow', "Where's the failure point?"],
+  'image-card': ["What's notable in this image?"],
+  default: ["What's most important here?", 'What would a skeptic ask?'],
+};
+
 export function PromptBar() {
   const editor = useEditor();
   const { ask, isAsking } = useAsk();
@@ -60,6 +72,10 @@ export function PromptBar() {
     editor.setSelectedShapes(editor.getSelectedShapeIds().filter((x) => x !== id));
   };
   const boardCount = useValue('promptbar-boardcount', () => editor.getCurrentPageShapeIds().size, [editor]);
+  const soleType = useValue('promptbar-soletype', () => {
+    const ids = editor.getSelectedShapeIds();
+    return ids.length === 1 ? (editor.getShape(ids[0]!)?.type ?? '') : '';
+  }, [editor]);
 
   const dismissCoach = () => { setCoachDone(true); try { localStorage.setItem(COACH_KEY, '1'); } catch {} };
   // Opening the menu (or running a tool) counts as learning it exists.
@@ -72,12 +88,17 @@ export function PromptBar() {
     setValue('');
   };
   const runTool = (mode: AnalyzeMode) => { setMenuOpen(false); void analyze(mode); };
+  const useStarter = (q: string) => { setValue(q); requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input')?.focus()); };
 
   const placeholder = groundIds.length ? 'Ask about the selection…' : 'Ask anything, or describe what to create…';
   const busyLabel = runningMode ? (runningMode === 'tensions' ? 'Scanning…' : runningMode === 'gaps' ? 'Reviewing…' : 'Critiquing…') : null;
 
   // Contextual quick-actions: board has substance, nothing selected, idle.
   const showChips = !menuOpen && !runningMode && groundIds.length === 0 && boardCount >= 3;
+  // Question starters: a single card is selected — suggest editable next-best
+  // prompts (open-ended QUESTIONS, distinct from the top bar's transforms).
+  const starters = groundIds.length === 1 ? (STARTERS[soleType] ?? STARTERS.default ?? []) : [];
+  const showStarters = !menuOpen && !runningMode && !value.trim() && starters.length > 0;
   // Coachmark: board has grown, agents never used.
   const showCoach = !coachDone && !menuOpen && boardCount >= 5;
 
@@ -87,6 +108,14 @@ export function PromptBar() {
         <div className="jz-coach" role="dialog">
           <span className="jz-coach-text">✦ Your agents can scan this whole board — tensions, gaps, a critique.</span>
           <button className="jz-coach-dismiss" onClick={dismissCoach}>Got it</button>
+        </div>
+      ) : null}
+
+      {showStarters ? (
+        <div className="jz-promptbar-chips">
+          {starters.map((s) => (
+            <button key={s} className="jz-pb-chip" title="Use this prompt (editable)" onClick={() => useStarter(s)}>{s}</button>
+          ))}
         </div>
       ) : null}
 
@@ -136,15 +165,16 @@ export function PromptBar() {
             {ground.length > 3 ? <span className="jz-pb-ground jz-pb-ground--more">+{ground.length - 3}</span> : null}
           </div>
         ) : null}
-        <input
+        <textarea
           className="jz-promptbar-input"
           value={value}
+          rows={2}
           placeholder={placeholder}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
             e.stopPropagation();
-            if (e.key === 'Enter') submit();
-            if (e.key === 'Escape') (e.target as HTMLInputElement).blur();
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
+            if (e.key === 'Escape') (e.target as HTMLTextAreaElement).blur();
           }}
         />
         <button className="jz-promptbar-send" disabled={!value.trim() || isAsking} onClick={submit} title="Ask (Enter)">
