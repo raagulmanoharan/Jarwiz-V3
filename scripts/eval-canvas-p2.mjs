@@ -83,16 +83,19 @@ async function run() {
   await page.evaluate((id) => { window.editor.select(id); }, docId);
   await sleep(500);
 
-  // ── A. The Flowchart action appears ─────────────────────────────────────
-  const pill = page.locator('.jz-ask-seed', { hasText: 'Flowchart' });
-  const pillVisible = (await pill.count()) > 0;
-  record('"◇ Flowchart" action appears on a selection', pillVisible);
+  // ── A. The Flowchart action appears in the card action bar's Refine menu ──
+  const refine = page.locator('.jz-cardbar-btn', { hasText: 'Refine' });
+  const pillVisible = (await refine.count()) > 0;
+  await refine.first().click().catch(() => {});
+  await sleep(200);
+  const flowItem = page.locator('.jz-cardbar-item', { hasText: 'flowchart' });
+  record('"◇ Flowchart" action appears on a selection', pillVisible && (await flowItem.count()) > 0);
 
   const before = await counts(page);
 
   // ── B/C/D. Click it → request + flowchart built ─────────────────────────
   if (pillVisible) {
-    await pill.first().click();
+    await flowItem.first().click();
     // The agent now DRAWS node-by-node then the connectors, asynchronously —
     // wait for the full draw to settle (nodes AND edges, counts stable) before
     // asserting or undoing.

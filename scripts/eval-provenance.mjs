@@ -85,19 +85,18 @@ async function run() {
     await page.evaluate((id) => { window.editor.select(id); }, ansId);
     await sleep(500);
   }
-  const provVisible = (await page.locator('.jz-prov').count()) > 0;
+  // "Based on ▾" lives in the card action bar; open it to reveal the sources.
+  const basedBtn = page.locator('.jz-cardbar-btn', { hasText: 'Based on' });
+  const provVisible = (await basedBtn.count()) > 0;
   record('Answer shows a "Based on" header', provVisible);
-  const srcText = provVisible ? (await page.locator('.jz-prov-src').first().innerText()).trim() : '';
+  if (provVisible) { await basedBtn.first().click(); await sleep(200); }
+  const srcText = provVisible ? (await page.locator('.jz-cardbar-item').first().innerText().catch(() => '')).trim() : '';
   record('Header names the source label', /Pricing memo/.test(srcText), srcText);
-  await page.evaluate(() => { window.editor.zoomToFit(); });
-  await sleep(300);
-  await page.evaluate((id) => { window.editor.select(id); }, ansId);
-  await sleep(400);
   await page.screenshot({ path: `${OUT}/jz-prov-header.png` });
 
   // ── C. Clicking the source selects + zooms it ───────────────────────────
   if (provVisible) {
-    await page.locator('.jz-prov-src').first().click();
+    await page.locator('.jz-cardbar-item', { hasText: 'Pricing memo' }).first().click();
     await sleep(600);
     const sel = await page.evaluate(() => window.editor.getSelectedShapeIds());
     record('Clicking a source selects it', sel.length === 1 && sel[0] === srcId, JSON.stringify(sel));
@@ -122,7 +121,7 @@ async function run() {
     await page2.evaluate((id) => { window.editor.select(id); }, newDoc);
     await sleep(500);
   }
-  const provOnSourceless = (await page2.locator('.jz-prov').count()) > 0;
+  const provOnSourceless = (await page2.locator('.jz-cardbar-btn', { hasText: 'Based on' }).count()) > 0;
   record('Sourceless answer has no provenance header', newDoc !== null && !provOnSourceless,
     newDoc ? 'answer present, no header' : 'no answer');
 

@@ -70,8 +70,8 @@ async function run() {
   });
   await sleep(500);
 
-  // ── A. Discuss chip appears ─────────────────────────────────────────────
-  const chip = page.locator('.jz-discuss-chip');
+  // ── A. Discuss button appears in the card action bar ────────────────────
+  const chip = page.locator('.jz-cardbar-btn', { hasText: 'Discuss' });
   const chipVisible = (await chip.count()) > 0;
   record('Discuss chip appears on a doc card', chipVisible);
 

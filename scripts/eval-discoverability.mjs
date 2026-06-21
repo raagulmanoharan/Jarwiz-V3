@@ -55,10 +55,12 @@ async function run() {
   record('Chips appear with board content', chips >= 2, `${chips} chips`);
   await page.screenshot({ path: `${OUT}/jz-disc-chips.png` });
 
-  // ── C. Selection hides chips ────────────────────────────────────────────
+  // ── C. Selecting a card hands off: board-scan chips out, question starters in ─
   await page.evaluate(() => { window.editor.select(window.__notes[0]); });
   await sleep(300);
-  record('Chips hide when something is selected', (await page.locator('.jz-pb-chip').count()) === 0);
+  const scanGone = (await page.locator('.jz-pb-chip', { hasText: 'tensions' }).count()) === 0;
+  const startersIn = (await page.locator('.jz-pb-chip').count()) > 0;
+  record('Selection swaps scan chips for question starters', scanGone && startersIn);
   await page.evaluate(() => { window.editor.selectNone(); });
   await sleep(200);
 

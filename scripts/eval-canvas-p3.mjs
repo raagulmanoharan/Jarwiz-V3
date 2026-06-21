@@ -92,13 +92,20 @@ async function run() {
   });
   const page = await open();
 
+  // Open the action bar's Refine menu (idempotent) and return whether it lists "Tidy".
+  const refineHasTidy = async () => {
+    const refine = page.locator('.jz-cardbar-btn', { hasText: 'Refine' });
+    if (!(await refine.count())) return false;
+    if ((await page.locator('.jz-cardbar-menu').count()) === 0) { await refine.first().click(); await sleep(300); }
+    return (await page.locator('.jz-cardbar-item', { hasText: 'Tidy' }).count()) > 0;
+  };
+
   // ── B. No Tidy for an unconnected multi-selection ───────────────────────
   await clear(page);
   await seedChain(page, false);
   await page.evaluate(() => { window.editor.select(...window.__nodes); });
   await sleep(500);
-  const tidyUnconnected = await page.locator('.jz-ask-seed', { hasText: 'Tidy' }).count();
-  record('Tidy hidden for an unconnected selection', tidyUnconnected === 0);
+  record('Tidy hidden for an unconnected selection', (await refineHasTidy()) === false);
 
   // ── A. Tidy appears for a connected selection ───────────────────────────
   await clear(page);
@@ -106,14 +113,13 @@ async function run() {
   await page.evaluate(() => { window.editor.select(...window.__nodes); });
   await sleep(500);
   const before = await nodePositions(page);
-  const tidyPill = page.locator('.jz-ask-seed', { hasText: 'Tidy' });
-  const tidyVisible = (await tidyPill.count()) > 0;
+  const tidyVisible = await refineHasTidy(); // opens Refine; leaves it open
   record('Tidy appears for a connected selection', tidyVisible);
   await page.screenshot({ path: `${OUT}/jz-p3-before-tidy.png` });
 
   // ── C. Tidy aligns the chain into a clean column ────────────────────────
   if (tidyVisible) {
-    await tidyPill.first().click({ force: true });
+    await page.locator('.jz-cardbar-item', { hasText: 'Tidy' }).first().click();
     await sleep(900);
     await page.evaluate(() => { window.editor.selectNone(); });
     await sleep(300);

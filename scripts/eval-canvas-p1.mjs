@@ -147,16 +147,14 @@ async function run() {
   });
   await page.evaluate((id) => { window.editor.select(id); }, boxId);
   await sleep(500);
-  const askVisible = (await page.locator('.jz-ask-pill').count()) > 0;
+  // Selecting an askable shape grounds the prompt bar — it shows a removable chip.
+  const askVisible = (await page.locator('.jz-pb-ground').count()) > 0;
   record('Ask affordance appears on a native shape selection', askVisible);
   await page.screenshot({ path: `${OUT}/jz-p1-ask-on-shape.png` });
 
   if (askVisible) {
-    // Open the affordance and ask a question grounded in the shape.
-    await page.locator('.jz-ask-pill').first().click();
-    await sleep(300);
-    const input = page.locator('.jz-ask-input');
-    await input.first().fill('Summarise this in one line');
+    // Ask via the prompt bar; the selection is the grounding source.
+    await page.locator('.jz-promptbar-input').fill('Summarise this in one line');
     await page.keyboard.press('Enter');
     await sleep(1500);
     const sentShapeText = Array.isArray(askBody?.sources) &&
@@ -164,7 +162,7 @@ async function run() {
     record('Ask request carries the shape text as a source', sentShapeText,
       askBody ? `sources=${JSON.stringify(askBody.sources)?.slice(0, 90)}` : 'no /api/ask request');
   } else {
-    record('Ask request carries the shape text as a source', false, 'affordance not shown');
+    record('Ask request carries the shape text as a source', false, 'grounding not shown');
   }
 
   await browser.close();

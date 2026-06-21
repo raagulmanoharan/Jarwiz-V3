@@ -86,13 +86,21 @@ async function run() {
     }
   });
 
-  // ── B. No Cluster pill for only 2 notes ─────────────────────────────────
+  // Open the action bar's Refine menu (idempotent — only opens if closed) and
+  // return whether it lists "Cluster".
+  const refineHasCluster = async () => {
+    const refine = page.locator('.jz-cardbar-btn', { hasText: 'Refine' });
+    if (!(await refine.count())) return false;
+    if ((await page.locator('.jz-cardbar-menu').count()) === 0) { await refine.first().click(); await sleep(300); }
+    return (await page.locator('.jz-cardbar-item', { hasText: 'Cluster' }).count()) > 0;
+  };
+
+  // ── B. No Cluster action for only 2 notes ───────────────────────────────
   await clear(page);
   await seedNotes(page, ['Login is slow', 'Onboarding too long']);
   await page.evaluate(() => { window.editor.select(...window.__notes); });
   await sleep(500);
-  const clusterAt2 = await page.locator('.jz-ask-seed', { hasText: 'Cluster' }).count();
-  record('Cluster hidden below 3 notes', clusterAt2 === 0);
+  record('Cluster hidden below 3 notes', (await refineHasCluster()) === false);
 
   // ── A. Cluster pill appears for 6 notes ─────────────────────────────────
   await clear(page);
@@ -106,13 +114,12 @@ async function run() {
   const beforeColors = await page.evaluate(() =>
     window.__notes.map((id) => { const b = window.editor.getShapePageBounds(id); return b ? Math.round(b.minX) : 0; }),
   );
-  const pill = page.locator('.jz-ask-seed', { hasText: 'Cluster' });
-  const pillVisible = (await pill.count()) > 0;
+  const pillVisible = await refineHasCluster(); // opens Refine; leaves it open
   record('Cluster appears for ≥3 notes', pillVisible);
   await page.screenshot({ path: `${OUT}/jz-cluster-before.png` });
 
   if (pillVisible) {
-    await pill.first().click({ force: true });
+    await page.locator('.jz-cardbar-item', { hasText: 'Cluster' }).first().click();
     // Wait for the summary doc to appear (sidecar synthesis can take 10–20s).
     let docs = 0;
     for (let i = 0; i < 40; i++) {
