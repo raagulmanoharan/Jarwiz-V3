@@ -3088,6 +3088,133 @@ body,
   color: var(--jz-ink-900);
 }
 
+/* ─── Discuss thread (conversational depth, 3.3) ─────────────────────────── */
+.jz-discuss {
+  position: absolute;
+  z-index: 313;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.jz-discuss-chip {
+  border: 1px solid var(--jz-hairline-strong);
+  cursor: pointer;
+  padding: 5px 11px;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e2);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  font-weight: 600;
+  color: var(--jz-ink-700);
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-discuss-chip:hover,
+.jz-discuss-chip--open {
+  transform: translateY(-1px);
+  color: var(--jz-ink-900);
+}
+
+.jz-discuss-panel {
+  width: 288px;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e4);
+  border: 1px solid var(--jz-hairline);
+  overflow: hidden;
+  animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
+}
+
+.jz-discuss-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jz-space-4);
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.jz-discuss-empty {
+  margin: 0;
+  font-size: var(--jz-text-caption-size);
+  line-height: 1.45;
+  color: var(--jz-ink-400);
+}
+
+.jz-discuss-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.jz-discuss-role {
+  font-size: var(--jz-text-micro-size);
+  font-weight: 700;
+  color: var(--jz-ink-400);
+}
+
+.jz-discuss-turn--agent .jz-discuss-role {
+  color: #b45309;
+}
+
+.jz-discuss-text {
+  font-size: var(--jz-text-body-sm-size);
+  line-height: 1.45;
+  color: var(--jz-ink-900);
+  white-space: pre-wrap;
+}
+
+.jz-discuss-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid var(--jz-hairline);
+}
+
+.jz-discuss-input {
+  flex: 1;
+  min-width: 0;
+  resize: none;
+  border: 1px solid var(--jz-hairline-strong);
+  border-radius: var(--jz-radius-sm);
+  background: var(--jz-surface);
+  padding: 7px 9px;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-sm-size);
+  line-height: 1.4;
+  color: var(--jz-ink-900);
+  outline: none;
+}
+
+.jz-discuss-input:focus {
+  border-color: color-mix(in srgb, var(--jz-ink-900) 28%, transparent);
+}
+
+.jz-discuss-send {
+  flex: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: var(--jz-radius-sm);
+  background: var(--jz-ink-900);
+  color: #faf6ec;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  font-weight: 600;
+}
+
+.jz-discuss-send:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 /* ─── Prompt bar (bottom-centre agent query box, Stitch-style) ───────────── */
 .jz-promptbar {
   position: absolute;

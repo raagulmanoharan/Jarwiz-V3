@@ -18,6 +18,7 @@ import { useSync } from '@tldraw/sync';
 import { AskLayer } from './ask/AskLayer';
 import { PromptBar } from './ask/PromptBar';
 import { ProvenanceLayer } from './ask/ProvenanceLayer';
+import { DiscussLayer } from './ask/DiscussLayer';
 import { ClarifyLayer } from './ask/ClarifyLayer';
 import { DraftControls } from './ask/DraftControls';
 import { RegenControls } from './ask/RegenControls';
@@ -48,6 +49,7 @@ function JarwizOverlay() {
       <RegenControls />
       <SelectionAsk />
       <ProvenanceLayer />
+      <DiscussLayer />
       <StickyDock />
       <PromptBar />
       <Timeline />

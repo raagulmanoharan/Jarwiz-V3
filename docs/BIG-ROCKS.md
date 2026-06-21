@@ -124,7 +124,12 @@ Right now the agents are smart assistants. They do what you ask. A genuinely use
 **Success:** On a board with a genuine gap (e.g., no success metrics), the agent calls it out by name. On a complete board, it finds genuine edge cases, not padding.  
 **Rough size:** Medium. Board serialisation + prompt. Risk of hallucinating "missing" things — needs tight prompting.
 
-### 3.3 Conversational depth — back-and-forth on a card
+### 3.3 Conversational depth — back-and-forth on a card ✅ shipped
+> **Status:** Select a doc card → a "💬 Discuss" chip opens an inline thread.
+> A follow-up calls `/api/revise`, which rewrites the SAME card in place (one
+> undo) and logs the you/agent exchange — a multi-turn argument on one artifact,
+> no orphan cards. Verified by `scripts/eval-discuss.mjs` (5/5).
+
 **Problem:** "I ask a question, I get a doc card. But I want to *argue with it*." The current Ask flow is one-shot. The comment thread exists but it's not surfaced as a dialogue.  
 **Requirement:** Promote the comment thread pattern. When an Ask produces a doc card, show a "Discuss →" chip below it that opens the comment thread inline. The PM types a follow-up ("yes but what about enterprise customers?") and the same agent revises the card in place — not spawning a new one — appending a "revised:" section or rewriting if instructed.  
 **This is the difference between a deliverable and a conversation.**  

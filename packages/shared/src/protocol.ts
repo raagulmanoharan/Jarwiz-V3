@@ -352,6 +352,30 @@ export interface AnalyzeResult {
   text: string;
 }
 
+/* ─── Revise (Big Rocks 3.3 — conversational depth) ──────────────────────────
+ * Argue with an answer card: a follow-up instruction revises the doc IN PLACE
+ * (not a new card), keeping the dialogue on the one artifact.
+ */
+
+export interface ReviseTurn {
+  role: 'you' | 'agent';
+  text: string;
+}
+
+export interface ReviseRequest {
+  /** The doc card's current markdown. */
+  text: string;
+  /** The user's follow-up ("yes, but what about enterprise customers?"). */
+  instruction: string;
+  /** Prior turns in this card's discussion, for continuity. */
+  thread?: ReviseTurn[];
+}
+
+export interface ReviseResult {
+  /** The full revised markdown to replace the card's body. */
+  text: string;
+}
+
 /**
  * The shape the answer takes; inferred from the prompt + content, steerable.
  *  - `doc`/`list` — written prose or bullets. A checklist is a `doc`/`list`

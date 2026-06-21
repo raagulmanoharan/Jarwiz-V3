@@ -29,12 +29,13 @@ import type {
 import { buildLinkPreview, SsrfError } from './linkPreview.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset } from './assets.js';
 import { proposeSeedPrompts, streamAsk } from './ask.js';
-import type { AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest } from '@jarwiz/shared';
+import type { AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ReviseRequest } from '@jarwiz/shared';
 import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
 import { generateDiagram } from './diagram.js';
 import { generateClusters } from './cluster.js';
 import { generateAnalysis } from './analyze.js';
+import { generateRevision } from './revise.js';
 import { streamComment } from './comment.js';
 import { sidecarAvailable } from './sidecar.js';
 import { proposeClusterSuggestions, proposeSuggestions } from './suggest.js';
@@ -402,6 +403,37 @@ app.post('/api/analyze', async (c) => {
     return c.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Analyze failed';
+    return c.json({ error: message }, 500);
+  }
+});
+
+app.post('/api/revise', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected JSON: { text, instruction, thread? }' }, 400);
+  }
+  const raw = body as Partial<ReviseRequest>;
+  if (typeof raw.instruction !== 'string' || raw.instruction.trim() === '') {
+    return c.json({ error: 'instruction is required' }, 400);
+  }
+  const request: ReviseRequest = {
+    text: typeof raw.text === 'string' ? raw.text.slice(0, 12000) : '',
+    instruction: raw.instruction.trim().slice(0, 1000),
+    thread: Array.isArray(raw.thread)
+      ? raw.thread.slice(-8).map((t) => ({
+          role: t?.role === 'agent' ? 'agent' : 'you',
+          text: typeof t?.text === 'string' ? t.text.slice(0, 1000) : '',
+        }))
+      : undefined,
+  };
+
+  try {
+    const result = await generateRevision(request, c.req.raw.signal);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Revise failed';
     return c.json({ error: message }, 500);
   }
 });
