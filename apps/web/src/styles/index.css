@@ -3572,6 +3572,55 @@ body,
   color: var(--jz-ink-500);
 }
 
+/* Selected-context chips inside the prompt bar (explicit grounding). */
+.jz-pb-grounds {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+}
+
+.jz-pb-ground {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 140px;
+  padding: 3px 4px 3px 9px;
+  border-radius: var(--jz-radius-pill);
+  background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
+  font-size: var(--jz-text-caption-size);
+  font-weight: 500;
+  color: var(--jz-ink-700);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jz-pb-ground--more {
+  padding: 3px 9px;
+  color: var(--jz-ink-500);
+}
+
+.jz-pb-ground-x {
+  flex: none;
+  border: none;
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--jz-ink-400);
+  font-size: 9px;
+  line-height: 1;
+}
+
+.jz-pb-ground-x:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 12%, transparent);
+  color: var(--jz-ink-900);
+}
+
 .jz-promptbar-input {
   flex: 1;
   min-width: 0;

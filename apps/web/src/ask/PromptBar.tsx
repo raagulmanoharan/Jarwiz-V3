@@ -8,11 +8,25 @@
  */
 
 import { useEffect, useState, type CSSProperties } from 'react';
-import { stopEventPropagation, useEditor, useValue } from 'tldraw';
+import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue, type Editor, type TLRichText, type TLShape } from 'tldraw';
 import type { AnalyzeMode } from '@jarwiz/shared';
 import { ASKABLE } from './AskLayer';
 import { useAsk } from './useAsk';
 import { useAnalyze } from '../agents/useAnalyze';
+
+const clip = (s: string, n = 22) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+
+/** A short label for a selected shape, shown as a grounding chip. */
+function shapeLabel(editor: Editor, shape: TLShape): string {
+  const p = shape.props as Record<string, unknown>;
+  if (typeof p.title === 'string' && p.title.trim()) return clip(p.title.trim());
+  if (shape.type === 'pdf-card') return typeof p.name === 'string' ? clip(String(p.name)) : 'PDF';
+  let body = typeof p.text === 'string' ? p.text : '';
+  if (!body && p.richText) { try { body = renderPlaintextFromRichText(editor, p.richText as TLRichText); } catch { /* ignore */ } }
+  if (body.trim()) return clip(body.trim());
+  const kind: Record<string, string> = { 'doc-card': 'Doc', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram', 'image-card': 'Image', 'link-card': 'Link', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section', arrow: 'Connector' };
+  return kind[shape.type] ?? 'Card';
+}
 
 const TOOLS: Array<{ mode: AnalyzeMode; glyph: string; label: string; hint: string }> = [
   { mode: 'tensions', glyph: '⚖', label: 'Scan for tensions', hint: 'Find contradictions between cards' },
@@ -32,14 +46,19 @@ export function PromptBar() {
     try { return localStorage.getItem(COACH_KEY) === '1'; } catch { return true; }
   });
 
-  const groundIds = useValue(
+  // Selected, askable shapes shown as removable chips — explicit grounding.
+  const ground = useValue(
     'promptbar-ground',
-    () => editor.getSelectedShapeIds().filter((id) => {
-      const t = editor.getShape(id)?.type;
-      return t ? ASKABLE.has(t) : false;
-    }),
+    () => editor.getSelectedShapeIds()
+      .map((id) => ({ id, shape: editor.getShape(id) }))
+      .filter((x) => x.shape && ASKABLE.has(x.shape.type))
+      .map((x) => ({ id: x.id, label: shapeLabel(editor, x.shape!) })),
     [editor],
   );
+  const groundIds = ground.map((g) => g.id);
+  const dropGround = (id: string) => {
+    editor.setSelectedShapes(editor.getSelectedShapeIds().filter((x) => x !== id));
+  };
   const boardCount = useValue('promptbar-boardcount', () => editor.getCurrentPageShapeIds().size, [editor]);
 
   const dismissCoach = () => { setCoachDone(true); try { localStorage.setItem(COACH_KEY, '1'); } catch {} };
@@ -54,7 +73,7 @@ export function PromptBar() {
   };
   const runTool = (mode: AnalyzeMode) => { setMenuOpen(false); void analyze(mode); };
 
-  const placeholder = groundIds.length ? `Ask across ${groundIds.length} selected…` : 'Ask anything, or describe what to create…';
+  const placeholder = groundIds.length ? 'Ask about the selection…' : 'Ask anything, or describe what to create…';
   const busyLabel = runningMode ? (runningMode === 'tensions' ? 'Scanning…' : runningMode === 'gaps' ? 'Reviewing…' : 'Critiquing…') : null;
 
   // Contextual quick-actions: board has substance, nothing selected, idle.
@@ -106,6 +125,17 @@ export function PromptBar() {
             </div>
           ) : null}
         </div>
+        {ground.length > 0 ? (
+          <div className="jz-pb-grounds">
+            {ground.slice(0, 3).map((g) => (
+              <span key={g.id} className="jz-pb-ground" title={g.label}>
+                {g.label}
+                <button className="jz-pb-ground-x" aria-label="Remove from context" onClick={() => dropGround(g.id)}>✕</button>
+              </span>
+            ))}
+            {ground.length > 3 ? <span className="jz-pb-ground jz-pb-ground--more">+{ground.length - 3}</span> : null}
+          </div>
+        ) : null}
         <input
           className="jz-promptbar-input"
           value={value}
