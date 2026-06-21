@@ -325,6 +325,33 @@ export interface ClusterResult {
   summary: string;
 }
 
+/* ─── Analyze (Big Rocks 2.3 / 3.1 / 3.2 — agents with opinions) ──────────────
+ * One endpoint, three lenses over the board (or a selection):
+ *  - 'tensions' — name specific contradictions between cards (conflict detection)
+ *  - 'gaps'     — what a senior PM would ask that isn't answered ("what am I missing?")
+ *  - 'critique' — Devil's Advocate: weakest assumption, failure mode, likely objector
+ * Each returns a single doc card (title + markdown body).
+ */
+
+export type AnalyzeMode = 'tensions' | 'gaps' | 'critique';
+
+export interface AnalyzeCard {
+  kind: string;
+  title?: string;
+  text: string;
+}
+
+export interface AnalyzeRequest {
+  mode: AnalyzeMode;
+  cards: AnalyzeCard[];
+}
+
+export interface AnalyzeResult {
+  title: string;
+  /** Markdown body for the result doc card. */
+  text: string;
+}
+
 /**
  * The shape the answer takes; inferred from the prompt + content, steerable.
  *  - `doc`/`list` — written prose or bullets. A checklist is a `doc`/`list`

@@ -79,7 +79,12 @@ The PM insight that's hardest to articulate but most true: *"Stop generating new
 **Success:** A user can always answer "why did it say that?" by looking at the card, not by guessing.  
 **Rough size:** Medium. Autopilot citation is simpler (server already has context, add a metadata event). Ask sourcing needs a new card header component.
 
-### 2.3 Conflict detection
+### 2.3 Conflict detection ✅ shipped
+> **Status:** "Scan for tensions" in the prompt-bar tools menu → `/api/analyze`
+> (mode `tensions`) reads the board and drops a Tensions doc naming specific
+> contradictions by card, or "No direct contradictions found". Verified by
+> `scripts/eval-analyze.mjs`.
+
 **Problem:** "I have a 'must be fast' sticky and a 'must be comprehensive' sticky on the same board. The AI should flag that tension."  
 **Requirement:** A passive "Scan for tensions" action — run across the whole board (or a selection), return a small card that lists specific contradictions found between cards. Not generic ("these might conflict") but specific ("Card A says P0 is speed; Card C says P0 is completeness — these can't both be true").  
 **Success:** On a board with at least one real contradiction, the agent surfaces it by name. On a consistent board, it returns "No direct contradictions found" (not a false positive farm).  
@@ -91,14 +96,23 @@ The PM insight that's hardest to articulate but most true: *"Stop generating new
 
 Right now the agents are smart assistants. They do what you ask. A genuinely useful thinking partner *pushes back*. This week is about making the AI a collaborator, not a tool.
 
-### 3.1 Devil's Advocate agent
+### 3.1 Devil's Advocate agent ✅ shipped
+> **Status:** "Devil's advocate" in the prompt-bar tools menu → `/api/analyze`
+> (mode `critique`) on the selection (or whole board): weakest assumption, most
+> likely failure, who objects, ending with a question. Verified by
+> `scripts/eval-analyze.mjs`.
+
 **Problem:** "I want an agent that specifically tears apart my assumptions — not one that agrees with me and adds bullet points."  
 **Requirement:** A named agent (Devil's Advocate / "DA") accessible via @mention or the roster. Given any card or selection, it does one thing: finds the weakest assumption, the most likely failure mode, and the stakeholder most likely to object — and writes them as a doc card. It does not offer solutions. It does not soften. It ends with a question.  
 **Voice:** Sharp, specific, no hedging. "You're assuming enterprise buyers will approve a $X price point without a pilot. What's your evidence for that?"  
 **Success:** After running DA on a feature brief, the PM can articulate at least one assumption they hadn't written down.  
 **Rough size:** Small-medium. Mostly system prompt + registration. Quality gating needed.
 
-### 3.2 "What am I missing?" agent
+### 3.2 "What am I missing?" agent ✅ shipped
+> **Status:** "What am I missing?" in the prompt-bar tools menu → `/api/analyze`
+> (mode `gaps`) scans the whole board and names the unanswered due-diligence
+> questions as a "What's missing" doc. Verified by `scripts/eval-analyze.mjs`.
+
 **Problem:** "I've been working on a feature for an hour. I want an agent to look at my whole board and tell me what a senior PM would ask that I haven't answered yet."  
 **Requirement:** A board-wide scan agent. Reads all cards, identifies the standard PM due-diligence questions that *aren't answered anywhere on the board*. Returns a short doc card: "3 things I don't see on this board: (1) success metrics, (2) rollback plan, (3) competitive response."  
 **This is not "here's more content." It's "here's what's missing."**  

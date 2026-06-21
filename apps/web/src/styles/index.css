@@ -3063,6 +3063,89 @@ body,
   line-height: 1;
 }
 
+/* Agent-tools button + popover menu (opinion agents) */
+.jz-promptbar-tools-wrap {
+  position: relative;
+  flex: none;
+}
+
+.jz-promptbar-tools {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 9px;
+  border: none;
+  border-radius: var(--jz-radius-pill);
+  background: color-mix(in srgb, var(--jz-spark, #d97706) 14%, transparent);
+  color: #b45309;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-promptbar-tools:hover,
+.jz-promptbar-tools--open {
+  background: color-mix(in srgb, var(--jz-spark, #d97706) 24%, transparent);
+}
+
+.jz-promptbar-busy {
+  font-size: var(--jz-text-micro-size);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.jz-promptbar-menu {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  z-index: 10;
+  min-width: 230px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--jz-space-2);
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e4);
+  border: 1px solid var(--jz-hairline);
+  animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
+  transform-origin: bottom left;
+}
+
+.jz-promptbar-menuitem {
+  display: flex;
+  align-items: center;
+  gap: var(--jz-space-3);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  padding: 9px 10px;
+  border-radius: var(--jz-radius-sm);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-sm-size);
+  color: var(--jz-ink-900);
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-promptbar-menuitem:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+}
+
+.jz-promptbar-menuitem:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.jz-promptbar-menuglyph {
+  flex: none;
+  width: 18px;
+  text-align: center;
+  color: var(--jz-ink-500);
+}
+
 .jz-promptbar-input {
   flex: 1;
   min-width: 0;

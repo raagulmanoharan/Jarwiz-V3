@@ -29,11 +29,12 @@ import type {
 import { buildLinkPreview, SsrfError } from './linkPreview.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset } from './assets.js';
 import { proposeSeedPrompts, streamAsk } from './ask.js';
-import type { AskRequest, ClusterRequest, DiagramRequest } from '@jarwiz/shared';
+import type { AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest } from '@jarwiz/shared';
 import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
 import { generateDiagram } from './diagram.js';
 import { generateClusters } from './cluster.js';
+import { generateAnalysis } from './analyze.js';
 import { streamComment } from './comment.js';
 import { sidecarAvailable } from './sidecar.js';
 import { proposeClusterSuggestions, proposeSuggestions } from './suggest.js';
@@ -371,6 +372,36 @@ app.post('/api/cluster', async (c) => {
     return c.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Cluster failed';
+    return c.json({ error: message }, 500);
+  }
+});
+
+app.post('/api/analyze', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected JSON: { mode, cards[] }' }, 400);
+  }
+  const raw = body as Partial<AnalyzeRequest>;
+  const MODES: AnalyzeMode[] = ['tensions', 'gaps', 'critique'];
+  if (!MODES.includes(raw.mode as AnalyzeMode) || !Array.isArray(raw.cards)) {
+    return c.json({ error: 'Expected { mode: tensions|gaps|critique, cards: [] }' }, 400);
+  }
+  const request: AnalyzeRequest = {
+    mode: raw.mode as AnalyzeMode,
+    cards: raw.cards.slice(0, 30).map((card) => ({
+      kind: typeof card?.kind === 'string' ? card.kind : 'note',
+      title: typeof card?.title === 'string' ? card.title.slice(0, 200) : undefined,
+      text: typeof card?.text === 'string' ? card.text.slice(0, 2000) : '',
+    })),
+  };
+
+  try {
+    const result = await generateAnalysis(request, c.req.raw.signal);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Analyze failed';
     return c.json({ error: message }, 500);
   }
 });
