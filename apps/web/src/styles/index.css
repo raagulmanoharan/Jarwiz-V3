@@ -3296,12 +3296,20 @@ body,
 }
 
 /* ─── Prompt bar (bottom-centre agent query box, Stitch-style) ───────────── */
-.jz-promptbar {
+.jz-promptbar-dock {
   position: absolute;
   left: 50%;
   bottom: 70px; /* sits just above the primitive toolbar */
   transform: translateX(-50%);
   z-index: 320;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--jz-space-3);
+}
+
+.jz-promptbar {
   pointer-events: auto;
   display: flex;
   align-items: center;
@@ -3320,6 +3328,73 @@ body,
   color: #d97706;
   font-size: 14px;
   line-height: 1;
+}
+
+/* Contextual quick-action chips (discoverability) */
+.jz-promptbar-chips {
+  pointer-events: auto;
+  display: flex;
+  gap: var(--jz-space-2);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.jz-pb-chip {
+  border: 1px solid var(--jz-hairline-strong);
+  cursor: pointer;
+  padding: 6px 13px;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e2);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  font-weight: 500;
+  color: var(--jz-ink-700);
+  transition:
+    transform var(--jz-dur-fast) var(--jz-ease-out),
+    color var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-pb-chip:hover {
+  transform: translateY(-1px);
+  color: var(--jz-ink-900);
+}
+
+/* One-time coachmark */
+.jz-coach {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jz-space-4);
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 8px 8px 8px 14px;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-ink-900);
+  color: #faf6ec;
+  box-shadow: var(--jz-e3);
+  animation: jz-menu-in var(--jz-dur-base) var(--jz-ease-glide);
+}
+
+.jz-coach-text {
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-sm-size);
+}
+
+.jz-coach-dismiss {
+  flex: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px 12px;
+  border-radius: var(--jz-radius-pill);
+  background: rgba(250, 246, 236, 0.16);
+  color: #faf6ec;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  font-weight: 600;
+}
+
+.jz-coach-dismiss:hover {
+  background: rgba(250, 246, 236, 0.26);
 }
 
 /* Agent-tools button + popover menu (opinion agents) */

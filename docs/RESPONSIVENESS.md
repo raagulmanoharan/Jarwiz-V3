@@ -65,12 +65,23 @@ fires on first open. Fix: at init, if the legacy snapshot (`jarwiz-pdf-v2`) is
 above the prompt bar when the board has content and nothing is selected; (3)
 one-time coachmark at ~5 cards.
 
-## Phasing
+## Phasing — all shipped ✅
 
-- **P1:** agentTask primitive; analyze + revise streaming; error/retry/timeout;
-  onboarding fix; relabel launcher.
-- **P2:** cluster skeleton + streamed summary; diagram node-by-node; concurrency guard.
-- **P3:** quick-action chips; coachmark; escalation copy; unify loaders.
+- **P1 ✅:** agentTask primitive + AgentCursorLayer; analyze + revise stream into
+  a card with a skeleton; agent cursor works on the card live; error/Retry/timeout/
+  Cancel; onboarding fix; launcher relabelled "✦ Agents". `eval-responsiveness` 5/5.
+- **P2 ✅:** the agent DRAWS the flowchart node-by-node (cursor hops to each box);
+  cluster lays notes into columns + writes the summary in live. Distinct agent
+  identities so concurrent actions show distinct cursors; concurrency stays open
+  (each action independent + timeouts) per the collaborative ask.
+  `eval-canvas-p2` 5/5, `eval-cluster` 6/6.
+- **P3 ✅:** contextual quick-action chips above the prompt bar; one-time
+  coachmark at ≥5 cards. `eval-discoverability` 6/6.
+
+Also delivered (from the follow-up ask): **agent presence during streaming** —
+the Writer/Summarizer cursor parks on the card/columns and moves as it works, so
+it reads as a collaborator at the canvas alongside you (the concurrent
+human-edits-doc / agent-fills-table case already works via separate stores).
 
 ## Success metrics & eval
 

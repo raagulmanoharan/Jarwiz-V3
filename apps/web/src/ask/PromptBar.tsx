@@ -1,14 +1,13 @@
 /**
  * The canvas prompt bar — a persistent query box at the bottom-centre (Google
- * Stitch style). Type a question or a "make me…" and the answer streams onto the
- * board as a card. If askable shapes are selected, the query is grounded in them
- * ("Ask across 3"); otherwise it's a free-standing query placed in view.
- *
- * Its tools button (✦) opens the opinion agents — scan for tensions, what am I
- * missing, and Devil's advocate — which the parked roster would otherwise host.
+ * Stitch style) plus the opinion-agent launcher. Type a question or a "make
+ * me…" and the answer streams onto the board; or run a board scan from the
+ * "Agents" menu. When the board has content and nothing is selected, contextual
+ * quick-action chips surface the scans (discoverability, P3), and a one-time
+ * coachmark points at the launcher.
  */
 
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { stopEventPropagation, useEditor, useValue } from 'tldraw';
 import type { AnalyzeMode } from '@jarwiz/shared';
 import { ASKABLE } from './AskLayer';
@@ -21,14 +20,18 @@ const TOOLS: Array<{ mode: AnalyzeMode; glyph: string; label: string; hint: stri
   { mode: 'critique', glyph: '⚔', label: "Devil's advocate", hint: 'Tear apart the selection (or the board)' },
 ];
 
+const COACH_KEY = 'jz-coach-agents';
+
 export function PromptBar() {
   const editor = useEditor();
   const { ask, isAsking } = useAsk();
   const { analyze, runningMode } = useAnalyze();
   const [value, setValue] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [coachDone, setCoachDone] = useState(() => {
+    try { return localStorage.getItem(COACH_KEY) === '1'; } catch { return true; }
+  });
 
-  // Askable shapes currently selected — the query grounds in them when present.
   const groundIds = useValue(
     'promptbar-ground',
     () => editor.getSelectedShapeIds().filter((id) => {
@@ -37,6 +40,11 @@ export function PromptBar() {
     }),
     [editor],
   );
+  const boardCount = useValue('promptbar-boardcount', () => editor.getCurrentPageShapeIds().size, [editor]);
+
+  const dismissCoach = () => { setCoachDone(true); try { localStorage.setItem(COACH_KEY, '1'); } catch {} };
+  // Opening the menu (or running a tool) counts as learning it exists.
+  useEffect(() => { if (menuOpen || runningMode) dismissCoach(); }, [menuOpen, runningMode]);
 
   const submit = () => {
     const q = value.trim();
@@ -44,78 +52,75 @@ export function PromptBar() {
     void ask(q, groundIds);
     setValue('');
   };
+  const runTool = (mode: AnalyzeMode) => { setMenuOpen(false); void analyze(mode); };
 
-  const runTool = (mode: AnalyzeMode) => {
-    setMenuOpen(false);
-    void analyze(mode);
-  };
+  const placeholder = groundIds.length ? `Ask across ${groundIds.length} selected…` : 'Ask anything, or describe what to create…';
+  const busyLabel = runningMode ? (runningMode === 'tensions' ? 'Scanning…' : runningMode === 'gaps' ? 'Reviewing…' : 'Critiquing…') : null;
 
-  const placeholder = groundIds.length
-    ? `Ask across ${groundIds.length} selected…`
-    : 'Ask anything, or describe what to create…';
-  const busyLabel = runningMode
-    ? runningMode === 'tensions'
-      ? 'Scanning…'
-      : runningMode === 'gaps'
-        ? 'Reviewing…'
-        : 'Critiquing…'
-    : null;
+  // Contextual quick-actions: board has substance, nothing selected, idle.
+  const showChips = !menuOpen && !runningMode && groundIds.length === 0 && boardCount >= 3;
+  // Coachmark: board has grown, agents never used.
+  const showCoach = !coachDone && !menuOpen && boardCount >= 5;
 
   return (
-    <div className="jz-promptbar" style={{ '--pb-max': '600px' } as CSSProperties} onPointerDown={stopEventPropagation}>
-      <div className="jz-promptbar-tools-wrap">
-        <button
-          className={`jz-promptbar-tools${menuOpen ? ' jz-promptbar-tools--open' : ''}`}
-          title="Agents — scan for tensions, gaps, or a critique"
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          {busyLabel ? (
-            <span className="jz-promptbar-busy">{busyLabel}</span>
-          ) : (
-            <>
-              <span aria-hidden>✦</span>
-              <span className="jz-promptbar-tools-label">Agents</span>
-              <span className="jz-promptbar-tools-caret" aria-hidden>▾</span>
-            </>
-          )}
+    <div className="jz-promptbar-dock" onPointerDown={stopEventPropagation}>
+      {showCoach ? (
+        <div className="jz-coach" role="dialog">
+          <span className="jz-coach-text">✦ Your agents can scan this whole board — tensions, gaps, a critique.</span>
+          <button className="jz-coach-dismiss" onClick={dismissCoach}>Got it</button>
+        </div>
+      ) : null}
+
+      {showChips ? (
+        <div className="jz-promptbar-chips">
+          <button className="jz-pb-chip" title="Find contradictions between cards" onClick={() => runTool('tensions')}>⚖ Scan for tensions</button>
+          <button className="jz-pb-chip" title="Name the due-diligence gaps on this board" onClick={() => runTool('gaps')}>✦ What am I missing?</button>
+        </div>
+      ) : null}
+
+      <div className="jz-promptbar" style={{ '--pb-max': '600px' } as CSSProperties}>
+        <div className="jz-promptbar-tools-wrap">
+          <button
+            className={`jz-promptbar-tools${menuOpen ? ' jz-promptbar-tools--open' : ''}`}
+            title="Agents — scan for tensions, gaps, or a critique"
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            {busyLabel ? (
+              <span className="jz-promptbar-busy">{busyLabel}</span>
+            ) : (
+              <>
+                <span aria-hidden>✦</span>
+                <span className="jz-promptbar-tools-label">Agents</span>
+                <span className="jz-promptbar-tools-caret" aria-hidden>▾</span>
+              </>
+            )}
+          </button>
+          {menuOpen ? (
+            <div className="jz-promptbar-menu" role="menu">
+              {TOOLS.map((t) => (
+                <button key={t.mode} className="jz-promptbar-menuitem" title={t.hint} disabled={Boolean(runningMode)} onClick={() => runTool(t.mode)}>
+                  <span className="jz-promptbar-menuglyph" aria-hidden>{t.glyph}</span>
+                  <span className="jz-promptbar-menulabel">{t.label}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        <input
+          className="jz-promptbar-input"
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter') submit();
+            if (e.key === 'Escape') (e.target as HTMLInputElement).blur();
+          }}
+        />
+        <button className="jz-promptbar-send" disabled={!value.trim() || isAsking} onClick={submit} title="Ask (Enter)">
+          {isAsking ? '…' : '↑'}
         </button>
-        {menuOpen ? (
-          <div className="jz-promptbar-menu" role="menu">
-            {TOOLS.map((t) => (
-              <button
-                key={t.mode}
-                className="jz-promptbar-menuitem"
-                title={t.hint}
-                disabled={Boolean(runningMode)}
-                onClick={() => runTool(t.mode)}
-              >
-                <span className="jz-promptbar-menuglyph" aria-hidden>{t.glyph}</span>
-                <span className="jz-promptbar-menulabel">{t.label}</span>
-              </button>
-            ))}
-          </div>
-        ) : null}
       </div>
-      <input
-        className="jz-promptbar-input"
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          // Keep canvas shortcuts from firing while typing here.
-          e.stopPropagation();
-          if (e.key === 'Enter') submit();
-          if (e.key === 'Escape') (e.target as HTMLInputElement).blur();
-        }}
-      />
-      <button
-        className="jz-promptbar-send"
-        disabled={!value.trim() || isAsking}
-        onClick={submit}
-        title="Ask (Enter)"
-      >
-        {isAsking ? '…' : '↑'}
-      </button>
     </div>
   );
 }
