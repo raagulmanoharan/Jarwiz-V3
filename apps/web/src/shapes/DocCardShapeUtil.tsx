@@ -191,7 +191,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
       <div className="jz-doc-header">
         <div className="jz-doc-title">{title || 'Document'}</div>
       </div>
-      <div className={`jz-doc-content${text ? '' : ' jz-doc-placeholder'}`}>
+      <div className={`jz-doc-content${text || (isStreaming && !isEditing) ? '' : ' jz-doc-placeholder'}`}>
         {text ? (
           <DocMarkdown
             content={text}
@@ -205,10 +205,18 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
             }}
             onToggleTask={isStreaming ? undefined : (ordinal, checked) => toggleTask(editor, shape, ordinal, checked)}
           />
+        ) : isStreaming && !isEditing ? (
+          // The agent has the card but no words yet — show a skeleton, not a husk.
+          <div className="jz-doc-skeleton" aria-hidden>
+            <span className="jz-skel-line" style={{ width: '92%' }} />
+            <span className="jz-skel-line" style={{ width: '78%' }} />
+            <span className="jz-skel-line" style={{ width: '85%' }} />
+            <span className="jz-skel-line" style={{ width: '60%' }} />
+          </div>
         ) : (
           'Double-click to edit'
         )}
-        {isStreaming && <span className="jz-stream-caret" aria-hidden />}
+        {isStreaming && text && <span className="jz-stream-caret" aria-hidden />}
       </div>
       {overflowing && !isStreaming ? <ExpandToggle shapeId={shape.id} expanded={expanded} /> : null}
     </div>

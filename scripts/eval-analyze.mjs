@@ -52,15 +52,25 @@ const docs = (page) =>
     window.editor.getCurrentPageShapes().filter((s) => s.type === 'doc-card').map((s) => ({ title: s.props.title, text: s.props.text })),
   );
 
-// Run a tool from the prompt-bar menu, wait for a new doc card to appear.
+// Run a tool from the prompt-bar menu, wait for a new doc card to appear AND for
+// its streamed text to settle (the card now appears instantly, then fills).
 async function runTool(page, label, baseline) {
   await page.locator('.jz-promptbar-tools').click();
   await sleep(250);
   await page.locator('.jz-promptbar-menuitem', { hasText: label }).first().click();
-  for (let i = 0; i < 45; i++) {
+  let appeared = false;
+  let lastLen = -1;
+  let stable = 0;
+  for (let i = 0; i < 60; i++) {
     await sleep(800);
     const d = await docs(page);
-    if (d.length > baseline) return d;
+    if (d.length > baseline) {
+      appeared = true;
+      const len = (d[d.length - 1].text || '').length;
+      if (len > 20 && len === lastLen) { if (++stable >= 2) return d; } else { stable = 0; }
+      lastLen = len;
+    }
+    if (appeared && i > 50) return d;
   }
   return await docs(page);
 }

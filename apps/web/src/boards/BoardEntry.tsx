@@ -24,6 +24,15 @@ export function BoardEntry() {
   const [name, setName] = useState('');
   const [selected, setSelected] = useState<string>('blank');
   const inputRef = useRef<HTMLInputElement>(null);
+  // Let tldraw hydrate from IndexedDB before we trust `isEmpty` — otherwise an
+  // upgrading user's canvas (which loads async) could flash the dialog for a
+  // frame before their shapes register. Newly-created boards re-arm via key.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    setHydrated(false);
+    const t = setTimeout(() => setHydrated(true), 400);
+    return () => clearTimeout(t);
+  }, [board?.id]);
 
   // Auto-clear isNew when the board gains its first shape (bypass path — e.g.
   // user drags a PDF in without going through the dialog).
@@ -32,10 +41,10 @@ export function BoardEntry() {
   }, [isEmpty, board]);
 
   useEffect(() => {
-    if (board?.isNew && isEmpty) setTimeout(() => inputRef.current?.focus(), 80);
-  }, [board?.id, board?.isNew, isEmpty]);
+    if (hydrated && board?.isNew && isEmpty) setTimeout(() => inputRef.current?.focus(), 80);
+  }, [board?.id, board?.isNew, isEmpty, hydrated]);
 
-  if (!board?.isNew || !isEmpty) return null;
+  if (!hydrated || !board?.isNew || !isEmpty) return null;
 
   const submit = () => {
     const projectName = name.trim();

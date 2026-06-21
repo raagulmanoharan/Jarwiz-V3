@@ -7,9 +7,15 @@
 
 import { useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { stopEventPropagation, useEditor, useValue } from 'tldraw';
-import type { ReviseResult } from '@jarwiz/shared';
+import { getAgent } from '@jarwiz/shared';
 import { addTurn, getThread, getThreads, subscribeDiscuss } from './discuss';
+import { readSSE } from '../agents/sse';
+import { startStreaming, stopStreaming } from '../agents/streaming';
+import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from '../agents/presence';
 import type { DocCardShape } from '../shapes';
+
+const REVISE_AGENT = getAgent('writer');
+type Delta = { type: 'delta'; textDelta: string } | { type: 'done' } | { type: 'error'; message: string };
 
 export function DiscussLayer() {
   const editor = useEditor();
@@ -44,28 +50,47 @@ export function DiscussLayer() {
     const shape = editor.getShape(target.id) as DocCardShape | undefined;
     if (!shape) return;
     const prior = getThread(target.id);
-    addTurn(target.id, { role: 'you', text: instruction });
+    const cardId = target.id;
+    const baseText = shape.props.text;
+    addTurn(cardId, { role: 'you', text: instruction });
     setValue('');
     setBusy(true);
+
+    // The Writer takes the pen on this card and rewrites it live.
+    editor.markHistoryStoppingPoint('discuss-revise'); // one undo per revision
+    startStreaming(cardId);
+    startPresence(REVISE_AGENT.id);
+    setPresenceStatus(REVISE_AGENT.id, 'Revising the doc…');
+    const moveCursor = () => { const b = editor.getShapePageBounds(cardId); if (b) setPresenceCursor(REVISE_AGENT.id, b.maxX - 14, b.maxY - 16); };
+    moveCursor();
+
+    let acc = '';
+    let cleared = false;
+    let errorMsg: string | null = null;
     try {
       const res = await fetch('/api/revise', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: shape.props.text, instruction, thread: prior }),
+        body: JSON.stringify({ text: baseText, instruction, thread: prior }),
       });
-      if (!res.ok) throw new Error(`revise failed (${res.status})`);
-      const result = (await res.json()) as ReviseResult;
-      const current = editor.getShape(target.id) as DocCardShape | undefined;
-      if (current && result?.text) {
-        editor.markHistoryStoppingPoint('discuss-revise'); // one undo per revision
-        editor.updateShape<DocCardShape>({ id: target.id, type: 'doc-card', props: { text: result.text } });
-      }
-      addTurn(target.id, { role: 'agent', text: 'Revised the document with your point.' });
+      if (!res.ok || !res.body) throw new Error(`revise failed (${res.status})`);
+      await readSSE<Delta>(res.body, (ev) => {
+        if (ev.type === 'delta') {
+          if (!cleared) { cleared = true; } // swap to the new draft on first token
+          acc += ev.textDelta;
+          const cur = editor.getShape(cardId) as DocCardShape | undefined;
+          if (cur) { editor.updateShape<DocCardShape>({ id: cardId, type: 'doc-card', props: { text: acc } }); moveCursor(); }
+        } else if (ev.type === 'error') { errorMsg = ev.message; }
+      });
+      if (errorMsg) throw new Error(errorMsg);
+      addTurn(cardId, { role: 'agent', text: 'Revised the document with your point.' });
     } catch (err) {
-      if (err instanceof Error) {
-        addTurn(target.id, { role: 'agent', text: `Couldn't revise: ${err.message}` });
-      }
+      // Roll back to the original text if nothing usable streamed in.
+      if (!acc) { const cur = editor.getShape(cardId) as DocCardShape | undefined; if (cur) editor.updateShape<DocCardShape>({ id: cardId, type: 'doc-card', props: { text: baseText } }); }
+      addTurn(cardId, { role: 'agent', text: `Couldn't revise: ${err instanceof Error ? err.message : 'failed'}` });
     } finally {
+      stopStreaming(cardId);
+      endPresence(REVISE_AGENT.id);
       setBusy(false);
     }
   };

@@ -25,6 +25,8 @@ import { RegenControls } from './ask/RegenControls';
 import { SelectionAsk } from './ask/SelectionAsk';
 import { Timeline } from './log/Timeline';
 import { registerIngestion } from './ingest/registerIngestion';
+import { AgentCursorLayer } from './agents/AgentCursorLayer';
+import { AgentTaskLayer } from './agents/AgentTaskLayer';
 import { cardShapeUtils } from './shapes';
 import { BoardEntry } from './boards/BoardEntry';
 import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
@@ -50,6 +52,8 @@ function JarwizOverlay() {
       <SelectionAsk />
       <ProvenanceLayer />
       <DiscussLayer />
+      <AgentCursorLayer />
+      <AgentTaskLayer />
       <StickyDock />
       <PromptBar />
       <Timeline />

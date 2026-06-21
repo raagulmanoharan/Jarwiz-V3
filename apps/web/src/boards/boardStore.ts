@@ -61,9 +61,13 @@ function _init(): void {
   } catch {
     /* corrupted — fall through to create defaults */
   }
-  // First run: migrate existing canvas as "My workspace" (isNew: false so no
-  // onboarding fires on existing data).
-  _boards = [{ id: LEGACY_ID, name: 'My workspace', createdAt: Date.now(), isNew: false }];
+  // First run. Mark the first board `isNew` so a brand-new user gets the
+  // "What are you working on?" invitation on first open. An UPGRADING user (who
+  // has canvas data from before multi-board) is protected by BoardEntry's
+  // isEmpty guard: their board isn't empty, so the dialog never shows and the
+  // board is silently marked used. (We can't synchronously detect their tldraw
+  // data — it lives in IndexedDB — so the empty-check is the right gate.)
+  _boards = [{ id: LEGACY_ID, name: 'My workspace', createdAt: Date.now(), isNew: true }];
   _activeId = LEGACY_ID;
   _save();
 }

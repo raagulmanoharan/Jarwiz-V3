@@ -66,10 +66,18 @@ export function PromptBar() {
       <div className="jz-promptbar-tools-wrap">
         <button
           className={`jz-promptbar-tools${menuOpen ? ' jz-promptbar-tools--open' : ''}`}
-          title="Agent tools"
+          title="Agents — scan for tensions, gaps, or a critique"
           onClick={() => setMenuOpen((v) => !v)}
         >
-          {busyLabel ? <span className="jz-promptbar-busy">{busyLabel}</span> : <span aria-hidden>✦</span>}
+          {busyLabel ? (
+            <span className="jz-promptbar-busy">{busyLabel}</span>
+          ) : (
+            <>
+              <span aria-hidden>✦</span>
+              <span className="jz-promptbar-tools-label">Agents</span>
+              <span className="jz-promptbar-tools-caret" aria-hidden>▾</span>
+            </>
+          )}
         </button>
         {menuOpen ? (
           <div className="jz-promptbar-menu" role="menu">

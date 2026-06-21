@@ -34,8 +34,8 @@ import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
 import { generateDiagram } from './diagram.js';
 import { generateClusters } from './cluster.js';
-import { generateAnalysis } from './analyze.js';
-import { generateRevision } from './revise.js';
+import { streamAnalysis } from './analyze.js';
+import { streamRevision } from './revise.js';
 import { streamComment } from './comment.js';
 import { sidecarAvailable } from './sidecar.js';
 import { proposeClusterSuggestions, proposeSuggestions } from './suggest.js';
@@ -398,13 +398,17 @@ app.post('/api/analyze', async (c) => {
     })),
   };
 
-  try {
-    const result = await generateAnalysis(request, c.req.raw.signal);
-    return c.json(result);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Analyze failed';
-    return c.json({ error: message }, 500);
-  }
+  return streamSSE(c, async (stream) => {
+    const signal = c.req.raw.signal;
+    try {
+      for await (const event of streamAnalysis(request, signal)) {
+        await stream.writeSSE({ data: JSON.stringify(event) });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Analyze failed';
+      await stream.writeSSE({ data: JSON.stringify({ type: 'error', message }) });
+    }
+  });
 });
 
 app.post('/api/revise', async (c) => {
@@ -429,13 +433,17 @@ app.post('/api/revise', async (c) => {
       : undefined,
   };
 
-  try {
-    const result = await generateRevision(request, c.req.raw.signal);
-    return c.json(result);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Revise failed';
-    return c.json({ error: message }, 500);
-  }
+  return streamSSE(c, async (stream) => {
+    const signal = c.req.raw.signal;
+    try {
+      for await (const event of streamRevision(request, signal)) {
+        await stream.writeSSE({ data: JSON.stringify(event) });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Revise failed';
+      await stream.writeSSE({ data: JSON.stringify({ type: 'error', message }) });
+    }
+  });
 });
 
 /** Predefined, content-aware Ask prompts for a dropped PDF (the blank-slate on-ramp). */
