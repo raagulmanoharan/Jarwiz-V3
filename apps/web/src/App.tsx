@@ -8,7 +8,8 @@ import {
   type TLComponents,
 } from 'tldraw';
 import { getAssetUrlsByImport } from '@tldraw/assets/imports.vite';
-import { CanvasStylePanel, CanvasToolbar } from './ui/CanvasToolbar';
+import { CanvasStylePanel } from './ui/CanvasToolbar';
+import { ToolRail } from './ui/ToolRail';
 
 // Self-host tldraw's UI icons, fonts, and translations (Vite bundles them) so the
 // re-enabled toolbar / style panel render without reaching cdn.tldraw.com — which
@@ -53,6 +54,7 @@ function JarwizOverlay() {
       <DiscussLayer />
       <AgentCursorLayer />
       <AgentTaskLayer />
+      <ToolRail />
       <PromptBar />
       <Timeline />
     </>
@@ -67,7 +69,7 @@ function JarwizOverlay() {
  */
 const components: TLComponents = {
   InFrontOfTheCanvas: JarwizOverlay,
-  Toolbar: CanvasToolbar,
+  Toolbar: null, // replaced by our right-edge ToolRail
   StylePanel: CanvasStylePanel,
   MainMenu: null,
   PageMenu: null,

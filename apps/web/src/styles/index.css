@@ -71,11 +71,77 @@ body,
     center;
 }
 
-/* Soften the remaining UI panels (zoom / navigation) into the aesthetic. */
+/* Soften the remaining UI panels (zoom / navigation) into the aesthetic, and
+   move zoom to the bottom-right corner (Stitch layout — left is for the log). */
 .jarwiz-app .tlui-navigation-panel {
   border-radius: var(--jz-radius-md);
   box-shadow: var(--jz-e3);
   background: var(--jz-surface-raised);
+  position: absolute;
+  left: auto;
+  right: 14px;
+  bottom: 14px;
+}
+
+/* Our own tool rail (ToolRail.tsx) on the right edge replaces tldraw's toolbar. */
+.jz-rail {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 300;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--jz-space-2);
+  border-radius: var(--jz-radius-lg);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  border: 1px solid var(--jz-hairline);
+}
+
+.jz-rail-create {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 44px;
+  height: 42px;
+  border: none;
+  border-radius: var(--jz-radius-md);
+  background: transparent;
+  color: var(--jz-ink-700);
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-rail-create:hover { background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent); color: var(--jz-ink-900); }
+.jz-rail-label { font-size: 9px; font-weight: 600; letter-spacing: 0.02em; color: var(--jz-ink-400); }
+
+.jz-rail-divider { width: 26px; height: 1px; margin: 4px 0; background: var(--jz-hairline-strong); }
+
+.jz-rail-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 36px;
+  border: none;
+  border-radius: var(--jz-radius-md);
+  background: transparent;
+  color: var(--jz-ink-600);
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-rail-tool:hover { background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent); color: var(--jz-ink-900); }
+
+.jz-rail-tool--active {
+  background: var(--jz-ink-900);
+  color: #faf6ec;
 }
 
 /* Calm the re-enabled primitive toolbar + style panel (canvas pivot P0) into the
@@ -759,8 +825,8 @@ body,
 /* Collapsed clock chip, top-right. */
 .jz-tl-fab {
   position: absolute;
-  top: 14px;
-  right: 16px;
+  bottom: 16px;
+  left: 16px;
   z-index: 360;
   display: inline-flex;
   align-items: center;
@@ -791,9 +857,9 @@ body,
 
 .jz-timeline {
   position: absolute;
-  right: 16px;
-  top: 58px;
-  bottom: 16px;
+  left: 16px;
+  bottom: 58px;
+  top: 80px;
   width: 264px;
   display: flex;
   flex-direction: column;
@@ -3002,22 +3068,22 @@ body,
   color: var(--jz-ink-400);
 }
 
-/* ─── Toolbar content creators (Doc / Note, first in the toolbar strip) ───── */
+/* ─── Toolbar content creators (Doc / Note, top of the right rail) ────────── */
 .jz-tool-create {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: 5px;
-  height: 34px;
-  padding: 0 11px;
+  justify-content: center;
+  gap: 2px;
+  width: 44px;
+  height: 42px;
+  padding: 0;
   border: none;
   border-radius: var(--jz-radius-md);
   background: transparent;
   color: var(--jz-ink-700);
   font-family: var(--jz-font-ui);
-  font-size: var(--jz-text-body-sm-size);
-  font-weight: 600;
   cursor: pointer;
-  white-space: nowrap;
   transition:
     background var(--jz-dur-fast) var(--jz-ease-out),
     color var(--jz-dur-fast) var(--jz-ease-out);
@@ -3029,16 +3095,24 @@ body,
 }
 
 .jz-tool-glyph {
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1;
-  color: var(--jz-ink-500);
+  color: var(--jz-ink-600);
 }
 
+.jz-tool-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--jz-ink-400);
+}
+
+/* Horizontal hairline between the creators and the primitive tools. */
 .jz-tool-divider {
   align-self: center;
-  width: 1px;
-  height: 22px;
-  margin: 0 4px;
+  width: 24px;
+  height: 1px;
+  margin: 4px 0;
   background: var(--jz-hairline-strong);
 }
 
@@ -3305,7 +3379,7 @@ body,
 .jz-promptbar-dock {
   position: absolute;
   left: 50%;
-  bottom: 70px; /* sits just above the primitive toolbar */
+  bottom: 22px; /* bottom-centre is the prompt bar's alone (tools moved to the right rail) */
   transform: translateX(-50%);
   z-index: 320;
   pointer-events: none;
