@@ -1107,11 +1107,19 @@ body,
   transform: translateX(-50%);
   z-index: 300;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
-  gap: 8px;
-  max-width: 460px;
+  gap: 6px;
+  width: max-content;
+  max-width: 520px;
   pointer-events: auto;
+}
+
+/* The open input form should own its own full row. */
+.jz-asklayer .jz-ask-form {
+  flex-basis: 100%;
 }
 
 /* ── Disambiguation bubble ──────────────────────────────────────────────── */
@@ -2037,10 +2045,10 @@ body,
 
 .jz-doc-header {
   flex: none;
-  min-height: 48px;
+  min-height: 38px;
   display: flex;
   align-items: center;
-  padding: var(--jz-space-3) var(--jz-space-6);
+  padding: var(--jz-space-2) var(--jz-space-5);
   gap: var(--jz-space-3);
   border-bottom: 1px solid var(--jz-hairline);
 }
@@ -2048,9 +2056,9 @@ body,
 .jz-doc-title {
   font-family: var(--jz-font-display);
   font-optical-sizing: auto;
-  font-size: var(--jz-text-title-size);
-  line-height: var(--jz-text-title-lh);
-  font-weight: 540;
+  font-size: var(--jz-text-heading-size);
+  line-height: var(--jz-text-heading-lh);
+  font-weight: 560;
   color: var(--jz-ink-900);
   white-space: nowrap;
   overflow: hidden;
@@ -2066,9 +2074,9 @@ body,
   background: transparent;
   font-family: var(--jz-font-display);
   font-optical-sizing: auto;
-  font-size: var(--jz-text-title-size);
-  line-height: var(--jz-text-title-lh);
-  font-weight: 540;
+  font-size: var(--jz-text-heading-size);
+  line-height: var(--jz-text-heading-lh);
+  font-weight: 560;
   color: var(--jz-ink-900);
 }
 
@@ -2932,11 +2940,11 @@ body,
 
 .jz-diagram-head {
   flex: none;
-  min-height: 44px;
+  min-height: 38px;
   display: flex;
   align-items: center;
   gap: var(--jz-space-2);
-  padding: var(--jz-space-3) var(--jz-space-6);
+  padding: var(--jz-space-2) var(--jz-space-5);
   border-bottom: 1px solid var(--jz-hairline);
 }
 
@@ -2947,9 +2955,9 @@ body,
 
 .jz-diagram-title {
   font-family: var(--jz-font-display);
-  font-size: var(--jz-text-title-size);
-  line-height: var(--jz-text-title-lh);
-  font-weight: 540;
+  font-size: var(--jz-text-heading-size);
+  line-height: var(--jz-text-heading-lh);
+  font-weight: 560;
   color: var(--jz-ink-900);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2994,46 +3002,44 @@ body,
   color: var(--jz-ink-400);
 }
 
-/* ─── Sticky-note dock (add a note anywhere) ────────────────────────────── */
-.jz-dock {
-  position: absolute;
-  left: 16px;
-  bottom: 16px;
-  z-index: 300;
-  display: flex;
-  gap: 8px;
-}
-
-.jz-dock-btn {
-  pointer-events: all;
+/* ─── Toolbar content creators (Doc / Note, first in the toolbar strip) ───── */
+.jz-tool-create {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 5px;
   height: 34px;
-  padding: 0 14px 0 11px;
-  border: 1px solid var(--jz-line, var(--jz-hairline-strong));
-  border-radius: var(--jz-radius-pill);
-  background: var(--jz-surface-raised);
-  box-shadow: var(--jz-e2);
+  padding: 0 11px;
+  border: none;
+  border-radius: var(--jz-radius-md);
+  background: transparent;
   color: var(--jz-ink-700);
   font-family: var(--jz-font-ui);
-  font-size: 13px;
+  font-size: var(--jz-text-body-sm-size);
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
   transition:
-    transform var(--jz-dur-fast) var(--jz-ease-out),
-    border-color var(--jz-dur-fast) var(--jz-ease-out);
+    background var(--jz-dur-fast) var(--jz-ease-out),
+    color var(--jz-dur-fast) var(--jz-ease-out);
 }
 
-.jz-dock-btn:hover {
-  transform: translateY(-1px);
-  border-color: var(--jz-accent, #7a5cff);
-  color: var(--jz-accent, #7a5cff);
+.jz-tool-create:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
+  color: var(--jz-ink-900);
 }
 
-.jz-dock-icon {
-  font-size: 15px;
+.jz-tool-glyph {
+  font-size: 14px;
   line-height: 1;
+  color: var(--jz-ink-500);
+}
+
+.jz-tool-divider {
+  align-self: center;
+  width: 1px;
+  height: 22px;
+  margin: 0 4px;
+  background: var(--jz-hairline-strong);
 }
 
 /* ─── Provenance header ("Based on:" — show your work, 2.2) ──────────────── */

@@ -70,10 +70,10 @@ async function run() {
   record('"d" key opens doc for editing', editingAfterD);
   await page.screenshot({ path: `${OUT}/jz-wp-d-key.png` });
 
-  // ── B. Dock "Doc" button drops a doc card ───────────────────────────────
+  // ── B. Toolbar "Doc" button drops a doc card ────────────────────────────
   await clear(page);
   const beforeBtn = await shapeCount(page);
-  await page.locator('.jz-dock-btn', { hasText: 'Doc' }).click();
+  await page.locator('.jz-tool-create', { hasText: 'Doc' }).click();
   await sleep(600);
   const afterBtn = await shapeCount(page);
   const editingAfterBtn = await page.evaluate(() => Boolean(window.editor.getEditingShapeId()));

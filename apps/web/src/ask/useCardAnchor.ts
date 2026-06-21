@@ -32,9 +32,12 @@ export function useCardAnchor(
       const union = boxes.reduce((acc, b) => acc.union(b), boxes[0]!.clone());
       const p = editor.pageToViewport({ x: union.midX, y: union.maxY });
       const vp = editor.getViewportScreenBounds();
+      // Keep clear of the bottom chrome (prompt-bar dock + toolbar) plus room for
+      // the affordance's own downward-growing pill stack, so a card selected low
+      // on screen never collides its affordance with the dock.
       return {
         x: Math.max(margin, Math.min(p.x, vp.w - margin)),
-        y: Math.max(40, Math.min(p.y + dy, vp.h - 44)),
+        y: Math.max(40, Math.min(p.y + dy, vp.h - 230)),
       };
     },
     // `key` makes the array dependency stable across renders.

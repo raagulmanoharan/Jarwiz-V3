@@ -31,7 +31,6 @@ import { cardShapeUtils } from './shapes';
 import { BoardEntry } from './boards/BoardEntry';
 import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
 import { EmptyState } from './ui/EmptyState';
-import { StickyDock } from './ui/StickyDock';
 import { Topbar } from './ui/Topbar';
 
 /**
@@ -54,7 +53,6 @@ function JarwizOverlay() {
       <DiscussLayer />
       <AgentCursorLayer />
       <AgentTaskLayer />
-      <StickyDock />
       <PromptBar />
       <Timeline />
     </>
