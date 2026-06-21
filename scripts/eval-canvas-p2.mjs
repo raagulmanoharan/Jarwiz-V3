@@ -93,12 +93,22 @@ async function run() {
   // ── B/C/D. Click it → request + flowchart built ─────────────────────────
   if (pillVisible) {
     await pill.first().click();
-    // Wait for the build (sidecar/API can take a few seconds).
+    // The agent now DRAWS node-by-node then the connectors, asynchronously —
+    // wait for the full draw to settle (nodes AND edges, counts stable) before
+    // asserting or undoing.
     let after = before;
-    for (let i = 0; i < 20; i++) {
+    let stable = 0;
+    let prev = '';
+    for (let i = 0; i < 45; i++) {
       await sleep(800);
       after = await counts(page);
-      if (after.geo - before.geo >= 3) break;
+      const sig = `${after.geo}/${after.arrow}`;
+      if (after.geo - before.geo >= 3 && after.arrow - before.arrow >= 2 && sig === prev) {
+        if (++stable >= 2) break;
+      } else {
+        stable = 0;
+      }
+      prev = sig;
     }
     record('Flowchart request hit /api/diagram with grounding',
       Boolean(diagramBody) && Array.isArray(diagramBody.sources) && diagramBody.sources.length > 0,

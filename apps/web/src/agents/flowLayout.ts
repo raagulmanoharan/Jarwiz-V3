@@ -53,68 +53,70 @@ export function computeRows(ids: string[], edges: Array<{ from: string; to: stri
 
 /** Place a diagram spec on the board as native geo shapes + bound connectors.
  *  Caller owns the history mark. Returns the created node + connector ids. */
-export function buildFlowchart(
-  editor: Editor,
-  spec: DiagramSpec,
-  origin: { x: number; y: number },
-): TLShapeId[] {
+export interface PlacedNode {
+  node: DiagramNode;
+  x: number;
+  y: number;
+  /** Centre, for parking the agent cursor on it. */
+  cx: number;
+  cy: number;
+}
+
+/** Compute the final position of every node (layered, centred at origin). */
+export function layoutFlow(spec: DiagramSpec, origin: { x: number; y: number }): PlacedNode[] {
   const byId = new Map(spec.nodes.map((n) => [n.id, n]));
   const rows = computeRows(spec.nodes.map((n) => n.id), spec.edges);
   const maxCols = Math.max(...rows.map((r) => r.length), 1);
   const totalW = maxCols * NODE_W + (maxCols - 1) * GAP_X;
-
-  const nodeId = new Map<string, TLShapeId>();
-  const created: TLShapeId[] = [];
-
+  const placed: PlacedNode[] = [];
   rows.forEach((rowIds, d) => {
     const rowW = rowIds.length * NODE_W + (rowIds.length - 1) * GAP_X;
     const rowX = origin.x + (totalW - rowW) / 2;
     rowIds.forEach((nid, i) => {
-      const n = byId.get(nid)!;
-      const id = createShapeId();
-      nodeId.set(nid, id);
-      created.push(id);
-      const style = NODE_STYLE[n.shape ?? 'rectangle'];
-      editor.createShape({
-        id,
-        type: 'geo',
-        x: rowX + i * (NODE_W + GAP_X),
-        y: origin.y + d * (NODE_H + GAP_Y),
-        props: {
-          geo: style.geo,
-          w: NODE_W,
-          h: NODE_H,
-          color: style.color,
-          fill: 'solid',
-          size: 's',
-          richText: toRichText(n.label),
-        },
-      } as Parameters<typeof editor.createShape>[0]);
+      const node = byId.get(nid)!;
+      const x = rowX + i * (NODE_W + GAP_X);
+      const y = origin.y + d * (NODE_H + GAP_Y);
+      placed.push({ node, x, y, cx: x + NODE_W / 2, cy: y + NODE_H / 2 });
     });
   });
+  return placed;
+}
 
+/** Create one flowchart node shape; returns its tldraw id. */
+export function createFlowNode(editor: Editor, p: PlacedNode): TLShapeId {
+  const id = createShapeId();
+  const style = NODE_STYLE[p.node.shape ?? 'rectangle'];
+  editor.createShape({
+    id, type: 'geo', x: p.x, y: p.y,
+    props: { geo: style.geo, w: NODE_W, h: NODE_H, color: style.color, fill: 'solid', size: 's', richText: toRichText(p.node.label) },
+  } as Parameters<typeof editor.createShape>[0]);
+  return id;
+}
+
+/** Create one bound connector between two already-created node shapes. */
+export function createFlowEdge(editor: Editor, fromId: TLShapeId, toId: TLShapeId, label?: string): TLShapeId {
+  const arrowId = createShapeId();
+  editor.createShape<TLArrowShape>({
+    id: arrowId, type: 'arrow',
+    props: { color: 'black', size: 's', dash: 'solid', arrowheadEnd: 'triangle', ...(label ? { richText: toRichText(label) } : {}) },
+  });
+  editor.createBindings([
+    { id: createBindingId(), type: 'arrow', fromId: arrowId, toId: fromId, props: { terminal: 'start', normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false, snap: 'none' } },
+    { id: createBindingId(), type: 'arrow', fromId: arrowId, toId: toId, props: { terminal: 'end', normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false, snap: 'none' } },
+  ]);
+  return arrowId;
+}
+
+/** Place a whole spec at once (used by templates). Caller owns the history mark. */
+export function buildFlowchart(editor: Editor, spec: DiagramSpec, origin: { x: number; y: number }): TLShapeId[] {
+  const placed = layoutFlow(spec, origin);
+  const nodeId = new Map<string, TLShapeId>();
+  const created: TLShapeId[] = [];
+  for (const p of placed) { const id = createFlowNode(editor, p); nodeId.set(p.node.id, id); created.push(id); }
   for (const e of spec.edges) {
     const from = nodeId.get(e.from);
     const to = nodeId.get(e.to);
-    if (!from || !to) continue;
-    const arrowId = createShapeId();
-    created.push(arrowId);
-    editor.createShape<TLArrowShape>({
-      id: arrowId,
-      type: 'arrow',
-      props: {
-        color: 'black',
-        size: 's',
-        dash: 'solid',
-        arrowheadEnd: 'triangle',
-        ...(e.label ? { richText: toRichText(e.label) } : {}),
-      },
-    });
-    editor.createBindings([
-      { id: createBindingId(), type: 'arrow', fromId: arrowId, toId: from, props: { terminal: 'start', normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false, snap: 'none' } },
-      { id: createBindingId(), type: 'arrow', fromId: arrowId, toId: to, props: { terminal: 'end', normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false, snap: 'none' } },
-    ]);
+    if (from && to) created.push(createFlowEdge(editor, from, to, e.label));
   }
-
   return created;
 }

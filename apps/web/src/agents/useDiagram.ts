@@ -1,10 +1,9 @@
 /**
- * "Turn this into a flowchart" (canvas pivot P2 — the AI builds primitives).
- *
- * Calls /api/diagram for a { nodes, edges } graph, then lays it out as NATIVE
- * tldraw geo shapes + bound connectors — real, editable primitives the user can
- * drag, restyle, and extend, not a fixed Mermaid card. The whole build is one
- * undo. This is the agent authoring on the same surface humans draw on.
+ * "Turn this into a flowchart" (canvas pivot P2 + responsiveness P2). The agent
+ * fetches a graph, then VISIBLY DRAWS it: its cursor hops to each position and a
+ * node pops in, one by one, then the connectors — so it reads as a collaborator
+ * holding the pen. Never silent (task control + cursor up front), cancellable,
+ * with error + Retry. One undo for the whole drawing.
  */
 
 import { useCallback, useRef, useState } from 'react';
@@ -16,19 +15,22 @@ import {
   type TLShape,
   type TLShapeId,
 } from 'tldraw';
-import type { AskSource, DiagramSpec } from '@jarwiz/shared';
-import { buildFlowchart } from './flowLayout';
+import { getAgent, type AskSource, type DiagramSpec } from '@jarwiz/shared';
+import { createFlowEdge, createFlowNode, layoutFlow } from './flowLayout';
+import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from './presence';
+import { clearAgentTask, setAgentTask } from './agentTask';
+
+const AGENT = getAgent('writer');
+const DRAW_STEP_MS = 240;
+const TIMEOUT_MS = 60_000;
+const sleep = (ms: number, signal: AbortSignal) =>
+  new Promise<void>((res) => { if (signal.aborted) return res(); const t = setTimeout(res, ms); signal.addEventListener('abort', () => { clearTimeout(t); res(); }, { once: true }); });
 
 function plainText(editor: Editor, richText: unknown): string {
   if (!richText || typeof richText !== 'object') return '';
-  try {
-    return renderPlaintextFromRichText(editor, richText as TLRichText).trim();
-  } catch {
-    return '';
-  }
+  try { return renderPlaintextFromRichText(editor, richText as TLRichText).trim(); } catch { return ''; }
 }
 
-/** Compact text grounding from a selected shape (card or primitive). */
 function sourceFromShape(editor: Editor, shape: TLShape): AskSource | null {
   const p = shape.props as Record<string, unknown>;
   if (shape.type === 'doc-card' || shape.type === 'note-card') {
@@ -63,48 +65,74 @@ export function useDiagram() {
         .map((s) => sourceFromShape(editor, s))
         .filter((s): s is AskSource => Boolean(s));
 
-      // Anchor: to the right of the selection, else viewport centre.
-      const selBounds = sourceIds.length ? editor.getShapePageBounds(sourceIds[0]!) : null;
-      const allBounds = sourceIds
-        .map((id) => editor.getShapePageBounds(id))
-        .filter((b): b is NonNullable<typeof b> => Boolean(b));
+      const allBounds = sourceIds.map((id) => editor.getShapePageBounds(id)).filter((b): b is NonNullable<typeof b> => Boolean(b));
       let origin: { x: number; y: number };
-      if (allBounds.length) {
-        const right = Math.max(...allBounds.map((b) => b.maxX));
-        const top = Math.min(...allBounds.map((b) => b.minY));
-        origin = { x: right + 80, y: top };
-      } else {
-        const c = editor.getViewportPageBounds().center;
-        origin = { x: c.x - 100, y: c.y - 100 };
-      }
-      void selBounds;
+      if (allBounds.length) origin = { x: Math.max(...allBounds.map((b) => b.maxX)) + 80, y: Math.min(...allBounds.map((b) => b.minY)) };
+      else { const c = editor.getViewportPageBounds().center; origin = { x: c.x - 100, y: c.y - 120 }; }
 
+      const taskId = 'diagram';
       setIsDiagramming(true);
-      abortRef.current?.abort();
-      abortRef.current = new AbortController();
+      const ac = new AbortController();
+      abortRef.current = ac;
+      let cancelled = false, timedOut = false;
+      // Never silent: the Writer walks to the spot and a control appears, before
+      // the model has even replied.
+      startPresence(AGENT.id);
+      setPresenceStatus(AGENT.id, 'Drawing a flowchart…');
+      setPresenceCursor(AGENT.id, origin.x, origin.y);
+      setAgentTask({ id: taskId, anchorId: null, status: 'running', label: 'Drawing a flowchart…', onCancel: () => { cancelled = true; ac.abort(); } });
+      const timer = setTimeout(() => { timedOut = true; ac.abort(); }, TIMEOUT_MS);
+
+      const created: TLShapeId[] = [];
       try {
         const res = await fetch('/api/diagram', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt, sources: sources.length ? sources : undefined }),
-          signal: abortRef.current.signal,
+          signal: ac.signal,
         });
         if (!res.ok) throw new Error(`diagram failed (${res.status})`);
         const spec = (await res.json()) as DiagramSpec;
-        if (!spec?.nodes?.length) return;
-        editor.markHistoryStoppingPoint('build-flowchart'); // whole build = one undo
-        const ids = buildFlowchart(editor, spec, origin);
-        if (ids.length) {
-          editor.select(...ids);
-          const b = editor.getSelectionPageBounds();
-          if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 80 });
-          editor.selectNone();
+        if (!spec?.nodes?.length) throw new Error('empty diagram');
+
+        editor.markHistoryStoppingPoint('draw-flowchart'); // whole draw = one undo
+        const placed = layoutFlow(spec, origin);
+        const nodeId = new Map<string, TLShapeId>();
+
+        // Draw the nodes one by one — cursor hops to each, then it pops in.
+        for (const p of placed) {
+          if (ac.signal.aborted) throw new Error('aborted');
+          setPresenceCursor(AGENT.id, p.cx, p.cy);
+          await sleep(DRAW_STEP_MS, ac.signal);
+          if (ac.signal.aborted) throw new Error('aborted');
+          const id = createFlowNode(editor, p);
+          nodeId.set(p.node.id, id);
+          created.push(id);
         }
+        // Then draw the connectors.
+        for (const e of spec.edges) {
+          if (ac.signal.aborted) throw new Error('aborted');
+          const from = nodeId.get(e.from);
+          const to = nodeId.get(e.to);
+          if (from && to) { created.push(createFlowEdge(editor, from, to, e.label)); await sleep(90, ac.signal); }
+        }
+
+        clearAgentTask(taskId);
+        editor.select(...created);
+        const b = editor.getSelectionPageBounds();
+        if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 80 });
+        editor.selectNone();
       } catch (err) {
-        if (err instanceof Error && err.name !== 'AbortError') {
-          console.error('[jarwiz] diagram error:', err.message);
+        if (cancelled) {
+          if (created.length) editor.deleteShapes(created); // undo the partial draw
+          clearAgentTask(taskId);
+        } else {
+          const message = timedOut ? 'The agent timed out drawing.' : err instanceof Error ? err.message : 'Drawing failed.';
+          if (created.length) editor.deleteShapes(created);
+          setAgentTask({ id: taskId, anchorId: null, status: 'error', label: 'Flowchart', error: message, onRetry: () => { clearAgentTask(taskId); void diagram(prompt, sourceIds); } });
         }
       } finally {
+        clearTimeout(timer);
+        endPresence(AGENT.id);
         setIsDiagramming(false);
       }
     },
