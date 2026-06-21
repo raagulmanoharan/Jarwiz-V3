@@ -61,6 +61,8 @@ async function run() {
 
   // ── A. "d" key drops a doc card and enters edit mode ────────────────────
   await clear(page);
+  await page.mouse.click(700, 400); // focus the canvas so the window key handler hears 'd'
+  await sleep(150);
   const beforeD = await shapeCount(page);
   await page.keyboard.press('d');
   await sleep(600);
@@ -73,7 +75,7 @@ async function run() {
   // ── B. Toolbar "Doc" button drops a doc card ────────────────────────────
   await clear(page);
   const beforeBtn = await shapeCount(page);
-  await page.locator('.jz-tool-create', { hasText: 'Doc' }).click();
+  await page.evaluate(() => document.querySelector('[data-testid="rail.doc"]').click());
   await sleep(600);
   const afterBtn = await shapeCount(page);
   const editingAfterBtn = await page.evaluate(() => Boolean(window.editor.getEditingShapeId()));
