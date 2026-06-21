@@ -34,6 +34,7 @@ import { setResponsePdfSource } from '../pdf/provenance';
 import { clearDraft, getDraft, setDraft, updateDraft } from './draft';
 import { clearRegen, setRegen } from './regen';
 import { clearClarify, setClarify } from './clarify';
+import { setProvenance } from './provenance';
 import { logEvent } from '../log/eventLog';
 
 /** The AbortController of the Ask currently in flight, so a floating control
@@ -118,6 +119,19 @@ function toSource(editor: Editor, shape: TLShape): AskSource | null {
   }
 }
 
+/** A short label for an Ask source — its title, else a friendly kind name. */
+function sourceLabel(shape: TLShape): string {
+  const p = shape.props as Record<string, unknown>;
+  const title = typeof p.title === 'string' && p.title.trim() ? p.title.trim() : '';
+  if (title) return title.length > 28 ? `${title.slice(0, 27)}…` : title;
+  if (shape.type === 'pdf-card') return typeof p.name === 'string' ? String(p.name) : 'PDF';
+  const fallback: Record<string, string> = {
+    'doc-card': 'Doc', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram',
+    'image-card': 'Image', 'link-card': 'Link', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section',
+  };
+  return fallback[shape.type] ?? 'Card';
+}
+
 export function useAsk() {
   const editor = useEditor();
   const [isAsking, setIsAsking] = useState(false);
@@ -143,6 +157,9 @@ export function useAsk() {
       // If a selection was given but none of it is usable as a source, don't run
       // (a no-op selection). A deliberately sourceless ask (no ids) proceeds.
       if (sourceIds.length > 0 && sources.length === 0) return;
+
+      // Human-readable labels for the "Based on:" header (show-your-work, 2.2).
+      const sourceLabels = sourceShapes.map((s) => sourceLabel(s));
 
       const pdfSourceId = sourceShapes.find((s) => s.type === 'pdf-card')?.id ?? null;
 
@@ -304,6 +321,8 @@ export function useAsk() {
               });
             }
             if (pdfSourceId) setResponsePdfSource(id, pdfSourceId);
+            // Record what this answer was built from (show-your-work, 2.2).
+            setProvenance(id, sourceIds, sourceLabels);
             startStreaming(id);
             const arrowIds = sourceIds.map((from) => createEdge(editor, from, id)).filter(Boolean) as TLShapeId[];
             setDraft({ id, arrowIds, status: 'streaming', prompt: trimmed, sourceIds, shape: event.shape, pdfSourceId });

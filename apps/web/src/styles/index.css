@@ -3036,6 +3036,58 @@ body,
   line-height: 1;
 }
 
+/* ─── Provenance header ("Based on:" — show your work, 2.2) ──────────────── */
+.jz-prov {
+  position: absolute;
+  z-index: 312;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 70vw;
+  padding: 5px 8px 5px 10px;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  border: 1px solid var(--jz-hairline);
+  font-family: var(--jz-font-ui);
+  animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
+}
+
+.jz-prov-label {
+  flex: none;
+  font-size: var(--jz-text-micro-size);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--jz-ink-400);
+}
+
+.jz-prov-src {
+  flex: none;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: none;
+  cursor: pointer;
+  padding: 3px 9px;
+  border-radius: var(--jz-radius-pill);
+  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  font-weight: 500;
+  color: var(--jz-ink-700);
+  transition:
+    background var(--jz-dur-fast) var(--jz-ease-out),
+    color var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-prov-src:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 12%, transparent);
+  color: var(--jz-ink-900);
+}
+
 /* ─── Prompt bar (bottom-centre agent query box, Stitch-style) ───────────── */
 .jz-promptbar {
   position: absolute;

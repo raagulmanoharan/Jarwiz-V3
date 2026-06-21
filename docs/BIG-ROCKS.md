@@ -71,7 +71,12 @@ The PM insight that's hardest to articulate but most true: *"Stop generating new
 **Success:** 10 stickies in → named clusters + summary doc out, in under 10 seconds. PM doesn't need to write the synthesis themselves.  
 **Rough size:** Medium. Needs a new Ask routing path for the "synthesise my stickies" intent.
 
-### 2.2 Transparent context — show your work
+### 2.2 Transparent context — show your work ✅ shipped
+> **Status:** Ask answers record their sources; selecting an answer shows a
+> "Based on: [source]" header (ProvenanceLayer) whose chips select + zoom to the
+> source card. Autopilot continuations cite inline in-prose ("(from [title])")
+> by prompt. Verified by `scripts/eval-provenance.mjs` (4/4).
+
 **Problem:** "Tab continued my doc — grounded in a nearby sticky, apparently. But which one? I have no idea." The AI's reasoning is opaque. Opacity erodes trust.  
 **Requirement:** When Autopilot or Ask uses board context, surface it visibly:  
 - Autopilot: after a continuation that drew on context, show a small "↳ grounded in: [Card title]" citation line below the appended text (collapsed by default, tappable to expand).  
