@@ -63,9 +63,14 @@ npm run typecheck   # tsc --noEmit across all workspaces
 
 ## Read the spec
 
+Start at the docs index — **[docs/README.md](docs/README.md)** — which ties
+together everything below:
+
 - [docs/VISION.md](docs/VISION.md) — what Jarwiz is and why presence is the product
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — locked decisions, system design, wire protocol
-- [docs/ROADMAP.md](docs/ROADMAP.md) — phases and milestones
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — system design, agent runtime, wire protocol
+- [docs/DECISIONS.md](docs/DECISIONS.md) — the running decision log (what we chose and why)
+- [docs/HISTORY.md](docs/HISTORY.md) — conversation / session history, milestone by milestone
+- [docs/ROADMAP.md](docs/ROADMAP.md) · [docs/BIG-ROCKS.md](docs/BIG-ROCKS.md) — the plan and the priorities
 - [CLAUDE.md](CLAUDE.md) — working notes / conventions for the codebase
 
 ## Troubleshooting
