@@ -23,8 +23,8 @@ export function EmptyState() {
     <div className="jz-empty" aria-hidden>
       <h1 className="jz-empty-hero">Start a new idea.</h1>
       <p className="jz-empty-sub">
-        Drop a PDF, press <kbd>d</kbd> for a doc, or <kbd>n</kbd> for a sticky. Ask any agent with{' '}
-        <kbd>⌘K</kbd>.
+        Drop a PDF, press <kbd>d</kbd> for a doc, or <kbd>n</kbd> for a sticky. Ask anything in the
+        prompt bar below — or tap <kbd>?</kbd> for a guided tour.
       </p>
       <div className="jz-empty-hints">
         <span className="jz-empty-hint">

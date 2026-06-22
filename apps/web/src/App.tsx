@@ -32,6 +32,7 @@ import { BoardEntry } from './boards/BoardEntry';
 import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
 import { EmptyState } from './ui/EmptyState';
 import { Topbar } from './ui/Topbar';
+import { HelpLayer } from './ui/HelpLayer';
 
 /**
  * Everything Jarwiz floats over the canvas, in one overlay slot. While we
@@ -55,6 +56,7 @@ function JarwizOverlay() {
       <ToolRail />
       <PromptBar />
       <Timeline />
+      <HelpLayer />
     </>
   );
 }

@@ -2,6 +2,7 @@ import { useState, useSyncExternalStore } from 'react';
 import { getActiveBoard, subscribeBoards } from '../boards/boardStore';
 import { BoardSwitcher } from '../boards/BoardSwitcher';
 import { useCapabilities } from './useCapabilities';
+import { toggleHelp } from './help';
 
 /** Top-left chrome: the Jarwiz wordmark chip, active board name, and live/demo badge. */
 export function Topbar() {
@@ -39,6 +40,14 @@ export function Topbar() {
             Demo mode
           </span>
         ) : null}
+        <button
+          className="jz-help-btn"
+          title="Help — what Jarwiz can do, shortcuts, and a guided tour"
+          aria-label="Help and guided tour"
+          onClick={toggleHelp}
+        >
+          ?
+        </button>
       </div>
     </>
   );
