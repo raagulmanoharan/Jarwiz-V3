@@ -3386,18 +3386,18 @@ body,
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--jz-space-3);
+  gap: var(--jz-space-5);
 }
 
 .jz-promptbar {
   pointer-events: auto;
   display: flex;
   align-items: center;
-  gap: var(--jz-space-3);
+  gap: var(--jz-space-4);
   width: min(var(--pb-max, 600px), calc(100vw - 32px));
   box-sizing: border-box;
-  padding: 8px 8px 8px 16px;
-  border-radius: var(--jz-radius-pill);
+  padding: 10px 10px 10px 18px;
+  border-radius: var(--jz-radius-xl);
   background: var(--jz-surface-raised);
   box-shadow: var(--jz-e4);
   border: 1px solid var(--jz-hairline);
@@ -3414,15 +3414,16 @@ body,
 .jz-promptbar-chips {
   pointer-events: auto;
   display: flex;
-  gap: var(--jz-space-2);
+  gap: var(--jz-space-3);
   flex-wrap: wrap;
   justify-content: center;
+  max-width: min(620px, calc(100vw - 32px));
 }
 
 .jz-pb-chip {
   border: 1px solid var(--jz-hairline-strong);
   cursor: pointer;
-  padding: 6px 13px;
+  padding: 8px 15px;
   border-radius: var(--jz-radius-pill);
   background: var(--jz-surface-raised);
   box-shadow: var(--jz-e2);
@@ -3576,7 +3577,7 @@ body,
 .jz-pb-grounds {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex: none;
   max-width: 45%;
   overflow: hidden;
@@ -3632,9 +3633,9 @@ body,
   line-height: 1.45;
   color: var(--jz-ink-900);
   resize: none;
-  min-height: 42px;
-  max-height: 120px;
-  padding: 6px 0;
+  min-height: 48px;
+  max-height: 132px;
+  padding: 8px 0;
   align-self: center;
 }
 

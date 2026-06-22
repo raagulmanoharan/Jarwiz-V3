@@ -7,12 +7,13 @@
  * coachmark points at the launcher.
  */
 
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue, type Editor, type TLRichText, type TLShape } from 'tldraw';
 import type { AnalyzeMode } from '@jarwiz/shared';
 import { ASKABLE } from './AskLayer';
 import { useAsk } from './useAsk';
 import { useAnalyze } from '../agents/useAnalyze';
+import { ensureSeedPrompts, getSeedPrompts, subscribeSeed } from './seedPrompts';
 
 const clip = (s: string, n = 22) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
@@ -76,6 +77,19 @@ export function PromptBar() {
     const ids = editor.getSelectedShapeIds();
     return ids.length === 1 ? (editor.getShape(ids[0]!)?.type ?? '') : '';
   }, [editor]);
+  // A single selected PDF carries content-aware seed prompts (keyed by asset id).
+  const assetId = useValue('promptbar-assetid', () => {
+    const ids = editor.getSelectedShapeIds();
+    if (ids.length !== 1) return '';
+    const s = editor.getShape(ids[0]!);
+    return s?.type === 'pdf-card' ? String((s.props as { assetId?: string }).assetId ?? '') : '';
+  }, [editor]);
+  useEffect(() => { if (assetId) ensureSeedPrompts(assetId); }, [assetId]);
+  const seeds = useSyncExternalStore(
+    subscribeSeed,
+    () => (assetId ? getSeedPrompts(assetId) : undefined),
+    () => undefined,
+  );
 
   const dismissCoach = () => { setCoachDone(true); try { localStorage.setItem(COACH_KEY, '1'); } catch {} };
   // Opening the menu (or running a tool) counts as learning it exists.
@@ -96,8 +110,14 @@ export function PromptBar() {
   // Contextual quick-actions: board has substance, nothing selected, idle.
   const showChips = !menuOpen && !runningMode && groundIds.length === 0 && boardCount >= 3;
   // Question starters: a single card is selected — suggest editable next-best
-  // prompts (open-ended QUESTIONS, distinct from the top bar's transforms).
-  const starters = groundIds.length === 1 ? (STARTERS[soleType] ?? STARTERS.default ?? []) : [];
+  // prompts (open-ended QUESTIONS, distinct from the top bar's transforms). A
+  // selected PDF uses its content-aware seed prompts when they've arrived.
+  const starters: Array<{ label: string; prompt: string }> =
+    groundIds.length !== 1
+      ? []
+      : assetId && (seeds?.length ?? 0) > 0
+        ? seeds!.map((s) => ({ label: s.label, prompt: s.prompt }))
+        : (STARTERS[soleType] ?? STARTERS.default ?? []).map((s) => ({ label: s, prompt: s }));
   const showStarters = !menuOpen && !runningMode && !value.trim() && starters.length > 0;
   // Coachmark: board has grown, agents never used.
   const showCoach = !coachDone && !menuOpen && boardCount >= 5;
@@ -114,7 +134,7 @@ export function PromptBar() {
       {showStarters ? (
         <div className="jz-promptbar-chips">
           {starters.map((s) => (
-            <button key={s} className="jz-pb-chip" title="Use this prompt (editable)" onClick={() => useStarter(s)}>{s}</button>
+            <button key={s.label} className="jz-pb-chip" title="Use this prompt (editable)" onClick={() => useStarter(s.prompt)}>{s.label}</button>
           ))}
         </div>
       ) : null}

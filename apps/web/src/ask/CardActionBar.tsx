@@ -35,13 +35,13 @@ export function CardActionBar() {
     () => {
       const ids = editor.getSelectedShapeIds().filter((i) => { const t = editor.getShape(i)?.type; return t ? ASKABLE.has(t) : false; });
       if (ids.length === 0) return null;
-      if (ids.length > 1) return { multi: true as const, ids, name: `${ids.length} selected`, type: '', id: ids[0]! };
+      if (ids.length > 1) {
+        const pdfCount = ids.filter((i) => editor.getShape(i)?.type === 'pdf-card').length;
+        return { multi: true as const, ids, pdfCount, type: '', id: ids[0]! };
+      }
       const id = ids[0]!;
       const s = editor.getShape(id)!;
-      const p = s.props as Record<string, unknown>;
-      const title = typeof p.title === 'string' && p.title.trim() ? p.title.trim() : '';
-      const name = (title || s.type.replace('-card', '').replace(/^geo$/, 'shape')) as string;
-      return { multi: false as const, ids, id, type: s.type, name: name.length > 32 ? `${name.slice(0, 31)}…` : name };
+      return { multi: false as const, ids, id, type: s.type };
     },
     [editor],
   );
@@ -67,6 +67,12 @@ export function CardActionBar() {
       { label: '✦ Summarise the selection', run: () => ask('Summarise the selected cards together into one concise doc.', ids) },
       { label: '✦ Combine into a doc', run: () => ask('Combine the selected cards into one structured document.', ids) },
     );
+    if (sel.pdfCount >= 2) {
+      transforms.push(
+        { label: 'Find conflicts', run: () => ask('Find conflicts and contradictions between these documents, clause by clause.', ids) },
+        { label: 'Compare clauses', run: () => ask('Compare these documents clause by clause, showing where each one stands and where they differ.', ids) },
+      );
+    }
   }
   if (canCluster(editor, ids)) transforms.push({ label: '✦ Cluster & summarise', run: () => cluster() });
   if (canTidy(editor, ids)) transforms.push({ label: '⤢ Tidy layout', run: () => tidy(ids) });
@@ -83,9 +89,6 @@ export function CardActionBar() {
   const style = {} as CSSProperties;
   return (
     <div className="jz-cardbar" style={style} onPointerDown={stopEventPropagation}>
-      <span className="jz-cardbar-name" title={sel.name}>{sel.name}</span>
-      <span className="jz-cardbar-sep" aria-hidden />
-
       <div className="jz-cardbar-group">
         <button className={`jz-cardbar-btn${menu === 'refine' ? ' jz-cardbar-btn--open' : ''}`} onClick={() => setMenu(menu === 'refine' ? null : 'refine')}>
           ✦ Refine <span className="jz-cardbar-caret" aria-hidden>▾</span>
