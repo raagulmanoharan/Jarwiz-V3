@@ -61,6 +61,13 @@ export function CardActionBar() {
     if (sel.type !== 'diagram-card') transforms.push({ label: 'As a diagram', run: () => ask('Turn this into a diagram.', [id]) });
     transforms.push({ label: 'Regenerate', run: () => ask('Regenerate this, same intent, fresh take.', [id], { targetId: id }) });
   }
+  if (sel.multi) {
+    // Multi-select gets the same bar, with cross-selection transforms.
+    transforms.push(
+      { label: '✦ Summarise the selection', run: () => ask('Summarise the selected cards together into one concise doc.', ids) },
+      { label: '✦ Combine into a doc', run: () => ask('Combine the selected cards into one structured document.', ids) },
+    );
+  }
   if (canCluster(editor, ids)) transforms.push({ label: '✦ Cluster & summarise', run: () => cluster() });
   if (canTidy(editor, ids)) transforms.push({ label: '⤢ Tidy layout', run: () => tidy(ids) });
   transforms.push({ label: '◇ Make a flowchart', run: () => diagram('Turn this into a flowchart.', ids) });
