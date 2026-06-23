@@ -94,26 +94,6 @@ body,
   box-sizing: border-box;
 }
 
-/* Primary create button — white circle, stands out from the dark rail. */
-.jz-rail-plus {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  margin-bottom: 4px;
-  padding: 0;
-  border: none;
-  border-radius: 9999px;
-  background: var(--jz-ink-900);
-  color: var(--jz-surface-raised);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: transform var(--jz-dur-fast) var(--jz-ease-out),
-              background var(--jz-dur-fast) var(--jz-ease-out);
-}
-.jz-rail-plus:hover { transform: scale(1.06); }
-.jz-rail-plus:active { transform: scale(0.95); }
 
 
 .jz-rail-tool {

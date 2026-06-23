@@ -18,7 +18,6 @@ export function ToolRail() {
 
   return (
     <div className="jz-rail" onPointerDown={stopEventPropagation}>
-      <PlusButton />
       <RailTool icon={<CursorIcon />} label="Select (V)" active={toolId === 'select'} onClick={() => editor.setCurrentTool('select')} />
       <RailTool icon={<HandIcon />} label="Pan (H)" active={toolId === 'hand'} onClick={() => editor.setCurrentTool('hand')} />
       <RailTool icon={<TextIcon />} label="Text (T)" active={toolId === 'text'} onClick={() => editor.setCurrentTool('text')} />
@@ -29,16 +28,6 @@ export function ToolRail() {
   );
 }
 
-function PlusButton() {
-  return (
-    <button className="jz-rail-plus" title="Create" aria-label="Create"
-      onClick={() => console.info('[jarwiz] create menu coming soon')}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 5v14M5 12h14" />
-      </svg>
-    </button>
-  );
-}
 
 function RailTool({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
   return (
