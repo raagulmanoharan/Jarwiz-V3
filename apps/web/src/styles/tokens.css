@@ -34,20 +34,20 @@
   --jz-text-micro-size: 11px;
   --jz-text-micro-lh: 14px;
 
-  /* ─── Surfaces & ink (Flora cool-neutral) ────────────────────────────── */
-  --jz-paper: #f0f0f0;
-  --jz-paper-deep: #e4e4e4;
-  --jz-surface: #ffffff;
-  --jz-surface-raised: #ffffff;
+  /* ─── Surfaces & ink (Flora cool-neutral, slightly darkened panels) ───── */
+  --jz-paper: #e8e8e8;
+  --jz-paper-deep: #dcdcdc;
+  --jz-surface: #f5f5f5;
+  --jz-surface-raised: #f0f0f0;
 
-  --jz-ink-900: #0f0f0f;
-  --jz-ink-700: #333333;
-  --jz-ink-500: #666666;
-  --jz-ink-400: #999999;
-  --jz-ink-300: #c4c4c4;
+  --jz-ink-900: #0a0a0a;
+  --jz-ink-700: #2a2a2a;
+  --jz-ink-500: #5a5a5a;
+  --jz-ink-400: #8a8a8a;
+  --jz-ink-300: #b8b8b8;
 
-  --jz-hairline: rgba(0, 0, 0, 0.08);
-  --jz-hairline-strong: rgba(0, 0, 0, 0.14);
+  --jz-hairline: rgba(0, 0, 0, 0.10);
+  --jz-hairline-strong: rgba(0, 0, 0, 0.18);
 
   /* Shadow base color, reused at varying alpha in the elevation ramp. */
   --jz-shadow-rgb: 0, 0, 0;
@@ -116,23 +116,22 @@
 
 /**
  * Dark theme — Flora-style. Deep cool-black canvas, near-white ink, surfaces
- * just barely lifted off the background. No amber warmth — clean neutrals.
- * Ink ramps invert: 900 is brightest, 300 dimmest.
+ * clearly lifted off the background. No amber warmth — clean neutrals.
  */
 :root[data-theme='dark'] {
-  --jz-paper: #141414;
-  --jz-paper-deep: #0a0a0a;
-  --jz-surface: #1e1e1e;
-  --jz-surface-raised: #242424;
+  --jz-paper: #111111;
+  --jz-paper-deep: #080808;
+  --jz-surface: #1c1c1c;
+  --jz-surface-raised: #222222;
 
-  --jz-ink-900: #f2f2f2;
-  --jz-ink-700: #c8c8c8;
-  --jz-ink-500: #888888;
-  --jz-ink-400: #555555;
-  --jz-ink-300: #383838;
+  --jz-ink-900: #f0f0f0;
+  --jz-ink-700: #c0c0c0;
+  --jz-ink-500: #808080;
+  --jz-ink-400: #505050;
+  --jz-ink-300: #333333;
 
-  --jz-hairline: rgba(255, 255, 255, 0.08);
-  --jz-hairline-strong: rgba(255, 255, 255, 0.14);
+  --jz-hairline: rgba(255, 255, 255, 0.09);
+  --jz-hairline-strong: rgba(255, 255, 255, 0.16);
 
   --jz-shadow-rgb: 0, 0, 0;
 
