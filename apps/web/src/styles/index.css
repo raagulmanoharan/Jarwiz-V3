@@ -71,9 +71,9 @@ body,
   display: none !important;
 }
 
-/* Tool rail (ToolRail.tsx) — anchored to the left edge directly under the
- * hamburger logo, so the two read as a single vertical column. Both surfaces
- * share the same outer width (36px) and a fully-rounded pill silhouette. */
+/* Tool rail — Flora-style vertical pill, vertically centered on the left edge.
+ * A prominent ⊕ plus button at the top (white circle), then icon buttons,
+ * a hairline divider, then secondary icons. */
 .jz-rail {
   position: absolute;
   left: 14px;
@@ -85,8 +85,8 @@ body,
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 4px;
-  width: 36px;
+  padding: 6px;
+  width: 52px;
   border-radius: 9999px;
   background: var(--jz-surface-raised);
   box-shadow: var(--jz-e3);
@@ -94,46 +94,58 @@ body,
   box-sizing: border-box;
 }
 
-.jz-rail-create {
+/* Primary create button — white circle, stands out from the dark rail. */
+.jz-rail-plus {
   display: inline-flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0;
-  width: 28px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 4px;
+  padding: 0;
   border: none;
   border-radius: 9999px;
-  background: transparent;
-  color: var(--jz-ink-700);
+  background: var(--jz-ink-900);
+  color: var(--jz-surface-raised);
   cursor: pointer;
-  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
+  flex-shrink: 0;
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out),
+              background var(--jz-dur-fast) var(--jz-ease-out);
 }
+.jz-rail-plus:hover { transform: scale(1.06); }
+.jz-rail-plus:active { transform: scale(0.95); }
 
-.jz-rail-create:hover { background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent); color: var(--jz-ink-900); }
-.jz-rail-label { display: none; }
-
-.jz-rail-divider { width: 18px; height: 1px; margin: 3px 0; background: var(--jz-hairline-strong); }
+.jz-rail-divider {
+  width: 24px;
+  height: 1px;
+  margin: 4px 0;
+  background: var(--jz-hairline-strong);
+  flex-shrink: 0;
+}
 
 .jz-rail-tool {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
   border: none;
   border-radius: 9999px;
   background: transparent;
-  color: var(--jz-ink-600);
+  color: var(--jz-ink-400);
   cursor: pointer;
-  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
+  flex-shrink: 0;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out),
+              color var(--jz-dur-fast) var(--jz-ease-out);
 }
-
-.jz-rail-tool:hover { background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent); color: var(--jz-ink-900); }
-
+.jz-rail-tool:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
+  color: var(--jz-ink-700);
+}
 .jz-rail-tool--active {
-  background: var(--jz-ink-900);
-  color: var(--jz-surface-raised);
+  background: color-mix(in srgb, var(--jz-ink-900) 12%, transparent);
+  color: var(--jz-ink-900);
 }
 
 /* Calm the re-enabled primitive toolbar + style panel (canvas pivot P0) into the
