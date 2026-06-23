@@ -1,23 +1,25 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
-import { getActiveBoard, subscribeBoards } from '../boards/boardStore';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { stopEventPropagation, useEditor, useValue } from 'tldraw';
+import { getActiveBoard, getActiveBoardId, renameBoard, subscribeBoards } from '../boards/boardStore';
 import { BoardSwitcher } from '../boards/BoardSwitcher';
 import { getTheme, subscribeTheme, toggleTheme } from './theme';
 
 /**
  * Canvas chrome — top bar (Flora-aligned).
  *
- *   Left cluster:   ◆ logo · title block (board name / workspace)
- *   Right cluster:  green "Ask Jarwiz" CTA · Share Project · ⋯ profile menu
+ *   Left cluster:   ◆ logo · inline-editable board name / workspace pill
+ *   Right cluster:  zoom dropdown · share button · theme toggle
  *
- * Reference: Flora.app's app bar. We diverge in two places, intentionally:
- *
- *  1. The green CTA reads "Ask Jarwiz" (Flora reads "Generate"). Tapping it
- *     focuses the bottom PromptBar — we keep one typing surface, not two.
- *  2. A small ⋯ profile menu hosts the theme toggle. Flora has neither; we
- *     park it here until a proper settings sheet lands.
- *
- * Drop list (was here, now gone): agent presence avatars, export menu, help
- * button, undo/redo group. Those move to a Cmd-K palette later.
+ * Behaviour notes:
+ *  - The board name is editable in place: click → edit → Enter to commit,
+ *    Escape to cancel, blur to commit. The dropdown caret lives next to the
+ *    name and opens the board switcher independently.
+ *  - The workspace is a clickable pill (stub for now — opens nothing until
+ *    workspace management exists).
+ *  - Zoom dropdown owns all zoom controls (the bottom-right ZoomPill is
+ *    retired with this commit).
+ *  - Theme toggle is a single icon button: sun ⇄ moon, with a gentle scale +
+ *    rotation micro-animation honouring prefers-reduced-motion.
  */
 export function Topbar() {
   return (
@@ -27,17 +29,15 @@ export function Topbar() {
         <TitleBlock />
       </div>
       <div className="jz-topbar-right">
-        <AskCta />
-        <ShareProject />
-        <ProfileMenu />
+        <ZoomDropdown />
+        <ShareButton />
+        <ThemeToggleButton />
       </div>
     </div>
   );
 }
 
 function LogoMark() {
-  // Graphical mark — diamond/spark glyph in the brand ink. Kept inline so it
-  // theme-flips automatically (currentColor on stroke).
   return (
     <div className="jz-logo" aria-label="Jarwiz">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -50,106 +50,247 @@ function LogoMark() {
   );
 }
 
+/**
+ * Title block: editable board name (large) with a dropdown caret for the
+ * board switcher, and a clickable workspace pill below.
+ */
 function TitleBlock() {
   const board = useSyncExternalStore(subscribeBoards, getActiveBoard, getActiveBoard);
-  const [open, setOpen] = useState(false);
-  const title = board?.name ?? 'Untitled board';
+  const boardId = useSyncExternalStore(subscribeBoards, getActiveBoardId, getActiveBoardId);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(board?.name ?? 'Untitled');
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Keep the draft in sync if the underlying board name changes (e.g. switch).
+  useEffect(() => {
+    if (!editing) setDraft(board?.name ?? 'Untitled');
+  }, [board?.name, editing]);
+
+  // Auto-focus + select when entering edit mode.
+  useLayoutEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  const commit = () => {
+    const next = draft.trim();
+    if (next && next !== board?.name) renameBoard(boardId, next);
+    setEditing(false);
+  };
+  const cancel = () => {
+    setDraft(board?.name ?? 'Untitled');
+    setEditing(false);
+  };
 
   return (
     <div className="jz-title-block">
-      <button
-        className={`jz-title-row${open ? ' jz-title-row--open' : ''}`}
-        onClick={() => setOpen((v) => !v)}
-        title="Switch boards"
-      >
-        <span className="jz-title-name">{title}</span>
-        <span className="jz-title-caret" aria-hidden>▾</span>
-      </button>
-      <div className="jz-title-sub">Personal workspace</div>
-      {open && <BoardSwitcher onClose={() => setOpen(false)} />}
+      <div className="jz-title-row">
+        {editing ? (
+          <input
+            ref={inputRef}
+            className="jz-title-input"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === 'Enter') commit();
+              if (e.key === 'Escape') cancel();
+            }}
+            onBlur={commit}
+            // tldraw's canvas swallows pointer events; keep the input alive.
+            onPointerDown={stopEventPropagation}
+            spellCheck={false}
+            maxLength={120}
+          />
+        ) : (
+          <button
+            className="jz-title-name-btn"
+            onClick={() => setEditing(true)}
+            title="Click to rename"
+          >
+            <span className="jz-title-name">{board?.name ?? 'Untitled'}</span>
+          </button>
+        )}
+        <button
+          className={`jz-title-caret-btn${switcherOpen ? ' jz-title-caret-btn--open' : ''}`}
+          onClick={() => setSwitcherOpen((v) => !v)}
+          aria-label="Switch boards"
+          title="Switch boards"
+        >
+          <span aria-hidden>▾</span>
+        </button>
+      </div>
+      <WorkspacePill />
+      {switcherOpen && <BoardSwitcher onClose={() => setSwitcherOpen(false)} />}
     </div>
   );
 }
 
-function AskCta() {
-  // Flora's green generate pill. We give it the same affordance shape but a
-  // different action: focus the PromptBar input rather than launch our own
-  // typing surface (one prompt surface, one place to type).
-  const focusPromptBar = () => {
-    const el = document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input');
-    if (el) {
-      el.focus();
-      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    }
+function WorkspacePill() {
+  // Stub action — opens nothing until workspace management exists. The
+  // affordance is the priority here; wiring follows.
+  const onClick = () => {
+    console.info('[jarwiz] workspace picker is not wired up yet');
   };
   return (
-    <button className="jz-ask-cta" onClick={focusPromptBar} title="Ask Jarwiz (focuses the prompt bar)">
-      <span className="jz-ask-cta-spark" aria-hidden>✦</span>
-      Ask Jarwiz
+    <button className="jz-workspace-pill" onClick={onClick} title="Switch workspace (coming soon)">
+      Personal workspace
     </button>
   );
 }
 
-function ShareProject() {
-  return (
-    <button
-      className="jz-share-project"
-      title="Share this board (coming soon)"
-      onClick={() => {
-        // Stub — real sharing lands later. Logged so the user knows it's a
-        // placeholder rather than silently doing nothing.
-        console.info('[jarwiz] share is not wired up yet');
-      }}
-    >
-      Share Project
-    </button>
-  );
-}
-
-function ProfileMenu() {
-  // Known deviation from the Flora screenshot: a single ⋯ button holds the
-  // theme toggle. Will move into a settings sheet once one exists.
+/**
+ * Zoom dropdown — the only zoom UI in the chrome. Shows current %, opens a
+ * menu with the standard tldraw zoom actions and shortcut hints.
+ */
+function ZoomDropdown() {
+  const editor = useEditor();
+  const zoom = useValue('topbar-zoom', () => editor.getZoomLevel(), [editor]);
+  const pct = Math.round(zoom * 100);
   const [open, setOpen] = useState(false);
-  const theme = useSyncExternalStore(subscribeTheme, getTheme, getTheme);
 
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
       const t = e.target as HTMLElement;
-      if (!t.closest('.jz-profile-wrap')) setOpen(false);
+      if (!t.closest('.jz-zoom-dd-wrap')) setOpen(false);
     };
     window.addEventListener('mousedown', onClick);
     return () => window.removeEventListener('mousedown', onClick);
   }, [open]);
 
+  const close = () => setOpen(false);
+  const zoomTo = (level: number) => {
+    const c = editor.getViewportPageBounds().center;
+    editor.setCamera({ x: -c.x * level + (editor.getViewportScreenBounds().w / 2) / 1, y: -c.y * level + (editor.getViewportScreenBounds().h / 2) / 1, z: level });
+  };
+  const zoomToSelection = () => {
+    const sel = editor.getSelectedShapeIds();
+    if (sel.length === 0) editor.zoomToFit();
+    else editor.zoomToSelection();
+  };
+
   return (
-    <div className="jz-profile-wrap">
+    <div className="jz-zoom-dd-wrap" onPointerDown={stopEventPropagation}>
       <button
-        className="jz-profile-dots"
-        aria-label="Settings"
-        title="Settings"
+        className={`jz-zoom-dd${open ? ' jz-zoom-dd--open' : ''}`}
         onClick={() => setOpen((v) => !v)}
+        title="Zoom"
+        aria-label="Zoom"
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="5" cy="12" r="1.6" />
-          <circle cx="12" cy="12" r="1.6" />
-          <circle cx="19" cy="12" r="1.6" />
-        </svg>
+        <ZoomGlass />
+        <span className="jz-zoom-dd-pct">{pct}%</span>
+        <span className="jz-zoom-dd-caret" aria-hidden>▾</span>
       </button>
       {open ? (
-        <div className="jz-profile-menu" role="menu">
-          <button
-            className="jz-profile-item"
-            onClick={() => {
-              toggleTheme();
-              setOpen(false);
-            }}
-          >
-            <span>{theme === 'dark' ? 'Light theme' : 'Dark theme'}</span>
-            <span className="jz-profile-item-hint">{theme === 'dark' ? '☀' : '☾'}</span>
+        <div className="jz-zoom-menu" role="menu">
+          <button className="jz-zoom-item" onClick={() => { editor.zoomIn(); close(); }}>
+            <span>Zoom in</span><kbd>⌘+</kbd>
+          </button>
+          <button className="jz-zoom-item" onClick={() => { editor.zoomOut(); close(); }}>
+            <span>Zoom out</span><kbd>⌘−</kbd>
+          </button>
+          <button className="jz-zoom-item" onClick={() => { editor.zoomToFit(); close(); }}>
+            <span>Zoom to fit</span><kbd>⌘1</kbd>
+          </button>
+          <button className="jz-zoom-item" onClick={() => { zoomToSelection(); close(); }}>
+            <span>Zoom to selection</span><kbd>⌘2</kbd>
+          </button>
+          <div className="jz-zoom-divider" aria-hidden />
+          <button className="jz-zoom-item" onClick={() => { zoomTo(0.5); close(); }}>
+            <span>Zoom to 50%</span>
+          </button>
+          <button className="jz-zoom-item" onClick={() => { editor.resetZoom(); close(); }}>
+            <span>Zoom to 100%</span><kbd>⌘0</kbd>
+          </button>
+          <button className="jz-zoom-item" onClick={() => { zoomTo(2); close(); }}>
+            <span>Zoom to 200%</span>
           </button>
         </div>
       ) : null}
     </div>
+  );
+}
+
+function ZoomGlass() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="7" />
+      <path d="M21 21l-4.3-4.3" />
+    </svg>
+  );
+}
+
+function ShareButton() {
+  return (
+    <button
+      className="jz-share"
+      title="Share this board"
+      onClick={() => {
+        // Stub — real sharing lands later.
+        console.info('[jarwiz] share is not wired up yet');
+      }}
+    >
+      <ShareIcon />
+      <span>Share</span>
+    </button>
+  );
+}
+
+function ShareIcon() {
+  // Classic share triangle — three nodes connected by lines. Stroke uses
+  // currentColor so it inherits the button's text colour.
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="18" cy="5" r="2.5" />
+      <circle cx="6" cy="12" r="2.5" />
+      <circle cx="18" cy="19" r="2.5" />
+      <path d="M8.2 10.8l7.6-4.4" />
+      <path d="M8.2 13.2l7.6 4.4" />
+    </svg>
+  );
+}
+
+/**
+ * Sun ⇄ moon icon button. The icon scales+rotates briefly on flip; the
+ * animation is suppressed when the user prefers reduced motion.
+ */
+function ThemeToggleButton() {
+  const theme = useSyncExternalStore(subscribeTheme, getTheme, getTheme);
+  const isDark = theme === 'dark';
+  return (
+    <button
+      className="jz-theme-toggle"
+      onClick={toggleTheme}
+      title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+      aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+      aria-pressed={isDark}
+    >
+      {/* Wrapper keys on theme so the icon remounts and re-runs its CSS
+       *  keyframe each toggle — that's the micro-animation. */}
+      <span key={theme} className="jz-theme-icon" data-theme={theme}>
+        {isDark ? <MoonIcon /> : <SunIcon />}
+      </span>
+    </button>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4l1.4-1.4M17 7l1.4-1.4" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z" />
+    </svg>
   );
 }

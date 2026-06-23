@@ -218,88 +218,203 @@ body,
   border: 1px solid var(--jz-hairline);
 }
 
-/* Two-line title block: project name (large) over workspace label (muted). */
+/* Title block: editable board name + caret (board switcher) + workspace pill.
+ *
+ * The board name is a button that flips into a borderless input on click.
+ * The input keeps the same metrics as the button so the swap doesn't shift
+ * layout. The workspace pill sits below as a small, clickable affordance. */
 .jz-title-block {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  align-items: flex-start;
+  gap: 2px;
   pointer-events: auto;
 }
 .jz-title-row {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-family: var(--jz-font-ui);
-  color: var(--jz-ink-900);
+  min-height: 22px;
 }
-.jz-title-name {
+.jz-title-name-btn,
+.jz-title-input {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 4px;
+  margin: 0;
+  border: none;
+  border-radius: var(--jz-radius-xs);
+  background: transparent;
+  color: var(--jz-ink-900);
+  font-family: var(--jz-font-ui);
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0;
+  cursor: text;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
 }
-.jz-title-caret {
+.jz-title-name-btn:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 5%, transparent);
+}
+.jz-title-name {
+  font: inherit;
+  color: inherit;
+  white-space: nowrap;
+}
+.jz-title-input {
+  /* Match button width to text by sizing on its content; fall back to a
+   * sensible min so an empty value is still grabbable. */
+  min-width: 80px;
+  outline: none;
+  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+}
+.jz-title-input:focus {
+  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
+}
+.jz-title-caret-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  border-radius: var(--jz-radius-xs);
+  background: transparent;
   color: var(--jz-ink-400);
+  cursor: pointer;
   font-size: 11px;
-  transition: transform var(--jz-dur-fast) var(--jz-ease-out);
+  transition: color var(--jz-dur-fast) var(--jz-ease-out), background var(--jz-dur-fast) var(--jz-ease-out), transform var(--jz-dur-fast) var(--jz-ease-out);
 }
-.jz-title-row--open .jz-title-caret {
+.jz-title-caret-btn:hover {
+  color: var(--jz-ink-700);
+  background: color-mix(in srgb, var(--jz-ink-900) 5%, transparent);
+}
+.jz-title-caret-btn--open {
   transform: rotate(180deg);
-}
-.jz-title-row:hover .jz-title-caret {
   color: var(--jz-ink-700);
 }
-.jz-title-sub {
+
+/* Workspace pill — clickable, sits below the title. Tiny, low weight. */
+.jz-workspace-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 8px;
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-pill);
+  background: transparent;
+  color: var(--jz-ink-500);
   font-family: var(--jz-font-ui);
   font-size: 11px;
-  color: var(--jz-ink-500);
-  line-height: 1.2;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  transition: color var(--jz-dur-fast) var(--jz-ease-out), background var(--jz-dur-fast) var(--jz-ease-out), border-color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-workspace-pill:hover {
+  color: var(--jz-ink-900);
+  border-color: var(--jz-hairline-strong);
+  background: color-mix(in srgb, var(--jz-ink-900) 4%, transparent);
 }
 
-/* Green CTA pill — Flora's primary action. We point it at the bottom prompt
- * bar rather than launching another input surface. */
-.jz-ask-cta {
+/* Zoom dropdown (top bar — replaces the bottom-right zoom pill). */
+.jz-zoom-dd-wrap {
+  position: relative;
   pointer-events: auto;
-  flex: none;
+}
+.jz-zoom-dd {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   height: 34px;
-  padding: 0 14px;
-  border: none;
+  padding: 0 10px 0 12px;
+  border: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-pill);
-  cursor: pointer;
-  background: #18a558;
-  color: #fff;
+  background: var(--jz-surface-raised);
+  color: var(--jz-ink-900);
   font-family: var(--jz-font-ui);
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.005em;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(24, 165, 88, 0.28);
-  transition: transform var(--jz-dur-fast) var(--jz-ease-out), filter var(--jz-dur-fast) var(--jz-ease-out);
+  letter-spacing: 0;
+  cursor: pointer;
+  box-shadow: var(--jz-e1);
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out), background var(--jz-dur-fast) var(--jz-ease-out);
 }
-.jz-ask-cta:hover {
+.jz-zoom-dd:hover {
   transform: translateY(-1px);
-  filter: brightness(1.05);
+  background: color-mix(in srgb, var(--jz-ink-900) 4%, var(--jz-surface-raised));
 }
-.jz-ask-cta:active {
-  transform: translateY(0);
+.jz-zoom-dd-pct {
+  font-variant-numeric: tabular-nums;
 }
-.jz-ask-cta-spark {
+.jz-zoom-dd-caret {
+  color: var(--jz-ink-400);
+  font-size: 10px;
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-zoom-dd--open .jz-zoom-dd-caret {
+  transform: rotate(180deg);
+}
+.jz-zoom-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  padding: 6px;
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e4);
+  border: 1px solid var(--jz-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  z-index: 320;
+}
+.jz-zoom-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--jz-radius-sm);
+  background: transparent;
+  color: var(--jz-ink-900);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--jz-font-ui);
   font-size: 13px;
-  line-height: 1;
+  font-weight: 500;
+}
+.jz-zoom-item:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+}
+.jz-zoom-item kbd {
+  font-family: var(--jz-font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--jz-ink-400);
+  background: transparent;
+  border: none;
+}
+.jz-zoom-divider {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--jz-hairline);
 }
 
-/* Share Project — neutral pill, secondary weight to the green CTA. */
-.jz-share-project {
+/* Share — icon + label pill. Mirrors the zoom button's metrics. */
+.jz-share {
   pointer-events: auto;
   flex: none;
   display: inline-flex;
   align-items: center;
+  gap: 7px;
   height: 34px;
   padding: 0 14px;
   border: 1px solid var(--jz-hairline);
@@ -313,13 +428,16 @@ body,
   box-shadow: var(--jz-e1);
   transition: transform var(--jz-dur-fast) var(--jz-ease-out), background var(--jz-dur-fast) var(--jz-ease-out);
 }
-.jz-share-project:hover {
+.jz-share:hover {
   transform: translateY(-1px);
   background: color-mix(in srgb, var(--jz-ink-900) 4%, var(--jz-surface-raised));
 }
+.jz-share svg {
+  color: var(--jz-ink-700);
+}
 
-/* ⋯ profile/settings button — temporary host for the theme toggle. */
-.jz-profile-dots {
+/* Theme toggle — single sun/moon icon button with a gentle flip animation. */
+.jz-theme-toggle {
   pointer-events: auto;
   flex: none;
   display: inline-flex;
@@ -335,122 +453,24 @@ body,
   box-shadow: var(--jz-e1);
   transition: color var(--jz-dur-fast) var(--jz-ease-out), transform var(--jz-dur-fast) var(--jz-ease-out);
 }
-.jz-profile-dots:hover {
+.jz-theme-toggle:hover {
   color: var(--jz-ink-900);
   transform: translateY(-1px);
 }
-
-/* Profile chip — placeholder initials, same dimensions as icon buttons. */
-.jz-profile {
-  pointer-events: auto;
-  flex: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid var(--jz-hairline);
-  cursor: pointer;
-  background: var(--jz-ink-900);
-  color: var(--jz-surface-raised);
-  box-shadow: var(--jz-e3);
-  font-family: var(--jz-font-ui);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-.jz-profile:hover { transform: translateY(-1px); }
-
-.jz-profile-wrap {
-  position: relative;
-  pointer-events: auto;
-}
-.jz-profile-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 168px;
-  padding: 6px;
-  border-radius: var(--jz-radius-md);
-  background: var(--jz-surface-raised);
-  box-shadow: var(--jz-e4);
-  border: 1px solid var(--jz-hairline);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  z-index: 310;
-}
-.jz-profile-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 10px;
-  border: none;
-  border-radius: var(--jz-radius-sm);
-  background: transparent;
-  color: var(--jz-ink-900);
-  cursor: pointer;
-  text-align: left;
-  font-family: var(--jz-font-ui);
-  font-size: 13px;
-}
-.jz-profile-item:hover {
-  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
-}
-.jz-profile-item-hint {
-  color: var(--jz-ink-400);
-  font-size: 14px;
-}
-
-/* Zoom pill — bottom-right. Now that the tool rail has moved to the left edge,
- * we can sit flush against the right side. */
-.jz-zoom {
-  position: absolute;
-  right: 14px;
-  bottom: 22px;
-  z-index: 320;
-  pointer-events: auto;
+.jz-theme-icon {
   display: inline-flex;
   align-items: center;
-  padding: 4px;
-  gap: 2px;
-  border-radius: var(--jz-radius-pill);
-  background: var(--jz-surface-raised);
-  box-shadow: var(--jz-e3);
-  border: 1px solid var(--jz-hairline);
+  justify-content: center;
+  /* keyframe runs once on remount (key={theme} in JSX). */
+  animation: jz-theme-flip var(--jz-dur-base) var(--jz-ease-spring) both;
 }
-.jz-zoom-btn {
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  cursor: pointer;
-  font-family: var(--jz-font-ui);
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--jz-ink-700);
+@keyframes jz-theme-flip {
+  0%   { transform: scale(0.6) rotate(-90deg); opacity: 0; }
+  60%  { transform: scale(1.08) rotate(8deg);  opacity: 1; }
+  100% { transform: scale(1) rotate(0);        opacity: 1; }
 }
-.jz-zoom-btn:hover {
-  background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
-  color: var(--jz-ink-900);
-}
-.jz-zoom-pct {
-  min-width: 48px;
-  height: 28px;
-  border: none;
-  border-radius: var(--jz-radius-pill);
-  background: transparent;
-  cursor: pointer;
-  font-family: var(--jz-font-ui);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: var(--jz-ink-700);
-  font-variant-numeric: tabular-nums;
-}
-.jz-zoom-pct:hover {
-  background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
-  color: var(--jz-ink-900);
+@media (prefers-reduced-motion: reduce) {
+  .jz-theme-icon { animation: none; }
 }
 
 .jz-wordmark {

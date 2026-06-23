@@ -22,7 +22,6 @@ import { AgentCursorLayer } from './agents/AgentCursorLayer';
 import { cardShapeUtils } from './shapes';
 import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
 import { Topbar } from './ui/Topbar';
-import { ZoomPill } from './ui/ZoomPill';
 import { HelpLayer } from './ui/HelpLayer';
 
 /**
@@ -37,7 +36,6 @@ function JarwizOverlay() {
       <Topbar />
       <ToolRail />
       <PromptBar />
-      <ZoomPill />
       <AgentCursorLayer />
       <HelpLayer />
 
