@@ -178,7 +178,7 @@ body,
   color: var(--jz-ink-900);
 }
 
-/* ─── Wordmark chip ─────────────────────────────────────────────────────── */
+/* ─── Top bar (Flora-aligned) ───────────────────────────────────────────── */
 
 .jz-topbar {
   position: absolute;
@@ -187,144 +187,157 @@ body,
   right: 14px;
   z-index: 300;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
   pointer-events: none;
 }
-.jz-topbar-left,
+.jz-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 .jz-topbar-right {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-/* Generic top-bar atoms (icon button + pill + small group). */
-.jz-tb-icon {
+/* Graphical logo mark — currentColor so it theme-flips automatically. */
+.jz-logo {
   pointer-events: auto;
-  flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--jz-hairline);
-  border-radius: 50%;
-  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--jz-radius-md);
+  color: var(--jz-ink-900);
   background: var(--jz-surface-raised);
   box-shadow: var(--jz-e3);
+  border: 1px solid var(--jz-hairline);
+}
+
+/* Two-line title block: project name (large) over workspace label (muted). */
+.jz-title-block {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  pointer-events: auto;
+}
+.jz-title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
   font-family: var(--jz-font-ui);
+  color: var(--jz-ink-900);
+}
+.jz-title-name {
   font-size: 15px;
   font-weight: 600;
+  letter-spacing: 0;
+}
+.jz-title-caret {
+  color: var(--jz-ink-400);
+  font-size: 11px;
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-title-row--open .jz-title-caret {
+  transform: rotate(180deg);
+}
+.jz-title-row:hover .jz-title-caret {
   color: var(--jz-ink-700);
-  transition:
-    color var(--jz-dur-fast) var(--jz-ease-out),
-    transform var(--jz-dur-fast) var(--jz-ease-out),
-    opacity var(--jz-dur-fast) var(--jz-ease-out);
 }
-.jz-tb-icon:hover:not(:disabled) {
-  color: var(--jz-ink-900);
-  transform: translateY(-1px);
+.jz-title-sub {
+  font-family: var(--jz-font-ui);
+  font-size: 11px;
+  color: var(--jz-ink-500);
+  line-height: 1.2;
 }
-.jz-tb-icon:disabled {
-  cursor: default;
-  opacity: 0.4;
-}
-.jz-tb-pill {
+
+/* Green CTA pill — Flora's primary action. We point it at the bottom prompt
+ * bar rather than launching another input surface. */
+.jz-ask-cta {
   pointer-events: auto;
   flex: none;
   display: inline-flex;
   align-items: center;
-  height: 32px;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--jz-radius-pill);
+  cursor: pointer;
+  background: #18a558;
+  color: #fff;
+  font-family: var(--jz-font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(24, 165, 88, 0.28);
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out), filter var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-ask-cta:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+.jz-ask-cta:active {
+  transform: translateY(0);
+}
+.jz-ask-cta-spark {
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* Share Project — neutral pill, secondary weight to the green CTA. */
+.jz-share-project {
+  pointer-events: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
   padding: 0 14px;
   border: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-pill);
   cursor: pointer;
   background: var(--jz-surface-raised);
-  box-shadow: var(--jz-e3);
+  color: var(--jz-ink-900);
   font-family: var(--jz-font-ui);
   font-size: 13px;
   font-weight: 600;
-  color: var(--jz-ink-700);
-  transition:
-    color var(--jz-dur-fast) var(--jz-ease-out),
-    transform var(--jz-dur-fast) var(--jz-ease-out);
+  box-shadow: var(--jz-e1);
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out), background var(--jz-dur-fast) var(--jz-ease-out);
 }
-.jz-tb-pill:hover {
-  color: var(--jz-ink-900);
+.jz-share-project:hover {
   transform: translateY(-1px);
-}
-.jz-tb-group {
-  pointer-events: auto;
-  display: inline-flex;
-  gap: 4px;
+  background: color-mix(in srgb, var(--jz-ink-900) 4%, var(--jz-surface-raised));
 }
 
-/* Agent presence — overlapping circles, FigJam-collaborator-style. */
-.jz-presence {
+/* ⋯ profile/settings button — temporary host for the theme toggle. */
+.jz-profile-dots {
   pointer-events: auto;
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 6px;
-  border-radius: var(--jz-radius-pill);
-  background: var(--jz-surface-raised);
-  box-shadow: var(--jz-e3);
-  border: 1px solid var(--jz-hairline);
-}
-.jz-presence-dot {
+  flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  color: #fff;
-  font-family: var(--jz-font-ui);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  border: 2px solid var(--jz-surface-raised);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-}
-.jz-presence-dot + .jz-presence-dot {
-  margin-left: -6px;
-}
-
-/* Export dropdown. */
-.jz-export-wrap {
-  position: relative;
-  pointer-events: auto;
-}
-.jz-export-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 168px;
-  padding: 6px;
-  border-radius: var(--jz-radius-md);
-  background: var(--jz-surface-raised);
-  box-shadow: var(--jz-e4);
+  width: 34px;
+  height: 34px;
   border: 1px solid var(--jz-hairline);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  z-index: 310;
-}
-.jz-export-item {
-  pointer-events: auto;
-  padding: 8px 10px;
-  border: none;
-  border-radius: var(--jz-radius-sm);
-  background: transparent;
+  border-radius: 50%;
   cursor: pointer;
-  text-align: left;
-  font-family: var(--jz-font-ui);
-  font-size: 13px;
+  background: var(--jz-surface-raised);
   color: var(--jz-ink-700);
+  box-shadow: var(--jz-e1);
+  transition: color var(--jz-dur-fast) var(--jz-ease-out), transform var(--jz-dur-fast) var(--jz-ease-out);
 }
-.jz-export-item:hover {
-  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+.jz-profile-dots:hover {
   color: var(--jz-ink-900);
+  transform: translateY(-1px);
 }
 
 /* Profile chip — placeholder initials, same dimensions as icon buttons. */
