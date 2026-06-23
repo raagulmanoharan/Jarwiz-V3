@@ -143,20 +143,34 @@ function TitleBlock() {
 }
 
 function LastSaved() {
-  const [label, setLabel] = useState('Saved just now');
+  const editor = useEditor();
+  const [status, setStatus] = useState<'saved' | 'saving'>('saved');
 
-  // Tick every 30s so the label stays fresh without spamming re-renders.
   useEffect(() => {
-    const tick = () => {
-      const now = new Date();
-      setLabel(`Saved at ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
-    };
-    tick();
-    const id = setInterval(tick, 30_000);
-    return () => clearInterval(id);
-  }, []);
+    let debounce: ReturnType<typeof setTimeout> | null = null;
 
-  return <span className="jz-last-saved">{label}</span>;
+    // tldraw fires store.listen on every mutation — use it to detect edits.
+    const unsub = editor.store.listen(
+      () => {
+        setStatus('saving');
+        if (debounce) clearTimeout(debounce);
+        // tldraw's IndexedDB persist is ~instant; 800 ms covers any lag.
+        debounce = setTimeout(() => setStatus('saved'), 800);
+      },
+      { scope: 'document', source: 'user' },
+    );
+
+    return () => {
+      unsub();
+      if (debounce) clearTimeout(debounce);
+    };
+  }, [editor]);
+
+  return (
+    <span className="jz-last-saved">
+      {status === 'saving' ? 'Saving…' : 'Autosaved'}
+    </span>
+  );
 }
 
 /**

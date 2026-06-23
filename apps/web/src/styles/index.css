@@ -89,8 +89,8 @@ body,
 .jz-rail {
   position: absolute;
   left: 14px;
-  /* Sit just below the hamburger logo: 14 (topbar inset) + 36 (logo h) + 10 gap. */
-  top: 60px;
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 300;
   pointer-events: auto;
   display: flex;
