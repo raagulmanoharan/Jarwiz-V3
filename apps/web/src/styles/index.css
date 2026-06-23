@@ -83,10 +83,13 @@ body,
   bottom: 14px;
 }
 
-/* Our own tool rail (ToolRail.tsx) on the right edge replaces tldraw's toolbar. */
+/* Our own tool rail (ToolRail.tsx) — moved to the LEFT edge to match the Flora
+ * reference. We keep the contained-card form (more discoverable than naked
+ * icons on the canvas) but with Flora-style breathing room: slightly larger
+ * buttons, more vertical gap. */
 .jz-rail {
   position: absolute;
-  right: 14px;
+  left: 14px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 300;
@@ -94,8 +97,8 @@ body,
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: var(--jz-space-2);
+  gap: 4px;
+  padding: 6px;
   border-radius: var(--jz-radius-lg);
   background: var(--jz-surface-raised);
   box-shadow: var(--jz-e3);
@@ -128,7 +131,7 @@ body,
   align-items: center;
   justify-content: center;
   width: 40px;
-  height: 36px;
+  height: 40px;
   border: none;
   border-radius: var(--jz-radius-md);
   background: transparent;
@@ -385,10 +388,11 @@ body,
   font-size: 14px;
 }
 
-/* Zoom pill — bottom-right. */
+/* Zoom pill — bottom-right. Now that the tool rail has moved to the left edge,
+ * we can sit flush against the right side. */
 .jz-zoom {
   position: absolute;
-  right: 80px; /* clears the right-edge tool rail */
+  right: 14px;
   bottom: 22px;
   z-index: 320;
   pointer-events: auto;
