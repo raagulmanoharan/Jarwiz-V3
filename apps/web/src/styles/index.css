@@ -52,29 +52,17 @@ body,
   font-family: var(--jz-font-ui);
 }
 
-/* Warm paper canvas: base wash, faint dot grid, and a soft vignette so the
-   centre reads as a lit page. The grid uses crisp 1px dots (no soft falloff)
-   so each dot reads as a real point — kept faint enough that text and
-   shapes still dominate. */
+/* Flora-style canvas: flat neutral base with a crisp dot grid. Dots are
+   faint enough that shapes/text dominate — just enough to orient the space. */
 .jarwiz-app .tl-background {
   background-color: var(--jz-paper);
   background-image:
     radial-gradient(
-      120% 120% at 50% 30%,
-      transparent 55%,
-      color-mix(in srgb, var(--jz-paper-deep) 60%, transparent) 100%
-    ),
-    radial-gradient(
       circle,
-      color-mix(in srgb, var(--jz-ink-400) 65%, transparent) 0.5px,
+      color-mix(in srgb, var(--jz-ink-400) 55%, transparent) 0.5px,
       transparent 0.8px
     );
-  background-size:
-    100% 100%,
-    16px 16px;
-  background-position:
-    center,
-    center;
+  background-size: 16px 16px;
 }
 
 /* Hide tldraw's bottom-right navigation panel (mini-map + zoom). The top-bar
