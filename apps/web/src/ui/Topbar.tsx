@@ -3,7 +3,6 @@ import { stopEventPropagation, useEditor, useValue } from 'tldraw';
 import { getActiveBoard, getActiveBoardId, renameBoard, subscribeBoards } from '../boards/boardStore';
 import { getTheme, subscribeTheme, toggleTheme } from './theme';
 import {
-  closeSidePanel,
   isSidePanelOpen,
   openSidePanel,
   subscribeSidePanel,
@@ -85,7 +84,6 @@ function HamburgerLogo() {
 function TitleBlock() {
   const board = useSyncExternalStore(subscribeBoards, getActiveBoard, getActiveBoard);
   const boardId = useSyncExternalStore(subscribeBoards, getActiveBoardId, getActiveBoardId);
-  const sideOpen = useSyncExternalStore(subscribeSidePanel, isSidePanelOpen, isSidePanelOpen);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(board?.name ?? 'Untitled');
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -112,8 +110,6 @@ function TitleBlock() {
     setDraft(board?.name ?? 'Untitled');
     setEditing(false);
   };
-
-  const toggleSwitcher = () => (sideOpen ? closeSidePanel() : openSidePanel());
 
   return (
     <div className="jz-title-block">
@@ -145,29 +141,22 @@ function TitleBlock() {
             <span className="jz-title-name">{board?.name ?? 'Untitled'}</span>
           </button>
         )}
-        <button
-          className={`jz-title-caret-btn${sideOpen ? ' jz-title-caret-btn--open' : ''}`}
-          onClick={toggleSwitcher}
-          aria-label="Switch or create boards"
-          title="Switch or create boards"
-        >
-          <span aria-hidden>▾</span>
-        </button>
       </div>
     </div>
   );
 }
 
 function WorkspacePill() {
-  // Opens the side panel — that's where workspaces (and boards) live.
+  // Workspace label — the logo is the entry point for switching boards or
+  // workspaces, so this is a quiet badge that just opens the same panel on
+  // click (no caret, no chevron — keep the logo as the primary affordance).
   return (
     <button
       className="jz-workspace-pill"
       onClick={() => openSidePanel()}
-      title="Switch workspace"
+      title="Workspace · open menu"
     >
       <span className="jz-workspace-pill-name">Personal workspace</span>
-      <span className="jz-workspace-pill-caret" aria-hidden>▾</span>
     </button>
   );
 }
@@ -213,7 +202,7 @@ function ZoomDropdown() {
       >
         <ZoomGlass />
         <span className="jz-zoom-dd-pct">{pct}%</span>
-        <span className="jz-zoom-dd-caret" aria-hidden>▾</span>
+        <ChevronDown className="jz-zoom-dd-caret" />
       </button>
       {open ? (
         <div className="jz-zoom-menu" role="menu">
@@ -250,6 +239,16 @@ function ZoomGlass() {
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="11" cy="11" r="7" />
       <path d="M21 21l-4.3-4.3" />
+    </svg>
+  );
+}
+
+/** Crisp down-chevron — used by the zoom dropdown (the old "▾" glyph read as
+ *  a fat dot in the warm-paper UI). */
+function ChevronDown({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 9l6 6 6-6" />
     </svg>
   );
 }

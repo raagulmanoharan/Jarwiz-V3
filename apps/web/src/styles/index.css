@@ -53,8 +53,9 @@ body,
 }
 
 /* Warm paper canvas: base wash, faint dot grid, and a soft vignette so the
-   centre reads as a lit page. The dot grid is a small dense Flora-style
-   tiled radial-gradient — half the cell, half the dot. */
+   centre reads as a lit page. The grid uses crisp 1px dots (no soft falloff)
+   so each dot reads as a real point — kept faint enough that text and
+   shapes still dominate. */
 .jarwiz-app .tl-background {
   background-color: var(--jz-paper);
   background-image:
@@ -63,10 +64,14 @@ body,
       transparent 55%,
       color-mix(in srgb, var(--jz-paper-deep) 60%, transparent) 100%
     ),
-    radial-gradient(circle, var(--jz-ink-300) 0.6px, transparent 0.9px);
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--jz-ink-400) 55%, transparent) 1px,
+      transparent 1.2px
+    );
   background-size:
     100% 100%,
-    14px 14px;
+    16px 16px;
   background-position:
     center,
     center;
@@ -379,12 +384,14 @@ body,
   font-variant-numeric: tabular-nums;
 }
 .jz-zoom-dd-caret {
-  color: var(--jz-ink-400);
-  font-size: 10px;
-  transition: transform var(--jz-dur-fast) var(--jz-ease-out);
+  flex: 0 0 auto;
+  color: var(--jz-ink-500);
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
 }
+.jz-zoom-dd:hover .jz-zoom-dd-caret { color: var(--jz-ink-700); }
 .jz-zoom-dd--open .jz-zoom-dd-caret {
   transform: rotate(180deg);
+  color: var(--jz-ink-900);
 }
 .jz-zoom-menu {
   position: absolute;
