@@ -20,9 +20,9 @@ export function ToolRail() {
     <div className="jz-rail" onPointerDown={stopEventPropagation}>
       <PlusButton />
       <RailTool icon={<CursorIcon />} label="Select (V)" active={toolId === 'select'} onClick={() => editor.setCurrentTool('select')} />
+      <RailTool icon={<HandIcon />} label="Pan (H)" active={toolId === 'hand'} onClick={() => editor.setCurrentTool('hand')} />
       <RailTool icon={<TextIcon />} label="Text (T)" active={toolId === 'text'} onClick={() => editor.setCurrentTool('text')} />
       <RailTool icon={<UploadIcon />} label="Upload" active={false} onClick={() => console.info('[jarwiz] upload coming soon')} />
-      <span className="jz-rail-divider" aria-hidden />
       <RailTool icon={<FolderIcon />} label="Files" active={false} onClick={() => console.info('[jarwiz] files coming soon')} />
       <RailTool icon={<HelpIcon />} label="Help" active={false} onClick={() => console.info('[jarwiz] help coming soon')} />
     </div>
@@ -53,6 +53,17 @@ const S = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: '
 
 function CursorIcon() {
   return <svg {...S}><path d="M5 3l14 9-7 1-4 7z" /></svg>;
+}
+
+function HandIcon() {
+  return (
+    <svg {...S}>
+      <path d="M18 11V8a2 2 0 00-4 0v3" />
+      <path d="M14 10V6a2 2 0 00-4 0v4" />
+      <path d="M10 10V5a2 2 0 00-4 0v9" />
+      <path d="M6 14s0 4 4 6h4a6 6 0 006-6v-3a2 2 0 00-4 0" />
+    </svg>
+  );
 }
 
 function TextIcon() {

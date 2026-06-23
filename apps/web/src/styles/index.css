@@ -115,13 +115,6 @@ body,
 .jz-rail-plus:hover { transform: scale(1.06); }
 .jz-rail-plus:active { transform: scale(0.95); }
 
-.jz-rail-divider {
-  width: 24px;
-  height: 1px;
-  margin: 4px 0;
-  background: var(--jz-hairline-strong);
-  flex-shrink: 0;
-}
 
 .jz-rail-tool {
   display: inline-flex;
