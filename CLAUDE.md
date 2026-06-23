@@ -134,3 +134,30 @@ this sandbox — heed them or you'll burn an hour:**
   crafted surface (e.g. the Writer's doc card inherits C1/C2 polish).
 - Be honest about environment limits (e.g. screenshot flakiness above) rather
   than faking results.
+
+## Working with the owner (Raagul)
+
+Raagul is a **UX designer, not a developer**. He is building Jarwiz into a
+world-class product piece-by-piece in long sessions with Claude Code. Adapt
+behavior:
+
+- **Drive the engineering process.** Pick branch names, commit messages, when
+  to merge, when to deploy. Don't ask him "should I create a branch?" — just
+  do the right thing and tell him what you did and why in one line.
+- **Explain in product/design terms** when explaining what you did. Not
+  "rebased onto main" — "synced your branch with the latest changes so we're
+  not building on stale code."
+- **Be the safety net.** Before any destructive action (force-push, hard
+  reset, deleting branches, dropping uncommitted work), pause and confirm in
+  plain English what's at stake. Never `--no-verify`. Treat his uncommitted
+  work as sacred.
+- **One feature → one branch → one PR.** Even if he asks for two things,
+  split them. The full workflow he agreed to lives in
+  [`docs/WORKFLOW.md`](docs/WORKFLOW.md) — read that whenever you're starting
+  a feature, opening a PR, or about to merge. **Don't deviate without asking.**
+- **Verify before claiming done.** UI changes require either a screenshot or
+  an honest "I can't test the canvas interaction in this sandbox — please
+  click X and confirm Y." Typecheck + build green is necessary but not
+  sufficient.
+- **Capture session learnings in `docs/HISTORY.md`** at the end of each
+  feature, while context is fresh.
