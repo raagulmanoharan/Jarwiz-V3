@@ -106,19 +106,17 @@ body,
   border: none;
   border-radius: 9999px;
   background: transparent;
-  color: var(--jz-ink-400);
+  color: var(--jz-ink-900);
   cursor: pointer;
   flex-shrink: 0;
   transition: background var(--jz-dur-fast) var(--jz-ease-out),
               color var(--jz-dur-fast) var(--jz-ease-out);
 }
 .jz-rail-tool:hover {
-  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
-  color: var(--jz-ink-700);
+  background: color-mix(in srgb, var(--jz-ink-900) 10%, transparent);
 }
 .jz-rail-tool--active {
-  background: color-mix(in srgb, var(--jz-ink-900) 12%, transparent);
-  color: var(--jz-ink-900);
+  background: color-mix(in srgb, var(--jz-ink-900) 16%, transparent);
 }
 
 /* Calm the re-enabled primitive toolbar + style panel (canvas pivot P0) into the
