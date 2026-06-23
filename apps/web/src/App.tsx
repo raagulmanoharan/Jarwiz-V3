@@ -17,21 +17,12 @@ import { ToolRail } from './ui/ToolRail';
 const tldrawAssetUrls = getAssetUrlsByImport();
 import { useSync } from '@tldraw/sync';
 import { PromptBar } from './ask/PromptBar';
-import { CardActionBar } from './ask/CardActionBar';
-import { DiscussLayer } from './ask/DiscussLayer';
-import { ClarifyLayer } from './ask/ClarifyLayer';
-import { DraftControls } from './ask/DraftControls';
-import { RegenControls } from './ask/RegenControls';
-import { SelectionAsk } from './ask/SelectionAsk';
-import { Timeline } from './log/Timeline';
 import { registerIngestion } from './ingest/registerIngestion';
 import { AgentCursorLayer } from './agents/AgentCursorLayer';
-import { AgentTaskLayer } from './agents/AgentTaskLayer';
 import { cardShapeUtils } from './shapes';
-import { BoardEntry } from './boards/BoardEntry';
 import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
-import { EmptyState } from './ui/EmptyState';
 import { Topbar } from './ui/Topbar';
+import { ZoomPill } from './ui/ZoomPill';
 import { HelpLayer } from './ui/HelpLayer';
 
 /**
@@ -42,21 +33,27 @@ import { HelpLayer } from './ui/HelpLayer';
 function JarwizOverlay() {
   return (
     <>
-      <EmptyState />
-      <BoardEntry />
+      {/* Canvas frame — the four chrome surfaces we're designing right now. */}
       <Topbar />
-      <CardActionBar />
-      <ClarifyLayer />
-      <DraftControls />
-      <RegenControls />
-      <SelectionAsk />
-      <DiscussLayer />
-      <AgentCursorLayer />
-      <AgentTaskLayer />
       <ToolRail />
       <PromptBar />
-      <Timeline />
+      <ZoomPill />
+      <AgentCursorLayer />
       <HelpLayer />
+
+      {/* Behavioural overlays — disabled while we design the chrome. Re-enable
+       *  one at a time as we get back to them.
+       *  <EmptyState />
+       *  <BoardEntry />
+       *  <CardActionBar />
+       *  <ClarifyLayer />
+       *  <DraftControls />
+       *  <RegenControls />
+       *  <SelectionAsk />
+       *  <DiscussLayer />
+       *  <AgentTaskLayer />
+       *  <Timeline />
+       */}
     </>
   );
 }

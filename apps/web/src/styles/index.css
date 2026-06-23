@@ -181,11 +181,217 @@ body,
   position: absolute;
   top: 14px;
   left: 14px;
+  right: 14px;
   z-index: 300;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   pointer-events: none;
+}
+.jz-topbar-left,
+.jz-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Generic top-bar atoms (icon button + pill + small group). */
+.jz-tb-icon {
+  pointer-events: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--jz-hairline);
+  border-radius: 50%;
+  cursor: pointer;
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  font-family: var(--jz-font-ui);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--jz-ink-700);
+  transition:
+    color var(--jz-dur-fast) var(--jz-ease-out),
+    transform var(--jz-dur-fast) var(--jz-ease-out),
+    opacity var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-tb-icon:hover:not(:disabled) {
+  color: var(--jz-ink-900);
+  transform: translateY(-1px);
+}
+.jz-tb-icon:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+.jz-tb-pill {
+  pointer-events: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-pill);
+  cursor: pointer;
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  font-family: var(--jz-font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--jz-ink-700);
+  transition:
+    color var(--jz-dur-fast) var(--jz-ease-out),
+    transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-tb-pill:hover {
+  color: var(--jz-ink-900);
+  transform: translateY(-1px);
+}
+.jz-tb-group {
+  pointer-events: auto;
+  display: inline-flex;
+  gap: 4px;
+}
+
+/* Agent presence — overlapping circles, FigJam-collaborator-style. */
+.jz-presence {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 6px;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  border: 1px solid var(--jz-hairline);
+}
+.jz-presence-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #fff;
+  font-family: var(--jz-font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  border: 2px solid var(--jz-surface-raised);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.jz-presence-dot + .jz-presence-dot {
+  margin-left: -6px;
+}
+
+/* Export dropdown. */
+.jz-export-wrap {
+  position: relative;
+  pointer-events: auto;
+}
+.jz-export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 168px;
+  padding: 6px;
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e4);
+  border: 1px solid var(--jz-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 310;
+}
+.jz-export-item {
+  pointer-events: auto;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--jz-radius-sm);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--jz-font-ui);
+  font-size: 13px;
+  color: var(--jz-ink-700);
+}
+.jz-export-item:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+  color: var(--jz-ink-900);
+}
+
+/* Profile chip — placeholder initials, same dimensions as icon buttons. */
+.jz-profile {
+  pointer-events: auto;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--jz-hairline);
+  cursor: pointer;
+  background: var(--jz-ink-900);
+  color: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  font-family: var(--jz-font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.jz-profile:hover { transform: translateY(-1px); }
+
+/* Zoom pill — bottom-right. */
+.jz-zoom {
+  position: absolute;
+  right: 80px; /* clears the right-edge tool rail */
+  bottom: 22px;
+  z-index: 320;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px;
+  gap: 2px;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  border: 1px solid var(--jz-hairline);
+}
+.jz-zoom-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--jz-font-ui);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--jz-ink-700);
+}
+.jz-zoom-btn:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
+  color: var(--jz-ink-900);
+}
+.jz-zoom-pct {
+  min-width: 48px;
+  height: 28px;
+  border: none;
+  border-radius: var(--jz-radius-pill);
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--jz-font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--jz-ink-700);
+  font-variant-numeric: tabular-nums;
+}
+.jz-zoom-pct:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
+  color: var(--jz-ink-900);
 }
 
 .jz-wordmark {
