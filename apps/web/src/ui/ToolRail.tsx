@@ -47,10 +47,10 @@ function CursorIcon() {
 function HandIcon() {
   return (
     <svg {...S}>
-      <path d="M18 11V8a2 2 0 00-4 0v3" />
-      <path d="M14 10V6a2 2 0 00-4 0v4" />
-      <path d="M10 10V5a2 2 0 00-4 0v9" />
-      <path d="M6 14s0 4 4 6h4a6 6 0 006-6v-3a2 2 0 00-4 0" />
+      <path d="M18 11V8a2 2 0 0 0-4 0v3" />
+      <path d="M14 10V6a2 2 0 0 0-4 0v4" />
+      <path d="M10 10.5V5a2 2 0 0 0-4 0v9" />
+      <path d="m7 15-1.8-1.8a2 2 0 0 0-2.8 2.8L7 21h6c1.5 0 3-1 3.7-2.4l.3-.6c.4-.8.7-1.7.7-2.6V11a2 2 0 0 0-4 0v3" />
     </svg>
   );
 }
