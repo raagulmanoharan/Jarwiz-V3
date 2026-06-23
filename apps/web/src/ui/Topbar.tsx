@@ -3,6 +3,7 @@ import { useEditor, useValue, exportAs, type TLShapeId } from 'tldraw';
 import { getActiveBoard, subscribeBoards } from '../boards/boardStore';
 import { BoardSwitcher } from '../boards/BoardSwitcher';
 import { toggleHelp } from './help';
+import { getTheme, subscribeTheme, toggleTheme } from './theme';
 
 /**
  * Canvas chrome — top bar.
@@ -191,11 +192,47 @@ function HelpButton() {
 }
 
 function ProfileChip() {
-  // No auth yet — placeholder slot so the chrome reads as "real product".
+  // No auth yet — placeholder slot so the chrome reads as "real product". The
+  // theme toggle lives here temporarily until the Flora top bar lands, which
+  // will give it a proper home (or a settings sheet).
+  const [open, setOpen] = useState(false);
+  const theme = useSyncExternalStore(subscribeTheme, getTheme, getTheme);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest('.jz-profile-wrap')) setOpen(false);
+    };
+    window.addEventListener('mousedown', onClick);
+    return () => window.removeEventListener('mousedown', onClick);
+  }, [open]);
+
   return (
-    <button className="jz-profile" title="You (sign-in coming)" aria-label="Profile">
-      R
-    </button>
+    <div className="jz-profile-wrap">
+      <button
+        className="jz-profile"
+        title="You (sign-in coming)"
+        aria-label="Profile"
+        onClick={() => setOpen((v) => !v)}
+      >
+        R
+      </button>
+      {open ? (
+        <div className="jz-profile-menu" role="menu">
+          <button
+            className="jz-profile-item"
+            onClick={() => {
+              toggleTheme();
+              setOpen(false);
+            }}
+          >
+            <span>{theme === 'dark' ? 'Light theme' : 'Dark theme'}</span>
+            <span className="jz-profile-item-hint">{theme === 'dark' ? '☀' : '☾'}</span>
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

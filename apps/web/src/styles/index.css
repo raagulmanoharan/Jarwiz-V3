@@ -141,7 +141,7 @@ body,
 
 .jz-rail-tool--active {
   background: var(--jz-ink-900);
-  color: #faf6ec;
+  color: var(--jz-surface-raised);
 }
 
 /* Calm the re-enabled primitive toolbar + style panel (canvas pivot P0) into the
@@ -342,6 +342,48 @@ body,
   letter-spacing: 0.02em;
 }
 .jz-profile:hover { transform: translateY(-1px); }
+
+.jz-profile-wrap {
+  position: relative;
+  pointer-events: auto;
+}
+.jz-profile-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 168px;
+  padding: 6px;
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e4);
+  border: 1px solid var(--jz-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 310;
+}
+.jz-profile-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--jz-radius-sm);
+  background: transparent;
+  color: var(--jz-ink-900);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--jz-font-ui);
+  font-size: 13px;
+}
+.jz-profile-item:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+}
+.jz-profile-item-hint {
+  color: var(--jz-ink-400);
+  font-size: 14px;
+}
 
 /* Zoom pill — bottom-right. */
 .jz-zoom {

@@ -113,3 +113,48 @@
   --jz-shadow: var(--jz-e2);
   --jz-shadow-soft: var(--jz-e1);
 }
+
+/**
+ * Dark theme — toggled via `<html data-theme="dark">`. We only override the
+ * themeable surfaces/ink/elevation; type scale, spacing, radii, and motion
+ * are theme-agnostic.
+ *
+ * Color philosophy: keep the warm-paper personality at night by tinting the
+ * darks slightly amber (not pure neutral grey), so cards still feel like a
+ * surface and not a void. Ink ramps invert: 900 is brightest, 300 dimmest.
+ */
+:root[data-theme='dark'] {
+  --jz-paper: #1c1a17;
+  --jz-paper-deep: #161412;
+  --jz-surface: #25221d;
+  --jz-surface-raised: #2b2823;
+
+  --jz-ink-900: #f4ede0;
+  --jz-ink-700: #d5cdbd;
+  --jz-ink-500: #a59c8b;
+  --jz-ink-400: #7f7766;
+  --jz-ink-300: #5b5448;
+
+  --jz-hairline: rgba(244, 237, 224, 0.1);
+  --jz-hairline-strong: rgba(244, 237, 224, 0.18);
+
+  --jz-shadow-rgb: 0, 0, 0;
+
+  --jz-danger: #f97316;
+  --jz-focus: var(--jz-ink-700);
+
+  /* Slightly stronger elevations — dark surfaces need more contrast to read. */
+  --jz-e1:
+    0 1px 2px rgba(var(--jz-shadow-rgb), 0.4),
+    0 2px 6px rgba(var(--jz-shadow-rgb), 0.32);
+  --jz-e2:
+    0 1px 2px rgba(var(--jz-shadow-rgb), 0.4),
+    0 6px 16px rgba(var(--jz-shadow-rgb), 0.38),
+    0 16px 36px rgba(var(--jz-shadow-rgb), 0.32);
+  --jz-e3:
+    0 2px 8px rgba(var(--jz-shadow-rgb), 0.44),
+    0 12px 32px rgba(var(--jz-shadow-rgb), 0.5);
+  --jz-e4:
+    0 4px 12px rgba(var(--jz-shadow-rgb), 0.5),
+    0 18px 48px rgba(var(--jz-shadow-rgb), 0.6);
+}
