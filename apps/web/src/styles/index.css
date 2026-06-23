@@ -53,7 +53,8 @@ body,
 }
 
 /* Warm paper canvas: base wash, faint dot grid, and a soft vignette so the
-   centre reads as a lit page. The dot grid is a tiled radial-gradient. */
+   centre reads as a lit page. The dot grid is a small dense Flora-style
+   tiled radial-gradient — half the cell, half the dot. */
 .jarwiz-app .tl-background {
   background-color: var(--jz-paper);
   background-image:
@@ -62,47 +63,42 @@ body,
       transparent 55%,
       color-mix(in srgb, var(--jz-paper-deep) 60%, transparent) 100%
     ),
-    radial-gradient(circle, var(--jz-ink-300) 1px, transparent 1.4px);
+    radial-gradient(circle, var(--jz-ink-300) 0.6px, transparent 0.9px);
   background-size:
     100% 100%,
-    24px 24px;
+    14px 14px;
   background-position:
     center,
     center;
 }
 
-/* Soften the remaining UI panels (zoom / navigation) into the aesthetic, and
-   move zoom to the bottom-right corner (Stitch layout — left is for the log). */
+/* Hide tldraw's bottom-right navigation panel (mini-map + zoom). The top-bar
+   ZoomDropdown is the single zoom UI now — keep the canvas edge clean. */
 .jarwiz-app .tlui-navigation-panel {
-  border-radius: var(--jz-radius-md);
-  box-shadow: var(--jz-e3);
-  background: var(--jz-surface-raised);
-  position: absolute;
-  left: auto;
-  right: 14px;
-  bottom: 14px;
+  display: none !important;
 }
 
-/* Our own tool rail (ToolRail.tsx) — moved to the LEFT edge to match the Flora
- * reference. We keep the contained-card form (more discoverable than naked
- * icons on the canvas) but with Flora-style breathing room: slightly larger
- * buttons, more vertical gap. */
+/* Tool rail (ToolRail.tsx) — anchored to the left edge directly under the
+ * hamburger logo, so the two read as a single vertical column. Both surfaces
+ * share the same outer width (36px) and a fully-rounded pill silhouette. */
 .jz-rail {
   position: absolute;
   left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
+  /* Sit just below the hamburger logo: 14 (topbar inset) + 36 (logo h) + 10 gap. */
+  top: 60px;
   z-index: 300;
   pointer-events: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 6px;
-  border-radius: var(--jz-radius-lg);
+  gap: 2px;
+  padding: 4px;
+  width: 36px;
+  border-radius: 9999px;
   background: var(--jz-surface-raised);
   box-shadow: var(--jz-e3);
   border: 1px solid var(--jz-hairline);
+  box-sizing: border-box;
 }
 
 .jz-rail-create {
@@ -110,11 +106,11 @@ body,
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
-  width: 44px;
-  height: 42px;
+  gap: 0;
+  width: 28px;
+  height: 30px;
   border: none;
-  border-radius: var(--jz-radius-md);
+  border-radius: 9999px;
   background: transparent;
   color: var(--jz-ink-700);
   cursor: pointer;
@@ -122,18 +118,18 @@ body,
 }
 
 .jz-rail-create:hover { background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent); color: var(--jz-ink-900); }
-.jz-rail-label { font-size: 9px; font-weight: 600; letter-spacing: 0.02em; color: var(--jz-ink-400); }
+.jz-rail-label { display: none; }
 
-.jz-rail-divider { width: 26px; height: 1px; margin: 4px 0; background: var(--jz-hairline-strong); }
+.jz-rail-divider { width: 18px; height: 1px; margin: 3px 0; background: var(--jz-hairline-strong); }
 
 .jz-rail-tool {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   border: none;
-  border-radius: var(--jz-radius-md);
+  border-radius: 9999px;
   background: transparent;
   color: var(--jz-ink-600);
   cursor: pointer;
@@ -203,32 +199,53 @@ body,
   gap: 8px;
 }
 
-/* Graphical logo mark — currentColor so it theme-flips automatically. */
-.jz-logo {
+/* Hamburger / logo button — fully round. The default face is the Jarwiz mark
+ * (brand); when the side panel is open the icon cross-fades to a hamburger so
+ * the same button reads as a "close" affordance. Both glyphs are stacked and
+ * their opacity is driven by the --open state. */
+.jz-logo-btn {
   pointer-events: auto;
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 36px;
   height: 36px;
-  border-radius: var(--jz-radius-md);
+  padding: 0;
+  border-radius: 9999px;
   color: var(--jz-ink-900);
   background: var(--jz-surface-raised);
   box-shadow: var(--jz-e3);
   border: 1px solid var(--jz-hairline);
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out),
+              transform var(--jz-dur-fast) var(--jz-ease-out);
 }
+.jz-logo-btn:hover { background: color-mix(in srgb, var(--jz-ink-900) 4%, var(--jz-surface-raised)); }
+.jz-logo-btn:active { transform: scale(0.96); }
+.jz-logo-glyph {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity var(--jz-dur-fast) var(--jz-ease-out),
+              transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-logo-glyph--brand { opacity: 1; transform: rotate(0); }
+.jz-logo-glyph--menu  { opacity: 0; transform: rotate(-45deg); }
+.jz-logo-btn--open .jz-logo-glyph--brand { opacity: 0; transform: rotate(45deg); }
+.jz-logo-btn--open .jz-logo-glyph--menu  { opacity: 1; transform: rotate(0); }
 
-/* Title block: editable board name + caret (board switcher) + workspace pill.
- *
- * The board name is a button that flips into a borderless input on click.
- * The input keeps the same metrics as the button so the swap doesn't shift
- * layout. The workspace pill sits below as a small, clickable affordance. */
+/* Title block: workspace pill (top, small) + board name (below, big with
+ * caret). The pill opens the side panel; the caret next to the name opens
+ * the same panel. The board name itself stays inline-editable. */
 .jz-title-block {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: 3px;
   pointer-events: auto;
 }
 .jz-title-row {
@@ -298,14 +315,17 @@ body,
   color: var(--jz-ink-700);
 }
 
-/* Workspace pill — clickable, sits below the title. Tiny, low weight. */
+/* Workspace pill — small rounded rectangle ABOVE the board name. Opens the
+ * side panel where workspaces + boards live. Carries a caret to signal it's
+ * a switcher, not just a label. */
 .jz-workspace-pill {
   display: inline-flex;
   align-items: center;
+  gap: 3px;
   height: 18px;
-  padding: 0 8px;
+  padding: 0 6px 0 8px;
   border: 1px solid var(--jz-hairline);
-  border-radius: var(--jz-radius-pill);
+  border-radius: 6px;
   background: transparent;
   color: var(--jz-ink-500);
   font-family: var(--jz-font-ui);
@@ -320,6 +340,12 @@ body,
   color: var(--jz-ink-900);
   border-color: var(--jz-hairline-strong);
   background: color-mix(in srgb, var(--jz-ink-900) 4%, transparent);
+}
+.jz-workspace-pill-caret {
+  font-size: 9px;
+  line-height: 1;
+  color: var(--jz-ink-400);
+  margin-top: 1px;
 }
 
 /* Zoom dropdown (top bar — replaces the bottom-right zoom pill). */
@@ -4771,4 +4797,187 @@ body,
   .jz-help-btn:hover,
   .jz-help-tour-btn:hover,
   .jz-tour-next:hover { transform: none; }
+}
+
+/* ─── Side panel (workspace + boards) ───────────────────────────────────── */
+
+.jz-side-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  background: transparent;
+  pointer-events: auto;
+}
+
+.jz-side {
+  position: absolute;
+  /* Slot beneath the hamburger logo, flush to the left edge of the canvas. */
+  left: 60px;
+  top: 14px;
+  z-index: 330;
+  width: 280px;
+  max-height: calc(100vh - 28px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  border-radius: var(--jz-radius-lg);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  border: 1px solid var(--jz-hairline);
+  pointer-events: auto;
+  animation: jz-side-in var(--jz-dur-base) var(--jz-ease-spring) both;
+}
+
+@keyframes jz-side-in {
+  from { opacity: 0; transform: translateX(-4px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.jz-side-section { display: flex; flex-direction: column; gap: 2px; padding: 4px 2px; }
+
+.jz-side-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 6px;
+}
+
+.jz-side-section-title {
+  font-family: var(--jz-font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--jz-ink-400);
+}
+
+.jz-side-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px 0 6px;
+  border: 1px solid var(--jz-hairline);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--jz-ink-700);
+  font-family: var(--jz-font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out), border-color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-side-new:hover {
+  color: var(--jz-ink-900);
+  border-color: var(--jz-hairline-strong);
+  background: color-mix(in srgb, var(--jz-ink-900) 4%, transparent);
+}
+
+.jz-side-divider {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--jz-hairline);
+}
+
+.jz-side-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.jz-side-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.jz-side-item {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--jz-radius-md);
+  background: transparent;
+  color: var(--jz-ink-700);
+  font-family: var(--jz-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-side-item:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 5%, transparent);
+  color: var(--jz-ink-900);
+}
+.jz-side-item--active {
+  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
+  color: var(--jz-ink-900);
+}
+.jz-side-item-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jz-side-rename {
+  flex: 1 1 auto;
+  height: 30px;
+  margin: 0 6px;
+  padding: 0 8px;
+  border: 1px solid var(--jz-hairline-strong);
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface);
+  color: var(--jz-ink-900);
+  font-family: var(--jz-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+}
+.jz-side-rename:focus { border-color: var(--jz-ink-700); }
+
+.jz-side-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  margin-right: 2px;
+  transition: opacity var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-side-row:hover .jz-side-row-actions,
+.jz-side-row:focus-within .jz-side-row-actions { opacity: 1; }
+
+.jz-side-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--jz-radius-xs);
+  background: transparent;
+  color: var(--jz-ink-500);
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-side-action:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
+  color: var(--jz-ink-900);
+}
+.jz-side-action--danger:hover { color: var(--jz-danger, #b60554); }
+
+@media (prefers-reduced-motion: reduce) {
+  .jz-side { animation: none; }
 }

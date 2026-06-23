@@ -23,6 +23,7 @@ import { cardShapeUtils } from './shapes';
 import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
 import { Topbar } from './ui/Topbar';
 import { HelpLayer } from './ui/HelpLayer';
+import { SidePanel } from './ui/SidePanel';
 
 /**
  * Everything Jarwiz floats over the canvas, in one overlay slot. While we
@@ -34,6 +35,7 @@ function JarwizOverlay() {
     <>
       {/* Canvas frame — the four chrome surfaces we're designing right now. */}
       <Topbar />
+      <SidePanel />
       <ToolRail />
       <PromptBar />
       <AgentCursorLayer />

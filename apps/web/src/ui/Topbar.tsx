@@ -1,21 +1,29 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { stopEventPropagation, useEditor, useValue } from 'tldraw';
 import { getActiveBoard, getActiveBoardId, renameBoard, subscribeBoards } from '../boards/boardStore';
-import { BoardSwitcher } from '../boards/BoardSwitcher';
 import { getTheme, subscribeTheme, toggleTheme } from './theme';
+import {
+  closeSidePanel,
+  isSidePanelOpen,
+  openSidePanel,
+  subscribeSidePanel,
+  toggleSidePanel,
+} from './sidePanelStore';
 
 /**
  * Canvas chrome — top bar (Flora-aligned).
  *
- *   Left cluster:   ◆ logo · inline-editable board name / workspace pill
+ *   Left cluster:   ☰ logo · workspace pill / inline-editable board name + caret
  *   Right cluster:  zoom dropdown · share button · theme toggle
  *
  * Behaviour notes:
- *  - The board name is editable in place: click → edit → Enter to commit,
- *    Escape to cancel, blur to commit. The dropdown caret lives next to the
- *    name and opens the board switcher independently.
- *  - The workspace is a clickable pill (stub for now — opens nothing until
- *    workspace management exists).
+ *  - The logo is a round hamburger button that toggles the left side panel
+ *    (workspace switcher + board list). The title caret opens the same panel,
+ *    so there's a single discoverable surface for "manage boards/workspace".
+ *  - The board name itself stays inline-editable: click → edit → Enter to
+ *    commit, Escape to cancel, blur to commit.
+ *  - The workspace pill above the title is a small rounded rectangle that
+ *    also opens the side panel (workspace switching lives there).
  *  - Zoom dropdown owns all zoom controls (the bottom-right ZoomPill is
  *    retired with this commit).
  *  - Theme toggle is a single icon button: sun ⇄ moon, with a gentle scale +
@@ -25,7 +33,7 @@ export function Topbar() {
   return (
     <div className="jz-topbar">
       <div className="jz-topbar-left">
-        <LogoMark />
+        <HamburgerLogo />
         <TitleBlock />
       </div>
       <div className="jz-topbar-right">
@@ -37,16 +45,36 @@ export function Topbar() {
   );
 }
 
-function LogoMark() {
+/**
+ * Round hamburger / logo button. Tapping it toggles the left side panel
+ * where workspaces + boards live. The icon is a Jarwiz mark by default and
+ * cross-fades to a hamburger glyph when the panel is open — so the same
+ * button reads as "brand" at rest and "menu / close" while engaged.
+ */
+function HamburgerLogo() {
+  const open = useSyncExternalStore(subscribeSidePanel, isSidePanelOpen, isSidePanelOpen);
   return (
-    <div className="jz-logo" aria-label="Jarwiz">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <path
-          d="M12 3l2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4z"
-          fill="currentColor"
-        />
-      </svg>
-    </div>
+    <button
+      className={`jz-logo-btn${open ? ' jz-logo-btn--open' : ''}`}
+      onClick={() => toggleSidePanel()}
+      aria-label={open ? 'Close workspace menu' : 'Open workspace menu'}
+      aria-expanded={open}
+      title="Workspace & boards"
+    >
+      <span className="jz-logo-glyph jz-logo-glyph--brand" aria-hidden>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M12 3l2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4z"
+            fill="currentColor"
+          />
+        </svg>
+      </span>
+      <span className="jz-logo-glyph jz-logo-glyph--menu" aria-hidden>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 7h16M4 12h16M4 17h16" />
+        </svg>
+      </span>
+    </button>
   );
 }
 
@@ -57,7 +85,7 @@ function LogoMark() {
 function TitleBlock() {
   const board = useSyncExternalStore(subscribeBoards, getActiveBoard, getActiveBoard);
   const boardId = useSyncExternalStore(subscribeBoards, getActiveBoardId, getActiveBoardId);
-  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const sideOpen = useSyncExternalStore(subscribeSidePanel, isSidePanelOpen, isSidePanelOpen);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(board?.name ?? 'Untitled');
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -85,8 +113,11 @@ function TitleBlock() {
     setEditing(false);
   };
 
+  const toggleSwitcher = () => (sideOpen ? closeSidePanel() : openSidePanel());
+
   return (
     <div className="jz-title-block">
+      <WorkspacePill />
       <div className="jz-title-row">
         {editing ? (
           <input
@@ -115,29 +146,28 @@ function TitleBlock() {
           </button>
         )}
         <button
-          className={`jz-title-caret-btn${switcherOpen ? ' jz-title-caret-btn--open' : ''}`}
-          onClick={() => setSwitcherOpen((v) => !v)}
-          aria-label="Switch boards"
-          title="Switch boards"
+          className={`jz-title-caret-btn${sideOpen ? ' jz-title-caret-btn--open' : ''}`}
+          onClick={toggleSwitcher}
+          aria-label="Switch or create boards"
+          title="Switch or create boards"
         >
           <span aria-hidden>▾</span>
         </button>
       </div>
-      <WorkspacePill />
-      {switcherOpen && <BoardSwitcher onClose={() => setSwitcherOpen(false)} />}
     </div>
   );
 }
 
 function WorkspacePill() {
-  // Stub action — opens nothing until workspace management exists. The
-  // affordance is the priority here; wiring follows.
-  const onClick = () => {
-    console.info('[jarwiz] workspace picker is not wired up yet');
-  };
+  // Opens the side panel — that's where workspaces (and boards) live.
   return (
-    <button className="jz-workspace-pill" onClick={onClick} title="Switch workspace (coming soon)">
-      Personal workspace
+    <button
+      className="jz-workspace-pill"
+      onClick={() => openSidePanel()}
+      title="Switch workspace"
+    >
+      <span className="jz-workspace-pill-name">Personal workspace</span>
+      <span className="jz-workspace-pill-caret" aria-hidden>▾</span>
     </button>
   );
 }
