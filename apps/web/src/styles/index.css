@@ -66,8 +66,8 @@ body,
     ),
     radial-gradient(
       circle,
-      color-mix(in srgb, var(--jz-ink-400) 55%, transparent) 1px,
-      transparent 1.2px
+      color-mix(in srgb, var(--jz-ink-400) 65%, transparent) 0.5px,
+      transparent 0.8px
     );
   background-size:
     100% 100%,
@@ -242,28 +242,21 @@ body,
 .jz-logo-btn--open .jz-logo-glyph--brand { opacity: 0; transform: rotate(45deg); }
 .jz-logo-btn--open .jz-logo-glyph--menu  { opacity: 1; transform: rotate(0); }
 
-/* Title block: workspace pill (top, small) + board name (below, big with
- * caret). The pill opens the side panel; the caret next to the name opens
- * the same panel. The board name itself stays inline-editable. */
+/* Title block: board name (top, large, inline-editable) + "last saved" hint
+ * below. The hamburger logo is the only entry point for switching boards. */
 .jz-title-block {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 3px;
+  gap: 1px;
   pointer-events: auto;
-}
-.jz-title-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 22px;
 }
 .jz-title-name-btn,
 .jz-title-input {
   display: inline-flex;
   align-items: center;
-  height: 22px;
+  height: 24px;
   padding: 0 4px;
   margin: 0;
   border: none;
@@ -286,8 +279,6 @@ body,
   white-space: nowrap;
 }
 .jz-title-input {
-  /* Match button width to text by sizing on its content; fall back to a
-   * sensible min so an empty value is still grabbable. */
   min-width: 80px;
   outline: none;
   background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
@@ -295,62 +286,19 @@ body,
 .jz-title-input:focus {
   background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
 }
-.jz-title-caret-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  margin-left: 2px;
-  padding: 0;
-  border: none;
-  border-radius: var(--jz-radius-xs);
-  background: transparent;
-  color: var(--jz-ink-400);
-  cursor: pointer;
-  font-size: 11px;
-  transition: color var(--jz-dur-fast) var(--jz-ease-out), background var(--jz-dur-fast) var(--jz-ease-out), transform var(--jz-dur-fast) var(--jz-ease-out);
-}
-.jz-title-caret-btn:hover {
-  color: var(--jz-ink-700);
-  background: color-mix(in srgb, var(--jz-ink-900) 5%, transparent);
-}
-.jz-title-caret-btn--open {
-  transform: rotate(180deg);
-  color: var(--jz-ink-700);
-}
 
-/* Workspace pill — small rounded rectangle ABOVE the board name. Opens the
- * side panel where workspaces + boards live. Carries a caret to signal it's
- * a switcher, not just a label. */
-.jz-workspace-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  height: 18px;
-  padding: 0 6px 0 8px;
-  border: 1px solid var(--jz-hairline);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--jz-ink-500);
+/* Subtle "Saved at HH:MM" line beneath the board name. */
+.jz-last-saved {
+  padding-left: 5px;
   font-family: var(--jz-font-ui);
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: 0.005em;
-  cursor: pointer;
-  transition: color var(--jz-dur-fast) var(--jz-ease-out), background var(--jz-dur-fast) var(--jz-ease-out), border-color var(--jz-dur-fast) var(--jz-ease-out);
-}
-.jz-workspace-pill:hover {
-  color: var(--jz-ink-900);
-  border-color: var(--jz-hairline-strong);
-  background: color-mix(in srgb, var(--jz-ink-900) 4%, transparent);
-}
-.jz-workspace-pill-caret {
-  font-size: 9px;
-  line-height: 1;
+  font-size: 10px;
+  font-weight: 400;
   color: var(--jz-ink-400);
-  margin-top: 1px;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* Zoom dropdown (top bar — replaces the bottom-right zoom pill). */

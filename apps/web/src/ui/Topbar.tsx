@@ -4,7 +4,6 @@ import { getActiveBoard, getActiveBoardId, renameBoard, subscribeBoards } from '
 import { getTheme, subscribeTheme, toggleTheme } from './theme';
 import {
   isSidePanelOpen,
-  openSidePanel,
   subscribeSidePanel,
   toggleSidePanel,
 } from './sidePanelStore';
@@ -113,52 +112,51 @@ function TitleBlock() {
 
   return (
     <div className="jz-title-block">
-      <WorkspacePill />
-      <div className="jz-title-row">
-        {editing ? (
-          <input
-            ref={inputRef}
-            className="jz-title-input"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              e.stopPropagation();
-              if (e.key === 'Enter') commit();
-              if (e.key === 'Escape') cancel();
-            }}
-            onBlur={commit}
-            // tldraw's canvas swallows pointer events; keep the input alive.
-            onPointerDown={stopEventPropagation}
-            spellCheck={false}
-            maxLength={120}
-          />
-        ) : (
-          <button
-            className="jz-title-name-btn"
-            onClick={() => setEditing(true)}
-            title="Click to rename"
-          >
-            <span className="jz-title-name">{board?.name ?? 'Untitled'}</span>
-          </button>
-        )}
-      </div>
+      {editing ? (
+        <input
+          ref={inputRef}
+          className="jz-title-input"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter') commit();
+            if (e.key === 'Escape') cancel();
+          }}
+          onBlur={commit}
+          onPointerDown={stopEventPropagation}
+          spellCheck={false}
+          maxLength={120}
+        />
+      ) : (
+        <button
+          className="jz-title-name-btn"
+          onClick={() => setEditing(true)}
+          title="Click to rename"
+        >
+          <span className="jz-title-name">{board?.name ?? 'Untitled'}</span>
+        </button>
+      )}
+      <LastSaved />
     </div>
   );
 }
 
-function WorkspacePill() {
-  // Workspace label — the logo is the entry point for switching boards or
-  // workspaces, so this is a quiet badge that just opens the same panel on
-  // click (no caret, no chevron — keep the logo as the primary affordance).
-  return (
-    <button
-      className="jz-workspace-pill"
-      onClick={() => openSidePanel()}
-      title="Workspace · open menu"
-    >
-      <span className="jz-workspace-pill-name">Personal workspace</span>
-    </button>
-  );
+function LastSaved() {
+  const [label, setLabel] = useState('Saved just now');
+
+  // Tick every 30s so the label stays fresh without spamming re-renders.
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      setLabel(`Saved at ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+    };
+    tick();
+    const id = setInterval(tick, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  return <span className="jz-last-saved">{label}</span>;
 }
 
 /**
