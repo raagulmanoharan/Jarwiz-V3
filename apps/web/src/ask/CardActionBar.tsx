@@ -13,10 +13,8 @@ import { useAsk } from './useAsk';
 import { useDiagram } from '../agents/useDiagram';
 import { useTidy, canTidy } from '../agents/useTidy';
 import { useCluster, canCluster } from '../agents/useCluster';
-import { getProvenance, getProvenanceMap, subscribeProvenance } from './provenance';
 import { getOpenDiscuss, subscribeDiscuss, toggleDiscuss } from './discuss';
 import { useCardAnchor } from './useCardAnchor';
-import { clearLineage, getLineage, hasAncestry, subscribeLineage, traceLineage } from './lineage';
 
 const ANSWER = new Set(['doc-card', 'table-card', 'diagram-card']);
 type Transform = { label: string; run: () => void };
@@ -27,10 +25,8 @@ export function CardActionBar() {
   const { diagram } = useDiagram();
   const { tidy } = useTidy();
   const { cluster } = useCluster();
-  useSyncExternalStore(subscribeProvenance, getProvenanceMap, getProvenanceMap);
   const openDiscuss = useSyncExternalStore(subscribeDiscuss, getOpenDiscuss, getOpenDiscuss);
-  const lineage = useSyncExternalStore(subscribeLineage, getLineage, getLineage);
-  const [menu, setMenu] = useState<null | 'refine' | 'based'>(null);
+  const [menu, setMenu] = useState<null | 'refine'>(null);
 
   // One or more askable shapes selected → the bar lights up (same place always).
   const sel = useValue(
@@ -54,9 +50,6 @@ export function CardActionBar() {
   if (!sel) return null;
   const id = sel.id as TLShapeId;
   const ids = sel.ids as TLShapeId[];
-  const prov = sel.multi ? undefined : getProvenance(id);
-  const traceable = !sel.multi && hasAncestry(editor, id);
-  const tracing = lineage?.rootId === id;
   // Content gate: an empty card has nothing to shorten, deepen, discuss, or
   // summarise — offering those reads as broken. Same predicate the prompt
   // bar's starter chips use.
@@ -92,16 +85,11 @@ export function CardActionBar() {
   if (contentful.length > 0) transforms.push({ label: '◇ Make a flowchart', run: () => diagram('Turn this into a flowchart.', ids) });
 
   const runTransform = (t: Transform) => { setMenu(null); t.run(); };
-  const zoomTo = (sid: TLShapeId) => {
-    setMenu(null);
-    const b = editor.getShapePageBounds(sid);
-    editor.select(sid);
-    if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 120 });
-  };
 
   // Nothing meaningful to offer (e.g. a single empty card) → no bar at all.
+  // Provenance itself needs no button: the drawn edges ARE the lineage.
   const showDiscuss = sel.type === 'doc-card' && hasContent;
-  if (transforms.length === 0 && !showDiscuss && !traceable && !prov) return null;
+  if (transforms.length === 0 && !showDiscuss) return null;
   if (!anchor) return null;
 
   const style: CSSProperties = {
@@ -132,34 +120,7 @@ export function CardActionBar() {
         </button>
       ) : null}
 
-      {traceable ? (
-        <button
-          className={`jz-cardbar-btn${tracing ? ' jz-cardbar-btn--on' : ''}`}
-          title="Light up everything this card came from — sources, questions, and the path between them"
-          onClick={() => {
-            setMenu(null);
-            if (tracing) clearLineage();
-            else traceLineage(editor, id);
-          }}
-        >
-          ◉ Trace
-        </button>
-      ) : null}
 
-      {prov ? (
-        <div className="jz-cardbar-group">
-          <button className={`jz-cardbar-btn${menu === 'based' ? ' jz-cardbar-btn--open' : ''}`} onClick={() => setMenu(menu === 'based' ? null : 'based')}>
-            Based on <span className="jz-cardbar-caret" aria-hidden>▾</span>
-          </button>
-          {menu === 'based' ? (
-            <div className="jz-cardbar-menu" role="menu">
-              {prov.sourceIds.map((sid, i) => editor.getShape(sid) ? (
-                <button key={sid} className="jz-cardbar-item" onClick={() => zoomTo(sid)}>{prov.labels[i] ?? 'Source'}</button>
-              ) : null)}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
     </div>
   );
 }

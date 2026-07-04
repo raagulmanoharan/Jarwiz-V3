@@ -18,7 +18,6 @@ const tldrawAssetUrls = getAssetUrlsByImport();
 import { useSync } from '@tldraw/sync';
 import { PromptBar } from './ask/PromptBar';
 import { CardActionBar } from './ask/CardActionBar';
-import { LineageLayer } from './ask/LineageLayer';
 import { DiscussLayer } from './ask/DiscussLayer';
 import { ClarifyLayer } from './ask/ClarifyLayer';
 import { DraftControls } from './ask/DraftControls';
@@ -58,7 +57,6 @@ function JarwizOverlay() {
       <EmptyState />
       <BoardEntry />
       <CardActionBar />
-      <LineageLayer />
       <ClarifyLayer />
       <DraftControls />
       <RegenControls />

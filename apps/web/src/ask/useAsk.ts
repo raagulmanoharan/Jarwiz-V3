@@ -42,6 +42,12 @@ import { clearClarify, setClarify } from './clarify';
 import { setProvenance } from './provenance';
 import { logEvent } from '../log/eventLog';
 import { clearAgentTask, setAgentTask } from '../agents/agentTask';
+import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from '../agents/presence';
+import { getAgent } from '@jarwiz/shared';
+
+/** The single Jarwiz presence identity (routing id 'writer'). Parked on the
+ *  source the moment an ask starts, so a click is never met with silence. */
+const PRESENCE = getAgent('writer');
 
 /** The single AI run currently in flight — an Ask or an in-place regen — so a
  *  floating control (RegenControls / DraftControls) can truly cancel the model
@@ -173,6 +179,21 @@ export function useAsk() {
       }
       clearClarify(); // a fresh ask supersedes any pending question
 
+      // Presence FIRST, before any network: the avatar parks on the source
+      // (or where the answer will land) with a status the instant the user
+      // acts — the 5-20s before the first token should never read as silence.
+      startPresence(PRESENCE.id);
+      setPresenceStatus(PRESENCE.id, 'reading…');
+      {
+        const anchorId = opts?.targetId ?? sourceIds[0];
+        const b = anchorId ? editor.getShapePageBounds(anchorId) : null;
+        if (b) setPresenceCursor(PRESENCE.id, b.maxX - 14, b.maxY - 16);
+        else {
+          const vp = editor.getViewportPageBounds();
+          setPresenceCursor(PRESENCE.id, vp.midX, vp.midY);
+        }
+      }
+
       const sourceShapes = sourceIds
         .map((id) => editor.getShape(id))
         .filter((s): s is TLShape => Boolean(s));
@@ -291,6 +312,7 @@ export function useAsk() {
             break;
           }
           case 'card.create': {
+            setPresenceStatus(PRESENCE.id, 'writing…');
             // Refinement that keeps the card's format → regenerate in place:
             // mark history, clear the existing card, and stream the new version
             // into it. No new shape, no provenance edges, no Keep/Discard draft
@@ -496,6 +518,7 @@ export function useAsk() {
           }
         }
         clearRegen();
+        endPresence(PRESENCE.id);
         if (activeRun?.controller === ac) activeRun = null;
         setIsAsking(false);
       }

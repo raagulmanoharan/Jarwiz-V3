@@ -97,3 +97,11 @@ Owner decision: Jarwiz's positioning is the document-analysis companion —
 canvas." Ideation features (stickies, clustering) remain as supporting cast.
 Capabilities that don't serve this wedge get parked or cut (docs/PDF-EDGE.md
 is the plan of record for the build-out).
+
+## 2026-07-04 — Provenance is the edge, not a button
+
+Removed the ◉ Trace spotlight and the "Based on ▾" menu from the card action
+bar (and the lineage-trace feature with them). The drawn provenance arrows
+already ARE the lineage — a second, explicit UI for the same fact was
+redundant chrome. If a future board grows dense enough that edges stop being
+legible, revisit as an implicit hover treatment, not a button.
