@@ -33,6 +33,7 @@ import {
   type NoteCardShape,
   type TableCardShape,
 } from '../shapes';
+import { readSSE } from '../agents/sse';
 import { startStreaming, stopStreaming } from '../agents/streaming';
 import { setResponsePdfSource } from '../pdf/provenance';
 import { clearDraft, getDraft, setDraft, updateDraft } from './draft';
@@ -464,26 +465,7 @@ export function useAsk() {
           const b = await res.json().catch(() => null);
           throw new Error(b?.error ?? `Ask failed (${res.status})`);
         }
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        const flush = (line: string) => {
-          if (!line.startsWith('data: ')) return;
-          try {
-            apply(JSON.parse(line.slice(6)) as AskEvent);
-          } catch (e) {
-            console.error('[jarwiz] bad ask event', line, e);
-          }
-        };
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() ?? '';
-          for (const line of lines) flush(line);
-        }
-        flush(buffer);
+        await readSSE<AskEvent>(res.body, apply);
         if (cardId) stopStreaming(cardId);
         // Don't let stream-end mark the draft done if a server `error` event
         // already flagged it — that would hide the failure from DraftControls.

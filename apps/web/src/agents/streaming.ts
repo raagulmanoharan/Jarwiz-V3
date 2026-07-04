@@ -1,27 +1,24 @@
+/**
+ * Which cards currently have a live streaming caret. Doc/note/table shapes
+ * subscribe; useAsk/autopilot flip ids on card create/done.
+ */
 import type { TLShapeId } from 'tldraw';
+import { createExternalStore } from '../lib/externalStore';
 
-let streamingSet = new Set<TLShapeId>();
-const listeners = new Set<() => void>();
-const notify = () => listeners.forEach((l) => l());
+const store = createExternalStore<ReadonlySet<TLShapeId>>(new Set());
 
 export function startStreaming(id: TLShapeId): void {
-  streamingSet = new Set(streamingSet);
-  streamingSet.add(id);
-  notify();
+  store.update((s) => new Set(s).add(id));
 }
 
 export function stopStreaming(id: TLShapeId): void {
-  if (!streamingSet.has(id)) return;
-  streamingSet = new Set(streamingSet);
-  streamingSet.delete(id);
-  notify();
+  store.update((s) => {
+    if (!s.has(id)) return s;
+    const next = new Set(s);
+    next.delete(id);
+    return next;
+  });
 }
 
-export function subscribeStreaming(cb: () => void): () => void {
-  listeners.add(cb);
-  return () => { listeners.delete(cb); };
-}
-
-export function getStreamingSnapshot(): ReadonlySet<TLShapeId> {
-  return streamingSet;
-}
+export const subscribeStreaming = store.subscribe;
+export const getStreamingSnapshot = store.get;

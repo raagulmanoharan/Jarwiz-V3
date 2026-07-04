@@ -5,23 +5,24 @@
  */
 
 import type { TLShapeId } from 'tldraw';
+import { createExternalStore } from '../lib/externalStore';
 
 /** Answer cards taller than this collapse, with an expand/collapse toggle. */
 export const MAX_CARD_H = 520;
 
-const expanded = new Set<string>();
-const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((cb) => cb());
+const store = createExternalStore<ReadonlySet<string>>(new Set());
 
-export function subscribeExpand(cb: () => void): () => void {
-  listeners.add(cb);
-  return () => listeners.delete(cb);
-}
+export const subscribeExpand = store.subscribe;
+
 export function isExpanded(id: TLShapeId): boolean {
-  return expanded.has(id);
+  return store.get().has(id);
 }
+
 export function toggleExpand(id: TLShapeId): void {
-  if (expanded.has(id)) expanded.delete(id);
-  else expanded.add(id);
-  emit();
+  store.update((s) => {
+    const next = new Set(s);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return next;
+  });
 }
