@@ -109,8 +109,11 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
   const expanded = useSyncExternalStore(subscribeExpand, () => isExpanded(shape.id), () => false);
   // Grow to fit all rows; clamp past the threshold once settled (collapsible).
   const fitRef = useRef<HTMLDivElement | null>(null);
-  const overflowing = useFitHeight(shape.id, fitRef, [columns, rows], {
-    enabled: !isEditing,
+  // Fit stays on while editing: edit mode adds chrome (the +Row/+Column bar,
+  // delete gutters) that the card must grow to hold — and a shrunk-to-fit
+  // card would otherwise clip it. The wrapper's ResizeObserver also grows the
+  // card live as a cell's textarea wraps to more lines.
+  const overflowing = useFitHeight(shape.id, fitRef, [columns, rows, isEditing], {
     streaming: isFilling,
     expanded,
     maxHeight: MAX_CARD_H,
@@ -190,8 +193,12 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
   return (
     <div
       className={`jz-table${isFilling ? ' jz-table-filling' : ''}${collapsed ? ' jz-card-collapsed' : ''}`}
-      ref={fitRef}
     >
+      {/* Measured wrapper: the frame is height:100% (its scrollHeight always
+          equals the CURRENT shape height — the fit-height ratchet), so the
+          hook measures this auto-height child instead, which reports true
+          content height and lets the card shrink to fit as well as grow. */}
+      <div className="jz-table-fit" ref={fitRef}>
       <div className="jz-table-head" style={{ gridTemplateColumns: gridColsEdit }}>
         {columns.map((label, col) =>
           isEditing ? (
@@ -308,6 +315,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
           Double-click, then press Tab to fill
         </div>
       ) : null}
+      </div>
       {overflowing && !isFilling ? <ExpandToggle shapeId={shape.id} expanded={expanded} /> : null}
     </div>
   );

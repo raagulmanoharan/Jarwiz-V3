@@ -1423,10 +1423,20 @@ body,
   background: var(--jz-card-surface);
   border-radius: var(--jz-radius-lg);
   box-shadow: var(--jz-e2);
-  border: 1px solid var(--jz-hairline-strong);
+  /* Hairline, like the doc card — the table should read as the same family. */
+  border: 1px solid var(--jz-hairline);
   box-sizing: border-box;
   overflow: hidden;
   font-family: var(--jz-font-ui);
+}
+
+/* The measured auto-height wrapper (see TableCardShapeUtil): sized by its
+ * content, not the frame, so fit-height can shrink the card too. The 2px
+ * bottom padding accounts for the frame's top+bottom border (border-box). */
+.jz-table-fit {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 2px;
 }
 
 /* While Autopilot fills it, the card wears a faint agent-colored ring. */
@@ -1441,12 +1451,12 @@ body,
   display: grid;
   align-items: stretch;
   background: color-mix(in srgb, var(--jz-paper) 60%, var(--jz-surface));
-  border-bottom: 1px solid var(--jz-hairline-strong);
+  border-bottom: 1px solid var(--jz-hairline);
 }
 
 .jz-table-headcell {
   border-right: 1px solid var(--jz-hairline);
-  padding: 11px 12px;
+  padding: 7px 10px;
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-caption-size);
   font-weight: 600;
@@ -1482,13 +1492,14 @@ body,
 
 .jz-table-cell {
   border-right: 1px solid var(--jz-hairline);
-  padding: 10px 12px;
+  padding: 6px 10px;
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-body-sm-size);
-  line-height: 1.45;
+  line-height: 1.4;
   color: var(--jz-ink-900);
   min-width: 0;
-  min-height: 40px;
+  min-height: 30px;
+  box-sizing: border-box;
 }
 
 .jz-table-cell:last-child {
@@ -1534,7 +1545,7 @@ body,
   flex: none;
   display: flex;
   gap: var(--jz-space-2);
-  padding: 8px 10px;
+  padding: 6px 10px;
   border-top: 1px solid var(--jz-hairline);
   background: color-mix(in srgb, var(--jz-paper) 40%, var(--jz-surface));
 }

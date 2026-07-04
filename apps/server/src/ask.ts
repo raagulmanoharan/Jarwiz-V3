@@ -136,7 +136,14 @@ async function maybeClarify(
   return null;
 }
 
-const SEED_SYSTEM = `You are given the text of a card on a user's canvas (a dropped document, or an answer they are working through). Propose the 3 or 4 most useful NEXT MOVES for this reader — anticipate where they would drill in from here: go deeper on the pivotal claim, challenge the weakest assumption, connect it to a decision, extract what is actionable. Each must be SPECIFIC to this text (name the clause, the metric, the section) — never generic like "Summarize this". Return ONLY a JSON array of objects {"label": string, "prompt": string}: "label" is a 2–4 word button caption; "prompt" is the full question to ask. No prose, no code fences.`;
+const SEED_SYSTEM = `You are given the text of a card on a user's canvas (a dropped document, or an answer they are working through). Propose the 3 or 4 most useful NEXT MOVES for this reader — anticipate where they would drill in from here: go deeper on the pivotal claim, challenge the weakest assumption, connect it to a decision, extract what is actionable. Each must be SPECIFIC to this text (name the clause, the metric, the section) — never generic like "Summarize this".
+
+Match each move's phrasing to the answer's best FORMAT — the canvas picks the response card from the prompt's wording:
+- If the text holds two or more comparable things (concepts, options, approaches, parties, methods, versions), include ONE move that compares them. Its "prompt" MUST use comparison wording ("Compare X and Y side by side", "X versus Y") so the answer lands as a comparison table; make the "label" name both sides (e.g. "Compare X vs Y").
+- If the text implies obligations or actions, phrase that move as a checklist ("Turn the … requirements into a checklist").
+- Why/how/deep-dive moves stay plain questions (prose answers).
+
+Return ONLY a JSON array of objects {"label": string, "prompt": string}: "label" is a 2–4 word button caption; "prompt" is the full question to ask. No prose, no code fences.`;
 
 export interface SeedPrompt {
   label: string;
