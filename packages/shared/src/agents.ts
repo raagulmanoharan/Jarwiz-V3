@@ -1,9 +1,11 @@
 /**
- * The Jarwiz agent registry — the single source of truth for the v1 cast.
+ * The Jarwiz agent registry.
  *
- * Each agent has a stable id (used in API routes and AgentEvent streams),
- * a display name, an identity color (used for cursors, suggestion chips,
- * card accents, and connection lines), and a one-line tagline.
+ * Internally Jarwiz is a multi-agent system: the four specialists below route
+ * server-side work (researcher / summarizer / brainstormer / writer). To the
+ * user there is ONE collaborator — Jarwiz — surfaced everywhere as a single
+ * Sparkle-in-circle identity (see `JARWIZ` below). Internal AgentIds remain
+ * the wire-protocol routing key; the public identity is the presentation.
  */
 
 export type AgentId = 'researcher' | 'summarizer' | 'brainstormer' | 'writer';
@@ -15,6 +17,20 @@ export interface AgentMeta {
   readonly color: string;
   readonly tagline: string;
 }
+
+/**
+ * The single user-facing identity. Internal routing still picks the right
+ * specialist, but presence, avatars, mentions, and menus all show Jarwiz.
+ * The id is the default routing target when the surface doesn't specify one.
+ */
+export const JARWIZ = {
+  /** Default routing target. The server may still route to other specialists. */
+  routingId: 'writer' as AgentId,
+  name: 'Jarwiz',
+  /** Identity ink — used as the avatar background when surfaces use --agent-color. */
+  color: '#0E1117',
+  tagline: 'Your AI collaborator',
+} as const;
 
 export const AGENTS: readonly AgentMeta[] = [
   {

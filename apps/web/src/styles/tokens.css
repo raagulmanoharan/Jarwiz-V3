@@ -39,6 +39,7 @@
   --jz-paper-deep: #dcdcdc;
   --jz-surface: #f5f5f5;
   --jz-surface-raised: #f0f0f0;
+  --jz-card-surface: #fafafa;
 
   --jz-ink-900: #0a0a0a;
   --jz-ink-700: #2a2a2a;
@@ -119,19 +120,20 @@
  * clearly lifted off the background. No amber warmth — clean neutrals.
  */
 :root[data-theme='dark'] {
-  --jz-paper: #111111;
-  --jz-paper-deep: #080808;
-  --jz-surface: #1c1c1c;
-  --jz-surface-raised: #222222;
+  --jz-paper: #0d0d0d;
+  --jz-paper-deep: #060606;
+  --jz-surface: #0e0e0e;
+  --jz-surface-raised: #111111;
+  --jz-card-surface: #1a1a1a;
 
-  --jz-ink-900: #f0f0f0;
-  --jz-ink-700: #c0c0c0;
-  --jz-ink-500: #808080;
-  --jz-ink-400: #505050;
-  --jz-ink-300: #333333;
+  --jz-ink-900: #e8e8e8;
+  --jz-ink-700: #b0b0b0;
+  --jz-ink-500: #686868;
+  --jz-ink-400: #444444;
+  --jz-ink-300: #2c2c2c;
 
-  --jz-hairline: rgba(255, 255, 255, 0.09);
-  --jz-hairline-strong: rgba(255, 255, 255, 0.16);
+  --jz-hairline: rgba(255, 255, 255, 0.07);
+  --jz-hairline-strong: rgba(255, 255, 255, 0.11);
 
   --jz-shadow-rgb: 0, 0, 0;
 
@@ -139,16 +141,16 @@
   --jz-focus: var(--jz-ink-700);
 
   --jz-e1:
-    0 1px 2px rgba(var(--jz-shadow-rgb), 0.5),
-    0 2px 6px rgba(var(--jz-shadow-rgb), 0.4);
+    0 1px 2px rgba(var(--jz-shadow-rgb), 0.2),
+    0 2px 6px rgba(var(--jz-shadow-rgb), 0.15);
   --jz-e2:
-    0 1px 2px rgba(var(--jz-shadow-rgb), 0.5),
-    0 6px 16px rgba(var(--jz-shadow-rgb), 0.45),
-    0 16px 36px rgba(var(--jz-shadow-rgb), 0.4);
+    0 1px 2px rgba(var(--jz-shadow-rgb), 0.2),
+    0 6px 16px rgba(var(--jz-shadow-rgb), 0.2),
+    0 16px 36px rgba(var(--jz-shadow-rgb), 0.15);
   --jz-e3:
-    0 2px 8px rgba(var(--jz-shadow-rgb), 0.5),
-    0 12px 32px rgba(var(--jz-shadow-rgb), 0.6);
+    0 2px 8px rgba(var(--jz-shadow-rgb), 0.25),
+    0 12px 32px rgba(var(--jz-shadow-rgb), 0.25);
   --jz-e4:
-    0 4px 12px rgba(var(--jz-shadow-rgb), 0.6),
-    0 18px 48px rgba(var(--jz-shadow-rgb), 0.7);
+    0 4px 12px rgba(var(--jz-shadow-rgb), 0.3),
+    0 18px 48px rgba(var(--jz-shadow-rgb), 0.35);
 }

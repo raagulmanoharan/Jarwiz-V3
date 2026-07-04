@@ -32,7 +32,7 @@ export function useFitHeight(
     const el = ref.current;
     if (!el || !enabled) return;
     const measure = () => {
-      if (editor.isIn('select.resizing')) return; // don't fight an active resize
+      if (editor.isIn('select.resizing')) return;
       const full = Math.ceil(el.scrollHeight);
       const over = full > maxHeight + 2;
       setOverflowing(over);

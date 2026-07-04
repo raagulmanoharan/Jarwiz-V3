@@ -102,13 +102,16 @@ export function DocMarkdown({ content, onCite, onToggleTask }: DocMarkdownProps)
       continue;
     }
 
-    // Paragraphs (non-empty lines)
+    // Paragraphs (non-empty lines). Empty lines render as explicit spacers so
+    // read mode matches the textarea — clicking to edit doesn't shift the layout.
     if (line.trim()) {
       elements.push(
         <p key={`p-${i}`} className="jz-md-p">
           {renderInline(line, onCite)}
         </p>,
       );
+    } else {
+      elements.push(<div key={`blank-${i}`} className="jz-md-blank" aria-hidden />);
     }
 
     i++;

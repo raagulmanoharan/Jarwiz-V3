@@ -24,6 +24,7 @@ import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boar
 import { Topbar } from './ui/Topbar';
 import { HelpLayer } from './ui/HelpLayer';
 import { SidePanel } from './ui/SidePanel';
+import { ClaudePanel } from './ui/ClaudePanel';
 
 /**
  * Everything Jarwiz floats over the canvas, in one overlay slot. While we
@@ -36,6 +37,7 @@ function JarwizOverlay() {
       {/* Canvas frame — the four chrome surfaces we're designing right now. */}
       <Topbar />
       <SidePanel />
+      <ClaudePanel />
       <ToolRail />
       <PromptBar />
       <AgentCursorLayer />
@@ -83,6 +85,22 @@ const components: TLComponents = {
 
 const handleMount = (editor: Editor) => {
   registerIngestion(editor);
+  // Suppress tldraw's blue selection chrome. updateThemes with a callback
+  // deep-merges into the existing theme so no other colors are wiped out.
+  editor.updateThemes((themes) => {
+    const t = themes['default'];
+    if (!t) return themes;
+    // Hide all canvas-drawn selection chrome (box, corners, strokes).
+    // Corner squares fill with `background`; setting it transparent hides them
+    // without affecting the CSS-driven canvas background (.tl-background).
+    t.colors.light.selectionStroke = 'transparent';
+    t.colors.light.selectionFill  = 'transparent';
+    t.colors.light.background     = 'transparent';
+    t.colors.dark.selectionStroke  = 'transparent';
+    t.colors.dark.selectionFill   = 'transparent';
+    t.colors.dark.background      = 'transparent';
+    return themes;
+  });
   // Dev convenience + e2e hook: reach the editor from the console.
   (window as unknown as { editor: Editor }).editor = editor;
 };

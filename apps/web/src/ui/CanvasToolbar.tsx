@@ -16,7 +16,12 @@ export function CanvasStylePanel() {
   const editor = useEditor();
   const show = useValue(
     'show-style-panel',
-    () => editor.getSelectedShapeIds().length > 0 || CREATION_TOOLS.has(editor.getCurrentToolId()),
+    () => {
+      const selected = editor.getSelectedShapes();
+      // Doc-cards have no tldraw styles — hide the panel when they're all that's selected.
+      if (selected.length > 0 && selected.every((s) => s.type === 'doc-card')) return false;
+      return selected.length > 0 || CREATION_TOOLS.has(editor.getCurrentToolId());
+    },
     [editor],
   );
   if (!show) return null;

@@ -18,6 +18,7 @@ import type { Editor, TLShapeId, TLRichText } from 'tldraw';
 import { getArrowBindings, renderPlaintextFromRichText, type TLArrowShape } from 'tldraw';
 import { getAgent, type AutopilotBoardCard, type AutopilotEvent, type TableAutopilotEvent } from '@jarwiz/shared';
 import { startStreaming, stopStreaming } from './streaming';
+import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from './presence';
 import { setClarify } from '../ask/clarify';
 
 export const AUTOPILOT_AGENT = getAgent('writer');
@@ -71,6 +72,7 @@ export function abortAutopilot(cardId: TLShapeId): void {
   controllers.delete(cardId);
   stopStreaming(cardId);
   clearSession(cardId);
+  endPresence(AUTOPILOT_AGENT.id);
 }
 
 function cardCorner(editor: Editor, cardId: TLShapeId): { x: number; y: number } | null {
@@ -245,6 +247,38 @@ function gatherBoardContext(editor: Editor, cardId: TLShapeId): AutopilotBoardCa
 
 /* ─── Prose continue (A0) ───────────────────────────────────────────────── */
 
+/**
+ * Has the user given the agent enough to continue from with confidence?
+ *
+ * The bar: a finished thought (ends with .!? or newline AND ≥3 words), a
+ * structural unit (heading, bullet, or task line), a non-empty title, or any
+ * external grounding (connected/selected/nearby/board cards). Anything below
+ * that and the agent would be guessing — so we route those to the clarify
+ * picker instead.
+ *
+ * Exported so the card UI can hide the "Press Tab to continue" nudge until
+ * the bar is met — Tab still works (falls back to clarify), but we only
+ * volunteer the suggestion when we'd actually have something to continue from.
+ */
+export function isAutopilotReady(editor: Editor, cardId: TLShapeId): boolean {
+  const shape = editor.getShape(cardId);
+  if (!shape || (shape.type !== 'doc-card' && shape.type !== 'note-card')) return false;
+  const props = shape.props as { text: string; title?: string };
+  if (props.title?.trim()) return true;
+  const text = props.text;
+  const trimmed = text.trim();
+  if (trimmed) {
+    // Structural unit: heading / bullet / task line — agent can extend the list.
+    if (/(^|\n)\s*(#{1,6}\s|[-*]\s)/.test(text)) return true;
+    // Finished thought: ends on punctuation or newline AND has at least 3 words.
+    const endsClean = /[.!?]\s*$/.test(trimmed) || /\n\s*$/.test(text);
+    const wordCount = trimmed.split(/\s+/).length;
+    if (endsClean && wordCount >= 3) return true;
+  }
+  // External grounding — connected/selected/nearby cards give the agent something to draw on.
+  return gatherBoardContext(editor, cardId).length > 0;
+}
+
 export async function continueProse(editor: Editor, cardId: TLShapeId): Promise<void> {
   if (controllers.has(cardId)) return; // already filling this card
   const shape = editor.getShape(cardId);
@@ -256,9 +290,8 @@ export async function continueProse(editor: Editor, cardId: TLShapeId): Promise<
   const title = props.title;
   const boardContext = gatherBoardContext(editor, cardId);
 
-  // Cold start with nothing to go on: ask what the doc is about.
-  const isColdStart = !baseText.trim() && !title?.trim() && boardContext.length === 0;
-  if (isColdStart) {
+  // Below the confidence bar — ask what the doc is about instead of guessing.
+  if (!isAutopilotReady(editor, cardId)) {
     setClarify({
       question: 'What do you want to write?',
       options: ['Meeting notes', 'Project brief', 'Team update', 'Technical spec'],
@@ -280,10 +313,52 @@ export async function continueProse(editor: Editor, cardId: TLShapeId): Promise<
   const controller = new AbortController();
   controllers.set(cardId, controller);
   startStreaming(cardId);
-  setSession({ cardId, status: 'continuing your draft…', anchor: cardCorner(editor, cardId) });
+  const anchor = cardCorner(editor, cardId);
+  setSession({ cardId, status: 'continuing your draft…', anchor });
+  // Park the Writer avatar by the card so the user can see who's writing.
+  startPresence(AUTOPILOT_AGENT.id);
+  setPresenceStatus(AUTOPILOT_AGENT.id, 'continuing your draft…');
+  if (anchor) setPresenceCursor(AUTOPILOT_AGENT.id, anchor.x, anchor.y);
 
   let appended = '';
   let joined = false;
+  // Buffer of characters queued for typing-speed drain
+  let typingQueue = '';
+  let draining = false;
+
+  const sleep = (ms: number) =>
+    new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+  // Drain one character at a time with a human typing rhythm: long pauses after
+  // sentence punctuation, shorter after commas/newlines, brief after whitespace,
+  // fastest mid-word. The session anchor is set once at the start of the run —
+  // the card's corner doesn't move per character, so we don't re-notify here.
+  const drainQueue = async () => {
+    if (draining) return;
+    draining = true;
+    while (typingQueue.length > 0) {
+      if (controller.signal.aborted) break;
+      const ch = typingQueue.charAt(0);
+      typingQueue = typingQueue.slice(1);
+      appended += ch;
+      const current = editor.getShape(cardId);
+      if (current && (current.type === 'doc-card' || current.type === 'note-card')) {
+        editor.updateShape({
+          id: cardId,
+          type: current.type,
+          props: { text: baseText + appended },
+        } as Parameters<typeof editor.updateShape>[0]);
+      }
+      const delay = /[.!?]/.test(ch) ? 80 + Math.random() * 60
+                  : ch === ',' ? 55 + Math.random() * 30
+                  : ch === '\n' ? 70 + Math.random() * 40
+                  : /\s/.test(ch) ? 35 + Math.random() * 25
+                  : 18 + Math.random() * 20;
+      await sleep(delay);
+    }
+    draining = false;
+  };
+
   try {
     const res = await fetch('/api/autopilot', {
       method: 'POST',
@@ -305,19 +380,16 @@ export async function continueProse(editor: Editor, cardId: TLShapeId): Promise<
       if (!joined && event.textDelta) {
         joined = true;
         if (baseText && !/\s$/.test(baseText) && !/^\s/.test(event.textDelta)) {
-          appended += /^#{1,6}\s/.test(event.textDelta) ? '\n\n' : ' ';
+          typingQueue += /^#{1,6}\s/.test(event.textDelta) ? '\n\n' : ' ';
         }
       }
-      appended += event.textDelta;
-      const current = editor.getShape(cardId);
-      if (!current || (current.type !== 'doc-card' && current.type !== 'note-card')) return;
-      editor.updateShape({
-        id: cardId,
-        type: current.type,
-        props: { text: baseText + appended },
-      } as Parameters<typeof editor.updateShape>[0]);
-      setSession({ cardId, status: 'continuing your draft…', anchor: cardCorner(editor, cardId) });
+      typingQueue += event.textDelta;
+      void drainQueue();
     });
+    // Wait for any queued characters to finish typing
+    while (typingQueue.length > 0 && !controller.signal.aborted) {
+      await sleep(30);
+    }
   } catch {
     /* aborted (yield/Esc) or network — nothing to surface */
   } finally {
@@ -325,6 +397,7 @@ export async function continueProse(editor: Editor, cardId: TLShapeId): Promise<
       controllers.delete(cardId);
       stopStreaming(cardId);
       clearSession(cardId);
+      endPresence(AUTOPILOT_AGENT.id);
     }
   }
 }
@@ -373,7 +446,11 @@ export async function fillTable(
   const controller = new AbortController();
   controllers.set(cardId, controller);
   startStreaming(cardId);
-  setSession({ cardId, status: 'filling the table…', anchor: cardCorner(editor, cardId) });
+  const tableAnchor = cardCorner(editor, cardId);
+  setSession({ cardId, status: 'filling the table…', anchor: tableAnchor });
+  startPresence(AUTOPILOT_AGENT.id);
+  setPresenceStatus(AUTOPILOT_AGENT.id, 'filling the table…');
+  if (tableAnchor) setPresenceCursor(AUTOPILOT_AGENT.id, tableAnchor.x, tableAnchor.y);
 
   try {
     const res = await fetch('/api/autopilot/table', {
@@ -399,11 +476,10 @@ export async function fillTable(
         type: 'table-card',
         props: { rows: nextRows },
       } as Parameters<typeof editor.updateShape>[0]);
-      setSession({
-        cardId,
-        status: 'filling the table…',
-        anchor: cellAnchor(editor, cardId, columns.length, nextRows.length, event.row, event.col, headerH),
-      });
+      const cell = cellAnchor(editor, cardId, columns.length, nextRows.length, event.row, event.col, headerH);
+      setSession({ cardId, status: 'filling the table…', anchor: cell });
+      // Hop the Writer avatar cell-to-cell so the user sees who is filling each one.
+      if (cell) setPresenceCursor(AUTOPILOT_AGENT.id, cell.x, cell.y);
     });
   } catch {
     /* aborted or network */
@@ -412,6 +488,7 @@ export async function fillTable(
       controllers.delete(cardId);
       stopStreaming(cardId);
       clearSession(cardId);
+      endPresence(AUTOPILOT_AGENT.id);
     }
   }
 }

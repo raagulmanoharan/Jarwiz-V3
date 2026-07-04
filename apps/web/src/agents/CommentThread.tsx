@@ -1,13 +1,14 @@
 /**
  * The comment thread — a card's conversation, shown beside it when the card is
- * selected. You comment; the agents are participants you can hand the thread to
- * with a tap (they reply in-line). Persisted per card (comments.ts).
+ * selected. You comment; Jarwiz is a participant you can hand the thread to
+ * with a tap (it replies in-line). Persisted per card (comments.ts).
  */
 
 import { useState, type CSSProperties } from 'react';
 import { useSyncExternalStore } from 'react';
+import { Sparkle } from 'lucide-react';
 import { stopEventPropagation, useEditor, useValue } from 'tldraw';
-import { AGENTS, getAgent, type AgentId } from '@jarwiz/shared';
+import { JARWIZ } from '@jarwiz/shared';
 import { addComment, getCommentsSnapshot, subscribeComments } from './comments';
 import { isCardShape } from './runRequest';
 import { useCommentReply } from './useCommentReply';
@@ -46,11 +47,12 @@ export function CommentThread() {
     setDraft('');
   };
 
-  const askAgent = (agentId: AgentId) => {
+  const askJarwiz = () => {
     const text = draft.trim();
     if (text) addComment(target.cardId, { author: 'you', text });
     setDraft('');
-    void ask(target.cardId, agentId);
+    // Server still picks the specialist; the comment author renders as Jarwiz.
+    void ask(target.cardId, JARWIZ.routingId);
   };
 
   return (
@@ -67,17 +69,17 @@ export function CommentThread() {
       {thread.length > 0 ? (
         <div className="jz-comments-list">
           {thread.map((m) => {
-            const agent = m.author === 'you' ? null : getAgent(m.author);
+            const isAgent = m.author !== 'you';
             return (
               <div key={m.id} className="jz-comment">
                 <div className="jz-comment-author">
-                  {agent ? (
+                  {isAgent ? (
                     <span
                       className="jz-comment-dot"
-                      style={{ '--agent-color': agent.color } as CSSProperties}
+                      style={{ '--agent-color': JARWIZ.color } as CSSProperties}
                     />
                   ) : null}
-                  {agent ? agent.name : 'You'}
+                  {isAgent ? JARWIZ.name : 'You'}
                 </div>
                 <div className="jz-comment-body">{m.text || '…'}</div>
               </div>
@@ -85,7 +87,7 @@ export function CommentThread() {
           })}
         </div>
       ) : (
-        <div className="jz-comments-empty">Leave a note, or ask an agent about this card.</div>
+        <div className="jz-comments-empty">Leave a note, or ask Jarwiz about this card.</div>
       )}
 
       <textarea
@@ -104,19 +106,16 @@ export function CommentThread() {
       />
 
       <div className="jz-comments-actions">
-        <span className="jz-comments-ask">Ask</span>
-        {AGENTS.map((agent) => (
-          <button
-            key={agent.id}
-            className="jz-comments-chip"
-            style={{ '--agent-color': agent.color } as CSSProperties}
-            title={`Ask ${agent.name}`}
-            aria-label={`Ask ${agent.name}`}
-            onClick={() => askAgent(agent.id)}
-          >
-            {agent.name[0]}
-          </button>
-        ))}
+        <button
+          className="jz-comments-chip jz-comments-chip--jarwiz"
+          style={{ '--agent-color': JARWIZ.color } as CSSProperties}
+          title={`Ask ${JARWIZ.name}`}
+          aria-label={`Ask ${JARWIZ.name}`}
+          onClick={askJarwiz}
+        >
+          <Sparkle size={12} strokeWidth={1.7} fill="currentColor" />
+          Ask Jarwiz
+        </button>
       </div>
     </div>
   );
