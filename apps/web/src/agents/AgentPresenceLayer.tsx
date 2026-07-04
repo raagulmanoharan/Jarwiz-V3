@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor, type TLShape, type TLShapeId } from 'tldraw';
-import { getAgent, type AgentMeta } from '@jarwiz/shared';
+import { JARWIZ, getAgent, type AgentMeta } from '@jarwiz/shared';
 import { AgentCursorLayer } from './AgentCursorLayer';
 import { AutopilotPresenceLayer } from './AutopilotPresenceLayer';
 import { AskAgentAffordance } from './AskAgentAffordance';
@@ -8,7 +8,6 @@ import { CommandPalette } from './CommandPalette';
 import { dissolveCluster, formCluster, onClusterJoin, type ClusterCandidate } from './cluster';
 import { ClusterButton } from './ClusterButton';
 import { CommentThread } from './CommentThread';
-import { MentionMenu } from './MentionMenu';
 import { dismissOffer, getOffer, hasOffer, upsertOffer, type Offer, type Suggestion } from './offers';
 import { ParticipantRoster } from './ParticipantRoster';
 import { buildRunRequest, isCardShape } from './runRequest';
@@ -65,20 +64,22 @@ export function AgentPresenceLayer() {
     [editor, run],
   );
 
-  // Summoned: "Ask an agent" on the current selection, with an optional brief.
-  const handlePickAgent = useCallback(
-    (agent: AgentMeta, brief?: string) => {
+  // Summoned: "Ask Jarwiz" on the current selection, with an optional brief.
+  // Internally always routes through the canonical Jarwiz identity — the
+  // server picks which specialist actually handles the run.
+  const handleAskJarwiz = useCallback(
+    (brief?: string) => {
       const shapes = editor
         .getSelectedShapeIds()
         .map((id) => editor.getShape(id))
         .filter(isCardShape);
 
       if (shapes.length === 0) {
-        notify('Select a card first, then ask an agent.');
+        notify('Select a card first, then ask Jarwiz.');
         return;
       }
       const [source, ...context] = shapes;
-      if (source) runOnShapes(agent, source, context, brief);
+      if (source) runOnShapes(getAgent(JARWIZ.routingId), source, context, brief);
     },
     [editor, notify, runOnShapes],
   );
@@ -174,7 +175,8 @@ export function AgentPresenceLayer() {
     [editor, refreshClusterOffer],
   );
 
-  // Addressed by name: an @mention (or any summon channel) calls an agent on a card.
+  // Summoned through the summon bus — internal routing key still flows through,
+  // even though the only public-facing identity is Jarwiz.
   useEffect(
     () =>
       onSummon(({ agentId, cardId }) => {
@@ -190,11 +192,10 @@ export function AgentPresenceLayer() {
       <AutopilotPresenceLayer />
       <SuggestionPills onAccept={handleAcceptOffer} />
       <ClusterButton onCluster={handleCluster} />
-      <AskAgentAffordance onPickAgent={handlePickAgent} />
-      <CommandPalette onPickAgent={handlePickAgent} />
-      <MentionMenu />
+      <AskAgentAffordance onAsk={handleAskJarwiz} />
+      <CommandPalette onAsk={handleAskJarwiz} />
       <CommentThread />
-      <ParticipantRoster onPick={handlePickAgent} />
+      <ParticipantRoster onAsk={handleAskJarwiz} />
       {toast ? <div className="jz-toast">{toast}</div> : null}
     </>
   );

@@ -23,7 +23,7 @@ import {
   type TLDefaultColorStyle,
   type TLShapeId,
 } from 'tldraw';
-import type { AgentEvent, AgentId, AgentMeta, AgentRunRequest } from '@jarwiz/shared';
+import type { AgentEvent, AgentMeta, AgentRunRequest } from '@jarwiz/shared';
 import {
   DOC_CARD_SIZE,
   LINK_CARD_SIZE,
@@ -38,13 +38,8 @@ import { fetchLinkPreview } from '../ingest/linkPreview';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from './presence';
 import { startStreaming, stopStreaming } from './streaming';
 
-/** Agent identity hue → nearest tldraw palette color (arrows use the palette). */
-const ARROW_COLOR: Record<AgentId, TLDefaultColorStyle> = {
-  researcher: 'blue',
-  summarizer: 'orange',
-  brainstormer: 'light-red',
-  writer: 'green',
-};
+/** Jarwiz provenance arrows use a single neutral hue — one identity. */
+const ARROW_COLOR: TLDefaultColorStyle = 'grey';
 
 export function useAgentRun() {
   const editor = useEditor();
@@ -240,7 +235,7 @@ function applyAgentEvent(
         resolveId(event.fromCardId),
         resolveId(event.toCardId),
         event.label,
-        ARROW_COLOR[agent.id],
+        ARROW_COLOR,
       );
       break;
 

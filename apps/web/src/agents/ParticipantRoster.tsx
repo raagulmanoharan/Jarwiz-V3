@@ -1,17 +1,17 @@
 /**
- * The participant roster — a quiet face-pile of who's in the room: you, and the
- * agents. An agent's avatar breathes while it's working (presence store). It
- * makes the agents feel like members, not features; clicking one calls it on
- * the current selection (another way to address a teammate, alongside @mention
- * and ⌘K).
+ * The participant roster — a quiet face-pile of who's in the room: you, and
+ * Jarwiz. The Jarwiz avatar breathes while it's working (presence store).
+ * Clicking it asks Jarwiz on the current selection.
  */
 
 import { useSyncExternalStore, type CSSProperties } from 'react';
-import { AGENTS, type AgentMeta } from '@jarwiz/shared';
+import { Sparkle } from 'lucide-react';
+import { JARWIZ } from '@jarwiz/shared';
 import { getPresenceSnapshot, subscribePresence } from './presence';
 
-export function ParticipantRoster({ onPick }: { onPick: (agent: AgentMeta) => void }) {
+export function ParticipantRoster({ onAsk }: { onAsk: () => void }) {
   const snapshot = useSyncExternalStore(subscribePresence, getPresenceSnapshot, getPresenceSnapshot);
+  const active = Object.values(snapshot).some((p) => p?.active);
 
   return (
     <div className="jz-roster" role="group" aria-label="Who's in the room">
@@ -19,21 +19,17 @@ export function ParticipantRoster({ onPick }: { onPick: (agent: AgentMeta) => vo
         You
       </span>
       <span className="jz-roster-divider" aria-hidden />
-      {AGENTS.map((agent) => {
-        const active = snapshot[agent.id]?.active ?? false;
-        return (
-          <button
-            key={agent.id}
-            className={`jz-roster-agent${active ? ' jz-roster-active' : ''}`}
-            style={{ '--agent-color': agent.color } as CSSProperties}
-            title={`${agent.name} — ${agent.tagline}`}
-            aria-label={`Ask ${agent.name}`}
-            onClick={() => onPick(agent)}
-          >
-            <span className="jz-roster-avatar">{agent.name[0]}</span>
-          </button>
-        );
-      })}
+      <button
+        className={`jz-roster-agent jz-roster-agent--jarwiz${active ? ' jz-roster-active' : ''}`}
+        style={{ '--agent-color': JARWIZ.color } as CSSProperties}
+        title={`${JARWIZ.name} — ${JARWIZ.tagline}`}
+        aria-label={`Ask ${JARWIZ.name}`}
+        onClick={onAsk}
+      >
+        <span className="jz-roster-avatar">
+          <Sparkle size={14} strokeWidth={1.7} fill="currentColor" />
+        </span>
+      </button>
     </div>
   );
 }

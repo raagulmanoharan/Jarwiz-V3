@@ -14,4 +14,10 @@ export default defineConfig({
   // `vite preview` serves the production build with no HMR — used by the
   // screenshot harness so the page never enters an HMR reload loop.
   preview: { proxy: apiProxy },
+  // tldraw's asset imports use `?url` suffixes that Vite's dep optimizer
+  // doesn't resolve, leaving the URLs undefined at runtime. Skip pre-bundling
+  // for these so they hit the regular asset pipeline.
+  optimizeDeps: {
+    exclude: ['@tldraw/assets/imports.vite', '@tldraw/assets'],
+  },
 });

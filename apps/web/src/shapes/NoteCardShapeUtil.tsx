@@ -14,7 +14,6 @@ import {
 } from 'tldraw';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { useAutopilot } from '../agents/useAutopilot';
-import { useMention } from '../agents/useMention';
 import { useTypingPause } from '../agents/useTypingPause';
 import { NOTE_RADIUS, roundedRectPath } from './cardGeometry';
 
@@ -97,7 +96,6 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
   const isStreaming = streamingSet.has(shape.id);
   const autopilot = useAutopilot();
-  const mention = useMention();
   const [paused, resetPause] = useTypingPause(isEditing ? text : '', 1800);
   const showNudge = isEditing && paused && !isStreaming;
 
@@ -108,11 +106,10 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
         <textarea
           autoFocus
           value={text}
-          placeholder="Write something… (Tab to continue, @ to call an agent)"
+          placeholder="Write something… (Tab to continue)"
           style={{ pointerEvents: 'all' }}
           onKeyDown={(e) => {
             if (e.key === 'Tab') resetPause();
-            if (mention.onKeyDown(shape.id, e)) return;
             autopilot.onKeyDown(shape.id, e);
           }}
           onFocus={(e) => {
@@ -121,13 +118,11 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
           }}
           onChange={(e) => {
             const value = e.currentTarget.value;
-            const caret = e.currentTarget.selectionStart ?? value.length;
             editor.updateShape<NoteCardShape>({
               id: shape.id,
               type: 'note-card',
               props: { text: value },
             });
-            mention.sync(shape.id, value, caret);
           }}
           onPointerDown={stopEventPropagation}
           onPointerMove={stopEventPropagation}

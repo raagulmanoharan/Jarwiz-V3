@@ -17,22 +17,14 @@ import { ToolRail } from './ui/ToolRail';
 const tldrawAssetUrls = getAssetUrlsByImport();
 import { useSync } from '@tldraw/sync';
 import { PromptBar } from './ask/PromptBar';
-import { CardActionBar } from './ask/CardActionBar';
-import { DiscussLayer } from './ask/DiscussLayer';
-import { ClarifyLayer } from './ask/ClarifyLayer';
-import { DraftControls } from './ask/DraftControls';
-import { RegenControls } from './ask/RegenControls';
-import { SelectionAsk } from './ask/SelectionAsk';
-import { Timeline } from './log/Timeline';
 import { registerIngestion } from './ingest/registerIngestion';
 import { AgentCursorLayer } from './agents/AgentCursorLayer';
-import { AgentTaskLayer } from './agents/AgentTaskLayer';
 import { cardShapeUtils } from './shapes';
-import { BoardEntry } from './boards/BoardEntry';
 import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
-import { EmptyState } from './ui/EmptyState';
 import { Topbar } from './ui/Topbar';
 import { HelpLayer } from './ui/HelpLayer';
+import { SidePanel } from './ui/SidePanel';
+import { ClaudePanel } from './ui/ClaudePanel';
 
 /**
  * Everything Jarwiz floats over the canvas, in one overlay slot. While we
@@ -42,21 +34,28 @@ import { HelpLayer } from './ui/HelpLayer';
 function JarwizOverlay() {
   return (
     <>
-      <EmptyState />
-      <BoardEntry />
+      {/* Canvas frame — the four chrome surfaces we're designing right now. */}
       <Topbar />
-      <CardActionBar />
-      <ClarifyLayer />
-      <DraftControls />
-      <RegenControls />
-      <SelectionAsk />
-      <DiscussLayer />
-      <AgentCursorLayer />
-      <AgentTaskLayer />
+      <SidePanel />
+      <ClaudePanel />
       <ToolRail />
       <PromptBar />
-      <Timeline />
+      <AgentCursorLayer />
       <HelpLayer />
+
+      {/* Behavioural overlays — disabled while we design the chrome. Re-enable
+       *  one at a time as we get back to them.
+       *  <EmptyState />
+       *  <BoardEntry />
+       *  <CardActionBar />
+       *  <ClarifyLayer />
+       *  <DraftControls />
+       *  <RegenControls />
+       *  <SelectionAsk />
+       *  <DiscussLayer />
+       *  <AgentTaskLayer />
+       *  <Timeline />
+       */}
     </>
   );
 }
@@ -86,6 +85,22 @@ const components: TLComponents = {
 
 const handleMount = (editor: Editor) => {
   registerIngestion(editor);
+  // Suppress tldraw's blue selection chrome. updateThemes with a callback
+  // deep-merges into the existing theme so no other colors are wiped out.
+  editor.updateThemes((themes) => {
+    const t = themes['default'];
+    if (!t) return themes;
+    // Hide all canvas-drawn selection chrome (box, corners, strokes).
+    // Corner squares fill with `background`; setting it transparent hides them
+    // without affecting the CSS-driven canvas background (.tl-background).
+    t.colors.light.selectionStroke = 'transparent';
+    t.colors.light.selectionFill  = 'transparent';
+    t.colors.light.background     = 'transparent';
+    t.colors.dark.selectionStroke  = 'transparent';
+    t.colors.dark.selectionFill   = 'transparent';
+    t.colors.dark.background      = 'transparent';
+    return themes;
+  });
   // Dev convenience + e2e hook: reach the editor from the console.
   (window as unknown as { editor: Editor }).editor = editor;
 };

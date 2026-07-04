@@ -3,7 +3,7 @@
  * runs are concurrent background tasks in autopilotStore (so you can fire one
  * and go work another card). This just maps keys to the store, per card id.
  *
- *   Tab           → continue prose / fill the table (if not already running here)
+ *   Tab           → start a run if idle, or take over (abort) if one is running
  *   Esc           → stop this card's fill
  *   any input key → yield instantly (abort; the keystroke takes over)
  */
@@ -20,7 +20,9 @@ export function useAutopilot() {
       if (e.key === 'Tab') {
         e.preventDefault();
         e.stopPropagation(); // don't let tldraw move selection on Tab
-        if (!isAutopilotRunning(shapeId)) {
+        if (isAutopilotRunning(shapeId)) {
+          abortAutopilot(shapeId); // take over — hand the pen back to the user
+        } else {
           const shape = editor.getShape(shapeId);
           if (shape?.type === 'table-card') void fillTable(editor, shapeId);
           else void continueProse(editor, shapeId);

@@ -22,8 +22,7 @@ body,
 /* Keyboard focus: a visible ring on our interactive overlays. Individual rules
    set `outline: none` for the mouse case; restore a clear indicator for
    keyboard users (focus-visible only, so it never shows on click). */
-.jz-palette-item,
-.jz-mention-item,
+.jz-palette-summon,
 .jz-roster-agent,
 .jz-comments-chip,
 .jz-comments-input,
@@ -52,41 +51,59 @@ body,
   font-family: var(--jz-font-ui);
 }
 
-/* Warm paper canvas: base wash, faint dot grid, and a soft vignette so the
-   centre reads as a lit page. The dot grid is a tiled radial-gradient. */
+/* Override tldraw's selected colour to a subtle white — kills the blue
+   indicator, selection box stroke, and handle fills in one variable. */
+.jarwiz-app .tl-container {
+  --tl-color-selected: rgba(255, 255, 255, 0.18);
+  --tl-color-selected-contrast: rgba(255, 255, 255, 0.18);
+}
+
+/* Suppress tldraw's blue selection chrome entirely — box and corner squares
+   are canvas-drawn and read these CSS vars directly. */
+.jarwiz-app {
+  --tl-color-selection-stroke: transparent;
+  --tl-color-selection-fill: transparent;
+}
+
+/* Hide all resize / rotate handles; edges remain pointer-event targets so
+   dragging the border still resizes. Cursor hints which axis you're on. */
+.jarwiz-app svg [class*="handle"],
+.jarwiz-app svg [class*="Handle"],
+.jarwiz-app svg [class*="rotate"] {
+  display: none !important;
+}
+/* Edge hit targets: keep pointer events so dragging edges resizes the card.
+   Tldraw sets the correct resize cursor via its own overlay cursor system. */
+.jarwiz-app [class*="selection__edge"],
+.jarwiz-app [class*="SelectionEdge"] {
+  pointer-events: all;
+}
+
+/* Flora-style canvas: flat neutral base with a crisp dot grid. Dots are
+   faint enough that shapes/text dominate — just enough to orient the space. */
 .jarwiz-app .tl-background {
   background-color: var(--jz-paper);
   background-image:
     radial-gradient(
-      120% 120% at 50% 30%,
-      transparent 55%,
-      color-mix(in srgb, var(--jz-paper-deep) 60%, transparent) 100%
-    ),
-    radial-gradient(circle, var(--jz-ink-300) 1px, transparent 1.4px);
-  background-size:
-    100% 100%,
-    24px 24px;
-  background-position:
-    center,
-    center;
+      circle,
+      color-mix(in srgb, var(--jz-ink-400) 55%, transparent) 0.5px,
+      transparent 0.8px
+    );
+  background-size: 16px 16px;
 }
 
-/* Soften the remaining UI panels (zoom / navigation) into the aesthetic, and
-   move zoom to the bottom-right corner (Stitch layout — left is for the log). */
+/* Hide tldraw's bottom-right navigation panel (mini-map + zoom). The top-bar
+   ZoomDropdown is the single zoom UI now — keep the canvas edge clean. */
 .jarwiz-app .tlui-navigation-panel {
-  border-radius: var(--jz-radius-md);
-  box-shadow: var(--jz-e3);
-  background: var(--jz-surface-raised);
-  position: absolute;
-  left: auto;
-  right: 14px;
-  bottom: 14px;
+  display: none !important;
 }
 
-/* Our own tool rail (ToolRail.tsx) on the right edge replaces tldraw's toolbar. */
+/* Tool rail — Flora-style vertical pill, vertically centered on the left edge.
+ * A prominent ⊕ plus button at the top (white circle), then icon buttons,
+ * a hairline divider, then secondary icons. */
 .jz-rail {
   position: absolute;
-  right: 14px;
+  left: 14px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 300;
@@ -94,54 +111,39 @@ body,
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: var(--jz-space-2);
-  border-radius: var(--jz-radius-lg);
+  gap: 12px;
+  padding: 10px 8px;
+  width: 52px;
+  border-radius: 9999px;
   background: var(--jz-surface-raised);
   box-shadow: var(--jz-e3);
   border: 1px solid var(--jz-hairline);
+  box-sizing: border-box;
 }
 
-.jz-rail-create {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1px;
-  width: 44px;
-  height: 42px;
-  border: none;
-  border-radius: var(--jz-radius-md);
-  background: transparent;
-  color: var(--jz-ink-700);
-  cursor: pointer;
-  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
-}
 
-.jz-rail-create:hover { background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent); color: var(--jz-ink-900); }
-.jz-rail-label { font-size: 9px; font-weight: 600; letter-spacing: 0.02em; color: var(--jz-ink-400); }
-
-.jz-rail-divider { width: 26px; height: 1px; margin: 4px 0; background: var(--jz-hairline-strong); }
 
 .jz-rail-tool {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
+  width: 36px;
   height: 36px;
+  padding: 0;
   border: none;
-  border-radius: var(--jz-radius-md);
+  border-radius: 9999px;
   background: transparent;
-  color: var(--jz-ink-600);
+  color: var(--jz-ink-900);
   cursor: pointer;
-  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
+  flex-shrink: 0;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out),
+              color var(--jz-dur-fast) var(--jz-ease-out);
 }
-
-.jz-rail-tool:hover { background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent); color: var(--jz-ink-900); }
-
+.jz-rail-tool:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 10%, transparent);
+}
 .jz-rail-tool--active {
-  background: var(--jz-ink-900);
-  color: #faf6ec;
+  background: color-mix(in srgb, var(--jz-ink-900) 16%, transparent);
 }
 
 /* Calm the re-enabled primitive toolbar + style panel (canvas pivot P0) into the
@@ -175,17 +177,281 @@ body,
   color: var(--jz-ink-900);
 }
 
-/* ─── Wordmark chip ─────────────────────────────────────────────────────── */
+/* ─── Top bar (Flora-aligned) ───────────────────────────────────────────── */
 
 .jz-topbar {
   position: absolute;
   top: 14px;
   left: 14px;
+  right: 14px;
   z-index: 300;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+.jz-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.jz-topbar-right {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Hamburger / logo button — fully round. The default face is the Jarwiz mark
+ * (brand); when the side panel is open the icon cross-fades to a hamburger so
+ * the same button reads as a "close" affordance. Both glyphs are stacked and
+ * their opacity is driven by the --open state. */
+.jz-logo-btn {
+  pointer-events: auto;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 36px;
+  padding: 0;
+  border-radius: 9999px;
+  color: var(--jz-ink-900);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  border: 1px solid var(--jz-hairline);
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out),
+              transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-logo-btn:hover { background: color-mix(in srgb, var(--jz-ink-900) 4%, var(--jz-surface-raised)); }
+.jz-logo-btn:active { transform: scale(0.96); }
+.jz-logo-glyph {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity var(--jz-dur-fast) var(--jz-ease-out),
+              transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-logo-glyph--brand { opacity: 1; transform: rotate(0); }
+.jz-logo-glyph--menu  { opacity: 0; transform: rotate(-45deg); }
+.jz-logo-btn--open .jz-logo-glyph--brand { opacity: 0; transform: rotate(45deg); }
+.jz-logo-btn--open .jz-logo-glyph--menu  { opacity: 1; transform: rotate(0); }
+
+/* Title block: board name (top, large, inline-editable) + "last saved" hint
+ * below. The hamburger logo is the only entry point for switching boards. */
+.jz-title-block {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  pointer-events: auto;
+}
+.jz-title-name-btn,
+.jz-title-input {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 4px;
+  margin: 0;
+  border: none;
+  border-radius: var(--jz-radius-xs);
+  background: transparent;
+  color: var(--jz-ink-900);
+  font-family: var(--jz-font-ui);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+  cursor: text;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-title-name-btn:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 5%, transparent);
+}
+.jz-title-name {
+  font: inherit;
+  color: inherit;
+  white-space: nowrap;
+}
+.jz-title-input {
+  min-width: 80px;
+  outline: none;
+  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+}
+.jz-title-input:focus {
+  outline: none;
+  box-shadow: none;
+  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
+}
+
+/* Subtle "Saved at HH:MM" line beneath the board name. */
+.jz-last-saved {
+  padding-left: 5px;
+  font-family: var(--jz-font-ui);
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--jz-ink-400);
+  letter-spacing: 0.01em;
+  line-height: 1;
+  white-space: nowrap;
   pointer-events: none;
+  user-select: none;
+}
+
+/* Zoom dropdown (top bar — replaces the bottom-right zoom pill). */
+.jz-zoom-dd-wrap {
+  position: relative;
+  pointer-events: auto;
+}
+.jz-zoom-dd {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px 0 12px;
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  color: var(--jz-ink-900);
+  font-family: var(--jz-font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  cursor: pointer;
+  box-shadow: var(--jz-e1);
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out), background var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-zoom-dd:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--jz-ink-900) 4%, var(--jz-surface-raised));
+}
+.jz-zoom-dd-pct {
+  font-variant-numeric: tabular-nums;
+}
+.jz-zoom-dd-caret {
+  flex: 0 0 auto;
+  color: var(--jz-ink-500);
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-zoom-dd:hover .jz-zoom-dd-caret { color: var(--jz-ink-700); }
+.jz-zoom-dd--open .jz-zoom-dd-caret {
+  transform: rotate(180deg);
+  color: var(--jz-ink-900);
+}
+.jz-zoom-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  padding: 6px;
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e4);
+  border: 1px solid var(--jz-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  z-index: 320;
+}
+.jz-zoom-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--jz-radius-sm);
+  background: transparent;
+  color: var(--jz-ink-900);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--jz-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+}
+.jz-zoom-item:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+}
+.jz-zoom-item kbd {
+  font-family: var(--jz-font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--jz-ink-400);
+  background: transparent;
+  border: none;
+}
+.jz-zoom-divider {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--jz-hairline);
+}
+
+/* Share — icon + label pill. Mirrors the zoom button's metrics. */
+.jz-share {
+  pointer-events: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-pill);
+  cursor: pointer;
+  background: var(--jz-surface-raised);
+  color: var(--jz-ink-900);
+  font-family: var(--jz-font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--jz-e1);
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out), background var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-share:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--jz-ink-900) 4%, var(--jz-surface-raised));
+}
+.jz-share svg {
+  color: var(--jz-ink-700);
+}
+
+/* Theme toggle — single sun/moon icon button with a gentle flip animation. */
+.jz-theme-toggle {
+  pointer-events: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--jz-hairline);
+  border-radius: 50%;
+  cursor: pointer;
+  background: var(--jz-surface-raised);
+  color: var(--jz-ink-700);
+  box-shadow: var(--jz-e1);
+  transition: color var(--jz-dur-fast) var(--jz-ease-out), transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-theme-toggle:hover {
+  color: var(--jz-ink-900);
+  transform: translateY(-1px);
+}
+.jz-theme-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* keyframe runs once on remount (key={theme} in JSX). */
+  animation: jz-theme-flip var(--jz-dur-base) var(--jz-ease-spring) both;
+}
+@keyframes jz-theme-flip {
+  0%   { transform: scale(0.6) rotate(-90deg); opacity: 0; }
+  60%  { transform: scale(1.08) rotate(8deg);  opacity: 1; }
+  100% { transform: scale(1) rotate(0);        opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-theme-icon { animation: none; }
 }
 
 .jz-wordmark {
@@ -241,7 +507,7 @@ body,
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--jz-surface);
+  background: var(--jz-card-surface);
   border-radius: var(--jz-radius-lg);
   box-shadow: var(--jz-e2);
   overflow: hidden;
@@ -1481,7 +1747,7 @@ body,
   display: flex;
   flex-direction: column;
   position: relative;
-  background: var(--jz-surface);
+  background: var(--jz-card-surface);
   border-radius: var(--jz-radius-lg);
   box-shadow: var(--jz-e2);
   border: 1px solid var(--jz-hairline-strong);
@@ -1637,22 +1903,22 @@ body,
 .jz-autopilot-nudge {
   position: absolute;
   bottom: 10px;
-  right: 12px;
+  right: 10px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 9px 2px 7px;
-  border-radius: var(--jz-radius-full);
+  gap: var(--jz-space-2);
+  padding: 5px 10px 5px 8px;
+  border-radius: var(--jz-radius-sm);
   background: var(--jz-surface-raised);
   border: 1px solid var(--jz-hairline-strong);
-  font-size: 11px;
+  font-size: var(--jz-text-caption-size);
   font-family: var(--jz-font-ui);
   color: var(--jz-ink-500);
   pointer-events: none;
   user-select: none;
   z-index: 10;
-  animation: jz-fade-in var(--jz-dur-base) var(--jz-ease-out) both;
-  box-shadow: var(--jz-e1);
+  animation: jz-nudge-pop var(--jz-dur-base) var(--jz-ease-spring) both;
+  box-shadow: var(--jz-e2);
 }
 
 .jz-autopilot-nudge--table {
@@ -1661,9 +1927,31 @@ body,
   box-shadow: none;
 }
 
-.jz-autopilot-nudge-spark {
-  font-size: 9px;
-  color: var(--jz-accent, #7a5cff);
+/* Takeover variant — shown while autopilot is writing. Slightly warmer to
+   signal the agent is live; border pulses gently. */
+.jz-autopilot-nudge--takeover {
+  animation: jz-nudge-pop var(--jz-dur-base) var(--jz-ease-spring) both;
+  border-color: color-mix(in srgb, var(--jz-ink-900) 28%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jz-autopilot-nudge--takeover { animation: jz-fade-in var(--jz-dur-base) var(--jz-ease-out) both; }
+}
+
+
+.jz-autopilot-nudge-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 5px;
+  border-radius: var(--jz-radius-xs);
+  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
+  border: 1px solid var(--jz-hairline-strong);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  font-weight: 500;
+  color: var(--jz-ink-700);
+  line-height: 1.4;
 }
 
 /* ── Table editing: per-column / per-row delete ─────────────────────────────
@@ -1797,6 +2085,22 @@ body,
   line-height: 1;
   letter-spacing: -0.01em;
   user-select: none;
+}
+
+/* The single Jarwiz identity — white circle with a dark Sparkle mark. The
+   ring still pulses in the agent color but the disc itself is paper-white so
+   the brand reads the same way the autopilot caret does. */
+.jz-avatar--jarwiz .jz-avatar-circle {
+  background: var(--jz-paper, #fffefb);
+  border-color: var(--jz-paper, #fffefb);
+  color: var(--jz-ink-900);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.18),
+    0 1px 3px rgba(0, 0, 0, 0.10);
+}
+.jz-avatar--jarwiz .jz-avatar-ring {
+  background: var(--jz-ink-900);
+  opacity: 0.20;
 }
 
 /* Name + status callout below the circle. */
@@ -2104,19 +2408,15 @@ body,
   box-shadow: var(--jz-e2);
   overflow: hidden;
   font-family: var(--jz-font-ui);
-  background: var(--jz-surface);
-  border: 1px solid var(--jz-hairline-strong);
+  background: var(--jz-card-surface);
+  border: 1px solid var(--jz-hairline);
   box-sizing: border-box;
 }
 
-.jz-doc-header {
+/* Title row — only shown in read mode when a title exists */
+.jz-doc-title-row {
   flex: none;
-  min-height: 38px;
-  display: flex;
-  align-items: center;
-  padding: var(--jz-space-2) var(--jz-space-5);
-  gap: var(--jz-space-3);
-  border-bottom: 1px solid var(--jz-hairline);
+  padding: var(--jz-space-5) var(--jz-space-5) 0;
 }
 
 .jz-doc-title {
@@ -2132,44 +2432,98 @@ body,
   min-width: 0;
 }
 
-.jz-doc-title-input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-family: var(--jz-font-display);
-  font-optical-sizing: auto;
-  font-size: var(--jz-text-heading-size);
-  line-height: var(--jz-text-heading-lh);
-  font-weight: 560;
-  color: var(--jz-ink-900);
-}
-
 .jz-doc-content {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: var(--jz-space-6);
+  padding: var(--jz-space-5) var(--jz-space-5) var(--jz-space-6);
   box-sizing: border-box;
   font-size: var(--jz-text-body-size);
   line-height: var(--jz-text-body-lh);
   color: var(--jz-ink-700);
 }
 
-/* Read mode: content lays out at its natural height inside the fixed-width card.
-   The shape height is fitted to it (Miro text-box behaviour), and clipped past
-   the threshold when collapsed. */
+/* Read mode: content lays out at its natural height inside the fixed-width card. */
 .jz-doc-auto .jz-doc-content {
   flex: none;
   overflow: visible;
 }
 
-.jz-doc-content.jz-doc-placeholder {
-  display: flex;
+/* Selected state — subtle ring drawn in CSS, bypassing tldraw canvas chrome */
+.jz-doc--selected {
+  box-shadow: var(--jz-e2), 0 0 0 1.5px rgba(255, 255, 255, 0.55);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Edit mode — same surface as read, border just slightly more visible on focus */
+.jz-doc-editing {
+  border-color: var(--jz-hairline-strong);
+}
+
+/* Autopilot active: render text via an overlay mirror so the Sparkle can sit
+   inline right after the last character — browser layout, no measurement.
+   The textarea sits behind the mirror, still focused for key events, but its
+   own glyphs and caret are transparent so we don't double-render. */
+.jz-doc-autopilot .jz-doc-textarea {
+  color: transparent;
+  caret-color: transparent;
+}
+
+.jz-autopilot-mirror {
+  position: absolute;
+  inset: 0;
+  padding: var(--jz-space-5) var(--jz-space-5) var(--jz-space-10);
+  box-sizing: border-box;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-size);
+  line-height: var(--jz-text-body-lh);
+  color: var(--jz-ink-700);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Sparkle cursor — inline element placed right after the last character by
+   normal text flow. Breathing animation gives it presence while the agent
+   is thinking and typing. */
+.jz-autopilot-cursor {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 1px;
+  vertical-align: -3px; /* sit on the text baseline */
+  border-radius: 50%;
+  background: var(--jz-ink-900);
+  color: var(--jz-paper);
+  animation: jz-autopilot-cursor-in var(--jz-dur-fast) var(--jz-ease-spring) both,
+             jz-autopilot-cursor-breathe 1400ms ease-in-out infinite;
+}
+
+@keyframes jz-autopilot-cursor-in {
+  from { opacity: 0; transform: scale(0.5); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes jz-autopilot-cursor-breathe {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%      { transform: scale(1.12); opacity: 0.85; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jz-autopilot-cursor { animation: none; }
+}
+
+/* Placeholder shown in read mode on empty cards */
+.jz-doc-placeholder-text {
   color: var(--jz-ink-400);
+  font-size: var(--jz-text-body-size);
+  line-height: var(--jz-text-body-lh);
+  pointer-events: none;
   user-select: none;
 }
 
@@ -2184,18 +2538,83 @@ body,
   font-size: var(--jz-text-body-size);
   line-height: var(--jz-text-body-lh);
   color: var(--jz-ink-700);
-  padding: var(--jz-space-6);
+  /* Bottom padding reserves room for the "Press Tab to continue" / "to take
+     over" nudge so the text never sits under it. */
+  padding: var(--jz-space-5) var(--jz-space-5) var(--jz-space-10);
   box-sizing: border-box;
   margin: 0;
+  overflow: hidden;
 }
 
-/* Markdown rendering within doc cards — editorial headings in the serif. */
+.jz-doc-textarea::placeholder {
+  color: var(--jz-ink-400);
+}
+
+/* Footer bar — slim row at the bottom of edit mode */
+.jz-doc-footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-top: 1px solid var(--jz-hairline);
+  gap: 4px;
+}
+
+.jz-doc-footer-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--jz-ink-500);
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out),
+              color var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-doc-footer-btn:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
+  color: var(--jz-ink-900);
+}
+
+/* Legacy — kept for any code still referencing title input */
+.jz-doc-title-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--jz-font-display);
+  font-optical-sizing: auto;
+  font-size: var(--jz-text-heading-size);
+  line-height: var(--jz-text-heading-lh);
+  font-weight: 560;
+  color: var(--jz-ink-900);
+}
+
+/* Markdown rendering within doc cards — editorial headings in the serif.
+ * gap: 0 because blank lines in source are rendered as explicit empty rows so
+ * read mode matches the textarea visually — no phantom gaps, no missing ones. */
 .jz-markdown {
   display: flex;
   flex-direction: column;
-  gap: var(--jz-space-4);
+  gap: 0;
   max-width: 68ch;
 }
+
+.jz-md-blank {
+  height: var(--jz-text-body-lh);
+}
+
+/* Space before block-level elements that follow something else */
+.jz-markdown > * + .jz-md-h1,
+.jz-markdown > * + .jz-md-h2,
+.jz-markdown > * + .jz-md-h3 { margin-top: var(--jz-space-5); }
+.jz-markdown > .jz-md-p + .jz-md-ul,
+.jz-markdown > .jz-md-ul + .jz-md-p { margin-top: var(--jz-space-3); }
 
 .jz-md-h1,
 .jz-md-h2,
@@ -2521,78 +2940,25 @@ body,
   border-color: color-mix(in srgb, var(--jz-ink-900) 30%, transparent);
 }
 
-.jz-palette-list {
-  display: flex;
-  flex-direction: column;
-  padding: var(--jz-space-2);
-  outline: none;
-}
-
-.jz-palette-item {
-  display: flex;
+.jz-palette-summon {
+  display: inline-flex;
   align-items: center;
-  gap: var(--jz-space-4);
+  gap: 8px;
+  align-self: flex-end;
+  margin: 0 var(--jz-space-4) var(--jz-space-3);
+  padding: 8px 14px;
   border: none;
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-  padding: 10px 12px;
   border-radius: var(--jz-radius-sm);
-  transition: background var(--jz-dur-fast) var(--jz-ease-out);
-}
-
-.jz-palette-item-active {
-  background: color-mix(in srgb, var(--agent-color) 12%, transparent);
-}
-
-.jz-palette-avatar {
-  flex: none;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--agent-color);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 1px 3px color-mix(in srgb, var(--agent-color) 45%, transparent);
-}
-
-.jz-palette-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  flex: 1;
-}
-
-.jz-palette-name {
-  font-size: var(--jz-text-body-size);
+  background: var(--jz-ink-900);
+  color: var(--jz-paper);
+  font: inherit;
   font-weight: 600;
-  color: var(--jz-ink-900);
-}
-
-.jz-palette-tagline {
-  font-size: var(--jz-text-caption-size);
-  line-height: 1.35;
-  color: var(--jz-ink-400);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.jz-palette-enter {
-  flex: none;
-  font-size: 14px;
-  color: var(--agent-color);
-  opacity: 0;
+  cursor: pointer;
   transition: opacity var(--jz-dur-fast) var(--jz-ease-out);
 }
-
-.jz-palette-item-active .jz-palette-enter {
-  opacity: 0.85;
+.jz-palette-summon:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .jz-palette-footer {
@@ -2625,92 +2991,17 @@ body,
   }
 }
 
-/* ─── @mention picker (address an agent by name) ────────────────────────── */
-
-.jz-mention {
-  position: absolute;
-  z-index: 315;
-  transform: translateY(calc(-100% - 8px));
-  pointer-events: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--jz-space-1);
-  min-width: 240px;
-  padding: var(--jz-space-2);
-  border-radius: var(--jz-radius-md);
-  background: var(--jz-surface-raised);
-  box-shadow: var(--jz-e3);
-  animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
-  transform-origin: bottom left;
+@keyframes jz-nudge-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-/* Flip downward when there's no room above the card top. */
-.jz-mention-below {
-  transform: translateY(8px);
-  transform-origin: top left;
-}
-
-.jz-mention-head {
-  padding: 4px 8px 2px;
-  font-size: var(--jz-text-micro-size);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--jz-ink-400);
-}
-
-.jz-mention-item {
-  display: flex;
-  align-items: center;
-  gap: var(--jz-space-3);
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-  padding: 7px 8px;
-  border-radius: var(--jz-radius-sm);
-  transition: background var(--jz-dur-fast) var(--jz-ease-out);
-}
-
-.jz-mention-item:hover {
-  background: color-mix(in srgb, var(--agent-color) 12%, transparent);
-}
-
-.jz-mention-avatar {
-  flex: none;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--agent-color);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.jz-mention-meta {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.jz-mention-name {
-  font-size: var(--jz-text-body-sm-size);
-  font-weight: 600;
-  color: var(--jz-ink-900);
-}
-
-.jz-mention-tagline {
-  font-size: var(--jz-text-micro-size);
-  line-height: 1.3;
-  color: var(--jz-ink-400);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 280px;
-}
 
 /* ─── Participant roster (who's in the room) ────────────────────────────── */
 
@@ -2782,6 +3073,19 @@ body,
   color: #fff;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--agent-color) 22%, transparent);
   animation: jz-avatar-pulse-soft 1.6s ease-in-out infinite;
+}
+
+/* Jarwiz variant: paper-on-ink instead of tinted-by-agent-color. Active state
+   inverts (paper fill + dark Sparkle) for a quiet "I'm working" cue. */
+.jz-roster-agent--jarwiz .jz-roster-avatar {
+  background: var(--jz-paper, #fffefb);
+  color: var(--jz-ink-900);
+  box-shadow: inset 0 0 0 1.5px var(--jz-hairline-strong);
+}
+.jz-roster-agent--jarwiz.jz-roster-active .jz-roster-avatar {
+  background: var(--jz-ink-900);
+  color: var(--jz-paper, #fffefb);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--jz-ink-900) 18%, transparent);
 }
 
 @keyframes jz-avatar-pulse-soft {
@@ -2932,6 +3236,22 @@ body,
   transform: translateY(-1px);
 }
 
+/* Jarwiz chip: icon + text pill (paper-on-ink), distinct from the round
+   per-agent chip. Width is auto so the label fits. */
+.jz-comments-chip--jarwiz {
+  width: auto;
+  height: 26px;
+  border-radius: 999px;
+  gap: 6px;
+  padding: 0 10px 0 8px;
+  background: var(--jz-ink-900);
+  color: var(--jz-paper, #fffefb);
+  font-size: var(--jz-text-micro-size);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--jz-ink-900) 28%, transparent);
+}
+
 /* ─── Reduced motion: collapse travel/scale to quiet fades ──────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -2954,7 +3274,7 @@ body,
   .jz-toast,
   .jz-palette,
   .jz-firstrun,
-  .jz-mention {
+  .jz-autopilot-nudge {
     animation-name: jz-fade-in;
   }
   .jz-dock-btn {
@@ -3375,11 +3695,11 @@ body,
   color: var(--jz-ink-700);
 }
 
-/* ─── Prompt bar (bottom-centre agent query box, Stitch-style) ───────────── */
+/* ─── Prompt bar (bottom-centre, two-row layout) ─────────────────────────── */
 .jz-promptbar-dock {
   position: absolute;
   left: 50%;
-  bottom: 22px; /* bottom-centre is the prompt bar's alone (tools moved to the right rail) */
+  bottom: 22px;
   transform: translateX(-50%);
   z-index: 320;
   pointer-events: none;
@@ -3389,25 +3709,18 @@ body,
   gap: var(--jz-space-5);
 }
 
+/* Outer card — tall rounded rect, column layout */
 .jz-promptbar {
   pointer-events: auto;
   display: flex;
-  align-items: center;
-  gap: var(--jz-space-4);
-  width: min(var(--pb-max, 600px), calc(100vw - 32px));
+  flex-direction: column;
+  width: min(var(--pb-max, 560px), calc(100vw - 120px));
   box-sizing: border-box;
-  padding: 10px 10px 10px 18px;
-  border-radius: var(--jz-radius-xl);
+  padding: 10px 12px;
+  border-radius: 24px;
   background: var(--jz-surface-raised);
   box-shadow: var(--jz-e4);
   border: 1px solid var(--jz-hairline);
-}
-
-.jz-promptbar-spark {
-  flex: none;
-  color: #d97706;
-  font-size: 14px;
-  line-height: 1;
 }
 
 /* Contextual quick-action chips (discoverability) */
@@ -3417,7 +3730,7 @@ body,
   gap: var(--jz-space-3);
   flex-wrap: wrap;
   justify-content: center;
-  max-width: min(620px, calc(100vw - 32px));
+  max-width: min(660px, calc(100vw - 32px));
 }
 
 .jz-pb-chip {
@@ -3451,7 +3764,7 @@ body,
   padding: 8px 8px 8px 14px;
   border-radius: var(--jz-radius-pill);
   background: var(--jz-ink-900);
-  color: #faf6ec;
+  color: var(--jz-paper);
   box-shadow: var(--jz-e3);
   animation: jz-menu-in var(--jz-dur-base) var(--jz-ease-glide);
 }
@@ -3467,110 +3780,15 @@ body,
   cursor: pointer;
   padding: 5px 12px;
   border-radius: var(--jz-radius-pill);
-  background: rgba(250, 246, 236, 0.16);
-  color: #faf6ec;
+  background: color-mix(in srgb, var(--jz-ink-900) 12%, transparent);
+  color: var(--jz-paper);
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-caption-size);
   font-weight: 600;
 }
 
 .jz-coach-dismiss:hover {
-  background: rgba(250, 246, 236, 0.26);
-}
-
-/* Agent-tools button + popover menu (opinion agents) */
-.jz-promptbar-tools-wrap {
-  position: relative;
-  flex: none;
-}
-
-.jz-promptbar-tools {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-width: 30px;
-  height: 30px;
-  padding: 0 11px;
-  border: none;
-  border-radius: var(--jz-radius-pill);
-  background: color-mix(in srgb, var(--jz-spark, #d97706) 14%, transparent);
-  color: #b45309;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background var(--jz-dur-fast) var(--jz-ease-out);
-}
-
-.jz-promptbar-tools-label {
-  font-family: var(--jz-font-ui);
-  font-size: var(--jz-text-body-sm-size);
-  font-weight: 600;
-}
-
-.jz-promptbar-tools-caret {
-  font-size: 9px;
-  opacity: 0.7;
-}
-
-.jz-promptbar-tools:hover,
-.jz-promptbar-tools--open {
-  background: color-mix(in srgb, var(--jz-spark, #d97706) 24%, transparent);
-}
-
-.jz-promptbar-busy {
-  font-size: var(--jz-text-micro-size);
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.jz-promptbar-menu {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 0;
-  z-index: 10;
-  min-width: 230px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--jz-space-2);
-  border-radius: var(--jz-radius-md);
-  background: var(--jz-surface-raised);
-  box-shadow: var(--jz-e4);
-  border: 1px solid var(--jz-hairline);
-  animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
-  transform-origin: bottom left;
-}
-
-.jz-promptbar-menuitem {
-  display: flex;
-  align-items: center;
-  gap: var(--jz-space-3);
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-  padding: 9px 10px;
-  border-radius: var(--jz-radius-sm);
-  font-family: var(--jz-font-ui);
-  font-size: var(--jz-text-body-sm-size);
-  color: var(--jz-ink-900);
-  transition: background var(--jz-dur-fast) var(--jz-ease-out);
-}
-
-.jz-promptbar-menuitem:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
-}
-
-.jz-promptbar-menuitem:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.jz-promptbar-menuglyph {
-  flex: none;
-  width: 18px;
-  text-align: center;
-  color: var(--jz-ink-500);
+  background: color-mix(in srgb, var(--jz-ink-900) 20%, transparent);
 }
 
 /* Selected-context chips inside the prompt bar (explicit grounding). */
@@ -3578,9 +3796,8 @@ body,
   display: flex;
   align-items: center;
   gap: 6px;
-  flex: none;
-  max-width: 45%;
-  overflow: hidden;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
 }
 
 .jz-pb-ground {
@@ -3622,21 +3839,68 @@ body,
   color: var(--jz-ink-900);
 }
 
+/* Textarea — top row, no border, auto-grows */
 .jz-promptbar-input {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
   border: none;
   outline: none;
   background: transparent;
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-body-size);
-  line-height: 1.45;
+  line-height: 1.5;
   color: var(--jz-ink-900);
   resize: none;
-  min-height: 48px;
-  max-height: 132px;
-  padding: 8px 0;
-  align-self: center;
+  min-height: 40px;
+  max-height: 40px;
+  padding: 0;
+  margin-bottom: 6px;
+}
+
+.jz-promptbar-input:focus,
+.jz-promptbar-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.jz-promptbar-input::placeholder {
+  color: var(--jz-ink-400);
+}
+
+/* Footer row: left icons · spacer · send */
+.jz-promptbar-footer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.jz-promptbar-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* + and / icon buttons */
+.jz-promptbar-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--jz-ink-900);
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-promptbar-icon-btn:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 10%, transparent);
+}
+
+/* Spacer pushes send to the right */
+.jz-promptbar-footer-left + .jz-promptbar-send {
+  margin-left: auto;
 }
 
 /* ─── Card action bar (fixed, below the header — predictable per-card actions) ─ */
@@ -3742,22 +4006,18 @@ body,
 .jz-discuss-title { font-size: var(--jz-text-micro-size); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--jz-ink-400); }
 .jz-discuss-close { border: none; background: transparent; cursor: pointer; color: var(--jz-ink-400); font-size: 11px; }
 
-.jz-promptbar-input::placeholder {
-  color: var(--jz-ink-400);
-}
-
+/* Send button */
 .jz-promptbar-send {
   flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border: none;
   border-radius: var(--jz-radius-pill);
   background: var(--jz-ink-900);
-  color: #faf6ec;
-  font-size: 16px;
+  color: var(--jz-paper);
   cursor: pointer;
   transition:
     transform var(--jz-dur-fast) var(--jz-ease-out),
@@ -3765,12 +4025,18 @@ body,
 }
 
 .jz-promptbar-send:hover:not(:disabled) {
-  transform: translateY(-1px);
+  opacity: 0.85;
 }
 
 .jz-promptbar-send:disabled {
-  opacity: 0.4;
+  opacity: 0.3;
   cursor: default;
+}
+
+.jz-promptbar-busy-inline {
+  font-size: var(--jz-text-micro-size);
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 /* ─── Board chip + switcher (topbar multi-board nav) ────────────────────── */
@@ -4486,4 +4752,385 @@ body,
   .jz-help-btn:hover,
   .jz-help-tour-btn:hover,
   .jz-tour-next:hover { transform: none; }
+}
+
+/* ─── Side panel (workspace + boards) ───────────────────────────────────── */
+
+.jz-side-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  background: transparent;
+  pointer-events: auto;
+}
+
+.jz-side {
+  position: absolute;
+  /* Slot beneath the hamburger logo, flush to the left edge of the canvas. */
+  left: 60px;
+  top: 14px;
+  z-index: 330;
+  width: 280px;
+  max-height: calc(100vh - 28px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  border-radius: var(--jz-radius-lg);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  border: 1px solid var(--jz-hairline);
+  pointer-events: auto;
+  animation: jz-side-in var(--jz-dur-base) var(--jz-ease-spring) both;
+}
+
+@keyframes jz-side-in {
+  from { opacity: 0; transform: translateX(-4px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.jz-side-section { display: flex; flex-direction: column; gap: 2px; padding: 4px 2px; }
+
+.jz-side-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 6px;
+}
+
+.jz-side-section-title {
+  font-family: var(--jz-font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--jz-ink-400);
+}
+
+.jz-side-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px 0 6px;
+  border: 1px solid var(--jz-hairline);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--jz-ink-700);
+  font-family: var(--jz-font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out), border-color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-side-new:hover {
+  color: var(--jz-ink-900);
+  border-color: var(--jz-hairline-strong);
+  background: color-mix(in srgb, var(--jz-ink-900) 4%, transparent);
+}
+
+.jz-side-divider {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--jz-hairline);
+}
+
+.jz-side-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.jz-side-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.jz-side-item {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--jz-radius-md);
+  background: transparent;
+  color: var(--jz-ink-700);
+  font-family: var(--jz-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-side-item:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 5%, transparent);
+  color: var(--jz-ink-900);
+}
+.jz-side-item--active {
+  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
+  color: var(--jz-ink-900);
+}
+.jz-side-item-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jz-side-rename {
+  flex: 1 1 auto;
+  height: 30px;
+  margin: 0 6px;
+  padding: 0 8px;
+  border: 1px solid var(--jz-hairline-strong);
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface);
+  color: var(--jz-ink-900);
+  font-family: var(--jz-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+}
+.jz-side-rename:focus { border-color: var(--jz-ink-700); }
+
+.jz-side-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  margin-right: 2px;
+  transition: opacity var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-side-row:hover .jz-side-row-actions,
+.jz-side-row:focus-within .jz-side-row-actions { opacity: 1; }
+
+.jz-side-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--jz-radius-xs);
+  background: transparent;
+  color: var(--jz-ink-500);
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-side-action:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
+  color: var(--jz-ink-900);
+}
+.jz-side-action--danger:hover { color: var(--jz-danger, #b60554); }
+
+@media (prefers-reduced-motion: reduce) {
+  .jz-side { animation: none; }
+}
+
+/* ─── Rail spacer ─────────────────────────────────────────────────────────── */
+.jz-rail-spacer {
+  flex: 1;
+  min-height: 8px;
+}
+
+/* ─── Claude side panel ──────────────────────────────────────────────────────
+   Right-edge chat drawer that opens from the ToolRail's MessageSquare button.
+   Mirrors the left SidePanel visual language but is taller (chat needs room). */
+
+.jz-claude-panel {
+  position: absolute;
+  right: 74px; /* rail (52px) + gap (22px) */
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 330;
+  width: 320px;
+  max-height: min(600px, calc(100vh - 28px));
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--jz-radius-lg);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  border: 1px solid var(--jz-hairline);
+  pointer-events: auto;
+  overflow: hidden;
+  animation: jz-claude-in var(--jz-dur-base) var(--jz-ease-spring) both;
+}
+
+@keyframes jz-claude-in {
+  from { opacity: 0; transform: translateY(-50%) translateX(8px); }
+  to   { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+.jz-claude-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 10px 14px;
+  border-bottom: 1px solid var(--jz-hairline);
+  flex-shrink: 0;
+}
+
+.jz-claude-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.jz-claude-title {
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-size);
+  font-weight: 600;
+  color: var(--jz-ink-900);
+}
+
+.jz-claude-clear {
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-400);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-claude-clear:hover { color: var(--jz-ink-700); }
+
+.jz-claude-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--jz-radius-xs);
+  background: transparent;
+  color: var(--jz-ink-400);
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-claude-close:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
+  color: var(--jz-ink-900);
+}
+
+.jz-claude-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.jz-claude-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px 16px;
+  text-align: center;
+}
+
+.jz-claude-empty-title {
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-size);
+  font-weight: 600;
+  color: var(--jz-ink-700);
+  margin: 0;
+}
+
+.jz-claude-empty-sub {
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-sm-size);
+  color: var(--jz-ink-400);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.jz-claude-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+}
+
+.jz-claude-msg--user .jz-claude-msg-text {
+  align-self: flex-end;
+  background: color-mix(in srgb, var(--jz-ink-900) 9%, transparent);
+  border-radius: var(--jz-radius-sm) var(--jz-radius-sm) 3px var(--jz-radius-sm);
+  padding: 7px 11px;
+}
+
+.jz-claude-msg--assistant .jz-claude-msg-text {
+  align-self: flex-start;
+}
+
+.jz-claude-msg-text {
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-sm-size);
+  line-height: 1.6;
+  color: var(--jz-ink-700);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.jz-claude-input-wrap {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 10px 10px 10px 12px;
+  border-top: 1px solid var(--jz-hairline);
+  flex-shrink: 0;
+}
+
+.jz-claude-input {
+  flex: 1;
+  resize: none;
+  border: none;
+  background: transparent;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-sm-size);
+  line-height: 1.5;
+  color: var(--jz-ink-900);
+  outline: none;
+  min-height: 22px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.jz-claude-input::placeholder { color: var(--jz-ink-300); }
+
+.jz-claude-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--jz-radius-sm);
+  background: var(--jz-ink-900);
+  color: var(--jz-paper);
+  cursor: pointer;
+  transition: opacity var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-claude-send:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.jz-claude-send:not(:disabled):hover { opacity: 0.85; }
+
+@media (prefers-reduced-motion: reduce) {
+  .jz-claude-panel { animation: none; }
 }

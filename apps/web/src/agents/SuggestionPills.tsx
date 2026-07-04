@@ -9,7 +9,7 @@
 
 import { useSyncExternalStore, type CSSProperties } from 'react';
 import { Box, stopEventPropagation, useEditor, useValue } from 'tldraw';
-import { getAgent } from '@jarwiz/shared';
+import { JARWIZ } from '@jarwiz/shared';
 import { dissolveCluster } from './cluster';
 import { dismissOffer, getOffers, subscribeOffer, type Offer, type Suggestion } from './offers';
 
@@ -65,21 +65,18 @@ function OfferPills({ offer, onAccept }: { offer: Offer; onAccept: SuggestionPil
         <span className="jz-offer-clusterlabel">Across {offer.shapeIds.length}</span>
       ) : null}
       {offer.loading ? <span className="jz-offer-reading">reading…</span> : null}
-      {offer.suggestions.map((s) => {
-        const agent = getAgent(s.agentId);
-        return (
-          <button
-            key={s.id}
-            className="jz-offer-pill"
-            style={{ '--agent-color': agent.color } as CSSProperties}
-            title={`${agent.name}${s.brief ? ` — ${s.brief}` : ''}`}
-            onClick={() => onAccept(offer, s)}
-          >
-            <span className="jz-agent-dot" />
-            {s.label}
-          </button>
-        );
-      })}
+      {offer.suggestions.map((s) => (
+        <button
+          key={s.id}
+          className="jz-offer-pill"
+          style={{ '--agent-color': JARWIZ.color } as CSSProperties}
+          title={`${JARWIZ.name}${s.brief ? ` — ${s.brief}` : ''}`}
+          onClick={() => onAccept(offer, s)}
+        >
+          <span className="jz-agent-dot" />
+          {s.label}
+        </button>
+      ))}
       <button
         className="jz-offer-dismiss"
         aria-label="Dismiss suggestions"

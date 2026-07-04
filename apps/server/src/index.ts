@@ -42,6 +42,8 @@ import { proposeClusterSuggestions, proposeSuggestions } from './suggest.js';
 import type { ClusterSuggestRequest, SuggestRequest } from '@jarwiz/shared';
 import { handleSyncSocket } from './sync.js';
 import { parseRunRequest, RunRequestError } from './agents/request.js';
+import { streamChat } from './chat.js';
+import type { ChatRequest } from './chat.js';
 
 // Load apps/server/.env when present (no-op otherwise).
 try {
@@ -512,6 +514,39 @@ app.post('/api/cluster-suggest', async (c) => {
   } catch {
     return c.json({ suggestions: [] });
   }
+});
+
+/** Claude side-panel chat — stateless multi-turn conversation. */
+app.post('/api/chat', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected JSON: { messages: [{role, text}] }' }, 400);
+  }
+  const raw = body as Partial<ChatRequest>;
+  if (!Array.isArray(raw.messages) || raw.messages.length === 0) {
+    return c.json({ error: 'messages array is required' }, 400);
+  }
+  const request: ChatRequest = {
+    messages: raw.messages.slice(-40).map((m) => ({
+      role: (m?.role === 'assistant' ? 'assistant' : 'user') as 'user' | 'assistant',
+      text: typeof m?.text === 'string' ? m.text.slice(0, 8000) : '',
+    })).filter((m) => m.text),
+    boardContext: typeof raw.boardContext === 'string' ? raw.boardContext.slice(0, 4000) : undefined,
+  };
+
+  return streamSSE(c, async (stream) => {
+    const signal = c.req.raw.signal;
+    try {
+      for await (const event of streamChat(request, signal)) {
+        await stream.writeSSE({ data: JSON.stringify(event) });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Chat failed';
+      await stream.writeSSE({ data: JSON.stringify({ type: 'error', message }) });
+    }
+  });
 });
 
 const port = Number.parseInt(process.env.PORT ?? '3001', 10);

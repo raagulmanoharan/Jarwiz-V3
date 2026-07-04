@@ -1,82 +1,65 @@
 /**
- * Figma-style agent presence — colored avatar circles that glide to wherever
- * the agent is working. Coordinates are stored in page space (the `cursor`
- * AgentEvent target) and converted to viewport space here, reactively, so
- * they pan and zoom with the board. The CSS transition gives the unhurried
- * glide; circle size stays constant regardless of zoom.
+ * Jarwiz presence — one avatar, one identity. Internally Jarwiz is a
+ * multi-agent system, but the user sees a single collaborator: a white circle
+ * with the Sparkle mark, gliding to wherever Jarwiz is working. Coordinates
+ * are page-space (the `cursor` AgentEvent target) and converted to viewport
+ * space reactively, so the avatar pans and zooms with the board.
+ *
+ * If multiple internal specialists are active at once (rare — agent runs are
+ * one-at-a-time in useAgentRun), we collapse to a single Jarwiz cursor by
+ * showing whichever is active, with the latest status text.
  */
 
 import { useSyncExternalStore, type CSSProperties } from 'react';
 import { useEditor, useValue } from 'tldraw';
-import { AGENTS, type AgentMeta } from '@jarwiz/shared';
+import { Sparkle } from 'lucide-react';
+import { JARWIZ } from '@jarwiz/shared';
 import { getPresenceSnapshot, subscribePresence } from './presence';
-
-const INITIALS: Record<string, string> = {
-  researcher: 'R',
-  summarizer: 'S',
-  brainstormer: 'B',
-  writer: 'W',
-};
 
 export function AgentCursorLayer() {
   const snapshot = useSyncExternalStore(subscribePresence, getPresenceSnapshot, getPresenceSnapshot);
 
-  return (
-    <>
-      {AGENTS.map((agent) => {
-        const presence = snapshot[agent.id];
-        if (!presence?.active || !presence.cursor) return null;
-        return (
-          <AgentAvatar
-            key={agent.id}
-            agent={agent}
-            page={presence.cursor}
-            status={presence.status}
-          />
-        );
-      })}
-    </>
-  );
+  // Collapse all active specialist presences to one Jarwiz avatar. Prefer one
+  // with a cursor; fall back to any active one.
+  const active = Object.values(snapshot).find((p) => p?.active && p.cursor);
+  if (!active?.cursor) return null;
+
+  return <JarwizAvatar page={active.cursor} status={active.status} />;
 }
 
-function AgentAvatar({
-  agent,
+export function JarwizAvatar({
   page,
   status,
 }: {
-  agent: AgentMeta;
   page: { x: number; y: number };
   status: string | null;
 }) {
   const editor = useEditor();
 
   const screen = useValue(
-    'jarwiz agent avatar',
+    'jarwiz avatar',
     () => editor.pageToViewport(page),
     [editor, page.x, page.y],
   );
 
-  const initial = INITIALS[agent.id] ?? agent.name[0];
-
   return (
     <div
-      className="jz-avatar"
+      className="jz-avatar jz-avatar--jarwiz"
       style={
         {
-          // Center the 36px circle on the cursor point.
           transform: `translate(${screen.x - 18}px, ${screen.y - 18}px)`,
-          '--agent-color': agent.color,
+          '--agent-color': JARWIZ.color,
         } as CSSProperties
       }
     >
       <div className="jz-avatar-circle-wrap">
         <span className="jz-avatar-ring" aria-hidden />
-        <div className="jz-avatar-circle" aria-label={agent.name}>
-          <span className="jz-avatar-initial">{initial}</span>
+        <div className="jz-avatar-circle" aria-label={JARWIZ.name}>
+          <Sparkle size={16} strokeWidth={1.5} fill="currentColor" />
         </div>
       </div>
       <div className="jz-avatar-badge">
-        <span className="jz-avatar-name">{agent.name}</span>
+        <span className="jz-avatar-name">{JARWIZ.name}</span>
         {status ? <span className="jz-avatar-status">{status}</span> : null}
       </div>
     </div>

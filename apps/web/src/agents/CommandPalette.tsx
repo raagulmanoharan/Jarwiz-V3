@@ -1,33 +1,30 @@
 /**
- * ⌘K command palette — the fast path to summoning an agent.
+ * ⌘K command palette — the fast path to asking Jarwiz.
  *
- * Press ⌘K / Ctrl+K anywhere to open; arrow keys + Enter or click to pick.
- * The palette is transparent about *what the agent sees*: it reflects the
+ * Press ⌘K / Ctrl+K anywhere to open; type an instruction; Enter summons.
+ * The palette is transparent about *what Jarwiz sees*: it reflects the
  * current selection live (Kuse-style), so you know whether the run will act on
- * your selected cards or guides you to pick one first. Esc or a backdrop click
- * closes it. Non-modal to the canvas underneath in spirit, but it traps focus
- * while open so the keyboard path is unambiguous.
+ * your selected cards or whether you need to pick one first. Esc or a backdrop
+ * click closes it.
  */
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor, useValue, type TLShape } from 'tldraw';
-import { AGENTS, type AgentMeta } from '@jarwiz/shared';
+import { Sparkle } from 'lucide-react';
 import { isCardShape } from './runRequest';
 
 interface CommandPaletteProps {
-  /** Pick an agent, with an optional steering brief (tone/length/audience…). */
-  onPickAgent: (agent: AgentMeta, brief?: string) => void;
+  /** Ask Jarwiz, optionally with a steering brief (tone/length/audience…). */
+  onAsk: (brief?: string) => void;
 }
 
-export function CommandPalette({ onPickAgent }: CommandPaletteProps) {
+export function CommandPalette({ onAsk }: CommandPaletteProps) {
   const editor = useEditor();
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(0);
   const [brief, setBrief] = useState('');
   const briefRef = useRef<HTMLTextAreaElement>(null);
 
-  // Focus the brief whenever the palette opens (you can type an instruction
-  // immediately; arrow keys still navigate the agent list via the dialog).
+  // Focus the brief whenever the palette opens.
   useEffect(() => {
     if (open) {
       setBrief('');
@@ -35,7 +32,7 @@ export function CommandPalette({ onPickAgent }: CommandPaletteProps) {
     }
   }, [open]);
 
-  // Live "what the agent sees" — the selected cards this run would act on.
+  // Live "what Jarwiz sees" — the selected cards this run would act on.
   const selectedCards = useValue(
     'jarwiz palette selection',
     () =>
@@ -51,7 +48,6 @@ export function CommandPalette({ onPickAgent }: CommandPaletteProps) {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setActive(0);
         setOpen((v) => !v);
       } else if (e.key === 'Escape' && open) {
         e.preventDefault();
@@ -62,13 +58,10 @@ export function CommandPalette({ onPickAgent }: CommandPaletteProps) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open]);
 
-  const pick = useCallback(
-    (agent: AgentMeta) => {
-      setOpen(false);
-      onPickAgent(agent, brief.trim() || undefined);
-    },
-    [onPickAgent, brief],
-  );
+  const summon = useCallback(() => {
+    setOpen(false);
+    onAsk(brief.trim() || undefined);
+  }, [onAsk, brief]);
 
   if (!open) return null;
 
@@ -80,20 +73,13 @@ export function CommandPalette({ onPickAgent }: CommandPaletteProps) {
       <div
         className="jz-palette"
         role="dialog"
-        aria-label="Summon an agent"
+        aria-label="Ask Jarwiz"
         onPointerDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
-          if (e.key === 'ArrowDown') {
+          // Shift+Enter inserts a newline in the brief; Enter summons.
+          if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            setActive((i) => (i + 1) % AGENTS.length);
-          } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            setActive((i) => (i - 1 + AGENTS.length) % AGENTS.length);
-          } else if (e.key === 'Enter' && !e.shiftKey) {
-            // Shift+Enter inserts a newline in the brief; Enter summons.
-            e.preventDefault();
-            const agent = AGENTS[active];
-            if (agent) pick(agent);
+            summon();
           }
         }}
       >
@@ -107,7 +93,7 @@ export function CommandPalette({ onPickAgent }: CommandPaletteProps) {
             </>
           ) : (
             <span className="jz-palette-context-text jz-palette-context-empty">
-              Select a card first — the agent works from what you choose.
+              Select a card first — Jarwiz works from what you choose.
             </span>
           )}
         </div>
@@ -116,45 +102,24 @@ export function CommandPalette({ onPickAgent }: CommandPaletteProps) {
           ref={briefRef}
           className="jz-palette-brief"
           value={brief}
-          rows={1}
-          placeholder="Add an instruction — tone, length, audience, format… (optional)"
+          rows={2}
+          placeholder="Ask Jarwiz anything — tone, length, audience, format…"
           onChange={(e) => setBrief(e.currentTarget.value)}
         />
 
-        <div className="jz-palette-list" role="listbox" tabIndex={-1}>
-          {AGENTS.map((agent, i) => (
-            <button
-              key={agent.id}
-              role="option"
-              aria-selected={i === active}
-              className={`jz-palette-item${i === active ? ' jz-palette-item-active' : ''}`}
-              style={{ '--agent-color': agent.color } as CSSProperties}
-              onPointerEnter={() => setActive(i)}
-              onClick={() => pick(agent)}
-            >
-              <span className="jz-palette-avatar">{agent.name[0]}</span>
-              <span className="jz-palette-meta">
-                <span className="jz-palette-name">{agent.name}</span>
-                <span className="jz-palette-tagline">{agent.tagline}</span>
-              </span>
-              <span className="jz-palette-enter" aria-hidden>
-                ↵
-              </span>
-            </button>
-          ))}
-        </div>
+        <button
+          className="jz-palette-summon"
+          onClick={summon}
+          disabled={count === 0}
+        >
+          <Sparkle size={14} strokeWidth={1.7} fill="currentColor" aria-hidden />
+          Ask Jarwiz
+        </button>
 
         <div className="jz-palette-footer">
-          <span>
-            <kbd>↑</kbd>
-            <kbd>↓</kbd> navigate
-          </span>
-          <span>
-            <kbd>↵</kbd> summon
-          </span>
-          <span>
-            <kbd>esc</kbd> close
-          </span>
+          <span><kbd>↵</kbd> ask</span>
+          <span><kbd>shift</kbd>+<kbd>↵</kbd> newline</span>
+          <span><kbd>esc</kbd> close</span>
         </div>
       </div>
     </div>

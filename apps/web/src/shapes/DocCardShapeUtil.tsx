@@ -1,4 +1,4 @@
-import { useRef, useSyncExternalStore } from 'react';
+import { useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 import {
   HTMLContainer,
   Rectangle2d,
@@ -8,21 +8,23 @@ import {
   stopEventPropagation,
   useEditor,
   useIsEditing,
+  useValue,
   type Editor,
   type RecordProps,
   type TLResizeInfo,
   type TLShape,
   type TLShapeId,
 } from 'tldraw';
+import { Sparkle } from 'lucide-react';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { useAutopilot } from '../agents/useAutopilot';
-import { useMention } from '../agents/useMention';
 import { useTypingPause } from '../agents/useTypingPause';
+import { isAutopilotReady, isAutopilotRunning, subscribeAutopilot } from '../agents/autopilotStore';
 import { DocMarkdown } from '../ui/DocMarkdown';
 import { getResponsePdfSource } from '../pdf/provenance';
 import { setPdfPage } from '../pdf/pdfView';
 import { useFitHeight } from './useFitHeight';
-import { MAX_CARD_H, isExpanded, subscribeExpand, toggleExpand } from './cardExpand';
+import { MAX_CARD_H, isExpanded, subscribeExpand } from './cardExpand';
 import { ExpandToggle } from './ExpandToggle';
 import { DOC_RADIUS, roundedRectPath } from './cardGeometry';
 
@@ -31,7 +33,6 @@ export interface DocCardProps {
   h: number;
   text: string;
   title?: string;
-  /** Source PDF shape id, so [p.N] citations survive reload (not a session map). */
   sourcePdfId: string;
 }
 
@@ -43,7 +44,7 @@ declare module '@tldraw/tlschema' {
 
 export type DocCardShape = TLShape<'doc-card'>;
 
-export const DOC_CARD_SIZE = { w: 520, h: 360 };
+export const DOC_CARD_SIZE = { w: 364, h: 240 };
 
 export class DocCardShapeUtil extends ShapeUtil<DocCardShape> {
   static override type = 'doc-card' as const;
@@ -60,16 +61,13 @@ export class DocCardShapeUtil extends ShapeUtil<DocCardShape> {
     return { ...DOC_CARD_SIZE, text: '', title: '', sourcePdfId: '' };
   }
 
-  override canResize() {
-    return true;
-  }
-
-  override canEdit() {
-    return true;
-  }
+  override canResize() { return true; }
+  override hideRotateHandle() { return true; }
+  override hideSelectionBoundsFg() { return true; }
+  override canEdit() { return true; }
 
   override onResize(shape: DocCardShape, info: TLResizeInfo<DocCardShape>) {
-    return resizeBox(shape, info, { minWidth: 280, minHeight: 200 });
+    return resizeBox(shape, info, { minWidth: 240, minHeight: 80 });
   }
 
   override getGeometry(shape: DocCardShape) {
@@ -89,10 +87,9 @@ export class DocCardShapeUtil extends ShapeUtil<DocCardShape> {
   }
 }
 
-/** A markdown task line, capturing leading bullet, checkbox state, and the rest. */
 const TASK_LINE_RE = /^(\s*[-*]\s+)\[([ xX])\](\s+.*)$/;
 
-/** Flip the Nth task line (`- [ ]` ↔ `- [x]`) in the card's source text. */
+
 function toggleTask(editor: Editor, shape: DocCardShape, ordinal: number, checked: boolean): void {
   let n = -1;
   const next = shape.props.text
@@ -111,20 +108,57 @@ function toggleTask(editor: Editor, shape: DocCardShape, ordinal: number, checke
 function DocCardBody({ shape }: { shape: DocCardShape }) {
   const editor = useEditor();
   const isEditing = useIsEditing(shape.id);
+  const isSelected = useValue('doc-selected', () => editor.getSelectedShapeIds().includes(shape.id), [editor]);
   const { text, title } = shape.props;
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
   const isStreaming = streamingSet.has(shape.id);
   const autopilot = useAutopilot();
-  const mention = useMention();
   const expanded = useSyncExternalStore(subscribeExpand, () => isExpanded(shape.id), () => false);
-  // Pause detection — resets whenever title or text changes; `reset` is called on Tab
-  // so the nudge disappears the instant autopilot (or the cold-start clarify) fires.
   const [paused, resetPause] = useTypingPause(isEditing ? `${title}|${text}` : '', 1800);
-  const showNudge = isEditing && paused && !isStreaming;
-  // Grow to fit content; once settled, clamp past the threshold (collapsible).
+
+  // Only nudge once the agent has real signal to continue from — a finished
+  // thought, a structural unit, a title, or surrounding board context.
+  // Recomputed on text/title/selection changes (see useValue tick).
+  const ready = useValue('autopilot-ready', () => isAutopilotReady(editor, shape.id), [editor, shape.id, text, title]);
+  const showNudge = isEditing && paused && !isStreaming && ready;
+
+  // Is autopilot actively writing into this card right now?
+  const autopilotActive = useSyncExternalStore(
+    subscribeAutopilot,
+    () => isAutopilotRunning(shape.id),
+    () => false,
+  );
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Focus at end of text when entering edit mode.
+  useLayoutEffect(() => {
+    if (!isEditing) return;
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+  }, [isEditing]);
+
+  // Grow card height as content exceeds current bounds. Only expands, never shrinks
+  // while editing so manual resize is preserved.
+  useLayoutEffect(() => {
+    if (!isEditing) return;
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const needed = ta.scrollHeight;
+    const cur = editor.getShape(shape.id);
+    if (!cur) return;
+    const curH = (cur.props as DocCardProps).h;
+    if (needed > curH + 1) {
+      editor.updateShape<DocCardShape>({ id: shape.id, type: 'doc-card', props: { h: needed } });
+    }
+  }, [text]);
+
+  // Streaming agent cards auto-fit height in read mode.
   const fitRef = useRef<HTMLDivElement | null>(null);
   const overflowing = useFitHeight(shape.id, fitRef, [text, title], {
-    enabled: !isEditing,
+    enabled: !isEditing && isStreaming,
     streaming: isStreaming,
     expanded,
     maxHeight: MAX_CARD_H,
@@ -133,65 +167,58 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
 
   if (isEditing) {
     return (
-      <div className="jz-doc">
-        <div className="jz-doc-header">
-          <input
-            autoFocus
-            type="text"
-            value={title}
-            placeholder="Document title"
-            className="jz-doc-title-input"
-            onChange={(e) =>
-              editor.updateShape<DocCardShape>({
-                id: shape.id,
-                type: 'doc-card',
-                props: { title: e.currentTarget.value },
-              })
-            }
-            onPointerDown={stopEventPropagation}
-            onPointerMove={stopEventPropagation}
-            onPointerUp={stopEventPropagation}
-          />
-        </div>
+      <div className={`jz-doc jz-doc-editing${autopilotActive ? ' jz-doc-autopilot' : ''}`}>
         <textarea
+          ref={textareaRef}
           value={text}
-          placeholder="Write something… (Tab to continue, @ to call an agent)"
+          placeholder="Write something…"
           className="jz-doc-textarea"
           style={{ pointerEvents: 'all' }}
           onKeyDown={(e) => {
             if (e.key === 'Tab') resetPause();
-            if (mention.onKeyDown(shape.id, e)) return;
             autopilot.onKeyDown(shape.id, e);
           }}
           onChange={(e) => {
             const value = e.currentTarget.value;
-            const caret = e.currentTarget.selectionStart ?? value.length;
-            editor.updateShape<DocCardShape>({
-              id: shape.id,
-              type: 'doc-card',
-              props: { text: value },
-            });
-            mention.sync(shape.id, value, caret);
+            editor.updateShape<DocCardShape>({ id: shape.id, type: 'doc-card', props: { text: value } });
           }}
           onPointerDown={stopEventPropagation}
           onPointerMove={stopEventPropagation}
           onPointerUp={stopEventPropagation}
         />
-        {showNudge && (
-          <div className="jz-autopilot-nudge" aria-hidden>
-            <span className="jz-autopilot-nudge-spark">✦</span>Tab
+        {autopilotActive && (
+          // Read-only mirror laid on top of the textarea — the browser places the
+          // Sparkle right after the last character, so it's pixel-perfect with no
+          // measurement math. Whitespace-pre-wrap matches textarea wrapping.
+          <div className="jz-autopilot-mirror" aria-hidden>
+            {text}
+            <span className="jz-autopilot-cursor">
+              <Sparkle size={11} strokeWidth={1.5} fill="currentColor" />
+            </span>
           </div>
         )}
+        {autopilotActive ? (
+          <div className="jz-autopilot-nudge jz-autopilot-nudge--takeover" aria-live="polite">
+            <Sparkle size={12} strokeWidth={1.7} color="white" fill="white" />
+            Press <kbd className="jz-autopilot-nudge-kbd">Tab</kbd> to take over
+          </div>
+        ) : showNudge ? (
+          <div className="jz-autopilot-nudge" aria-hidden>
+            <Sparkle size={12} strokeWidth={1.7} color="white" fill="white" />
+            Press <kbd className="jz-autopilot-nudge-kbd">Tab</kbd> to continue
+          </div>
+        ) : null}
       </div>
     );
   }
 
   return (
-    <div className={`jz-doc jz-doc-auto${collapsed ? ' jz-card-collapsed' : ''}`} ref={fitRef}>
-      <div className="jz-doc-header">
-        <div className="jz-doc-title">{title || 'Document'}</div>
-      </div>
-      <div className={`jz-doc-content${text || (isStreaming && !isEditing) ? '' : ' jz-doc-placeholder'}`}>
+    <div
+      className={`jz-doc jz-doc-auto${collapsed ? ' jz-card-collapsed' : ''}${isSelected ? ' jz-doc--selected' : ''}`}
+      ref={fitRef}
+    >
+      {title ? <div className="jz-doc-title-row"><div className="jz-doc-title">{title}</div></div> : null}
+      <div className="jz-doc-content">
         {text ? (
           <DocMarkdown
             content={text}
@@ -205,8 +232,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
             }}
             onToggleTask={isStreaming ? undefined : (ordinal, checked) => toggleTask(editor, shape, ordinal, checked)}
           />
-        ) : isStreaming && !isEditing ? (
-          // The agent has the card but no words yet — show a skeleton, not a husk.
+        ) : isStreaming ? (
           <div className="jz-doc-skeleton" aria-hidden>
             <span className="jz-skel-line" style={{ width: '92%' }} />
             <span className="jz-skel-line" style={{ width: '78%' }} />
@@ -214,7 +240,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
             <span className="jz-skel-line" style={{ width: '60%' }} />
           </div>
         ) : (
-          'Double-click to edit'
+          <span className="jz-doc-placeholder-text">Write something…</span>
         )}
         {isStreaming && text && <span className="jz-stream-caret" aria-hidden />}
       </div>
