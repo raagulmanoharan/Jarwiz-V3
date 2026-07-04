@@ -9,6 +9,7 @@
 import { useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { stopEventPropagation, useEditor, useValue, type TLShapeId } from 'tldraw';
 import { ASKABLE, hasAskableContent } from './askable';
+import { PROFILE_PROMPT } from './profileOffer';
 import { useAsk } from './useAsk';
 import { useDiagram } from '../agents/useDiagram';
 import { useTidy, canTidy } from '../agents/useTidy';
@@ -63,6 +64,10 @@ export function CardActionBar() {
     if (sel.type !== 'table-card') transforms.push({ label: 'As a table', run: () => ask('Reformat this as a comparison table.', [id], { skipClarify: true }) });
     if (sel.type !== 'diagram-card') transforms.push({ label: 'As a diagram', run: () => ask('Turn this into a diagram.', [id], { skipClarify: true }) });
     transforms.push({ label: 'Regenerate', run: () => ask('Regenerate this, same intent, fresh take.', [id], { targetId: id }) });
+  }
+  if (!sel.multi && hasContent && sel.type === 'pdf-card') {
+    // The durable path to the drop-moment profile (the offer chip is transient).
+    transforms.push({ label: '✦ Profile this document', run: () => ask(PROFILE_PROMPT, [id], { skipClarify: true }) });
   }
   if (sel.multi && contentful.length > 0) {
     // Multi-select gets the same bar, with cross-selection transforms —

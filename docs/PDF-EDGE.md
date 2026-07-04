@@ -53,10 +53,12 @@ provenance + space — produces things they structurally cannot:
 2. **Export with the source trail**: copy-as-Markdown per card; board/doc
    export where provenance edges become numbered footnotes ("Drawn from:
    Contract.pdf p.12; Answer 'Termination risks'…"). Trust + shareability.
-3. **Drop-moment profile card**: on ingest, offer (never force) a compact
+3. **Drop-moment profile card** ✅: on ingest, offer (never force) a compact
    profile: type, parties/authors, dates, red flags, suggested first
-   questions. Uses the existing suggest pipeline, lands as a card with a
-   provenance edge.
+   questions. Shipped 2026-07-04 through the Ask pipeline (not suggest — the
+   profile is a streamed, cited, provenance-edged doc card like any answer);
+   the offer chip is the drop-moment shortcut, the Refine menu the durable
+   path. Eval: `scripts/eval-profile.mjs`.
 4. **Reader robustness**: 100+ page PDFs (lazy page rendering), scanned-PDF
    OCR at scale, password flow polish, multi-hundred-MB guardrails with
    honest errors. An eval PDF set (contract, paper, financial report,

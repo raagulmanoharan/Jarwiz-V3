@@ -360,7 +360,7 @@ with retry everywhere the model can fail. Multiplayer is parked behind
 
 | # | Build | Why | Size |
 |---|---|---|---|
-| 3 | **Drop-moment profile card** | The first five seconds after a drop: an offered one-glance profile (what this is, who wrote it, red flags, where to start). Also Episode 1 material | M |
+| 3 | **Drop-moment profile card** ✅ | Shipped 2026-07-04: when a dropped PDF lands, a quiet "✦ Profile this document" chip offers (never forces) a one-glance profile — what this is, who's behind it, key dates, red flags, start here, three questions — streamed as a normal doc card with provenance edge and page citations via the existing Ask pipeline. ✕ declines per-document; the durable path lives in the PDF card's Refine menu. `scripts/eval-profile.mjs` drives the real drop → offer → stream flow — 8/8 | done |
 | 4 | **Feel pass** | Seed-pill waiting shimmer (the 5-20s quiet gap before contextual pills), lazy-load pdf.js/mermaid (500kB chunks → faster cold load) | S |
 
 **Distribution — being seen:**

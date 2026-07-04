@@ -192,3 +192,28 @@ server. Learnings:
   orphaned declaration blocks. Nothing errored; the browser just dropped
   rules. A strict postcss parse is now the cheap check — worth running after
   any scripted edit to the stylesheet.
+
+## 2026-07-04 — The drop moment gets a face
+
+Roadmap §10 item 3 (delight): the first five seconds after a PDF drop now
+offer a one-glance profile — "✦ Profile this document" on a quiet chip under
+the just-landed card. Accepting streams a compact profile (what this is,
+who's behind it, key dates, red flags, start here, three questions) as an
+ordinary answer card. Learnings:
+
+- **The cheapest correct architecture was "it's just an ask."** The spec
+  said "uses the suggest pipeline," but routing the profile through the Ask
+  pipeline instead meant the streamed card, provenance edge, page-citation
+  chips, Keep/Discard, cancel, and error pills all came free — the entire
+  feature is a store, a chip, and a prompt. When a new capability looks like
+  a new pipeline, check whether it's actually a new *prompt* first.
+- **Offered, never forced, needs three exits**: ✕ remembers the document and
+  never re-offers it; accepting consumes the offer before the ask starts (so
+  a retry can't double-offer); deleting the card clears silently without
+  remembering (a re-drop should offer again). The durable path lives in the
+  Refine menu so declining the moment never means losing the capability.
+- **Playwright can drive real ingestion**: dispatching a `DragEvent` with a
+  `DataTransfer` holding a `File` onto `.tl-container` exercises the true
+  drop path (tldraw handler → upload → offer), no test-only hooks needed.
+- The model skips an optional "# " title line when the prompt says "no
+  preamble" — if the card needs a title, ask for the heading explicitly.
