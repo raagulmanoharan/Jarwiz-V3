@@ -14,8 +14,8 @@ export const ASKABLE = new Set([
 /**
  * Does this shape actually contain something to ask about? Being the right
  * TYPE isn't enough — an empty doc card has nothing to summarise, and a PDF
- * mid-upload isn't readable yet. Starter chips, Refine transforms, and
- * Discuss all gate on this, so the UI never offers questions about nothing.
+ * mid-upload isn't readable yet. Starter chips and Refine transforms
+ * all gate on this, so the UI never offers questions about nothing.
  */
 export function hasAskableContent(editor: Editor, shape: TLShape | undefined): boolean {
   if (!shape) return false;

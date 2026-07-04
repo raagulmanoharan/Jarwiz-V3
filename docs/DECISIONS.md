@@ -105,3 +105,12 @@ bar (and the lineage-trace feature with them). The drawn provenance arrows
 already ARE the lineage — a second, explicit UI for the same fact was
 redundant chrome. If a future board grows dense enough that edges stop being
 legible, revisit as an implicit hover treatment, not a button.
+
+## 2026-07-04 — Discuss is cut: one composer, everywhere
+
+Removed the 💬 Discuss thread (DiscussLayer, /api/revise, and the already
+orphaned /api/comment). It was a chat box on a card — the same pattern we
+removed at app level. Its real value (in-place revision, multi-turn memory)
+belongs in the composer; in-place refinement already exists via the Refine
+transforms, and conversational memory is a composer feature to design
+deliberately, not a side surface.

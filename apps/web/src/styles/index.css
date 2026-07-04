@@ -2298,109 +2298,7 @@ body,
   font-family: var(--jz-font-ui);
   animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
 }/* ─── Discuss thread (conversational depth, 3.3) ─────────────────────────── */
-.jz-discuss {
-  position: absolute;
-  z-index: 313;
-  pointer-events: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-}.jz-discuss-panel {
-  width: 288px;
-  display: flex;
-  flex-direction: column;
-  border-radius: var(--jz-radius-md);
-  background: var(--jz-surface-raised);
-  box-shadow: var(--jz-e4);
-  border: 1px solid var(--jz-hairline);
-  overflow: hidden;
-  animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
-}
 
-.jz-discuss-thread {
-  display: flex;
-  flex-direction: column;
-  gap: var(--jz-space-4);
-  max-height: 280px;
-  overflow-y: auto;
-  padding: 12px;
-}
-
-.jz-discuss-empty {
-  margin: 0;
-  font-size: var(--jz-text-caption-size);
-  line-height: 1.45;
-  color: var(--jz-ink-400);
-}
-
-.jz-discuss-turn {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.jz-discuss-role {
-  font-size: var(--jz-text-micro-size);
-  font-weight: 700;
-  color: var(--jz-ink-400);
-}
-
-.jz-discuss-turn--agent .jz-discuss-role {
-  color: #b45309;
-}
-
-.jz-discuss-text {
-  font-size: var(--jz-text-body-sm-size);
-  line-height: 1.45;
-  color: var(--jz-ink-900);
-  white-space: pre-wrap;
-}
-
-.jz-discuss-input-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  padding: 8px;
-  border-top: 1px solid var(--jz-hairline);
-}
-
-.jz-discuss-input {
-  flex: 1;
-  min-width: 0;
-  resize: none;
-  border: 1px solid var(--jz-hairline-strong);
-  border-radius: var(--jz-radius-sm);
-  background: var(--jz-surface);
-  padding: 7px 9px;
-  font-family: var(--jz-font-ui);
-  font-size: var(--jz-text-body-sm-size);
-  line-height: 1.4;
-  color: var(--jz-ink-900);
-  outline: none;
-}
-
-.jz-discuss-input:focus {
-  border-color: color-mix(in srgb, var(--jz-ink-900) 28%, transparent);
-}
-
-.jz-discuss-send {
-  flex: none;
-  border: none;
-  cursor: pointer;
-  padding: 8px 12px;
-  border-radius: var(--jz-radius-sm);
-  background: var(--jz-ink-900);
-  color: var(--jz-ink-50);
-  font-family: var(--jz-font-ui);
-  font-size: var(--jz-text-caption-size);
-  font-weight: 600;
-}
-
-.jz-discuss-send:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
 
 /* ─── Doc skeleton (agent has the card, no words yet) ────────────────────── */
 
@@ -2757,15 +2655,6 @@ body,
 .jz-cardbar-item:hover { background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent); }
 
 /* Discuss panel header (opened from the card action bar) */
-.jz-discuss-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--jz-hairline);
-}
-.jz-discuss-title { font-size: var(--jz-text-micro-size); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--jz-ink-400); }
-.jz-discuss-close { border: none; background: transparent; cursor: pointer; color: var(--jz-ink-400); font-size: 11px; }
 
 /* Send button */
 .jz-promptbar-send {

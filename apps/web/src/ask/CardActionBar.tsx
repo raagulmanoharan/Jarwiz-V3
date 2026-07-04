@@ -2,8 +2,8 @@
  * The card action bar — floats just ABOVE the selected card(s), so the
  * operations sit visually on the thing they act on (anchored via
  * useCardAnchor, camera-tracked, clamped clear of the topbar). It holds
- * one-tap OPERATIONS on the artifact: Refine ▾ (transforms), Discuss, Trace,
- * Based on ▾ (provenance). Typed/open questions live in the prompt bar.
+ * one-tap OPERATIONS on the artifact: the Refine ▾ transforms. Typed/open
+ * questions live in the prompt bar; provenance lives in the drawn edges.
  */
 
 import { useState, useSyncExternalStore, type CSSProperties } from 'react';
@@ -13,7 +13,6 @@ import { useAsk } from './useAsk';
 import { useDiagram } from '../agents/useDiagram';
 import { useTidy, canTidy } from '../agents/useTidy';
 import { useCluster, canCluster } from '../agents/useCluster';
-import { getOpenDiscuss, subscribeDiscuss, toggleDiscuss } from './discuss';
 import { useCardAnchor } from './useCardAnchor';
 
 const ANSWER = new Set(['doc-card', 'table-card', 'diagram-card']);
@@ -25,7 +24,6 @@ export function CardActionBar() {
   const { diagram } = useDiagram();
   const { tidy } = useTidy();
   const { cluster } = useCluster();
-  const openDiscuss = useSyncExternalStore(subscribeDiscuss, getOpenDiscuss, getOpenDiscuss);
   const [menu, setMenu] = useState<null | 'refine'>(null);
 
   // One or more askable shapes selected → the bar lights up (same place always).
@@ -88,8 +86,7 @@ export function CardActionBar() {
 
   // Nothing meaningful to offer (e.g. a single empty card) → no bar at all.
   // Provenance itself needs no button: the drawn edges ARE the lineage.
-  const showDiscuss = sel.type === 'doc-card' && hasContent;
-  if (transforms.length === 0 && !showDiscuss) return null;
+  if (transforms.length === 0) return null;
   if (!anchor) return null;
 
   const style: CSSProperties = {
@@ -114,11 +111,6 @@ export function CardActionBar() {
         </div>
       ) : null}
 
-      {showDiscuss ? (
-        <button className={`jz-cardbar-btn${openDiscuss === id ? ' jz-cardbar-btn--on' : ''}`} onClick={() => toggleDiscuss(id)}>
-          💬 Discuss
-        </button>
-      ) : null}
 
 
     </div>

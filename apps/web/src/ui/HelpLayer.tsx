@@ -44,7 +44,7 @@ const TOUR: TourStep[] = [
   {
     anchor: 'rail',
     title: 'Build anything',
-    body: 'The left rail has your tools: select, pan, docs, shapes, arrows — plus PDF upload, your boards, and the Claude panel.',
+    body: 'The left rail has your tools: select, pan, docs, shapes, arrows — plus PDF upload and your boards.',
   },
   {
     anchor: 'center',
@@ -59,7 +59,7 @@ const TOUR: TourStep[] = [
   {
     anchor: 'cardbar',
     title: 'Refine any card',
-    body: 'Select a card and this action bar lights up — make it shorter, go deeper, turn it into a table or flowchart, discuss it, or see what it was based on.',
+    body: 'Select a card and this action bar floats above it — make it shorter, go deeper, turn it into a table or flowchart, or regenerate it.',
   },
   {
     anchor: 'center',
@@ -80,7 +80,6 @@ const FEATURES: Array<{ glyph: string; title: string; body: string }> = [
   { glyph: '⚖', title: 'Scan the board', body: 'Find tensions between cards, or surface what you are missing.' },
   { glyph: '↺', title: 'Refine any card', body: 'Shorten, deepen, reformat as a table or flowchart, or regenerate.' },
   { glyph: '◳', title: 'Cluster & summarise', body: 'Turn a wall of stickies into named themes with one click.' },
-  { glyph: '💬', title: 'Discuss & revise', body: 'Open a thread on a doc and rewrite it in place — or chat in the Claude panel.' },
 ];
 
 const SHORTCUTS: Array<{ keys: string[]; label: string }> = [

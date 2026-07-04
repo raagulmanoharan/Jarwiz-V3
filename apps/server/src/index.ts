@@ -35,8 +35,6 @@ import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
 import { generateDiagram } from './diagram.js';
 import { generateClusters } from './cluster.js';
 import { streamAnalysis } from './analyze.js';
-import { streamRevision } from './revise.js';
-import { streamComment } from './comment.js';
 import { sidecarAvailable } from './sidecar.js';
 import { proposeClusterSuggestions, proposeSuggestions } from './suggest.js';
 import type { ClusterSuggestRequest, SuggestRequest } from '@jarwiz/shared';
@@ -246,51 +244,7 @@ app.post('/api/autopilot/table', async (c) => {
       await send({ type: 'error', message });
     }
   });
-});
-
-app.post('/api/comment', async (c) => {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: 'Expected a JSON body: { agentId, cardKind, thread }' }, 400);
-  }
-
-  const raw = body as Partial<CommentReplyRequest>;
-  if (
-    typeof raw.agentId !== 'string' ||
-    !isAgentId(raw.agentId) ||
-    typeof raw.cardKind !== 'string' ||
-    !Array.isArray(raw.thread)
-  ) {
-    return c.json({ error: 'Expected { agentId, cardKind, cardTitle?, cardText?, thread[] }' }, 400);
-  }
-  const request: CommentReplyRequest = {
-    agentId: raw.agentId,
-    cardKind: raw.cardKind,
-    cardTitle: typeof raw.cardTitle === 'string' ? raw.cardTitle.slice(0, 200) : undefined,
-    cardText: typeof raw.cardText === 'string' ? raw.cardText.slice(0, 4000) : undefined,
-    cardUrl: typeof raw.cardUrl === 'string' ? raw.cardUrl.slice(0, 2000) : undefined,
-    thread: raw.thread
-      .slice(-20)
-      .map((m) => ({ author: String(m?.author ?? 'you'), text: String(m?.text ?? '').slice(0, 1000) })),
-  };
-
-  return streamSSE(c, async (stream) => {
-    const send = (event: AutopilotEvent) => stream.writeSSE({ data: JSON.stringify(event) });
-    const signal = c.req.raw.signal;
-    try {
-      for await (const event of streamComment(request, signal)) {
-        await send(event);
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Reply failed';
-      await send({ type: 'error', message });
-    }
-  });
-});
-
-/** The Ask pipeline — a prompt against source cards → one auto-shaped answer. */
+});/** The Ask pipeline — a prompt against source cards → one auto-shaped answer. */
 app.post('/api/ask', async (c) => {
   let body: unknown;
   try {
@@ -423,44 +377,7 @@ app.post('/api/analyze', async (c) => {
       await stream.writeSSE({ data: JSON.stringify({ type: 'error', message }) });
     }
   });
-});
-
-app.post('/api/revise', async (c) => {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: 'Expected JSON: { text, instruction, thread? }' }, 400);
-  }
-  const raw = body as Partial<ReviseRequest>;
-  if (typeof raw.instruction !== 'string' || raw.instruction.trim() === '') {
-    return c.json({ error: 'instruction is required' }, 400);
-  }
-  const request: ReviseRequest = {
-    text: typeof raw.text === 'string' ? raw.text.slice(0, 12000) : '',
-    instruction: raw.instruction.trim().slice(0, 1000),
-    thread: Array.isArray(raw.thread)
-      ? raw.thread.slice(-8).map((t) => ({
-          role: t?.role === 'agent' ? 'agent' : 'you',
-          text: typeof t?.text === 'string' ? t.text.slice(0, 1000) : '',
-        }))
-      : undefined,
-  };
-
-  return streamSSE(c, async (stream) => {
-    const signal = c.req.raw.signal;
-    try {
-      for await (const event of streamRevision(request, signal)) {
-        await stream.writeSSE({ data: JSON.stringify(event) });
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Revise failed';
-      await stream.writeSSE({ data: JSON.stringify({ type: 'error', message }) });
-    }
-  });
-});
-
-/** Predefined, content-aware Ask prompts for a dropped PDF (the blank-slate on-ramp). */
+});/** Predefined, content-aware Ask prompts for a dropped PDF (the blank-slate on-ramp). */
 app.post('/api/seed-prompts', async (c) => {
   let body: unknown;
   try {

@@ -111,7 +111,7 @@ export function PromptBar() {
   // Pills are ALWAYS contextual — generated from the card's own content.
   // Nothing scripted: until the tailored pills arrive (or if the card is
   // empty) we show nothing. Predictable operations live on the card's
-  // floating bar (Refine, Discuss), not here.
+  // floating bar (Refine), not here.
   const starters: Array<{ label: string; prompt: string }> =
     groundIds.length === 1 && (seeds?.length ?? 0) > 0
       ? seeds!.map((s) => ({ label: s.label, prompt: s.prompt }))
