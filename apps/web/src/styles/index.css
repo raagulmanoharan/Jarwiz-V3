@@ -3334,6 +3334,102 @@ body,
   white-space: nowrap;
 }
 
+/* Backup section — status line under the actions, and the inline restore
+   confirmation (full replace, so it must be an explicit second step). */
+.jz-side-note {
+  margin: 4px 8px 2px;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-micro-size);
+  line-height: var(--jz-text-micro-lh);
+  color: var(--jz-ink-500);
+}
+.jz-side-note--danger { color: var(--jz-danger); }
+
+.jz-side-restore {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 2px 6px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--jz-danger) 35%, transparent);
+  border-radius: var(--jz-radius-md);
+  background: color-mix(in srgb, var(--jz-danger) 6%, transparent);
+}
+
+.jz-side-restore-text {
+  margin: 0;
+  font-family: var(--jz-font-ui);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--jz-ink-700);
+}
+
+.jz-side-restore-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.jz-side-restore-go,
+.jz-side-restore-cancel {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-family: var(--jz-font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-side-restore-go {
+  border: none;
+  background: var(--jz-danger);
+  color: #fff;
+}
+.jz-side-restore-go:hover { background: color-mix(in srgb, var(--jz-danger) 85%, #000); }
+
+.jz-side-restore-cancel {
+  border: 1px solid var(--jz-hairline);
+  background: transparent;
+  color: var(--jz-ink-700);
+}
+.jz-side-restore-cancel:hover { color: var(--jz-ink-900); border-color: var(--jz-hairline-strong); }
+
+/* Full-screen splash while a restore rewrites the board databases. */
+.jz-restore-splash {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: var(--jz-surface);
+  color: var(--jz-ink-700);
+  font-family: var(--jz-font-ui);
+  font-size: 14px;
+}
+
+.jz-restore-splash-error {
+  max-width: 420px;
+  margin: 0;
+  text-align: center;
+  color: var(--jz-danger);
+}
+
+.jz-restore-splash-reload {
+  height: 30px;
+  padding: 0 16px;
+  border: 1px solid var(--jz-hairline-strong);
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  color: var(--jz-ink-900);
+  font-family: var(--jz-font-ui);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .jz-side { animation: none; }
 }

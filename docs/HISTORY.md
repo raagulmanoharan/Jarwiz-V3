@@ -162,3 +162,33 @@ parallel audit (docs/AUDIT.md) and a surgical cleanup on top. Learnings:
   a scrim eats the first outside click — that's product behavior, not a bug.
 - Session limits can kill subagents mid-edit; commit green checkpoints early
   and keep each agent's blast radius to files you can hand-finish.
+
+## 2026-07-04 — Backup/restore, and the stylesheet was quietly broken
+
+Roadmap §10 item 2 (trust): every hour invested in Jarwiz lived in one
+browser profile, unrecoverable. Now: side panel → Backup → one JSON file
+holding board metadata, every board's tldraw document (read straight from
+the per-board IndexedDB databases), and the PDF bytes from the server blob
+store; restore is a confirmed full replace that re-uploads PDFs under their
+original ids. `scripts/eval-backup.mjs` proves the loop 10/10, including a
+canary note surviving a wreck-and-restore and a PDF card surviving a wiped
+server. Learnings:
+
+- **The restore's hard problem is the open database.** tldraw holds a live
+  IndexedDB connection to the active board; rewriting under it (or deleting
+  its database) blocks or races. The clean move was structural: a module
+  flag (`isRestoring`) that App reads to unmount the canvas — React does the
+  disconnect, then the writes proceed, then `location.reload()` remounts on
+  the restored data.
+- **A board backup that skips server assets is a lie.** PDF cards store only
+  `/api/assets/<id>` URLs; the bytes live in a temp dir on the server. The
+  backup embeds them (base64) and restore PUTs them back under the same id —
+  verified by wiping the server's asset dir mid-eval. That wipe also exposed
+  a real server bug: `putAsset`'s memoized mkdir meant a vanished dir failed
+  every subsequent write forever.
+- **CSS parsers fail silent.** The July 4 cull's automated edit left ten
+  `@media` preludes braceless, two comments unclosed (swallowing the
+  keyboard focus ring and the `jz-menu-in` keyframes app-wide), and four
+  orphaned declaration blocks. Nothing errored; the browser just dropped
+  rules. A strict postcss parse is now the cheap check — worth running after
+  any scripted edit to the stylesheet.

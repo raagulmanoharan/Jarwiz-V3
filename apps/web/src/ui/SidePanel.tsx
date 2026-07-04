@@ -15,6 +15,7 @@ import {
   subscribeBoards,
   switchBoard,
 } from '../boards/boardStore';
+import { exportBackup, parseBackup, restoreBackup, type JarwizBackup } from '../boards/backup';
 import { closeSidePanel, isSidePanelOpen, subscribeSidePanel } from './sidePanelStore';
 
 export function SidePanel() {
@@ -61,6 +62,8 @@ export function SidePanel() {
         <WorkspaceSection />
         <div className="jz-side-divider" aria-hidden />
         <BoardsSection />
+        <div className="jz-side-divider" aria-hidden />
+        <BackupSection />
       </aside>
     </>
   );
@@ -210,6 +213,108 @@ function BoardsSection() {
   );
 }
 
+/** Backup & restore — the whole workspace lives in this browser profile, so
+ *  "save it to a file" is the only insurance. Restore is a full replace and
+ *  is confirmed inline before anything is touched (backup.ts does the rest,
+ *  ending in a reload). */
+function BackupSection() {
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<JarwizBackup | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  // Status notes are transient; errors stay until the next action.
+  useEffect(() => {
+    if (!note) return;
+    const t = setTimeout(() => setNote(null), 6000);
+    return () => clearTimeout(t);
+  }, [note]);
+
+  const onBackup = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await exportBackup();
+      const files = r.assets ? ` · ${r.assets} file${r.assets === 1 ? '' : 's'}` : '';
+      const missing = r.missingAssets ? ` · ${r.missingAssets} missing on server` : '';
+      setNote(`Backed up ${r.boards} board${r.boards === 1 ? '' : 's'}${files}${missing}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Backup failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onPickFile = async (file: File) => {
+    setError(null);
+    setNote(null);
+    try {
+      setPending(parseBackup(await file.text()));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'That file could not be read.');
+    }
+  };
+
+  return (
+    <section className="jz-side-section">
+      <header className="jz-side-section-header">
+        <span className="jz-side-section-title">Backup</span>
+      </header>
+      {pending ? (
+        <div className="jz-side-restore" role="alertdialog" aria-label="Confirm restore">
+          <p className="jz-side-restore-text">
+            Replace everything with {pending.boards.length} board
+            {pending.boards.length === 1 ? '' : 's'} from{' '}
+            {new Date(pending.exportedAt).toLocaleDateString(undefined, {
+              month: 'short',
+              day: 'numeric',
+            })}
+            ? Your current boards will be lost.
+          </p>
+          <div className="jz-side-restore-actions">
+            <button className="jz-side-restore-go" onClick={() => void restoreBackup(pending)}>
+              Restore
+            </button>
+            <button className="jz-side-restore-cancel" onClick={() => setPending(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <ul className="jz-side-list">
+          <li>
+            <button className="jz-side-item" disabled={busy} onClick={() => void onBackup()}>
+              <DownloadGlyph />
+              <span className="jz-side-item-name">{busy ? 'Backing up…' : 'Back up to file'}</span>
+            </button>
+          </li>
+          <li>
+            <button className="jz-side-item" onClick={() => fileRef.current?.click()}>
+              <UploadGlyph />
+              <span className="jz-side-item-name">Restore from backup…</span>
+            </button>
+          </li>
+        </ul>
+      )}
+      {(error || note) && (
+        <p className={`jz-side-note${error ? ' jz-side-note--danger' : ''}`}>{error ?? note}</p>
+      )}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="application/json,.json"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = ''; // allow re-picking the same file
+          if (file) void onPickFile(file);
+        }}
+      />
+    </section>
+  );
+}
+
 // ─── Inline glyphs ─────────────────────────────────────────────────────────
 
 function WorkspaceGlyph() {
@@ -234,6 +339,22 @@ function PlusGlyph() {
   return (
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+function DownloadGlyph() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 4v11M7 10l5 5 5-5M4 20h16" />
+    </svg>
+  );
+}
+
+function UploadGlyph() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 15V4M7 9l5-5 5 5M4 20h16" />
     </svg>
   );
 }

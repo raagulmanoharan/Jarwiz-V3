@@ -49,7 +49,10 @@ function ensureDir(): Promise<void> {
 
 export async function putAsset(id: string, bytes: Buffer): Promise<void> {
   if (!isValidAssetId(id)) throw new Error('invalid asset id');
-  await ensureDir();
+  // mkdir unconditionally (idempotent) rather than via the memoized ensureDir:
+  // if the temp dir vanishes mid-run, a memoized "already created" would make
+  // every write fail with ENOENT forever — restore's re-uploads depend on this.
+  await mkdir(ASSET_DIR, { recursive: true });
   await writeFile(join(ASSET_DIR, id), bytes);
 }
 

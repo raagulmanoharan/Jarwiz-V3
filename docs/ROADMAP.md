@@ -354,7 +354,7 @@ with retry everywhere the model can fail. Multiplayer is parked behind
 | # | Build | Why | Size |
 |---|---|---|---|
 | 1 | **Reader robustness + eval set** ✅ | Shipped 2026-07-04: `scripts/eval-pdf.mjs` gates the real pipeline (upload → pills → cited streamed answer) over three fixture classes — 14-page ACM paper, 120-page contract, scanned image-only memo (exercises OCR). All pass. Guardrails (OCR page cap, size limits, per-page lazy render) were already in place | done |
-| 2 | **Backup / restore** | Everything lives in one browser profile's IndexedDB. One-click "back up all boards to a file / restore" is cheap insurance for every hour invested | S |
+| 2 | **Backup / restore** ✅ | Shipped 2026-07-04: side panel → Backup. One click writes every board (metadata + tldraw documents + PDF bytes from the server blob store) into a single `jarwiz-backup-*.json`; restore is a confirmed full replace that re-uploads PDFs under their original ids, so cards keep working even on a wiped server. `scripts/eval-backup.mjs` drives the real flow (download → wreck → restore → server-wipe round trip) — 10/10 | done |
 
 **Delight — the moments that make it a habit:**
 

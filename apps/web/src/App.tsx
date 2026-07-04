@@ -28,6 +28,7 @@ import { AgentCursorLayer } from './agents/AgentCursorLayer';
 import { AgentTaskLayer } from './agents/AgentTaskLayer';
 import { cardShapeUtils } from './shapes';
 import { BoardEntry } from './boards/BoardEntry';
+import { getRestoreError, isRestoring, subscribeRestore } from './boards/backup';
 import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
 import { EmptyState } from './ui/EmptyState';
 import { Topbar } from './ui/Topbar';
@@ -200,7 +201,36 @@ function syncUri(room: string): string {
   return `${protocol === 'https:' ? 'wss' : 'ws'}://${host}${path}`;
 }
 
+/** Shown while a backup is being restored. Rendering this INSTEAD of the
+ *  board is load-bearing: it unmounts tldraw, which releases its IndexedDB
+ *  connection so the restore can rewrite the board databases. */
+function RestoreSplash() {
+  const error = useSyncExternalStore(subscribeRestore, getRestoreError, getRestoreError);
+  return (
+    <div className="jz-restore-splash" role="status">
+      {error ? (
+        <>
+          <p className="jz-restore-splash-error">{error}</p>
+          <button className="jz-restore-splash-reload" onClick={() => window.location.reload()}>
+            Reload
+          </button>
+        </>
+      ) : (
+        <p>Restoring your boards…</p>
+      )}
+    </div>
+  );
+}
+
 export function App() {
   const room = roomFromUrl();
+  const restoring = useSyncExternalStore(subscribeRestore, isRestoring, isRestoring);
+  if (restoring) {
+    return (
+      <div className="jarwiz-app">
+        <RestoreSplash />
+      </div>
+    );
+  }
   return <div className="jarwiz-app">{room ? <SyncedBoard room={room} /> : <LocalBoard />}</div>;
 }

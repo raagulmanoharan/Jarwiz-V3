@@ -164,6 +164,16 @@ export function deleteBoard(id: string): void {
   _notify();
 }
 
+/** Overwrite the whole board list — the restore path (backup.ts) only. The
+ *  caller reloads the page right after, so this writes without notifying:
+ *  letting React re-render here would remount tldraw onto databases that are
+ *  still being rewritten. */
+export function writeBoardsForRestore(boards: Board[], activeId: string): void {
+  _boards = boards;
+  _activeId = activeId;
+  _save();
+}
+
 export function markBoardUsed(id: string): void {
   _boards = _boards.map((b) => (b.id === id ? { ...b, isNew: false } : b));
   _save();
