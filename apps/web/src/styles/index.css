@@ -4931,7 +4931,15 @@ body,
   background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
   color: var(--jz-ink-900);
 }
-.jz-side-action--danger:hover { color: var(--jz-danger, #b60554); }
+.jz-side-action--danger:hover { color: var(--jz-danger); }
+
+/* Armed delete confirmation — the trash glyph flips to a "Sure?" label. */
+.jz-side-confirm {
+  font-size: var(--jz-text-micro-size);
+  font-weight: 600;
+  color: var(--jz-danger);
+  white-space: nowrap;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .jz-side { animation: none; }

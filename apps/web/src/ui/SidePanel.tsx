@@ -98,7 +98,16 @@ function BoardsSection() {
   const activeId = useSyncExternalStore(subscribeBoards, getActiveBoardId, getActiveBoardId);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  // Deleting a board destroys its canvas permanently — arm the trash button on
+  // first click ("Sure?") and only delete on a second click within 3s.
+  const [armedId, setArmedId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!armedId) return;
+    const t = setTimeout(() => setArmedId(null), 3000);
+    return () => clearTimeout(t);
+  }, [armedId]);
 
   useEffect(() => {
     if (editingId && inputRef.current) {
@@ -177,11 +186,18 @@ function BoardsSection() {
                   {boards.length > 1 && (
                     <button
                       className="jz-side-action jz-side-action--danger"
-                      title="Delete board"
-                      onClick={() => deleteBoard(b.id)}
-                      aria-label={`Delete ${b.name}`}
+                      title={armedId === b.id ? 'Click again to delete permanently' : 'Delete board'}
+                      onClick={() => {
+                        if (armedId === b.id) {
+                          setArmedId(null);
+                          deleteBoard(b.id);
+                        } else {
+                          setArmedId(b.id);
+                        }
+                      }}
+                      aria-label={armedId === b.id ? `Confirm delete ${b.name}` : `Delete ${b.name}`}
                     >
-                      <TrashGlyph />
+                      {armedId === b.id ? <span className="jz-side-confirm">Sure?</span> : <TrashGlyph />}
                     </button>
                   )}
                 </div>

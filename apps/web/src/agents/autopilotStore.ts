@@ -274,9 +274,13 @@ export async function continueProse(editor: Editor, cardId: TLShapeId): Promise<
       sourceIds: [cardId],
       targetId: null,
       onAnswer: (answer) => {
-        // Set the answer as the doc title so the model has something to open with.
+        // Seed the card with the answer so the next readiness check passes —
+        // title for docs, text for notes (notes have no title; without this a
+        // note-card re-asked the same question forever).
         if (shape.type === 'doc-card') {
           editor.updateShape({ id: cardId, type: 'doc-card', props: { title: answer } });
+        } else {
+          editor.updateShape({ id: cardId, type: 'note-card', props: { text: answer } });
         }
         void continueProse(editor, cardId);
       },
@@ -296,41 +300,23 @@ export async function continueProse(editor: Editor, cardId: TLShapeId): Promise<
 
   let appended = '';
   let joined = false;
-  // Buffer of characters queued for typing-speed drain
-  let typingQueue = '';
-  let draining = false;
 
-  const sleep = (ms: number) =>
-    new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-  // Drain one character at a time with a human typing rhythm: long pauses after
-  // sentence punctuation, shorter after commas/newlines, brief after whitespace,
-  // fastest mid-word. The session anchor is set once at the start of the run —
-  // the card's corner doesn't move per character, so we don't re-notify here.
-  const drainQueue = async () => {
-    if (draining) return;
-    draining = true;
-    while (typingQueue.length > 0) {
-      if (controller.signal.aborted) break;
-      const ch = typingQueue.charAt(0);
-      typingQueue = typingQueue.slice(1);
-      appended += ch;
-      const current = editor.getShape(cardId);
-      if (current && (current.type === 'doc-card' || current.type === 'note-card')) {
-        editor.updateShape({
-          id: cardId,
-          type: current.type,
-          props: { text: baseText + appended },
-        } as Parameters<typeof editor.updateShape>[0]);
-      }
-      const delay = /[.!?]/.test(ch) ? 80 + Math.random() * 60
-                  : ch === ',' ? 55 + Math.random() * 30
-                  : ch === '\n' ? 70 + Math.random() * 40
-                  : /\s/.test(ch) ? 35 + Math.random() * 25
-                  : 18 + Math.random() * 20;
-      await sleep(delay);
+  // Each SSE delta is applied as ONE updateShape (append the whole chunk).
+  // The model's own token cadence provides the "live writing" rhythm and the
+  // streaming caret supplies the presence cue — the old per-character fake
+  // typing multiplied store mutations ~30-60x and made long continuations
+  // crawl for a minute.
+  const applyDelta = (chunk: string) => {
+    if (controller.signal.aborted || !chunk) return;
+    appended += chunk;
+    const current = editor.getShape(cardId);
+    if (current && (current.type === 'doc-card' || current.type === 'note-card')) {
+      editor.updateShape({
+        id: cardId,
+        type: current.type,
+        props: { text: baseText + appended },
+      } as Parameters<typeof editor.updateShape>[0]);
     }
-    draining = false;
   };
 
   try {
@@ -351,19 +337,15 @@ export async function continueProse(editor: Editor, cardId: TLShapeId): Promise<
       // Clean join: if the model didn't lead with whitespace and our text
       // doesn't end with it, insert a break (newlines before a markdown heading,
       // else a space) so the continuation doesn't weld onto the last word.
-      if (!joined && event.textDelta) {
+      let chunk = event.textDelta;
+      if (!joined && chunk) {
         joined = true;
-        if (baseText && !/\s$/.test(baseText) && !/^\s/.test(event.textDelta)) {
-          typingQueue += /^#{1,6}\s/.test(event.textDelta) ? '\n\n' : ' ';
+        if (baseText && !/\s$/.test(baseText) && !/^\s/.test(chunk)) {
+          chunk = (/^#{1,6}\s/.test(chunk) ? '\n\n' : ' ') + chunk;
         }
       }
-      typingQueue += event.textDelta;
-      void drainQueue();
+      applyDelta(chunk);
     });
-    // Wait for any queued characters to finish typing
-    while (typingQueue.length > 0 && !controller.signal.aborted) {
-      await sleep(30);
-    }
   } catch {
     /* aborted (yield/Esc) or network — nothing to surface */
   } finally {

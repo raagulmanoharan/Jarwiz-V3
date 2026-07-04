@@ -1,14 +1,18 @@
 /**
  * Claude panel open/close state — mirrors sidePanelStore.ts.
- * The two panels are mutually exclusive: opening Claude closes boards.
+ * The two panels are mutually exclusive in both directions: opening Claude
+ * closes boards, and opening boards closes Claude (via the registration hook,
+ * which avoids a module import cycle).
  */
 
-import { closeSidePanel } from './sidePanelStore';
+import { closeSidePanel, registerSidePanelExclusive } from './sidePanelStore';
 
 let _open = false;
 const _listeners = new Set<() => void>();
 
 const notify = () => _listeners.forEach((cb) => cb());
+
+registerSidePanelExclusive(() => closeClaudePanel());
 
 export function isClaudePanelOpen(): boolean {
   return _open;

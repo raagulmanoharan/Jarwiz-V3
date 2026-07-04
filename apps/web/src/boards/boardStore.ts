@@ -152,16 +152,14 @@ export function deleteBoard(id: string): void {
   const next = _boards.filter((b) => b.id !== id);
   _boards = next;
   if (_activeId === id) _activeId = next[0]!.id;
-  // Remove the tldraw snapshot from localStorage too.
-  if (id !== LEGACY_ID) {
-    try {
-      // tldraw stores its data under keys prefixed with "tldraw_" + persistenceKey
-      const prefix = boardPersistenceKey(id);
-      for (const key of Object.keys(localStorage)) {
-        if (key.startsWith(prefix) || key.includes(prefix)) localStorage.removeItem(key);
-      }
-    } catch { /* best effort */ }
-  }
+  // The board's canvas data lives in IndexedDB (tldraw names the database
+  // "TLDRAW_DOCUMENT_v2" + persistenceKey) — delete it, best-effort, or every
+  // deleted board's shapes are orphaned on disk forever. The old localStorage
+  // sweep was a no-op: tldraw never persisted board data there.
+  try {
+    const key = boardPersistenceKey(id);
+    indexedDB.deleteDatabase(`TLDRAW_DOCUMENT_v2${key}`);
+  } catch { /* best effort */ }
   _save();
   _notify();
 }

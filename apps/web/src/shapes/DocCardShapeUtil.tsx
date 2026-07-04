@@ -87,7 +87,11 @@ export class DocCardShapeUtil extends ShapeUtil<DocCardShape> {
   }
 }
 
-const TASK_LINE_RE = /^(\s*[-*]\s+)\[([ xX])\](\s+.*)$/;
+// Must match EXACTLY the lines DocMarkdown renders as checkboxes (`- [ ] …`,
+// no indent, `-` bullet only) — the renderer's task ordinals index into the
+// same sequence this regex produces. A broader pattern here (indented or `*`
+// bullets) desynchronizes the ordinals and toggling flips the wrong line.
+const TASK_LINE_RE = /^(- )\[([ xX])\](\s+.*)$/;
 
 
 function toggleTask(editor: Editor, shape: DocCardShape, ordinal: number, checked: boolean): void {
@@ -168,6 +172,30 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
   if (isEditing) {
     return (
       <div className={`jz-doc jz-doc-editing${autopilotActive ? ' jz-doc-autopilot' : ''}`}>
+        <input
+          value={title}
+          placeholder="Untitled"
+          className="jz-doc-title-input"
+          style={{ pointerEvents: 'all' }}
+          onChange={(e) => {
+            editor.updateShape<DocCardShape>({
+              id: shape.id,
+              type: 'doc-card',
+              props: { title: e.currentTarget.value },
+            });
+          }}
+          onKeyDown={(e) => {
+            // Enter drops focus into the body; keep every other key on the input.
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              textareaRef.current?.focus();
+            }
+            e.stopPropagation();
+          }}
+          onPointerDown={stopEventPropagation}
+          onPointerMove={stopEventPropagation}
+          onPointerUp={stopEventPropagation}
+        />
         <textarea
           ref={textareaRef}
           value={text}
