@@ -18,6 +18,7 @@ const tldrawAssetUrls = getAssetUrlsByImport();
 import { useSync } from '@tldraw/sync';
 import { PromptBar } from './ask/PromptBar';
 import { CardActionBar } from './ask/CardActionBar';
+import { LineageLayer } from './ask/LineageLayer';
 import { DiscussLayer } from './ask/DiscussLayer';
 import { ClarifyLayer } from './ask/ClarifyLayer';
 import { DraftControls } from './ask/DraftControls';
@@ -34,7 +35,6 @@ import { EmptyState } from './ui/EmptyState';
 import { Topbar } from './ui/Topbar';
 import { HelpLayer } from './ui/HelpLayer';
 import { SidePanel } from './ui/SidePanel';
-import { ClaudePanel } from './ui/ClaudePanel';
 import { getTheme, subscribeTheme } from './ui/theme';
 
 /**
@@ -49,7 +49,6 @@ function JarwizOverlay() {
       {/* Chrome — the Flora frame. */}
       <Topbar />
       <SidePanel />
-      <ClaudePanel />
       <ToolRail />
       <PromptBar />
       <AgentCursorLayer />
@@ -59,6 +58,7 @@ function JarwizOverlay() {
       <EmptyState />
       <BoardEntry />
       <CardActionBar />
+      <LineageLayer />
       <ClarifyLayer />
       <DraftControls />
       <RegenControls />

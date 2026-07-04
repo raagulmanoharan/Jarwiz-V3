@@ -6,9 +6,8 @@
  */
 
 import { createShapeId, stopEventPropagation, useEditor, useValue } from 'tldraw';
-import { MousePointer2, Hand, Type, Shapes, ArrowUpRight, Upload, Folder, HelpCircle, MessageSquare } from 'lucide-react';
+import { MousePointer2, Hand, Type, Shapes, ArrowUpRight, Upload, Folder, HelpCircle } from 'lucide-react';
 import { DOC_CARD_SIZE, type DocCardShape } from '../shapes';
-import { isClaudePanelOpen, subscribeClaudePanel, toggleClaudePanel } from './claudePanelStore';
 import { toggleSidePanel } from './sidePanelStore';
 import { toggleHelp } from './help';
 import { useSyncExternalStore } from 'react';
@@ -81,7 +80,6 @@ function spawnDocCard(editor: ReturnType<typeof useEditor>) {
 export function ToolRail() {
   const editor = useEditor();
   const toolId = useValue('rail-tool', () => editor.getCurrentToolId(), [editor]);
-  const claudeOpen = useSyncExternalStore(subscribeClaudePanel, isClaudePanelOpen, isClaudePanelOpen);
 
   return (
     <div className="jz-rail" onPointerDown={stopEventPropagation}>
@@ -107,9 +105,6 @@ export function ToolRail() {
         <Folder {...ICON_PROPS} />
       </RailTool>
       <div className="jz-rail-spacer" aria-hidden />
-      <RailTool label="Ask Claude" active={claudeOpen} onClick={toggleClaudePanel}>
-        <MessageSquare {...ICON_PROPS} />
-      </RailTool>
       <RailTool label="Help" active={false} onClick={toggleHelp}>
         <HelpCircle {...ICON_PROPS} />
       </RailTool>

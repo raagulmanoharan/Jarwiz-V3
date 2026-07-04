@@ -15,6 +15,7 @@ import { useTidy, canTidy } from '../agents/useTidy';
 import { useCluster, canCluster } from '../agents/useCluster';
 import { getProvenance, getProvenanceMap, subscribeProvenance } from './provenance';
 import { getOpenDiscuss, subscribeDiscuss, toggleDiscuss } from './discuss';
+import { clearLineage, getLineage, hasAncestry, subscribeLineage, traceLineage } from './lineage';
 
 const ANSWER = new Set(['doc-card', 'table-card', 'diagram-card']);
 type Transform = { label: string; run: () => void };
@@ -27,6 +28,7 @@ export function CardActionBar() {
   const { cluster } = useCluster();
   useSyncExternalStore(subscribeProvenance, getProvenanceMap, getProvenanceMap);
   const openDiscuss = useSyncExternalStore(subscribeDiscuss, getOpenDiscuss, getOpenDiscuss);
+  const lineage = useSyncExternalStore(subscribeLineage, getLineage, getLineage);
   const [menu, setMenu] = useState<null | 'refine' | 'based'>(null);
 
   // One or more askable shapes selected → the bar lights up (same place always).
@@ -50,6 +52,8 @@ export function CardActionBar() {
   const id = sel.id as TLShapeId;
   const ids = sel.ids as TLShapeId[];
   const prov = sel.multi ? undefined : getProvenance(id);
+  const traceable = !sel.multi && hasAncestry(editor, id);
+  const tracing = lineage?.rootId === id;
 
   const transforms: Transform[] = [];
   if (!sel.multi && ANSWER.has(sel.type)) {
@@ -105,6 +109,20 @@ export function CardActionBar() {
       {sel.type === 'doc-card' ? (
         <button className={`jz-cardbar-btn${openDiscuss === id ? ' jz-cardbar-btn--on' : ''}`} onClick={() => toggleDiscuss(id)}>
           💬 Discuss
+        </button>
+      ) : null}
+
+      {traceable ? (
+        <button
+          className={`jz-cardbar-btn${tracing ? ' jz-cardbar-btn--on' : ''}`}
+          title="Light up everything this card came from — sources, questions, and the path between them"
+          onClick={() => {
+            setMenu(null);
+            if (tracing) clearLineage();
+            else traceLineage(editor, id);
+          }}
+        >
+          ◉ Trace
         </button>
       ) : null}
 

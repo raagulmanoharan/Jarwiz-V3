@@ -79,3 +79,21 @@ Format: each entry is **Decision → Choice → Why**, plus what it superseded.
 
 When you make a call worth remembering, add a row here (Decision → Choice →
 Why), note what it supersedes, and cross-link the deep-dive doc.
+
+## 2026-07-04 — One composer, no chat drawer
+
+Removed the right-edge Claude chat panel (`ClaudePanel` + `/api/chat`).
+The thesis is "AI doesn't live in a chat box"; shipping our own chat box
+diluted it into the canvas+chat-panel category every competitor occupies.
+The PromptBar is the single composer: every answer lands on the board as an
+artifact with provenance, never as a transcript. Conversational refinement
+lives on the cards themselves (Discuss, Refine, follow-up asks). Revisit only
+if a real user need emerges that cards demonstrably can't serve.
+
+## 2026-07-04 — The PDF edge is the wedge
+
+Owner decision: Jarwiz's positioning is the document-analysis companion —
+"drop in the documents you have to understand; Jarwiz thinks with you on a
+canvas." Ideation features (stickies, clustering) remain as supporting cast.
+Capabilities that don't serve this wedge get parked or cut (docs/PDF-EDGE.md
+is the plan of record for the build-out).
