@@ -64,8 +64,18 @@ export function cardSeedKey(cardId: string, text: string, title?: string): strin
   return `${cardId}:${t.length}:${t.slice(0, 24)}:${t.slice(-24)}`;
 }
 
-/** Kick off a fetch (idempotent) for pills tailored to a text card. */
+/** Kick off a fetch (idempotent) for pills tailored to a text card. A card
+ *  with no body text resolves to NO pills immediately — leaving the cache
+ *  unset would strand the prompt bar's waiting shimmer forever (undefined
+ *  reads as "fetch in flight"). */
 export function ensureCardSeeds(key: string, text: string, title?: string): void {
-  if (!key || !text.trim()) return;
+  if (!key) return;
+  if (!text.trim()) {
+    if (!cache.has(key)) {
+      cache.set(key, []);
+      emit();
+    }
+    return;
+  }
   fetchSeeds(key, { text: text.slice(0, 12_000), title: title || undefined });
 }

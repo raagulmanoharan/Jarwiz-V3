@@ -210,3 +210,104 @@ Tab-to-continue Autopilot — was not re-evaluated in this pass; it has its own
 harnesses (`scripts/verify-m1.mjs`, `verify-m2.mjs`, `eval-ui.mjs`). PDF ingestion
 and seed prompts were exercised indirectly (the Ask pipeline) but not via a real
 file upload in this run.
+
+---
+
+# 2026-07-04 — Full-flow dogfood: every shape, one deep-dive session
+
+**Method.** One browser session against the production preview with a live
+model, driving a realistic deep dive ("Should we adopt trace-based JIT?"):
+onboarding → PDF drop → profile → compare pill → table → checklist →
+flowchart → affinity → fresh doc + Tab autopilot → labeled native sketch
+asked about → combine → link/image cards → timeline → light theme.
+15 screenshots (`/tmp/jz-dive-*.png`), phase log in session notes. Latency
+excluded from findings by owner instruction. What WORKED end to end: drop →
+profile with page citations → format-aware pill → cited comparison table →
+checklist with live checkboxes → flowchart as native editable shapes →
+autopilot continuing a half-written memo → an ask grounded on a hand-drawn
+sketch → combine → per-board activity log → full light/dark reskin. The
+spine of the product holds.
+
+## Bugs found (ranked)
+
+1. **Empty cards are legitimate ask sources — worst case is system-prompt
+   leakage.** Grounding a brainstorm on the empty starter doc produced 30
+   sticky notes about *Jarwiz itself* ("Trust in AI output", "Unclear how to
+   summon agents") — the model, given no content, riffed on its own system
+   prompt. The same empty source made Combine emit an apology paragraph as
+   section 1. The content gate protects pills and transforms but not
+   prompt-bar asks. Gate ask grounding on `hasAskableContent`, or have the
+   server refuse empty sources.
+2. **"Start blank" isn't blank.** It creates an empty doc card titled with
+   the board name, left in edit mode. That card became permanent clutter,
+   then the poisoned source in (1). Blank should mean an empty canvas.
+3. **A one-sided comparison renders as a broken table.** "Trace-based vs
+   method-based" on a paper that covers only trace-based produced a 3-column
+   table whose third column is entirely empty cells — honest (no invention)
+   but reads broken. When a compared side has no grounding, the cell should
+   say so ("not covered in this source") or the pill shouldn't offer a
+   two-sided compare.
+4. **Doc answers can carry raw Mermaid/code.** "Answer in two sentences"
+   about a sketch returned two sentences PLUS a mermaid code block, rendered
+   as raw monospace text in the doc card. DocMarkdown has no fence handling
+   and the doc prompt doesn't forbid fences; either render fences, reroute
+   them to a diagram card, or prompt them away.
+5. **Waiting shimmer never resolved on empty/title-only cards** — selected
+   empty card showed placeholder pills forever (`ensureCardSeeds` early-
+   returned without caching, so the UI read "fetch in flight" indefinitely).
+   FIXED this session.
+6. **Diagram generation happens off-screen.** The flowchart built at the far
+   right edge, half out of the viewport, its running-task pill anchored at
+   the OPPOSITE corner. No camera follow like asks have. It reads as
+   "nothing happened" until you pan.
+7. **Pill labels truncate mid-word** ("Challenge type-stability assumpt",
+   "Nested trace tree algorithm chec") — the server's 32-char slice needs a
+   word boundary + ellipsis, or a larger cap.
+8. **Citations below the card fold are unreachable.** A collapsed profile
+   card clamps at max height; its later `[p.N]` chips can't be clicked
+   until Expand. The activity log also mislabels the profile as "List".
+9. **Placement collisions.** The profile card landed overlapping the starter
+   doc; "New doc" spawns at viewport centre regardless of occupancy.
+   placeInLane avoids its own lane but not other shapes.
+10. **Card action bar chrome collisions.** The floating bar overlaps the
+    card's outside title tag, and when the selected card's top edge is
+    off-screen the bar pins mid-air, visually detached from what it acts on.
+
+## UX friction
+
+- **Bottom-centre pileup.** Coach bubble + shimmer/pill row + scan chips +
+  prompt bar can all stack; the coach bubble literally describes the two
+  chips rendered directly beneath it — redundant teaching, and it never
+  auto-dismisses.
+- **The board is one endless row.** Lane placement appends everything
+  rightward; after eight artifacts the session sits at 28% zoom on a
+  ~6000px strip. No auto-sections/frames for a work session; Tidy is
+  selection-only.
+- **Affinity output is a wall**: 30 stickies in 7 columns for one
+  brainstorm; cluster labels aren't visually distinct from notes; selecting
+  the result floods the prompt bar's ground chips ("+27").
+- Arrow labels wrap mid-word at default widths ("hot loop detect‑ed").
+- Timeline entries show raw prompt text as labels — fine for asks, awkward
+  for long canned prompts (the profile's full instruction block).
+
+## Capability gaps / doc-reality mismatches
+
+- **No way to get an image onto the canvas.** image-card renders fine but
+  has no creator: ingestion accepts only PDFs, no image drop/paste path.
+  (Typed photo table-columns can upload now — the canvas itself can't.)
+- **Prompt bar's + (attach) and / (commands) are dead buttons** that log
+  to console. Visible chrome that does nothing erodes trust in the rest.
+- **Workspace section is a stub** ("workspace switching is not wired up").
+- **CLAUDE.md/docs still describe a right-edge ClaudePanel chat drawer**;
+  the current rail has no chat toggle. Docs and chrome disagree.
+- Link cards can't retry a failed preview (relevant offline/flaky network).
+- Multi-PDF drop doesn't lay out a reading row (roadmap item, confirming
+  still open).
+
+## Test-harness notes
+
+- Tension/gap scan chips confirmed visible with empty selection, but the
+  scan run itself was lost to a driver bug (returned the Editor from
+  `evaluate` — CLAUDE.md gotcha #3 strikes again; the board-scan surface
+  still deserves a dedicated pass).
+- Link preview untestable here (sandbox blocks outbound web).
