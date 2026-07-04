@@ -17,9 +17,11 @@ body,
 .jarwiz-app {
   position: fixed;
   inset: 0;
-}/* Keyboard focus: a visible ring on our interactive overlays. Individual rules
+}
+
+/* Keyboard focus: a visible ring on our interactive overlays. Individual rules
    set `outline: none` for the mouse case; restore a clear indicator for
-   keyboard users (focus-visible only,
+   keyboard users (focus-visible only, so it never shows on click). */
 .jz-table-cell,
 .jz-table-headcell,
 .jz-doc-textarea,
@@ -379,7 +381,9 @@ body,
   height: 1px;
   margin: 4px 6px;
   background: var(--jz-hairline);
-}/* Theme toggle — single sun/moon icon button with a gentle flip animation. */
+}
+
+/* Theme toggle — single sun/moon icon button with a gentle flip animation. */
 .jz-theme-toggle {
   pointer-events: auto;
   flex: none;
@@ -412,7 +416,8 @@ body,
   60%  { transform: scale(1.08) rotate(8deg);  opacity: 1; }
   100% { transform: scale(1) rotate(0);        opacity: 1; }
 }
-}/* ─── Card chrome (shared by all custom shapes) ─────────────────────────── */
+
+/* ─── Card chrome (shared by all custom shapes) ─────────────────────────── */
 
 .jz-card {
   width: 100%;
@@ -753,7 +758,7 @@ body,
   }
 }
 
-@media (prefers-reduced-motion: reduce) 
+@media (prefers-reduced-motion: reduce) {
   .jz-pdf-spinner {
     animation: none;
   }
@@ -959,7 +964,7 @@ body,
   }
 }
 
-@media (prefers-reduced-motion: reduce) 
+@media (prefers-reduced-motion: reduce) {
   .jz-draft-dot {
     animation: none;
   }
@@ -1059,7 +1064,7 @@ body,
   }
 }
 
-@media (prefers-reduced-motion: reduce) 
+@media (prefers-reduced-motion: reduce) {
   .jz-timeline {
     animation: none;
   }
@@ -1211,25 +1216,13 @@ body,
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--jz-accent) 14%, transparent);
 }
 
-@media (prefers-reduced-motion: reduce) 
+@media (prefers-reduced-motion: reduce) {
   .jz-tl-revert-link {
     transition: none;
   }
-}different component; keep them from colliding.
-   A vertical stack growing DOWN from the card's bottom edge {
-  position: absolute;
-  transform: translateX(-50%);
-  z-index: 300;
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 6px;
-  width: max-content;
-  max-width: 520px;
-  pointer-events: auto;
-}/* ── Disambiguation bubble ──────────────────────────────────────────────── */
+}
+
+/* ── Disambiguation bubble ──────────────────────────────────────────────── */
 .jz-clarify {
   position: absolute;
   transform: translateX(-50%);
@@ -1326,7 +1319,9 @@ body,
   background: var(--jz-hairline);
 }.jz-ask-spark {
   color: var(--jz-accent);
-}/* ─── Card materialization (C2) ─────────────────────────────────────────── */
+}
+
+/* ─── Card materialization (C2) ─────────────────────────────────────────── */
 
 @keyframes jz-materialize {
   from {
@@ -1612,7 +1607,7 @@ body,
   border-color: color-mix(in srgb, var(--jz-ink-900) 28%, transparent);
 }
 
-@media (prefers-reduced-motion: reduce) 
+@media (prefers-reduced-motion: reduce) {
   .jz-autopilot-nudge--takeover { animation: jz-fade-in var(--jz-dur-base) var(--jz-ease-out) both; }
 }
 
@@ -1681,7 +1676,9 @@ body,
   position: absolute;
   top: 4px;
   right: 3px;
-}/* ─── Figma-style agent avatar (Cinematic Presence, C2) ─────────────────── */
+}
+
+/* ─── Figma-style agent avatar (Cinematic Presence, C2) ─────────────────── */
 
 .jz-avatar {
   position: absolute;
@@ -1739,7 +1736,9 @@ body,
   display: flex;
   align-items: center;
   justify-content: center;
-}/* The single Jarwiz identity — white circle with a dark Sparkle mark. The
+}
+
+/* The single Jarwiz identity — white circle with a dark Sparkle mark. The
    ring still pulses in the agent color but the disc itself is paper-white so
    the brand reads the same way the autopilot caret does. */
 .jz-avatar--jarwiz .jz-avatar-circle {
@@ -1782,9 +1781,6 @@ body,
   max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
-}/* The cluster's cross-cutting pills read as a slightly stronger {
-  box-shadow: var(--jz-e4);
-  border: 1px solid var(--jz-hairline-strong);
 }
 
 @keyframes jz-reading-pulse {
@@ -1940,7 +1936,7 @@ body,
   50%      { transform: scale(1.12); opacity: 0.85; }
 }
 
-@media (prefers-reduced-motion: reduce) 
+@media (prefers-reduced-motion: reduce) {
   .jz-autopilot-cursor { animation: none; }
 }
 
@@ -2264,47 +2260,7 @@ body,
 .jz-diagram-empty {
   font-size: var(--jz-text-body-size);
   color: var(--jz-ink-400);
-}/* ─── Toolbar content creators (Doc / Note {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  width: 44px;
-  height: 42px;
-  padding: 0;
-  border: none;
-  border-radius: var(--jz-radius-md);
-  background: transparent;
-  color: var(--jz-ink-700);
-  font-family: var(--jz-font-ui);
-  cursor: pointer;
-  transition:
-    background var(--jz-dur-fast) var(--jz-ease-out),
-    color var(--jz-dur-fast) var(--jz-ease-out);
-}/* ─── Provenance header ("Based on:" — show your work {
-  position: absolute;
-  z-index: 312;
-  pointer-events: auto;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  max-width: 70vw;
-  padding: 5px 8px 5px 10px;
-  border-radius: var(--jz-radius-pill);
-  background: var(--jz-surface-raised);
-  box-shadow: var(--jz-e3);
-  border: 1px solid var(--jz-hairline);
-  font-family: var(--jz-font-ui);
-  animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
-}/* ─── Discuss thread (conversational depth, 3.3) ─────────────────────────── */
-
-
-/* ─── Doc skeleton (agent has the card, no words yet) ────────────────────── */
-
-
-@media (prefers-reduced-motion: reduce) 
-  }
+}
 
 /* ─── Agent task control (cancel while running, error + retry) ────────────── */
 .jz-task {
@@ -2687,7 +2643,9 @@ body,
   font-size: var(--jz-text-micro-size);
   font-weight: 600;
   white-space: nowrap;
-}/* ─── Board entry — "What are you working on?" onboarding dialog ─────────── */
+}
+
+/* ─── Board entry — "What are you working on?" onboarding dialog ─────────── */
 
 .jz-boardentry-scrim {
   position: absolute;
@@ -2736,7 +2694,7 @@ body,
   }
 }
 
-@media (prefers-reduced-motion: reduce) 
+@media (prefers-reduced-motion: reduce) {
   .jz-boardentry-scrim,
   .jz-boardentry { animation: none; }
 }
@@ -2892,7 +2850,9 @@ body,
 .jz-boardentry-submit:hover {
   background: var(--jz-ink-700);
   transform: translateY(-1px);
-}/* ─── Help panel (reference: what Jarwiz can do) ───────────────────────────── */
+}
+
+/* ─── Help panel (reference: what Jarwiz can do) ───────────────────────────── */
 .jz-help-scrim {
   position: absolute;
   inset: 0;
@@ -3178,12 +3138,13 @@ body,
 }
 .jz-tour-next:hover { transform: translateY(-1px); }
 
-@media (prefers-reduced-motion: reduce) 
+@media (prefers-reduced-motion: reduce) {
   .jz-help-scrim,
   .jz-help-panel,
   .jz-tour-scrim,
-  .jz-tour-bubble { animation: none; }.jz-help-tour-btn:hover,
-.jz-tour-next:hover { transform: none; }
+  .jz-tour-bubble { animation: none; }
+  .jz-help-tour-btn:hover,
+  .jz-tour-next:hover { transform: none; }
 }
 
 /* ─── Side panel (workspace + boards) ───────────────────────────────────── */
@@ -3373,7 +3334,7 @@ body,
   white-space: nowrap;
 }
 
-@media (prefers-reduced-motion: reduce) 
+@media (prefers-reduced-motion: reduce) {
   .jz-side { animation: none; }
 }
 
