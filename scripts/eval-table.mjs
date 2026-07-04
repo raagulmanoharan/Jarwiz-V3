@@ -60,13 +60,13 @@ async function run() {
   const cols0 = p.columns.length, rows0 = p.rows.length;
 
   // Add a column.
-  await page.locator('.jz-table-add', { hasText: 'Column' }).click();
+  await page.click('.jz-table-edgeadd-col');
   await sleep(500);
   p = await props(page, id);
   record('add column', p.columns.length === cols0 + 1, `${cols0} → ${p.columns.length}`);
 
   // Add a row.
-  await page.locator('.jz-table-add', { hasText: 'Row' }).click();
+  await page.click('.jz-table-edgeadd-row');
   await sleep(500);
   p = await props(page, id);
   record('add row', p.rows.length === rows0 + 1, `${rows0} → ${p.rows.length}`);

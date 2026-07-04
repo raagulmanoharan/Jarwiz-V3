@@ -1450,20 +1450,22 @@ body,
   flex: none;
   display: grid;
   align-items: stretch;
-  background: color-mix(in srgb, var(--jz-paper) 60%, var(--jz-surface));
   border-bottom: 1px solid var(--jz-hairline);
 }
 
+/* Header cells match the body cells — same size and padding, just bolder —
+ * so the head reads as part of the same quiet grid, not a separate chrome. */
 .jz-table-headcell {
   border-right: 1px solid var(--jz-hairline);
-  padding: 7px 10px;
+  padding: 6px 10px;
   font-family: var(--jz-font-ui);
-  font-size: var(--jz-text-caption-size);
-  font-weight: 600;
-  line-height: 1.35;
-  letter-spacing: 0.01em;
-  color: var(--jz-ink-700);
+  font-size: var(--jz-text-body-sm-size);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--jz-ink-900);
   min-width: 0;
+  min-height: 30px;
+  box-sizing: border-box;
 }
 
 .jz-table-headcell:last-child {
@@ -1481,6 +1483,7 @@ body,
 }
 
 .jz-table-row {
+  position: relative; /* hosts the hover-revealed row delete */
   display: grid;
   align-items: stretch;
   border-bottom: 1px solid var(--jz-hairline);
@@ -1541,33 +1544,48 @@ body,
   field-sizing: content; /* auto-height to content where supported */
 }
 
-.jz-table-controls {
-  flex: none;
-  display: flex;
-  gap: var(--jz-space-2);
-  padding: 6px 10px;
-  border-top: 1px solid var(--jz-hairline);
-  background: color-mix(in srgb, var(--jz-paper) 40%, var(--jz-surface));
+/* Edge add-affordances (edit mode) — Cove/Notion grain: a slim + strip along
+ * the bottom (row) and right (column) instead of labelled buttons. The fit
+ * wrapper reserves the right strip's lane while editing so cells never sit
+ * under it; the bottom strip is in flow and measured like any other row. */
+.jz-table--editing .jz-table-fit {
+  padding-right: 16px;
 }
 
-.jz-table-add {
-  border: 1px solid var(--jz-hairline-strong);
-  background: var(--jz-surface-raised);
+.jz-table-edgeadd {
+  border: none;
+  background: transparent;
   cursor: pointer;
   font-family: var(--jz-font-ui);
-  font-size: var(--jz-text-micro-size);
-  font-weight: 600;
-  color: var(--jz-ink-500);
-  padding: 4px 10px;
-  border-radius: var(--jz-radius-pill);
+  font-size: 13px;
+  line-height: 1;
+  color: var(--jz-ink-300);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition:
     color var(--jz-dur-fast) var(--jz-ease-out),
-    border-color var(--jz-dur-fast) var(--jz-ease-out);
+    background var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-table-edgeadd:hover {
+  color: var(--jz-ink-900);
+  background: color-mix(in srgb, var(--jz-ink-900) 5%, transparent);
 }
 
-.jz-table-add:hover {
-  color: var(--jz-ink-900);
-  border-color: var(--jz-ink-400);
+.jz-table-edgeadd-row {
+  width: 100%;
+  height: 16px;
+  border-top: 1px solid var(--jz-hairline);
+}
+
+.jz-table-edgeadd-col {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  border-left: 1px solid var(--jz-hairline);
 }
 
 .jz-table-hint {
@@ -1606,9 +1624,10 @@ body,
 }
 
 .jz-autopilot-nudge--table {
-  position: static;
-  margin-left: auto;
-  box-shadow: none;
+  /* Floats just above the bottom add-strip (the old controls bar is gone). */
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
 }
 
 /* Takeover variant — shown while autopilot is writing. Slightly warmer to
@@ -1639,24 +1658,12 @@ body,
 }
 
 /* ── Table editing: per-column / per-row delete ─────────────────────────────
-   In edit mode each header cell carries a corner ×, and a trailing 32px gutter
-   column holds each row's ×. Both are quiet until hovered. */
+   Deletes are invisible until you hover the thing they delete — a corner ×
+   on a hovered header cell, a floating × at a hovered row's right edge. No
+   reserved gutter column, no always-on chrome. */
 .jz-table-headcell-edit {
   position: relative;
   padding-right: 24px;
-}
-
-.jz-table-gutter {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-left: 1px solid var(--jz-hairline);
-  background: color-mix(in srgb, var(--jz-paper) 30%, var(--jz-surface));
-}
-
-.jz-table-gutter-head {
-  background: transparent;
-  border-left: 1px solid var(--jz-hairline);
 }
 
 .jz-table-del {
@@ -1685,8 +1692,51 @@ body,
 
 .jz-table-del-col {
   position: absolute;
-  top: 4px;
+  top: 50%;
   right: 3px;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-table-headcell-edit:hover .jz-table-del-col,
+.jz-table-del-col:focus-visible {
+  opacity: 1;
+}
+
+.jz-table-del-row {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  transform: translateY(-50%);
+  opacity: 0;
+  background: var(--jz-card-surface);
+  transition: opacity var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-table-row:hover .jz-table-del-row,
+.jz-table-del-row:focus-visible {
+  opacity: 1;
+}
+
+/* ── Rich cells — links and photos inside cells (tableRich.tsx) ──────────── */
+.jz-table-link {
+  color: var(--jz-accent);
+  text-decoration: none;
+  word-break: break-word;
+  border-bottom: 1px solid color-mix(in srgb, var(--jz-accent) 35%, transparent);
+  transition: border-color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-table-link:hover {
+  border-bottom-color: var(--jz-accent);
+}
+
+.jz-table-img {
+  display: block;
+  width: 100%;
+  max-height: 96px;
+  object-fit: cover;
+  border-radius: var(--jz-radius-sm);
+  margin: 2px 0;
+  border: 1px solid var(--jz-hairline);
 }
 
 /* ─── Figma-style agent avatar (Cinematic Presence, C2) ─────────────────── */

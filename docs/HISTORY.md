@@ -280,3 +280,25 @@ switches. Learnings:
 - Reusable selector lesson for our evals: `.jz-side-item-name` is shared by
   the Workspace and Backup rows — scope board-row assertions to
   `.jz-side-row`.
+
+## 2026-07-04 — The table grows up
+
+Owner direction: tables should carry more than comparisons (Cove as the
+reference) — itineraries with links and photos — and the chrome should get
+out of the way. What shipped:
+
+- **Rich cells, plain strings.** Cells stay strings in the schema (backup,
+  search, autopilot untouched); the static renderer understands minimal
+  inline markdown — [label](url) links, ![alt](src) images (https/data/
+  asset-store only), bare-URL links labelled by hostname, **bold**, line
+  breaks. The table system prompt now permits exactly that vocabulary, so
+  "plan me a tour" can land as an itinerary with booking links. Edit mode
+  deliberately shows the raw source.
+- **Chrome recedes.** +Row/+Column buttons became slim + strips on the
+  bottom/right edges (the fit wrapper reserves the right lane while
+  editing); row/column deletes are invisible until you hover what they
+  delete; the header is the same size as body cells, just bolder — same
+  quiet grid, no separate style.
+- Watch the cascade when a card's frame is height:100%: anything measured
+  for fit-height must be an auto-height inner element, and anything
+  absolute (the right + strip) stays out of the measured flow.

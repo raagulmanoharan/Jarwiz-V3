@@ -19,6 +19,7 @@ import { useFitHeight } from './useFitHeight';
 import { MAX_CARD_H, isExpanded, subscribeExpand } from './cardExpand';
 import { ExpandToggle } from './ExpandToggle';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
+import { renderRichCell } from './tableRich';
 
 export interface TableCardProps {
   w: number;
@@ -186,20 +187,18 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
     if (e.key === 'Tab') resetPause();
     autopilot.onKeyDown(shape.id, e);
   };
-  // In edit mode a trailing 32px gutter column holds each row's delete control.
-  const gridColsEdit = isEditing ? `${gridCols} 32px` : gridCols;
   const isEmpty = rows.every((r) => r.every((c) => !c.trim())) && columns.every((c) => !c.trim());
 
   return (
     <div
-      className={`jz-table${isFilling ? ' jz-table-filling' : ''}${collapsed ? ' jz-card-collapsed' : ''}`}
+      className={`jz-table${isFilling ? ' jz-table-filling' : ''}${collapsed ? ' jz-card-collapsed' : ''}${isEditing ? ' jz-table--editing' : ''}`}
     >
       {/* Measured wrapper: the frame is height:100% (its scrollHeight always
           equals the CURRENT shape height — the fit-height ratchet), so the
           hook measures this auto-height child instead, which reports true
           content height and lets the card shrink to fit as well as grow. */}
       <div className="jz-table-fit" ref={fitRef}>
-      <div className="jz-table-head" style={{ gridTemplateColumns: gridColsEdit }}>
+      <div className="jz-table-head" style={{ gridTemplateColumns: gridCols }}>
         {columns.map((label, col) =>
           isEditing ? (
             <div key={col} className="jz-table-headcell jz-table-headcell-edit">
@@ -235,12 +234,11 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
             </div>
           ),
         )}
-        {isEditing ? <div className="jz-table-gutter jz-table-gutter-head" /> : null}
       </div>
 
       <div className="jz-table-body">
         {rows.map((cells, row) => (
-          <div key={row} className="jz-table-row" style={{ gridTemplateColumns: gridColsEdit }}>
+          <div key={row} className="jz-table-row" style={{ gridTemplateColumns: gridCols }}>
             {cells.map((cell, col) =>
               isEditing ? (
                 <textarea
@@ -257,58 +255,59 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
                 />
               ) : (
                 <div key={col} className="jz-table-cell jz-table-cell-static">
-                  {cell}
+                  {renderRichCell(cell)}
                 </div>
               ),
             )}
-            {isEditing ? (
-              <div className="jz-table-gutter">
-                {rows.length > 1 ? (
-                  <button
-                    className="jz-table-del jz-table-del-row"
-                    title="Delete row"
-                    aria-label="Delete row"
-                    tabIndex={-1}
-                    style={{ pointerEvents: 'all' }}
-                    onPointerDown={stopEventPropagation}
-                    onClick={() => removeRow(row)}
-                  >
-                    ×
-                  </button>
-                ) : null}
-              </div>
+            {/* Row delete floats at the row's right edge, hover-revealed. */}
+            {isEditing && rows.length > 1 ? (
+              <button
+                className="jz-table-del jz-table-del-row"
+                title="Delete row"
+                aria-label="Delete row"
+                tabIndex={-1}
+                style={{ pointerEvents: 'all' }}
+                onPointerDown={stopEventPropagation}
+                onClick={() => removeRow(row)}
+              >
+                ×
+              </button>
             ) : null}
           </div>
         ))}
       </div>
 
+      {/* Cove-style edge affordances instead of a button bar: a slim + strip
+          along the bottom adds a row; its twin on the right edge adds a column. */}
       {isEditing ? (
-        <div className="jz-table-controls">
-          <button
-            className="jz-table-add"
-            onClick={addRow}
-            onPointerDown={stopEventPropagation}
-            style={{ pointerEvents: 'all' }}
-            title="Add a row"
-          >
-            + Row
-          </button>
-          <button
-            className="jz-table-add"
-            onClick={addColumn}
-            onPointerDown={stopEventPropagation}
-            style={{ pointerEvents: 'all' }}
-            title="Add a column"
-          >
-            + Column
-          </button>
-          {showNudge && (
-            <div className="jz-autopilot-nudge jz-autopilot-nudge--table" aria-hidden>
-              <span className="jz-autopilot-nudge-spark">✦</span>Tab to fill
-            </div>
-          )}
-        </div>
+        <button
+          className="jz-table-edgeadd jz-table-edgeadd-row"
+          onClick={addRow}
+          onPointerDown={stopEventPropagation}
+          style={{ pointerEvents: 'all' }}
+          title="Add a row"
+          aria-label="Add a row"
+        >
+          +
+        </button>
       ) : null}
+      {isEditing ? (
+        <button
+          className="jz-table-edgeadd jz-table-edgeadd-col"
+          onClick={addColumn}
+          onPointerDown={stopEventPropagation}
+          style={{ pointerEvents: 'all' }}
+          title="Add a column"
+          aria-label="Add a column"
+        >
+          +
+        </button>
+      ) : null}
+      {showNudge && (
+        <div className="jz-autopilot-nudge jz-autopilot-nudge--table" aria-hidden>
+          <span className="jz-autopilot-nudge-spark">✦</span>Tab to fill
+        </div>
+      )}
 
       {!isEditing && isEmpty ? (
         <div className="jz-table-hint" aria-hidden>
