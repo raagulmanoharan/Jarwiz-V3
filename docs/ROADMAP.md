@@ -353,7 +353,7 @@ with retry everywhere the model can fail. Multiplayer is parked behind
 
 | # | Build | Why | Size |
 |---|---|---|---|
-| 1 | **Reader robustness + eval set** | A daily driver dies the first time a real 120-page or scanned PDF fails. Lazy page rendering, OCR at scale, honest errors on oversized files, and a fixed eval set (contract, paper, financial report, scanned doc) run before merges | M |
+| 1 | **Reader robustness + eval set** ✅ | Shipped 2026-07-04: `scripts/eval-pdf.mjs` gates the real pipeline (upload → pills → cited streamed answer) over three fixture classes — 14-page ACM paper, 120-page contract, scanned image-only memo (exercises OCR). All pass. Guardrails (OCR page cap, size limits, per-page lazy render) were already in place | done |
 | 2 | **Backup / restore** | Everything lives in one browser profile's IndexedDB. One-click "back up all boards to a file / restore" is cheap insurance for every hour invested | S |
 
 **Delight — the moments that make it a habit:**
