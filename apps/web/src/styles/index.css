@@ -2500,9 +2500,10 @@ body,
   pointer-events: auto;
   display: flex;
   gap: var(--jz-space-3);
-  flex-wrap: wrap;
+  /* One line, always — pills shrink with ellipsis rather than stacking. */
+  flex-wrap: nowrap;
   justify-content: center;
-  max-width: min(660px, calc(100vw - 32px));
+  max-width: min(860px, calc(100vw - 32px));
 }
 
 .jz-pb-chip {
@@ -2512,6 +2513,10 @@ body,
   border-radius: var(--jz-radius-pill);
   background: var(--jz-surface-raised);
   box-shadow: var(--jz-e2);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-caption-size);
   font-weight: 500;
