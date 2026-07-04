@@ -136,7 +136,7 @@ async function maybeClarify(
   return null;
 }
 
-const SEED_SYSTEM = `You are given the text of a document a user just dropped on a canvas. Propose the 3 or 4 most useful, SPECIFIC questions this reader would want answered about THIS document — the kind that defeat the blank-slate "what do I even ask?" problem. Return ONLY a JSON array of objects {"label": string, "prompt": string}: "label" is a 2–4 word button caption; "prompt" is the full question to ask. Be concrete to this document's actual content (name the clause, the metric, the section) — never generic like "Summarize this". No prose, no code fences.`;
+const SEED_SYSTEM = `You are given the text of a card on a user's canvas (a dropped document, or an answer they are working through). Propose the 3 or 4 most useful NEXT MOVES for this reader — anticipate where they would drill in from here: go deeper on the pivotal claim, challenge the weakest assumption, connect it to a decision, extract what is actionable. Each must be SPECIFIC to this text (name the clause, the metric, the section) — never generic like "Summarize this". Return ONLY a JSON array of objects {"label": string, "prompt": string}: "label" is a 2–4 word button caption; "prompt" is the full question to ask. No prose, no code fences.`;
 
 export interface SeedPrompt {
   label: string;

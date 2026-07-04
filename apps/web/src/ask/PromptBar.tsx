@@ -28,16 +28,6 @@ function shapeLabel(editor: Editor, shape: TLShape): string {
 
 const COACH_KEY = 'jz-coach-agents';
 
-const STARTERS: Record<string, string[]> = {
-  'doc-card': ["What's the weakest part of this?", "What's missing here?", 'Summarise this in 3 bullets'],
-  'note-card': ['Expand this into a doc', "What's the counter-argument?"],
-  'table-card': ['Which option wins, and why?', "What's missing from this table?"],
-  'pdf-card': ['Summarise the key points', 'What should I worry about here?'],
-  'diagram-card': ['Explain this flow', "Where's the failure point?"],
-  'image-card': ["What's notable in this image?"],
-  default: ["What's most important here?", 'What would a skeptic ask?'],
-};
-
 export function PromptBar() {
   const editor = useEditor();
   const { ask, isAsking } = useAsk();
@@ -60,10 +50,9 @@ export function PromptBar() {
     editor.setSelectedShapes(editor.getSelectedShapeIds().filter((x) => x !== id));
   };
   const boardCount = useValue('promptbar-boardcount', () => editor.getCurrentPageShapeIds().size, [editor]);
-  // The sole selected card — only when it actually holds content. An empty doc
-  // has nothing to "summarise in 3 bullets"; a PDF mid-upload isn't readable.
-  // For contentful cards we fetch pills tailored to THEIR text (the static
-  // per-type strings are just the instant fallback while those arrive).
+  // The sole selected card — only when it actually holds content (an empty
+  // doc has nothing to ask about; a PDF mid-upload isn't readable). Pills are
+  // generated from the card's own text — nothing scripted.
   const sole = useValue('promptbar-sole', () => {
     const ids = editor.getSelectedShapeIds();
     if (ids.length !== 1) return null;
@@ -84,7 +73,6 @@ export function PromptBar() {
     const title = str(p.title);
     return { type: s.type, seedKey: cardSeedKey(s.id, text, title), pdf: false as const, text, title };
   }, [editor]);
-  const soleType = sole?.type ?? '';
   useEffect(() => {
     if (!sole) return;
     if (sole.pdf) {
@@ -120,14 +108,14 @@ export function PromptBar() {
   const busyLabel = runningMode ? (runningMode === 'tensions' ? 'Scanning…' : runningMode === 'gaps' ? 'Reviewing…' : 'Critiquing…') : null;
 
   const showChips = !runningMode && groundIds.length === 0 && boardCount >= 3;
+  // Pills are ALWAYS contextual — generated from the card's own content.
+  // Nothing scripted: until the tailored pills arrive (or if the card is
+  // empty) we show nothing. Predictable operations live on the card's
+  // floating bar (Refine, Discuss), not here.
   const starters: Array<{ label: string; prompt: string }> =
-    groundIds.length !== 1
-      ? []
-      : (seeds?.length ?? 0) > 0
-        ? seeds!.map((s) => ({ label: s.label, prompt: s.prompt }))
-        : soleType // empty card → no chips at all (never fall through to defaults)
-          ? (STARTERS[soleType] ?? STARTERS.default ?? []).map((s) => ({ label: s, prompt: s }))
-          : [];
+    groundIds.length === 1 && (seeds?.length ?? 0) > 0
+      ? seeds!.map((s) => ({ label: s.label, prompt: s.prompt }))
+      : [];
   const showStarters = !runningMode && !value.trim() && starters.length > 0;
   const showCoach = !coachDone && boardCount >= 5;
 

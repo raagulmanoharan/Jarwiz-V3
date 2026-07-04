@@ -266,17 +266,13 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
             }}
             onToggleTask={isStreaming ? undefined : (ordinal, checked) => toggleTask(editor, shape, ordinal, checked)}
           />
-        ) : isStreaming ? (
-          <div className="jz-doc-skeleton" aria-hidden>
-            <span className="jz-skel-line" style={{ width: '92%' }} />
-            <span className="jz-skel-line" style={{ width: '78%' }} />
-            <span className="jz-skel-line" style={{ width: '85%' }} />
-            <span className="jz-skel-line" style={{ width: '60%' }} />
-          </div>
-        ) : (
+        ) : isStreaming ? null : (
           <span className="jz-doc-placeholder-text">Write something…</span>
         )}
-        {isStreaming && text && <span className="jz-stream-caret" aria-hidden />}
+        {/* The caret IS the pre-text state: a writer's cursor waiting on the
+            empty card, then riding the real paragraphs as they arrive — no
+            fake skeleton blobs pretending to be content. */}
+        {isStreaming && <span className="jz-stream-caret" aria-hidden />}
       </div>
       {overflowing && !isStreaming ? <ExpandToggle shapeId={shape.id} expanded={expanded} /> : null}
     </div>
