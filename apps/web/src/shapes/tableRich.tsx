@@ -52,13 +52,20 @@ function CellLink({ href, label }: { href: string; label: string }) {
   );
 }
 
+/** Plain-text segments drop stray '**' — a streaming cell holds an unclosed
+ *  bold marker until its pair arrives, and a model occasionally leaves one
+ *  behind; literal asterisk-noise should never reach the reader. */
+function plain(segment: string): string {
+  return segment.replace(/\*\*/g, '');
+}
+
 function renderLine(line: string, key: number): ReactNode {
   const parts: ReactNode[] = [];
   let last = 0;
   let n = 0;
   for (const m of line.matchAll(TOKEN_RE)) {
     const idx = m.index ?? 0;
-    if (idx > last) parts.push(line.slice(last, idx));
+    if (idx > last) parts.push(plain(line.slice(last, idx)));
     const [whole, imgAlt, imgSrc, linkLabel, linkHref, bold, bareUrl] = m;
     if (imgSrc !== undefined) {
       const src = safeImgSrc(imgSrc);
@@ -76,7 +83,7 @@ function renderLine(line: string, key: number): ReactNode {
     }
     last = idx + whole.length;
   }
-  if (last < line.length) parts.push(line.slice(last));
+  if (last < line.length) parts.push(plain(line.slice(last)));
   return <Fragment key={key}>{parts}</Fragment>;
 }
 

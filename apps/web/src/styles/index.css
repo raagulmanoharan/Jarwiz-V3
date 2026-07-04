@@ -1436,7 +1436,9 @@ body,
 .jz-table-fit {
   display: flex;
   flex-direction: column;
-  padding-bottom: 2px;
+  /* Breathing room like the doc card — the grid sits inset from the frame,
+   * its hairlines stopping at the padding edge (Notion/Cove grain). */
+  padding: 10px 12px 4px;
 }
 
 /* While Autopilot fills it, the card wears a faint agent-colored ring. */
@@ -1457,14 +1459,14 @@ body,
  * so the head reads as part of the same quiet grid, not a separate chrome. */
 .jz-table-headcell {
   border-right: 1px solid var(--jz-hairline);
-  padding: 6px 10px;
+  padding: 7px 12px;
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-body-sm-size);
   font-weight: 700;
-  line-height: 1.4;
+  line-height: var(--jz-text-body-sm-lh, 1.45);
   color: var(--jz-ink-900);
   min-width: 0;
-  min-height: 30px;
+  min-height: 32px;
   box-sizing: border-box;
 }
 
@@ -1495,13 +1497,13 @@ body,
 
 .jz-table-cell {
   border-right: 1px solid var(--jz-hairline);
-  padding: 6px 10px;
+  padding: 7px 12px;
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-body-sm-size);
-  line-height: 1.4;
-  color: var(--jz-ink-900);
+  line-height: var(--jz-text-body-sm-lh, 1.45);
+  color: var(--jz-ink-700);
   min-width: 0;
-  min-height: 30px;
+  min-height: 32px;
   box-sizing: border-box;
 }
 
@@ -1549,7 +1551,7 @@ body,
  * wrapper reserves the right strip's lane while editing so cells never sit
  * under it; the bottom strip is in flow and measured like any other row. */
 .jz-table--chrome .jz-table-fit {
-  padding-right: 16px;
+  padding-right: 18px; /* lane for the right-edge + strip */
 }
 
 .jz-table-edgeadd {
@@ -1663,7 +1665,7 @@ body,
    reserved gutter column, no always-on chrome. */
 .jz-table-headcell-edit {
   position: relative;
-  padding-right: 24px;
+  padding-right: 44px; /* room for the type button + delete × */
 }
 
 .jz-table-del {
@@ -1715,6 +1717,56 @@ body,
 .jz-table-row:hover .jz-table-del-row,
 .jz-table-del-row:focus-visible {
   opacity: 1;
+}
+
+/* ── Typed columns: text / link / photo ─────────────────────────────────────
+   The type button lives in the edit header (click cycles); static headers of
+   non-text columns wear a quiet glyph; empty photo cells offer an upload. */
+.jz-table-coltype {
+  position: absolute;
+  top: 50%;
+  right: 22px;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: var(--jz-radius-xs);
+  background: transparent;
+  color: var(--jz-ink-300);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--jz-dur-fast) var(--jz-ease-out), background var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-table-coltype:hover {
+  color: var(--jz-ink-900);
+  background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
+}
+
+.jz-table-coltype-static {
+  display: inline-flex;
+  vertical-align: -1px;
+  margin-right: 5px;
+  color: var(--jz-ink-400);
+}
+
+.jz-table-cellupload {
+  border: 1px dashed var(--jz-hairline-strong);
+  border-radius: var(--jz-radius-sm);
+  background: transparent;
+  color: var(--jz-ink-400);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-micro-size);
+  font-weight: 600;
+  padding: 5px 9px;
+  cursor: pointer;
+  transition: color var(--jz-dur-fast) var(--jz-ease-out), border-color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-table-cellupload:hover {
+  color: var(--jz-accent);
+  border-color: color-mix(in srgb, var(--jz-accent) 55%, transparent);
 }
 
 /* ── Rich cells — links and photos inside cells (tableRich.tsx) ──────────── */

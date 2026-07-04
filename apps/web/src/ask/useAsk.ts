@@ -365,15 +365,18 @@ export function useAsk() {
                 props: { w: DIAGRAM_CARD_SIZE.w, h: DIAGRAM_CARD_SIZE.h, code: '', title: trimmed.slice(0, 70) },
               });
             } else if (event.shape === 'table') {
-              const at = placeInLane(editor, sourceIds, TABLE_CARD_SIZE.w, TABLE_CARD_SIZE.h);
               cols = (event.columns ?? []).slice(0, 6);
+              // Width scales with the column count so generated comparisons
+              // aren't cramped — ~190px per column, clamped to sane bounds.
+              const tableW = Math.min(940, Math.max(TABLE_CARD_SIZE.w, cols.length * 190));
+              const at = placeInLane(editor, sourceIds, tableW, TABLE_CARD_SIZE.h);
               rows = Array.from({ length: event.rowCount ?? 0 }, () => cols.map(() => ''));
               editor.createShape<TableCardShape>({
                 id,
                 type: 'table-card',
                 x: at.x,
                 y: at.y,
-                props: { w: TABLE_CARD_SIZE.w, h: TABLE_CARD_SIZE.h, columns: cols, rows },
+                props: { w: tableW, h: TABLE_CARD_SIZE.h, columns: cols, rows },
               });
             } else {
               const at = placeInLane(editor, sourceIds, DOC_CARD_SIZE.w, DOC_CARD_SIZE.h);

@@ -27,7 +27,7 @@ import type {
   TableAutopilotRequest,
 } from '@jarwiz/shared';
 import { buildLinkPreview, SsrfError } from './linkPreview.js';
-import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset } from './assets.js';
+import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset, sniffMime } from './assets.js';
 import { proposeSeedPrompts, streamAsk } from './ask.js';
 import type { AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ReviseRequest } from '@jarwiz/shared';
 import { streamAgentRun } from './agentRun.js';
@@ -82,7 +82,7 @@ app.get('/api/assets/:id', async (c) => {
   const buf = await getAsset(c.req.param('id'));
   if (!buf) return c.notFound();
   return new Response(new Uint8Array(buf), {
-    headers: { 'Content-Type': 'application/pdf', 'Cache-Control': 'private, max-age=3600' },
+    headers: { 'Content-Type': sniffMime(buf), 'Cache-Control': 'private, max-age=3600' },
   });
 });
 

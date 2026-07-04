@@ -302,3 +302,18 @@ out of the way. What shipped:
 - Watch the cascade when a card's frame is height:100%: anything measured
   for fit-height must be an auto-height inner element, and anything
   absolute (the right + strip) stays out of the measured flow.
+
+### Typed columns + readability round
+
+Owner go-ahead on column types, plus readability feedback. Columns now
+carry a type — text / link / photo — cycled from a glyph button in the
+edit header (stored as an OPTIONAL parallel prop, so every existing table
+stays valid with no migration). A photo column's empty cells offer
+"+ Photo" (file picker → blob store → thumbnail; the asset route now
+sniffs magic bytes so images stop being served as application/pdf — SVG
+deliberately excluded, it's an XSS vector inline). A link column enriches
+a bare URL on blur into a [Title](url) chip via the link card's existing
+SSRF-guarded preview, guarded so async completions never stomp newer
+edits. Readability: the grid sits inset from the frame like the doc card,
+cells got roomier, generated tables scale width with column count, and
+stray ** markers (unclosed streaming bold) never reach the reader.
