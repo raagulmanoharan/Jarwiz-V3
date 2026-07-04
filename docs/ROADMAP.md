@@ -347,15 +347,38 @@ replayable tour, per-board timeline with safe revert, and honest error pills
 with retry everywhere the model can fail. Multiplayer is parked behind
 `JARWIZ_ENABLE_SYNC`.
 
-### Next builds, in order
+### Next builds, in order (re-prioritised 2026-07-04, post-Discuss-cut)
 
-| # | Build | Why now | Shape |
+**Trust — the wedge must never fail on a real document:**
+
+| # | Build | Why | Size |
 |---|---|---|---|
-| 1 | **Consolidation debt** | Every future feature pays the duplication tax: 7 SSE route wrappers, 6 chunk/sleep copies, 8 copy-pasted shape-util scaffolds, 10 hand-rolled stores | 3 PRs: server `streamText` adoption everywhere; web `runAgentAction()` + one SSE parser; shape-util base class + `createExternalStore` (docs/AUDIT.md P2) |
-| 2 | **CSS cull + tokens sweep** | ~1,500 dead lines and 138 raw hexes make every restyle risky; dark mode still shows warm-paper fragments on link/PDF/skeleton surfaces | Mechanical pass, spec in AUDIT.md P4 + Flora audit M1 |
-| 3 | **Agent summon UI, rebuilt** | The four specialist agents (Researcher/Summarizer/Brainstormer/Writer) run server-side but have no UI entry since the cull; summoning is the product's original magic | Spec first: a deliberate surface (palette or card affordance) on the Flora chrome, single Jarwiz identity, provenance edges preserved |
-| 4 | **tldraw production license** | The canvas shows "Get a license for production" — fine for personal use, must resolve before anything public | Buy or apply for the startup license |
-| 5 | **Demo/onboarding pass** | For the Instagram series + showing teammates: BoardEntry-vs-hydration race fix, tour re-shot on final chrome, demo-mode script | After the loop is stable; docs/DEMO-SCRIPT.md is the script |
-| 6 | **Multiplayer hardening** | Unparks `?room=`: origin check, room GC, auth story, schema lockstep guard | AUDIT.md P0.4 lists the prerequisites |
+| 1 | **Reader robustness + eval set** | A daily driver dies the first time a real 120-page or scanned PDF fails. Lazy page rendering, OCR at scale, honest errors on oversized files, and a fixed eval set (contract, paper, financial report, scanned doc) run before merges | M |
+| 2 | **Backup / restore** | Everything lives in one browser profile's IndexedDB. One-click "back up all boards to a file / restore" is cheap insurance for every hour invested | S |
+
+**Delight — the moments that make it a habit:**
+
+| # | Build | Why | Size |
+|---|---|---|---|
+| 3 | **Drop-moment profile card** | The first five seconds after a drop: an offered one-glance profile (what this is, who wrote it, red flags, where to start). Also Episode 1 material | M |
+| 4 | **Feel pass** | Seed-pill waiting shimmer (the 5-20s quiet gap before contextual pills), lazy-load pdf.js/mermaid (500kB chunks → faster cold load) | S |
+
+**Distribution — being seen:**
+
+| # | Build | Why | Size |
+|---|---|---|---|
+| 5 | **The ten-second clip** | Choreograph drop → profile → ask → cite-jump. Needs 1-4 in place to look its best; unblocks the Instagram series | S |
+| 6 | **tldraw production license** | Owner action — watermark stays until then | — |
+
+**Scale of use — before it hurts:**
+
+| # | Build | Why | Size |
+|---|---|---|---|
+| 7 | **Search across boards** | Painless at 3 boards, painful at 10. Title/text filter in the side panel first | S |
+| 8 | **"The board noticed"** | Consent-gated tension/gap nudges — the differentiator, once the loop is bulletproof | M |
+| 9 | **Debt batch** | Server streaming-helper adoption, shape-util base class, remaining small bugs (fit-height ratchet, shared presence key) — one maintenance pass | M |
+
+Parked by owner decision: **export with source trail** (revisit after 1-4),
+multiplayer hardening.
 
 Deferred indefinitely: exports, mobile, voice — see docs/DECISIONS.md.
