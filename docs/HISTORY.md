@@ -240,3 +240,21 @@ profile is basically the summary"), not on a transient chip. Three fixes:
   inline transform. (2) When the server strips a streamed "# Title" line
   into the card title, the following blank lines streamed into the body —
   every titled answer card rendered an empty band above its content.
+
+## 2026-07-04 — Feel pass: the quiet gap thinks, the cold load slims
+
+Roadmap §10 item 4. Two small builds, both about how the app *feels*:
+
+- **Seed-pill shimmer.** The 5-20s between dropping a PDF and its tailored
+  pills arriving used to be dead air. Now three shimmering placeholder pills
+  hold the space (cache `undefined` = fetch in flight — the store already
+  distinguished "loading" from "empty", the UI just never used it). One
+  cascade gotcha: a `--modifier` class must sit AFTER its base class in the
+  file, or the base's `background` wins.
+- **Lazy pdf.js.** Mermaid was already dynamic-imported; pdf.js wasn't —
+  335kB (85kB gzipped) riding the main chunk for every visitor who never
+  opens a PDF. Same lazy-singleton pattern now (`getPdfjs()`), with the
+  module stashed in a ref beside the document so the render effect stays
+  synchronous. Cold load fetches no pdf chunk (asserted by watching network
+  requests in the eval); the reader paints on demand. Main chunk: 2,347kB →
+  2,059kB.

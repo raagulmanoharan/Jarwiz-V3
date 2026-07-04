@@ -117,6 +117,11 @@ export function PromptBar() {
       ? seeds!.map((s) => ({ label: s.label, prompt: s.prompt }))
       : [];
   const showStarters = !runningMode && !value.trim() && starters.length > 0;
+  // The 5-20s quiet gap while tailored pills are being generated (cache still
+  // undefined = fetch in flight): show shimmering placeholder pills so the
+  // wait reads as "thinking", not "nothing here" (feel pass, ROADMAP §10 #4).
+  const showSeedWait =
+    !runningMode && !value.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
   const showCoach = !coachDone && boardCount >= 5;
 
   return (
@@ -132,6 +137,12 @@ export function PromptBar() {
         <div className="jz-promptbar-chips">
           {starters.map((s) => (
             <button key={s.label} className="jz-pb-chip" title="Use this prompt (editable)" onClick={() => useStarter(s.prompt)}>{s.label}</button>
+          ))}
+        </div>
+      ) : showSeedWait ? (
+        <div className="jz-promptbar-chips" aria-hidden>
+          {[128, 164, 142].map((w) => (
+            <span key={w} className="jz-pb-chip jz-pb-chip--wait" style={{ width: w }} />
           ))}
         </div>
       ) : null}

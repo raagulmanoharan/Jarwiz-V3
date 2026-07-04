@@ -361,7 +361,7 @@ with retry everywhere the model can fail. Multiplayer is parked behind
 | # | Build | Why | Size |
 |---|---|---|---|
 | 3 | **Drop-moment profile card** ✅ | Shipped 2026-07-04: a dropped PDF lands selected, so its floating action bar IS the drop moment — "✦ Profile" rides it as a fixed action (owner call: a profile is the document's summary, so it lives with the card's actions, not on a transient chip). One click streams a one-glance profile — what this is, who's behind it, key dates, red flags, start here, three questions — as a normal doc card with provenance edge and page citations via the existing Ask pipeline. `scripts/eval-profile.mjs` drives the real drop → bar → stream flow — 6/6 | done |
-| 4 | **Feel pass** | Seed-pill waiting shimmer (the 5-20s quiet gap before contextual pills), lazy-load pdf.js/mermaid (500kB chunks → faster cold load) | S |
+| 4 | **Feel pass** ✅ | Shipped 2026-07-04: shimmer placeholder pills fill the 5-20s quiet gap while tailored seed pills generate (the wait reads as "thinking", not "nothing here"); pdf.js now lazy-loads like mermaid already did — a 335kB chunk out of the main bundle (~85kB gzipped off cold load), fetched only when a PDF card first renders. `scripts/eval-feel.mjs` — 5/5 | done |
 
 **Distribution — being seen:**
 

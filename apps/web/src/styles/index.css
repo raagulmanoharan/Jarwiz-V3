@@ -2380,6 +2380,28 @@ body,
     color var(--jz-dur-fast) var(--jz-ease-out);
 }
 
+/* Placeholder pills while tailored seed pills are being generated — the
+ * quiet 5-20s after a drop reads as "thinking", not "nothing here". After
+ * .jz-pb-chip in the cascade so the shimmer wins its `background`; the
+ * reduced-motion catch-all collapses the sweep to a static block. */
+.jz-pb-chip--wait {
+  height: 33px; /* matches a text chip: 8px padding ×2 + caption line */
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    var(--jz-surface-raised) 36%,
+    color-mix(in srgb, var(--jz-ink-900) 7%, var(--jz-surface-raised)) 50%,
+    var(--jz-surface-raised) 64%
+  );
+  background-size: 300% 100%;
+  animation: jz-pill-shimmer 1.6s linear infinite;
+}
+
+@keyframes jz-pill-shimmer {
+  from { background-position: 100% 0; }
+  to   { background-position: -100% 0; }
+}
+
 .jz-pb-chip:hover {
   transform: translateY(-1px);
   color: var(--jz-ink-900);

@@ -18,7 +18,7 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
-import { pdfjsLib, type PdfDocument } from '../lib/pdfjs';
+import { getPdfjs, type PdfDocument } from '../lib/pdfjs';
 import { getPdfPage, setPdfPage, subscribePdfView } from '../pdf/pdfView';
 import { setPdfSelection } from '../pdf/pdfSelection';
 import { getPdfHighlight, subscribePdfHighlight } from '../pdf/pdfHighlight';
@@ -104,6 +104,9 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
   const textRef = useRef<HTMLDivElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const docRef = useRef<PdfDocument | null>(null);
+  // The lazily-loaded pdf.js module — set by the load effect before docRef, so
+  // the render effect (gated on docRef) can use it synchronously.
+  const libRef = useRef<Awaited<ReturnType<typeof getPdfjs>> | null>(null);
   const selectText = useIsEditing(shape.id);
   const highlight = useSyncExternalStore(
     subscribePdfHighlight,
@@ -132,29 +135,40 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
     if (status !== 'ready' || !src) return;
     let cancelled = false;
     setLoadError(false);
-    const task = pdfjsLib.getDocument(attempt ? { url: src, password: attempt } : { url: src });
-    task.onPassword = (updatePassword: (pw: string) => void, reason: number) => {
-      // reason 1 = NEED_PASSWORD, 2 = INCORRECT_PASSWORD
-      if (cancelled) return;
-      setNeedsPassword(true);
-      setPwError(reason === 2);
-    };
-    task.promise.then(
-      (doc) => {
-        if (cancelled) {
-          doc.destroy();
-          return;
-        }
-        docRef.current = doc;
-        setNeedsPassword(false);
-        setPwError(false);
-        setPageCount(doc.numPages);
-        if (getPdfPage(shape.id) > doc.numPages) setPdfPage(shape.id, doc.numPages);
+    getPdfjs().then(
+      (lib) => {
+        if (cancelled) return;
+        libRef.current = lib;
+        const task = lib.getDocument(attempt ? { url: src, password: attempt } : { url: src });
+        task.onPassword = (updatePassword: (pw: string) => void, reason: number) => {
+          // reason 1 = NEED_PASSWORD, 2 = INCORRECT_PASSWORD
+          if (cancelled) return;
+          setNeedsPassword(true);
+          setPwError(reason === 2);
+        };
+        task.promise.then(
+          (doc) => {
+            if (cancelled) {
+              doc.destroy();
+              return;
+            }
+            docRef.current = doc;
+            setNeedsPassword(false);
+            setPwError(false);
+            setPageCount(doc.numPages);
+            if (getPdfPage(shape.id) > doc.numPages) setPdfPage(shape.id, doc.numPages);
+          },
+          () => {
+            if (!cancelled && !task.onPassword) setLoadError(true);
+            // onPassword path keeps the prompt up rather than showing a render error
+            if (!cancelled && !needsPassword) setLoadError(true);
+          },
+        );
       },
+      // The pdf.js chunk itself failed to fetch (offline mid-session) — an
+      // honest render error beats an eternally blank stage.
       () => {
-        if (!cancelled && !task.onPassword) setLoadError(true);
-        // onPassword path keeps the prompt up rather than showing a render error
-        if (!cancelled && !needsPassword) setLoadError(true);
+        if (!cancelled) setLoadError(true);
       },
     );
     return () => {
@@ -169,7 +183,8 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
   useEffect(() => {
     const doc = docRef.current;
     const canvas = canvasRef.current;
-    if (!doc || !canvas) return;
+    const lib = libRef.current; // set before docRef by the load effect
+    if (!doc || !canvas || !lib) return;
     let renderTask: ReturnType<Awaited<ReturnType<typeof doc.getPage>>['render']> | null = null;
     let cancelled = false;
     doc.getPage(page).then(async (pdfPage) => {
@@ -202,7 +217,7 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
         try {
           const tc = await pdfPage.getTextContent();
           if (cancelled) return;
-          const tl = new pdfjsLib.TextLayer({
+          const tl = new lib.TextLayer({
             textContentSource: tc,
             container: textDiv,
             viewport: pdfPage.getViewport({ scale: fit }),
