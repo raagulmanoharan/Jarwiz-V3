@@ -3283,7 +3283,7 @@ body,
   gap: 8px;
   min-width: 0;
   width: 100%;
-  height: 30px;
+  min-height: 30px; /* grows when a search snippet renders under the name */
   padding: 0 8px;
   border: none;
   border-radius: var(--jz-radius-md);
@@ -3311,6 +3311,57 @@ body,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Name + (search-hit snippet) stacked inside the row button. */
+.jz-side-item-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
+  padding: 4px 0;
+  text-align: left;
+}
+.jz-side-item-snippet {
+  font-size: var(--jz-text-micro-size);
+  line-height: var(--jz-text-micro-lh);
+  font-weight: 400;
+  color: var(--jz-ink-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Search across boards — title matches instantly, content matches async. */
+.jz-side-searchrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 2px 6px 6px;
+  padding: 0 9px;
+  height: 28px;
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface);
+  color: var(--jz-ink-400);
+}
+.jz-side-searchrow:focus-within {
+  border-color: var(--jz-hairline-strong);
+  color: var(--jz-ink-700);
+}
+.jz-side-search {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--jz-ink-900);
+  font-family: var(--jz-font-ui);
+  font-size: 12.5px;
+}
+.jz-side-search::placeholder { color: var(--jz-ink-400); }
+.jz-side-search::-webkit-search-cancel-button { -webkit-appearance: none; }
 
 .jz-side-rename {
   flex: 1 1 auto;

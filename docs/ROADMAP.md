@@ -374,7 +374,7 @@ with retry everywhere the model can fail. Multiplayer is parked behind
 
 | # | Build | Why | Size |
 |---|---|---|---|
-| 7 | **Search across boards** | Painless at 3 boards, painful at 10. Title/text filter in the side panel first | S |
+| 7 | **Search across boards** ✅ | Shipped 2026-07-04: the side panel's Boards section gains a search field — titles filter instantly, board *contents* match asynchronously (each board's text read straight from its local database, no mounting), hits show a one-line snippet under the board name, click switches. Honest "No boards match" empty state. `scripts/eval-search.mjs` — 5/5 | done |
 | 8 | **"The board noticed"** | Consent-gated tension/gap nudges — the differentiator, once the loop is bulletproof | M |
 | 9 | **Debt batch** | Server streaming-helper adoption, shape-util base class, remaining small bugs (fit-height ratchet, shared presence key) — one maintenance pass | M |
 

@@ -16,6 +16,7 @@ import {
   switchBoard,
 } from '../boards/boardStore';
 import { exportBackup, parseBackup, restoreBackup, type JarwizBackup } from '../boards/backup';
+import { searchBoardContents } from '../boards/boardSearch';
 import { closeSidePanel, isSidePanelOpen, subscribeSidePanel } from './sidePanelStore';
 
 export function SidePanel() {
@@ -105,6 +106,28 @@ function BoardsSection() {
   // first click ("Sure?") and only delete on a second click within 3s.
   const [armedId, setArmedId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  // Search across boards (ROADMAP §10 #7): title matches filter instantly;
+  // content matches (read from each board's database) merge in when the
+  // debounced search lands, each with a snippet under the board's name.
+  const [query, setQuery] = useState('');
+  const [contentHits, setContentHits] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setContentHits(new Map());
+      return;
+    }
+    let stale = false;
+    const t = setTimeout(() => {
+      void searchBoardContents(q, boards).then((hits) => {
+        if (!stale) setContentHits(hits);
+      });
+    }, 250);
+    return () => {
+      stale = true;
+      clearTimeout(t);
+    };
+  }, [query, boards]);
 
   useEffect(() => {
     if (!armedId) return;
@@ -128,6 +151,11 @@ function BoardsSection() {
     setEditingId(null);
   };
 
+  const q = query.trim().toLowerCase();
+  const visible = q
+    ? boards.filter((b) => b.name.toLowerCase().includes(q) || contentHits.has(b.id))
+    : boards;
+
   return (
     <section className="jz-side-section">
       <header className="jz-side-section-header">
@@ -143,8 +171,28 @@ function BoardsSection() {
           <PlusGlyph /> New
         </button>
       </header>
+      {boards.length > 1 ? (
+        <div className="jz-side-searchrow">
+          <SearchGlyph />
+          <input
+            className="jz-side-search"
+            type="search"
+            placeholder="Search boards…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              e.stopPropagation(); // Escape clears the field, not the panel
+              if (e.key === 'Escape') setQuery('');
+            }}
+            aria-label="Search boards by title or content"
+          />
+        </div>
+      ) : null}
+      {q && visible.length === 0 ? (
+        <p className="jz-side-note">No boards match “{query.trim()}”.</p>
+      ) : null}
       <ul className="jz-side-list">
-        {boards.map((b) => {
+        {visible.map((b) => {
           const isActive = b.id === activeId;
           const isEditing = editingId === b.id;
           return (
@@ -166,6 +214,11 @@ function BoardsSection() {
                 <button
                   className={`jz-side-item${isActive ? ' jz-side-item--active' : ''}`}
                   onClick={() => {
+                    // Clicking the board you're already on shouldn't close the
+                    // panel — it would also make double-click-to-rename
+                    // unreachable (the first click would dismiss the panel
+                    // before the second lands).
+                    if (b.id === activeId) return;
                     switchBoard(b.id);
                     closeSidePanel();
                   }}
@@ -173,7 +226,12 @@ function BoardsSection() {
                   title="Click to switch · double-click to rename"
                 >
                   <BoardGlyph />
-                  <span className="jz-side-item-name">{b.name}</span>
+                  <span className="jz-side-item-text">
+                    <span className="jz-side-item-name">{b.name}</span>
+                    {q && contentHits.has(b.id) ? (
+                      <span className="jz-side-item-snippet">{contentHits.get(b.id)}</span>
+                    ) : null}
+                  </span>
                 </button>
               )}
               {!isEditing && (
@@ -339,6 +397,15 @@ function PlusGlyph() {
   return (
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+function SearchGlyph() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.8-3.8" />
     </svg>
   );
 }

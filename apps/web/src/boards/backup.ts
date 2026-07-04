@@ -17,6 +17,7 @@
  * keep working URLs even on a fresh server (dev's blob store is a temp dir).
  */
 
+import { DB_PREFIX, deleteBoardDb, existingDbNames, openBoardDb, req } from './boardDb';
 import {
   boardPersistenceKey,
   getActiveBoardId,
@@ -24,13 +25,6 @@ import {
   writeBoardsForRestore,
   type Board,
 } from './boardStore';
-
-// tldraw's local persistence layout (LocalIndexedDb): one database per
-// persistenceKey, four object stores. Pinned here deliberately — if a tldraw
-// upgrade changes this, restore of old files must keep reading version 1.
-const DB_PREFIX = 'TLDRAW_DOCUMENT_v2';
-const DB_VERSION = 4;
-const DB_STORES = ['records', 'schema', 'session_state', 'assets'] as const;
 
 const ASSET_URL_RE = /\/api\/assets\/([A-Za-z0-9_-]{1,128})/g;
 
@@ -90,51 +84,6 @@ function _setRestoring(on: boolean, error: string | null = null): void {
   _restoring = on;
   _restoreError = error;
   _listeners.forEach((cb) => cb());
-}
-
-// ─── IndexedDB helpers ───────────────────────────────────────────────────────
-
-function req<T>(r: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    r.onsuccess = () => resolve(r.result);
-    r.onerror = () => reject(r.error ?? new Error('IndexedDB request failed'));
-  });
-}
-
-function openBoardDb(name: string): Promise<IDBDatabase> {
-  const open = indexedDB.open(name, DB_VERSION);
-  open.onupgradeneeded = () => {
-    const db = open.result;
-    for (const store of DB_STORES) {
-      if (!db.objectStoreNames.contains(store)) db.createObjectStore(store);
-    }
-  };
-  return req(open as IDBRequest<IDBDatabase>);
-}
-
-/** Delete a database, failing loudly if another connection keeps it alive
- *  (another Jarwiz tab) — silently proceeding would interleave old and new
- *  data. The editor in THIS tab is already unmounted when this runs. */
-function deleteDb(name: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const r = indexedDB.deleteDatabase(name);
-    const timeout = setTimeout(
-      () => reject(new Error('A board database is still in use — close other Jarwiz tabs and retry.')),
-      5000,
-    );
-    r.onsuccess = r.onerror = () => {
-      clearTimeout(timeout);
-      resolve();
-    };
-  });
-}
-
-/** Database names present in this profile — to skip boards that were created
- *  but never opened (they have no database yet). */
-async function existingDbNames(): Promise<Set<string> | null> {
-  if (!('databases' in indexedDB)) return null; // unsupported → caller opens blind
-  const dbs = await indexedDB.databases();
-  return new Set(dbs.map((d) => d.name).filter((n): n is string => !!n));
 }
 
 // ─── base64 helpers (Blob-safe, no fetch round-trip) ────────────────────────
@@ -347,7 +296,7 @@ export async function restoreBackup(backup: JarwizBackup): Promise<void> {
     const names = new Set<string>();
     for (const b of getBoards()) names.add(DB_PREFIX + boardPersistenceKey(b.id));
     for (const b of backup.boards) names.add(DB_PREFIX + boardPersistenceKey(b.id));
-    for (const name of names) await deleteDb(name);
+    for (const name of names) await deleteBoardDb(name);
     for (const board of backup.boards) await writeBoardDocument(board);
 
     // Metadata last — if anything above threw, the old board list still points

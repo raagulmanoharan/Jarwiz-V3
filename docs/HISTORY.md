@@ -258,3 +258,25 @@ Roadmap §10 item 4. Two small builds, both about how the app *feels*:
   synchronous. Cold load fetches no pdf chunk (asserted by watching network
   requests in the eval); the reader paints on demand. Main chunk: 2,347kB →
   2,059kB.
+
+## 2026-07-04 — Find the board you mean
+
+Roadmap §10 item 7 (scale of use): the side panel's Boards section now has
+a search field. Titles filter as you type; board *contents* match a beat
+later — read straight from each board's local database via the same layer
+backup uses (extracted to `boards/boardDb.ts`), so no board needs mounting
+to be searchable. Hits show a one-line snippet under the board name; click
+switches. Learnings:
+
+- **Extraction must be keyed, not blind.** Indexing every string prop would
+  match colors, statuses, and megabyte data-URLs. The searchable text is an
+  explicit list: text/title/name/code/description/url, table cells, and a
+  walk of TipTap rich-text leaves for native shapes.
+- **The eval caught a pre-existing UX dead-end**: double-click-to-rename on
+  a board row could never fire, because the row's single-click handler
+  switched boards and closed the panel before the second click landed.
+  Clicking the already-active board now keeps the panel open (and
+  switch-to-self is a no-op), which also makes rename reachable.
+- Reusable selector lesson for our evals: `.jz-side-item-name` is shared by
+  the Workspace and Backup rows — scope board-row assertions to
+  `.jz-side-row`.
