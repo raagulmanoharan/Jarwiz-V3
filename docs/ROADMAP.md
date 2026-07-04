@@ -1,6 +1,15 @@
 # Jarwiz — Roadmap
 
-_Owner: Product · Last updated: 2026-06-13 · Status: living document_
+_Owner: Product · Last updated: 2026-07-04 · Status: living document_
+
+> **July 2026 reset — read this first.** The Flora restyle is now the app's
+> chrome (dark cool-neutral, left rail, side panel, Claude chat drawer, single
+> Jarwiz identity), and a full-codebase audit + surgical cleanup landed on top
+> of it (docs/AUDIT.md). Several items below describe surfaces that were
+> **deliberately deleted** in that pass (⌘K palette, @mentions, proactive
+> offer pills, comment threads, demo badge, four visible agent identities) —
+> they are *rebuild-from-spec* candidates now, not shipped features. §10 is
+> the current plan of record; earlier sections are kept for history.
 
 Companion to [VISION.md](./VISION.md), [ARCHITECTURE.md](./ARCHITECTURE.md),
 and [DESIGN.md](./DESIGN.md). This is the product roadmap: where we are, where
@@ -317,3 +326,36 @@ Beyond §8: yield-on-type is instantaneous and never drops a keystroke; every
 fill is a single undo; the agent's "what I see" is inspectable before it types;
 motion (glide, caret, cursor hops) obeys the system and reduced-motion; a
 10-second recording of a Tab-fill reads as _a teammate writing with you_.
+
+---
+
+## 10. Plan of record — post-surgery (July 2026)
+
+**North star: Jarwiz is Raagul's daily driver.** The PDF → ask → refine loop
+must be reliable, fast, and data-safe before anything else. Demo polish and
+multiplayer come later, deliberately.
+
+### What works today (browser-verified 2026-07-04)
+
+The full loop on the Flora chrome: board creation/rename/switch/delete (with
+confirm + real IndexedDB cleanup), PDF drop + upload-from-rail, docs with
+titles and correct task checkboxes, grounded asks streaming onto the board
+with draft accept/discard, card transforms (Refine menu), Discuss, board
+scans (tensions/gaps), Tab-to-continue autopilot (now chunk-speed), the
+Claude chat drawer, light/dark theme across chrome *and* canvas, help panel +
+replayable tour, per-board timeline with safe revert, and honest error pills
+with retry everywhere the model can fail. Multiplayer is parked behind
+`JARWIZ_ENABLE_SYNC`.
+
+### Next builds, in order
+
+| # | Build | Why now | Shape |
+|---|---|---|---|
+| 1 | **Consolidation debt** | Every future feature pays the duplication tax: 7 SSE route wrappers, 6 chunk/sleep copies, 8 copy-pasted shape-util scaffolds, 10 hand-rolled stores | 3 PRs: server `streamText` adoption everywhere; web `runAgentAction()` + one SSE parser; shape-util base class + `createExternalStore` (docs/AUDIT.md P2) |
+| 2 | **CSS cull + tokens sweep** | ~1,500 dead lines and 138 raw hexes make every restyle risky; dark mode still shows warm-paper fragments on link/PDF/skeleton surfaces | Mechanical pass, spec in AUDIT.md P4 + Flora audit M1 |
+| 3 | **Agent summon UI, rebuilt** | The four specialist agents (Researcher/Summarizer/Brainstormer/Writer) run server-side but have no UI entry since the cull; summoning is the product's original magic | Spec first: a deliberate surface (palette or card affordance) on the Flora chrome, single Jarwiz identity, provenance edges preserved |
+| 4 | **tldraw production license** | The canvas shows "Get a license for production" — fine for personal use, must resolve before anything public | Buy or apply for the startup license |
+| 5 | **Demo/onboarding pass** | For the Instagram series + showing teammates: BoardEntry-vs-hydration race fix, tour re-shot on final chrome, demo-mode script | After the loop is stable; docs/DEMO-SCRIPT.md is the script |
+| 6 | **Multiplayer hardening** | Unparks `?room=`: origin check, room GC, auth story, schema lockstep guard | AUDIT.md P0.4 lists the prerequisites |
+
+Deferred indefinitely: exports, mobile, voice — see docs/DECISIONS.md.

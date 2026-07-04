@@ -136,3 +136,29 @@ When a session lands a meaningful change: add a short section here (intent →
 what shipped → link to the deep-dive doc), record the *why* in
 [DECISIONS.md](./DECISIONS.md), and update [ROADMAP.md](./ROADMAP.md) if the
 plan moved. Keep entries narrative and link out rather than duplicating detail.
+
+## 2026-07-04 — The audit & the surgery
+
+Merged `feat/flora-alignment` as the final chrome, then ran a six-slice
+parallel audit (docs/AUDIT.md) and a surgical cleanup on top. Learnings:
+
+- **The bloat had one root cause**: the repo carried two generations of the
+  same product, and the dead generation (rooted at a single never-imported
+  component) was 53% of `agents/` by line count. Deleting from the import
+  graph root, after moving the one live constant out, removed ~2,400 lines
+  with zero behavior change.
+- **The worst bugs were quiet ones**: cross-board Timeline revert (module
+  state surviving a remount), a regen error path that committed a blanked
+  card, and two server features that silently no-oped in production
+  (autopilot board context dropped by the route; suggest.ts never calling the
+  API). None threw; all needed reading the wire, not the logs.
+- **Restyles strand behavior**: Flora moved the rail left and rebuilt the
+  topbar, but the tour, empty state, and help copy still described the old
+  chrome — and the overlays were unmounted "while we design", severing live
+  store writes from their renderers. Chrome PRs need a "what anchors to me"
+  checklist.
+- **Playwright QA in this sandbox works** (19/19 flows green) if you follow
+  CLAUDE.md's gotchas, wait out React batching before asserting, and remember
+  a scrim eats the first outside click — that's product behavior, not a bug.
+- Session limits can kill subagents mid-edit; commit green checkpoints early
+  and keep each agent's blast radius to files you can hand-finish.

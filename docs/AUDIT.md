@@ -128,9 +128,24 @@ BoardEntry dialog, HelpLayer auto-tour, dead FirstRunHint/onboarding.ts, and the
 
 *(Note: the Flora branch rewrites much of this file — reconcile before acting; see next section.)*
 
-## P5 — `feat/flora-alignment` branch delta
+## P5 — `feat/flora-alignment` branch delta (audited at ee09ae6)
 
-*(pending — being audited now; this section will reconcile which of the above UI-chrome/CSS findings the restyle already resolves or supersedes, and what new issues the 20 commits introduce)*
+The Flora restyle was merged as the app's final chrome. Its own audit found, and the surgery resolved:
+
+- **Lockfile pinned to a corporate registry** (lucide-react via nexus…sfdc.net — nobody outside could `npm install`) → repointed to registry.npmjs.org. ✅
+- **Behavioral overlays unmounted** ("disabled while we design the chrome") — the ask/refine loop was dead, and clarify state was written with no renderer → all remounted, restyled. ✅
+- **Tour/help pointed at a UI that no longer exists**; Help/Upload/Files/Share buttons were console.log stubs → tour re-anchored + copy rewritten, auto-launch removed, Help/Upload/Boards wired to real actions, Share removed (multiplayer parked). ✅
+- **theme.ts set DOM attributes tldraw doesn't read** → tldraw now follows the theme via `updateUserPreferences({ colorScheme })`. ✅
+- **Zoom 50%/200% camera math wrong** (stray `/ 1`) → fixed, verified centered at 200%. ✅
+- **ClaudePanel**: 4th hand-rolled SSE parser, window-global Escape killing chats, board context recomputed on every store change → shared `readSSE`, scoped Escape, context sent once per session. ✅
+- **Panel exclusivity one-directional** → bidirectional via registration hook. ✅
+- **Autopilot per-character fake typing** (~60x mutation amplification) → one update per stream chunk. ✅
+- **Doc-card titles uneditable** (input removed; five consumers still key off titles) → title input restored. ✅
+- Remaining from the Flora audit, deferred: the CSS cull (~1,500 dead lines incl. old-chrome selectors), raw-hex sweep, `packages/shared` dist-build note for fresh checkouts.
+
+## Post-surgery status (July 2026)
+
+The July 2026 surgical pass resolved: all of P0 (P0.1–P0.6), the P1 TS cull (~2,400 lines deleted), P2.4/P2.5 partially (tour race removed via no-auto-launch; board chrome in rooms mooted by parking sync), P3 items 1–8 and 10 (partially) and 13–16, and the P4 phantom tokens. **Still open**: the P2 consolidations (server streaming helper adoption, shape-util base class, `createExternalStore`), the CSS cull + raw-hex sweep (P4), P3.9 (`useFitHeight` ratchet), P3.11/12/17, and the parked multiplayer hardening (P0.4 prerequisites) — all tracked in docs/ROADMAP.md.
 
 ## P6 — Docs drift
 
