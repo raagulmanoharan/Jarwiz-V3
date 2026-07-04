@@ -6,16 +6,19 @@
  * / parse a PDF) and asks the model what's worth doing, mapped to our agents.
  *
  * Falls back to an empty list on any failure (the client keeps the fast,
- * type-based pills). Uses the CLI sidecar for the proposal — no key needed.
+ * type-based pills). The proposal call uses the real Anthropic API when
+ * ANTHROPIC_API_KEY is set, else the CLI sidecar — no key needed for dev.
  */
 
 import { createRequire } from 'node:module';
+import Anthropic from '@anthropic-ai/sdk';
 import {
   isAgentId,
   type AgentSuggestion,
   type ClusterSuggestRequest,
   type SuggestRequest,
 } from '@jarwiz/shared';
+import { AGENT_MODEL } from './agents/runtime.js';
 import { fetchPageText } from './linkPreview.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 
@@ -28,6 +31,31 @@ const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (
 
 const OEMBED_TIMEOUT_MS = 5_000;
 const MAX_CONTENT_CHARS = 6000;
+const SUGGEST_MAX_TOKENS = 1024;
+
+/**
+ * One non-streaming proposal completion: the real API when a key is present,
+ * else the CLI sidecar. Both return the same plain-text JSON the parser reads.
+ */
+async function generate(system: string, user: string, signal: AbortSignal): Promise<string> {
+  if (process.env.ANTHROPIC_API_KEY?.trim()) {
+    const client = new Anthropic();
+    const msg = await client.messages.create(
+      {
+        model: AGENT_MODEL,
+        max_tokens: SUGGEST_MAX_TOKENS,
+        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+        messages: [{ role: 'user', content: user }],
+      },
+      { signal },
+    );
+    return msg.content
+      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+      .map((b) => b.text)
+      .join('');
+  }
+  return sidecarGenerate({ system, user, signal, timeoutMs: 45_000 });
+}
 
 const SYSTEM_PROMPT = `You read a dropped artifact and propose the 3–4 MOST USEFUL next actions for it on a canvas. Each action is handled by exactly one of four agents:
 - "summarizer": summaries, gists, key points, takeaways.
@@ -131,7 +159,7 @@ export async function proposeSuggestions(
   if (!title && !text) return []; // nothing to reason about → keep type-based
   const user = `Artifact kind: ${req.kind}\nTitle: ${title || '(none)'}\n\nContent:\n"""\n${text}\n"""`;
   try {
-    const raw = await sidecarGenerate({ system: SYSTEM_PROMPT, user, signal, timeoutMs: 45_000 });
+    const raw = await generate(SYSTEM_PROMPT, user, signal);
     return parseSuggestions(raw);
   } catch {
     return [];
@@ -160,7 +188,7 @@ export async function proposeClusterSuggestions(
   const list = items.map((i) => `- (${i.kind}) ${i.title.trim()}`).join('\n');
   const user = `Shared theme: ${req.theme || '(infer it)'}\n\nThe related artifacts:\n${list}`;
   try {
-    const raw = await sidecarGenerate({ system: CLUSTER_SYSTEM_PROMPT, user, signal, timeoutMs: 45_000 });
+    const raw = await generate(CLUSTER_SYSTEM_PROMPT, user, signal);
     return parseSuggestions(raw);
   } catch {
     return [];

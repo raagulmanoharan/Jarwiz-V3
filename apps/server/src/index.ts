@@ -185,6 +185,20 @@ app.post('/api/autopilot', async (c) => {
     kind: raw.kind,
     text: raw.text.slice(0, 8000),
     title: typeof raw.title === 'string' ? raw.title.slice(0, 200) : undefined,
+    // Nearby-board grounding — sanitized like everything else: capped card
+    // count, capped text, relation whitelisted (autopilot.ts feeds it straight
+    // into the prompt).
+    boardContext: Array.isArray(raw.boardContext)
+      ? raw.boardContext.slice(0, 30).map((card) => ({
+          kind: typeof card?.kind === 'string' ? card.kind.slice(0, 40) : 'card',
+          title: typeof card?.title === 'string' ? card.title.slice(0, 200) : undefined,
+          text: typeof card?.text === 'string' ? card.text.slice(0, 500) : '',
+          relation:
+            card?.relation === 'connected' || card?.relation === 'selected' || card?.relation === 'nearby'
+              ? card.relation
+              : 'board',
+        }))
+      : undefined,
   };
 
   return streamSSE(c, async (stream) => {
@@ -556,17 +570,30 @@ const server = serve({ fetch: app.fetch, port }, (info) => {
 });
 
 // Multiplayer sync: upgrade ws://…/api/sync/:roomId into a tldraw sync session.
-const wss = new WebSocketServer({ noServer: true });
-(server as HttpServer).on('upgrade', (req, socket, head) => {
-  const { pathname, searchParams } = new URL(req.url ?? '', 'http://localhost');
-  const match = /^\/api\/sync\/(.+)$/.exec(pathname);
-  if (!match) {
-    socket.destroy();
-    return;
-  }
-  const roomId = decodeURIComponent(match[1]!);
-  const sessionId = searchParams.get('sessionId') ?? randomUUID();
-  wss.handleUpgrade(req, socket, head, (ws) => {
-    handleSyncSocket(roomId, sessionId, ws);
+// Parked behind JARWIZ_ENABLE_SYNC pending security hardening — an origin
+// check, room GC, and client/server schema lockstep are prerequisites to
+// re-enabling it by default (docs/AUDIT.md P0.4). sync.ts stays intact so
+// flipping the env var brings it back for local testing.
+if (process.env.JARWIZ_ENABLE_SYNC) {
+  const wss = new WebSocketServer({ noServer: true });
+  (server as HttpServer).on('upgrade', (req, socket, head) => {
+    const { pathname, searchParams } = new URL(req.url ?? '', 'http://localhost');
+    const match = /^\/api\/sync\/(.+)$/.exec(pathname);
+    if (!match) {
+      socket.destroy();
+      return;
+    }
+    const roomId = decodeURIComponent(match[1]!);
+    const sessionId = searchParams.get('sessionId') ?? randomUUID();
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      handleSyncSocket(roomId, sessionId, ws);
+    });
   });
-});
+} else {
+  console.log(
+    '[jarwiz/server] multiplayer sync is parked pending security hardening (set JARWIZ_ENABLE_SYNC=1 to enable)',
+  );
+  (server as HttpServer).on('upgrade', (_req, socket) => {
+    socket.destroy();
+  });
+}

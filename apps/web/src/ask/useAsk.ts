@@ -4,6 +4,10 @@
  * column header then fills cell by cell — while the camera gently follows. The
  * draft's Keep / Discard controls (DraftControls) let the user confirm or throw
  * it away. The same path serves a typed question and a predefined seed pill.
+ *
+ * One run at a time: a single module-level record tracks the live Ask/regen and
+ * its AbortController, so Cancel always targets the run that's actually
+ * streaming and a second run can't start (and race the first) underneath it.
  */
 
 import { useCallback, useRef, useState } from 'react';
@@ -36,13 +40,21 @@ import { clearRegen, setRegen } from './regen';
 import { clearClarify, setClarify } from './clarify';
 import { setProvenance } from './provenance';
 import { logEvent } from '../log/eventLog';
+import { clearAgentTask, setAgentTask } from '../agents/agentTask';
 
-/** The AbortController of the Ask currently in flight, so a floating control
- *  (RegenControls / DraftControls) can truly cancel the model call from afar. */
-let activeAbort: AbortController | null = null;
-/** Cancel the in-flight Ask, if any (aborts the fetch/model stream). */
+/** The single AI run currently in flight — an Ask or an in-place regen — so a
+ *  floating control (RegenControls / DraftControls) can truly cancel the model
+ *  call from afar. Exactly one run may be live at a time (`ask` refuses to
+ *  start another), so this abort can never hit the wrong run. */
+interface ActiveRun {
+  controller: AbortController;
+  kind: 'ask' | 'regen';
+  cardId?: TLShapeId;
+}
+let activeRun: ActiveRun | null = null;
+/** Cancel the in-flight Ask/regen, if any (aborts the fetch/model stream). */
 export function cancelActiveAsk(): void {
-  activeAbort?.abort();
+  activeRun?.controller.abort();
 }
 
 /** The answer card kinds that can be refined in place, and the AskShape we send
@@ -147,7 +159,10 @@ export function useAsk() {
       // A sourceless ask is allowed — a free-standing query from the prompt bar
       // drops its answer on the canvas. Only the selection-grounded paths require
       // sources, so we don't gate on sourceIds being non-empty here.
-      if (!trimmed || isAsking || getDraft()) return;
+      // `activeRun` is the global one-run-at-a-time gate: `isAsking` is
+      // per-hook-instance and a regen holds no draft, so without it two runs
+      // could race and Cancel would target the wrong one.
+      if (!trimmed || isAsking || activeRun || getDraft()) return;
       clearClarify(); // a fresh ask supersedes any pending question
 
       const sourceShapes = sourceIds
@@ -171,10 +186,9 @@ export function useAsk() {
       const currentShape: AskShape | undefined = targetType ? REFINABLE[targetType] : undefined;
 
       setIsAsking(true);
-      abortRef.current?.abort();
-      abortRef.current = new AbortController();
-      const ac = abortRef.current;
-      activeAbort = ac;
+      const ac = new AbortController();
+      abortRef.current = ac;
+      activeRun = { controller: ac, kind: targetId ? 'regen' : 'ask', cardId: targetId ?? undefined };
       const { signal } = ac;
 
       let cardId: TLShapeId | null = null;
@@ -190,6 +204,33 @@ export function useAsk() {
       // When regenerating in place, a single history mark wraps the clear +
       // every streamed delta so one Cmd+Z restores the card's previous content.
       let inPlaceMark: string | null = null;
+      // Set when the run errors (server `error` event or a thrown fetch/stream
+      // failure); the finally block bails an in-place regen back to its mark so
+      // a failure can't commit a blanked card.
+      let runFailed = false;
+      const taskId = `ask_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+      // Errors must never be silent. A streaming draft shows them on its own
+      // controls; a run with no draft — failed before `card.create`, or an
+      // in-place regen (regen never creates a draft) — surfaces through the
+      // agent-task layer, which renders an error pill with Retry.
+      const surfaceError = (message: string) => {
+        if (getDraft()) {
+          updateDraft({ status: 'error', error: message });
+          return;
+        }
+        setAgentTask({
+          id: taskId,
+          anchorId: cardId,
+          status: 'error',
+          label: targetId ? 'Regenerate' : 'Ask',
+          error: message,
+          onRetry: () => {
+            clearAgentTask(taskId);
+            void ask(trimmed, sourceIds, opts);
+          },
+        });
+      };
 
       const framed = () => (affinity ? createdIds : cardId ? [cardId] : []);
 
@@ -406,7 +447,8 @@ export function useAsk() {
             if (affinity && createdIds.length > 0) frameCard(editor, createdIds, sourceIds);
             break;
           case 'error':
-            updateDraft({ status: 'error', error: event.message });
+            runFailed = true;
+            surfaceError(event.message);
             break;
         }
       };
@@ -443,16 +485,20 @@ export function useAsk() {
         }
         flush(buffer);
         if (cardId) stopStreaming(cardId);
-        updateDraft({ status: 'done' });
+        // Don't let stream-end mark the draft done if a server `error` event
+        // already flagged it — that would hide the failure from DraftControls.
+        if (!runFailed) updateDraft({ status: 'done' });
       } catch (err) {
         if (cardId) stopStreaming(cardId);
         if (err instanceof Error && err.name !== 'AbortError') {
-          if (getDraft()) updateDraft({ status: 'error', error: err.message });
+          runFailed = true;
+          surfaceError(err.message);
         }
       } finally {
         if (inPlaceMark) {
-          if (signal.aborted) {
-            // Cancelled mid-regeneration → restore the card's previous content.
+          if (signal.aborted || runFailed) {
+            // Cancelled or failed mid-regeneration → restore the card's
+            // previous content (never commit the blanked/partial card).
             editor.bailToMark(inPlaceMark);
           } else {
             // Collapse the clear + all deltas into one undo step, so a single
@@ -461,7 +507,7 @@ export function useAsk() {
           }
         }
         clearRegen();
-        if (activeAbort === ac) activeAbort = null;
+        if (activeRun?.controller === ac) activeRun = null;
         setIsAsking(false);
       }
     },

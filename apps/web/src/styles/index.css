@@ -3907,7 +3907,7 @@ body,
 .jz-cardbar {
   position: absolute;
   left: 50%;
-  top: 60px;
+  top: 80px; /* clears the Flora topbar (14px inset + 52px logo row) */
   transform: translateX(-50%);
   z-index: 311;
   pointer-events: auto;
@@ -4652,7 +4652,7 @@ body,
 
 /* Anchor positions — each points the callout near the relevant UI region. */
 .jz-tour-bubble--center { left: 50%; top: 50%; transform: translate(-50%, -50%); }
-.jz-tour-bubble--rail { right: 84px; top: 50%; transform: translateY(-50%); }
+.jz-tour-bubble--rail { left: 84px; top: 50%; transform: translateY(-50%); }
 .jz-tour-bubble--cardbar { left: 50%; top: 108px; transform: translateX(-50%); }
 .jz-tour-bubble--prompt { left: 50%; bottom: 132px; transform: translateX(-50%); }
 .jz-tour-bubble--topbar { left: 16px; top: 64px; }
@@ -4665,7 +4665,7 @@ body,
   background: var(--jz-surface-raised);
   transform: rotate(45deg);
 }
-.jz-tour-caret--rail { right: -6px; top: 50%; margin-top: -6px; }
+.jz-tour-caret--rail { left: -6px; top: 50%; margin-top: -6px; }
 .jz-tour-caret--cardbar { left: 50%; top: -6px; margin-left: -6px; }
 .jz-tour-caret--prompt { left: 50%; bottom: -6px; margin-left: -6px; }
 .jz-tour-caret--topbar { left: 28px; top: -6px; }

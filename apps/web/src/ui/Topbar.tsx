@@ -36,7 +36,6 @@ export function Topbar() {
       </div>
       <div className="jz-topbar-right">
         <ZoomDropdown />
-        <ShareButton />
         <ThemeToggleButton />
       </div>
     </div>
@@ -195,8 +194,14 @@ function ZoomDropdown() {
 
   const close = () => setOpen(false);
   const zoomTo = (level: number) => {
+    // tldraw's camera is applied before scale (screen = (page + cam) · z), so
+    // keeping page point `c` centered requires cam = screenCenter/z − c.
     const c = editor.getViewportPageBounds().center;
-    editor.setCamera({ x: -c.x * level + (editor.getViewportScreenBounds().w / 2) / 1, y: -c.y * level + (editor.getViewportScreenBounds().h / 2) / 1, z: level });
+    const vp = editor.getViewportScreenBounds();
+    editor.setCamera(
+      { x: vp.w / 2 / level - c.x, y: vp.h / 2 / level - c.y, z: level },
+      { animation: { duration: 200 } },
+    );
   };
   const zoomToSelection = () => {
     const sel = editor.getSelectedShapeIds();
@@ -261,36 +266,6 @@ function ChevronDown({ className }: { className?: string }) {
   return (
     <svg className={className} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M6 9l6 6 6-6" />
-    </svg>
-  );
-}
-
-function ShareButton() {
-  return (
-    <button
-      className="jz-share"
-      title="Share this board"
-      onClick={() => {
-        // Stub — real sharing lands later.
-        console.info('[jarwiz] share is not wired up yet');
-      }}
-    >
-      <ShareIcon />
-      <span>Share</span>
-    </button>
-  );
-}
-
-function ShareIcon() {
-  // Classic share triangle — three nodes connected by lines. Stroke uses
-  // currentColor so it inherits the button's text colour.
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="18" cy="5" r="2.5" />
-      <circle cx="6" cy="12" r="2.5" />
-      <circle cx="18" cy="19" r="2.5" />
-      <path d="M8.2 10.8l7.6-4.4" />
-      <path d="M8.2 13.2l7.6 4.4" />
     </svg>
   );
 }

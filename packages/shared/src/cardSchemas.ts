@@ -40,24 +40,35 @@ export const cardShapeProps = {
     w: T.number,
     h: T.number,
     src: T.string,
+    assetId: T.string,
     name: T.string,
+    pages: T.number,
+    status: T.literalEnum('uploading', 'ready', 'error'),
   },
   'note-card': {
     w: T.number,
     h: T.number,
     text: T.string,
+    color: T.string,
   },
   'doc-card': {
     w: T.number,
     h: T.number,
     text: T.string,
     title: T.string,
+    sourcePdfId: T.string,
   },
   'table-card': {
     w: T.number,
     h: T.number,
     columns: T.arrayOf(T.string),
     rows: T.arrayOf(T.arrayOf(T.string)),
+  },
+  'diagram-card': {
+    w: T.number,
+    h: T.number,
+    code: T.string,
+    title: T.string,
   },
 } as const;
 

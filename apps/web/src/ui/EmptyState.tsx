@@ -23,8 +23,8 @@ export function EmptyState() {
     <div className="jz-empty" aria-hidden>
       <h1 className="jz-empty-hero">Start a new idea.</h1>
       <p className="jz-empty-sub">
-        Drop a PDF, press <kbd>d</kbd> for a doc, or <kbd>n</kbd> for a sticky. Ask anything in the
-        prompt bar below — or tap <kbd>?</kbd> for a guided tour.
+        Drop a PDF anywhere, grab a tool from the left rail, or ask anything in the prompt bar
+        below.
       </p>
       <div className="jz-empty-hints">
         <span className="jz-empty-hint">
@@ -35,15 +35,15 @@ export function EmptyState() {
         </span>
         <span className="jz-empty-hint">
           <span className="jz-empty-glyph" aria-hidden>
-            ✦
+            ◧
           </span>
-          d — new doc
+          Tools on the left rail
         </span>
         <span className="jz-empty-hint">
           <span className="jz-empty-glyph" aria-hidden>
-            ◻
+            ✦
           </span>
-          n — sticky note
+          Ask in the prompt bar
         </span>
       </div>
     </div>

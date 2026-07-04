@@ -164,9 +164,12 @@ export async function* streamComment(
     }
   })();
 
+  let errored = false;
   while (true) {
     if (queue.length > 0) {
-      yield queue.shift()!;
+      const event = queue.shift()!;
+      if (event.type === 'error') errored = true;
+      yield event;
       continue;
     }
     if (finished) break;
@@ -175,5 +178,6 @@ export async function* streamComment(
     });
   }
   await run;
-  if (!signal.aborted) yield { type: 'done' };
+  // An error already terminated the stream — never follow it with a done.
+  if (!signal.aborted && !errored) yield { type: 'done' };
 }

@@ -54,8 +54,8 @@ also typechecks as part of `build`.
 The runtime (`apps/server/src/agents/runtime.ts`) is a manual Anthropic
 tool-use loop. An agent is almost entirely a **system prompt + `buildUserTurn`**;
 the runtime owns the canvas tools (`begin_card`/`finish_card`/`create_note`/
-`create_link_card`/`connect_cards`) and emits all board events. To add one
-(see `summarizer.ts`, `writer.ts` as templates):
+`create_link_card`/`create_table`/`connect_cards`) and emits all board events.
+To add one (see `summarizer.ts`, `writer.ts` as templates):
 
 1. Create `apps/server/src/agents/<id>.ts` exporting an `AgentDefinition`
    (`meta: getAgent('<id>')`, frozen `systemPrompt`, optional `serverTools`,
@@ -64,23 +64,26 @@ the runtime owns the canvas tools (`begin_card`/`finish_card`/`create_note`/
 3. Add a branch in `apps/server/src/agents/mock.ts` (`runMockLoop` switch) so
    the agent is demoable with **no API key** — mock drives the same `emit()`
    event shapes as the real loop.
-4. The agent's edge color is the palette mapping in
-   `apps/web/src/agents/useAgentRun.ts` (`ARROW_COLOR`).
+
+Note: the specialist agents (`researcher`/`summarizer`/`brainstormer`) are
+currently server-side only — the web UI presents a single **Jarwiz** identity
+and reaches the model through Ask/Analyze/Autopilot/Chat. A deliberate summon
+UI is a roadmap item (docs/ROADMAP.md).
 
 `AgentEvent` variants: `status`, `cursor`, `card.create`, `card.delta`,
 `card.done`, `edge.create`, `done`, `error`.
 
 ## Presence & streaming (web)
 
-- Agents render as **Figma-style avatars** (`AgentCursorLayer.tsx`) driven by
-  an external store (`presence.ts`, `useSyncExternalStore`).
-- Live streaming caret: `streaming.ts` external store; `useAgentRun` flips it on
-  `card.create` (doc/note) and off on `card.done`; doc/note shapes subscribe.
-- Summon paths: contextual "Ask an agent" (`AskAgentAffordance.tsx`) and the
-  **⌘K command palette** (`CommandPalette.tsx`). The palette listens on
-  `window` for `(meta|ctrl)+k`.
-- Demo mode: `GET /api/capabilities` → `{ live }`; `useCapabilities` →
-  "Demo mode" badge in the Topbar when no key.
+- One **Jarwiz avatar** (`AgentCursorLayer.tsx`) driven by an external store
+  (`presence.ts`, `useSyncExternalStore`); board scans park it on the card.
+- Live streaming caret: `streaming.ts` external store; useAsk/autopilot flip it
+  on card create/done; doc/note shapes subscribe.
+- Ask paths: the bottom **PromptBar** (grounded on the selection), the
+  **CardActionBar** transforms on a selected card, and the right-edge
+  **ClaudePanel** chat drawer (rail toggle).
+- Multiplayer (`?room=`) is **parked** behind `VITE_JARWIZ_ENABLE_SYNC` /
+  `JARWIZ_ENABLE_SYNC` pending security hardening — see docs/AUDIT.md P0.4.
 
 ## Screenshots / visual QA (`scripts/screens.mjs`)
 

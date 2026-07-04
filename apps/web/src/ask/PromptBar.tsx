@@ -8,7 +8,7 @@ import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'r
 import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue, type Editor, type TLRichText, type TLShape } from 'tldraw';
 import { Plus, Slash, ArrowUp } from 'lucide-react';
 import type { AnalyzeMode } from '@jarwiz/shared';
-import { ASKABLE } from './AskLayer';
+import { ASKABLE } from './askable';
 import { useAsk } from './useAsk';
 import { useAnalyze } from '../agents/useAnalyze';
 import { ensureSeedPrompts, getSeedPrompts, subscribeSeed } from './seedPrompts';
@@ -25,12 +25,6 @@ function shapeLabel(editor: Editor, shape: TLShape): string {
   const kind: Record<string, string> = { 'doc-card': 'Doc', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram', 'image-card': 'Image', 'link-card': 'Link', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section', arrow: 'Connector' };
   return kind[shape.type] ?? 'Card';
 }
-
-const TOOLS: Array<{ mode: AnalyzeMode; glyph: string; label: string; hint: string }> = [
-  { mode: 'tensions', glyph: '⚖', label: 'Scan for tensions', hint: 'Find contradictions between cards' },
-  { mode: 'gaps', glyph: '✦', label: "What am I missing?", hint: 'Name the due-diligence gaps on this board' },
-  { mode: 'critique', glyph: '⚔', label: "Devil's advocate", hint: 'Tear apart the selection (or the board)' },
-];
 
 const COACH_KEY = 'jz-coach-agents';
 
@@ -112,7 +106,7 @@ export function PromptBar() {
     <div className="jz-promptbar-dock" onPointerDown={stopEventPropagation}>
       {showCoach ? (
         <div className="jz-coach" role="dialog">
-          <span className="jz-coach-text">✦ Your agents can scan this whole board — tensions, gaps, a critique.</span>
+          <span className="jz-coach-text">✦ Jarwiz can scan this whole board — find tensions, or what you're missing.</span>
           <button className="jz-coach-dismiss" onClick={dismissCoach}>Got it</button>
         </div>
       ) : null}

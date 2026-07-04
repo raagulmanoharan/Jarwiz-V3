@@ -58,8 +58,12 @@ docs/           VISION.md, ARCHITECTURE.md
 Each agent run is a server-side Anthropic tool-use loop. The agent's tools
 are **canvas actions**, not text replies:
 
-- `create_card(kind, x, y, title, …)` — place an artifact
-- `write_to_card(cardId, markdown)` — stream long-form content into a card
+- `begin_card(kind, x, y, title?)` / `finish_card(cardId)` — open a streaming
+  doc/note card; text the model emits between them streams to the canvas as
+  `card.delta` events (the `write_to_card` design was rejected — streaming tool
+  *input* can't be relayed live; see runtime.ts's header)
+- `create_link_card(url, …)` / `create_note(text, …)` / `create_table(columns,
+  rows, …)` — place complete artifacts
 - `connect_cards(fromId, toId, label?)` — draw a provenance edge
 - plus per-agent capabilities: Researcher additionally gets the Anthropic
   **server-side `web_search_20260209` / `web_fetch_20260209` tools**, so

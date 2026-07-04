@@ -109,11 +109,18 @@ export async function* streamText(opts: TextStreamOptions): AsyncGenerator<TextS
     }
   })();
 
+  let errored = false;
   while (true) {
-    if (queue.length > 0) { yield queue.shift()!; continue; }
+    if (queue.length > 0) {
+      const event = queue.shift()!;
+      if (event.type === 'error') errored = true;
+      yield event;
+      continue;
+    }
     if (finished) break;
     await new Promise<void>((resolve) => { waker.fn = resolve; });
   }
   await run;
-  if (!signal.aborted) yield { type: 'done' };
+  // An error already terminated the stream — never follow it with a done.
+  if (!signal.aborted && !errored) yield { type: 'done' };
 }

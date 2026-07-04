@@ -4,8 +4,9 @@
  * The whole point of Autopilot is that you kick one off and walk away — start a
  * continuation on this card, then go work another card (or fire Autopilot there
  * too). So a run is NOT tied to the editing component or to a single "active"
- * slot: each card gets its own independent session with its own AbortController,
- * and they run in parallel. A Writer avatar shows at every active card.
+ * slot: each card gets its own AbortController, and runs proceed in parallel.
+ * The streaming caret rendered inside the card is the presence signal for an
+ * active fill (plus the shared Writer cursor in AgentCursorLayer).
  *
  * State lives here (module scope), so a fill keeps streaming even if tldraw
  * unmounts the card's component (off-screen) or the user leaves edit mode.
@@ -23,43 +24,17 @@ import { setClarify } from '../ask/clarify';
 
 export const AUTOPILOT_AGENT = getAgent('writer');
 
-export interface AutopilotSession {
-  cardId: TLShapeId;
-  status: string;
-  /** Page-space point the Writer avatar parks at (card corner, or the live cell). */
-  anchor: { x: number; y: number } | null;
-}
-
-let sessions: ReadonlyMap<TLShapeId, AutopilotSession> = new Map();
 const controllers = new Map<TLShapeId, AbortController>();
 const listeners = new Set<() => void>();
 
+/** Called whenever the set of running cards changes (run started/finished). */
 const notify = () => listeners.forEach((l) => l());
-
-function setSession(next: AutopilotSession): void {
-  const map = new Map(sessions);
-  map.set(next.cardId, next);
-  sessions = map;
-  notify();
-}
-
-function clearSession(cardId: TLShapeId): void {
-  if (!sessions.has(cardId)) return;
-  const map = new Map(sessions);
-  map.delete(cardId);
-  sessions = map;
-  notify();
-}
 
 export function subscribeAutopilot(cb: () => void): () => void {
   listeners.add(cb);
   return () => {
     listeners.delete(cb);
   };
-}
-
-export function getAutopilotSnapshot(): ReadonlyMap<TLShapeId, AutopilotSession> {
-  return sessions;
 }
 
 export function isAutopilotRunning(cardId: TLShapeId): boolean {
@@ -71,8 +46,8 @@ export function abortAutopilot(cardId: TLShapeId): void {
   controllers.get(cardId)?.abort();
   controllers.delete(cardId);
   stopStreaming(cardId);
-  clearSession(cardId);
   endPresence(AUTOPILOT_AGENT.id);
+  notify();
 }
 
 function cardCorner(editor: Editor, cardId: TLShapeId): { x: number; y: number } | null {
@@ -314,8 +289,7 @@ export async function continueProse(editor: Editor, cardId: TLShapeId): Promise<
   controllers.set(cardId, controller);
   startStreaming(cardId);
   const anchor = cardCorner(editor, cardId);
-  setSession({ cardId, status: 'continuing your draft…', anchor });
-  // Park the Writer avatar by the card so the user can see who's writing.
+  // Park the Jarwiz avatar by the card so the user can see who's writing.
   startPresence(AUTOPILOT_AGENT.id);
   setPresenceStatus(AUTOPILOT_AGENT.id, 'continuing your draft…');
   if (anchor) setPresenceCursor(AUTOPILOT_AGENT.id, anchor.x, anchor.y);
@@ -396,7 +370,6 @@ export async function continueProse(editor: Editor, cardId: TLShapeId): Promise<
     if (controllers.get(cardId) === controller) {
       controllers.delete(cardId);
       stopStreaming(cardId);
-      clearSession(cardId);
       endPresence(AUTOPILOT_AGENT.id);
     }
   }
@@ -447,7 +420,6 @@ export async function fillTable(
   controllers.set(cardId, controller);
   startStreaming(cardId);
   const tableAnchor = cardCorner(editor, cardId);
-  setSession({ cardId, status: 'filling the table…', anchor: tableAnchor });
   startPresence(AUTOPILOT_AGENT.id);
   setPresenceStatus(AUTOPILOT_AGENT.id, 'filling the table…');
   if (tableAnchor) setPresenceCursor(AUTOPILOT_AGENT.id, tableAnchor.x, tableAnchor.y);
@@ -477,8 +449,7 @@ export async function fillTable(
         props: { rows: nextRows },
       } as Parameters<typeof editor.updateShape>[0]);
       const cell = cellAnchor(editor, cardId, columns.length, nextRows.length, event.row, event.col, headerH);
-      setSession({ cardId, status: 'filling the table…', anchor: cell });
-      // Hop the Writer avatar cell-to-cell so the user sees who is filling each one.
+      // Hop the Jarwiz avatar cell-to-cell so the user sees who is filling each one.
       if (cell) setPresenceCursor(AUTOPILOT_AGENT.id, cell.x, cell.y);
     });
   } catch {
@@ -487,7 +458,6 @@ export async function fillTable(
     if (controllers.get(cardId) === controller) {
       controllers.delete(cardId);
       stopStreaming(cardId);
-      clearSession(cardId);
       endPresence(AUTOPILOT_AGENT.id);
     }
   }

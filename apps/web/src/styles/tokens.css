@@ -57,6 +57,17 @@
   --jz-danger: #c2410c;
   --jz-focus: var(--jz-ink-700);
 
+  /* Accent — the one saturated color in the system. The Jarwiz identity mark
+   * (✦ spark), primary actions, and streaming affordances all draw from it. */
+  --jz-accent: #7a5cff;
+  --jz-accent-ink: #ffffff;
+  --jz-spark: var(--jz-accent);
+
+  /* Extended ink stops referenced by component CSS. */
+  --jz-ink-800: #1a1a1a;
+  --jz-ink-200: #d4d4d4;
+  --jz-ink-50: #f5f5f5;
+
   /* ─── Spacing (4px base) ──────────────────────────────────────────────── */
   --jz-space-1: 2px;
   --jz-space-2: 4px;
@@ -111,8 +122,11 @@
   --jz-ink-600: var(--jz-ink-500);
   --jz-line: var(--jz-hairline);
   --jz-radius: var(--jz-radius-lg);
+  --jz-radius-full: var(--jz-radius-pill);
   --jz-shadow: var(--jz-e2);
   --jz-shadow-soft: var(--jz-e1);
+  --jz-dur-1: var(--jz-dur-fast);
+  --jz-ease: var(--jz-ease-out);
 }
 
 /**
@@ -139,6 +153,13 @@
 
   --jz-danger: #f97316;
   --jz-focus: var(--jz-ink-700);
+
+  --jz-accent: #8b70ff;
+  --jz-accent-ink: #ffffff;
+
+  --jz-ink-800: #d4d4d4;
+  --jz-ink-200: #333333;
+  --jz-ink-50: #161616;
 
   --jz-e1:
     0 1px 2px rgba(var(--jz-shadow-rgb), 0.2),

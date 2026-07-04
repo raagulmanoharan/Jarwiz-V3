@@ -6,8 +6,9 @@
  */
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { stopEventPropagation, useEditor, useValue } from 'tldraw';
+import { stopEventPropagation, useEditor, type Editor } from 'tldraw';
 import { ArrowUp, X } from 'lucide-react';
+import { readSSE } from '../agents/sse';
 import { closeClaudePanel, isClaudePanelOpen, subscribeClaudePanel } from './claudePanelStore';
 
 interface Message {
@@ -17,25 +18,31 @@ interface Message {
   streaming?: boolean;
 }
 
+type ChatEvent =
+  | { type: 'delta'; textDelta: string }
+  | { type: 'done' }
+  | { type: 'error'; message: string };
+
 let _msgId = 0;
 const uid = () => String(++_msgId);
 
-function useBoardContext(editor: ReturnType<typeof useEditor>) {
-  return useValue('chat-board-ctx', () => {
-    const shapes = editor.getCurrentPageShapes();
-    const lines: string[] = [];
-    for (const s of shapes) {
-      const p = s.props as Record<string, unknown>;
-      if (s.type === 'doc-card' || s.type === 'note-card') {
-        const title = typeof p.title === 'string' && p.title.trim() ? p.title.trim() : null;
-        const text = typeof p.text === 'string' ? p.text.trim() : '';
-        if (title || text) {
-          lines.push(title ? `[${title}] ${text}` : text);
-        }
+/** Snapshot the board's card text once, at send time — deliberately a plain
+ *  function (not a reactive useValue) so an open panel costs nothing while
+ *  the user edits the canvas. */
+function collectBoardContext(editor: Editor): string {
+  const shapes = editor.getCurrentPageShapes();
+  const lines: string[] = [];
+  for (const s of shapes) {
+    const p = s.props as Record<string, unknown>;
+    if (s.type === 'doc-card' || s.type === 'note-card') {
+      const title = typeof p.title === 'string' && p.title.trim() ? p.title.trim() : null;
+      const text = typeof p.text === 'string' ? p.text.trim() : '';
+      if (title || text) {
+        lines.push(title ? `[${title}] ${text}` : text);
       }
     }
-    return lines.slice(0, 20).join('\n\n').slice(0, 3000);
-  }, [editor]);
+  }
+  return lines.slice(0, 20).join('\n\n').slice(0, 3000);
 }
 
 export function ClaudePanel() {
@@ -46,7 +53,6 @@ export function ClaudePanel() {
 
 function ClaudePanelInner() {
   const editor = useEditor();
-  const boardContext = useBoardContext(editor);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -66,13 +72,19 @@ function ClaudePanelInner() {
     inputRef.current?.focus();
   }, []);
 
-  // Escape closes.
+  // Escape closes (stopping any in-flight stream) — but only when the press
+  // happens inside the panel or its input has focus. A window-wide Escape
+  // would also fire when the user cancels a canvas edit or closes a dialog,
+  // and must not tear down the chat then.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        abortRef.current?.abort();
-        closeClaudePanel();
-      }
+      if (e.key !== 'Escape') return;
+      const target = e.target instanceof Node ? e.target : null;
+      const inPanel = target ? panelRef.current?.contains(target) : false;
+      const inputFocused = document.activeElement === inputRef.current;
+      if (!inPanel && !inputFocused) return;
+      abortRef.current?.abort();
+      closeClaudePanel();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -82,6 +94,11 @@ function ClaudePanelInner() {
     const text = input.trim();
     if (!text || streaming) return;
     setInput('');
+
+    // Board context rides along only on the session's first message ("New
+    // chat" resets `messages`, starting a fresh session), computed lazily
+    // here rather than kept reactively up to date while the panel is open.
+    const boardContext = messages.length === 0 ? collectBoardContext(editor) : '';
 
     const userMsg: Message = { id: uid(), role: 'user', text };
     const assistantMsg: Message = { id: uid(), role: 'assistant', text: '', streaming: true };
@@ -110,41 +127,22 @@ function ClaudePanelInner() {
         throw new Error(`Server error ${res.status}`);
       }
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const parts = buf.split('\n\n');
-        buf = parts.pop() ?? '';
-        for (const part of parts) {
-          const line = part.trim();
-          if (!line.startsWith('data:')) continue;
-          const json = line.slice(5).trim();
-          try {
-            const event = JSON.parse(json) as { type: string; textDelta?: string; message?: string };
-            if (event.type === 'delta' && event.textDelta) {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsg.id ? { ...m, text: m.text + event.textDelta! } : m,
-                ),
-              );
-            } else if (event.type === 'done' || event.type === 'error') {
-              const errText = event.type === 'error' ? `\n\n_Error: ${event.message}_` : '';
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsg.id ? { ...m, streaming: false, text: m.text + errText } : m,
-                ),
-              );
-            }
-          } catch {
-            // malformed SSE line, skip
-          }
+      await readSSE<ChatEvent>(res.body, (event) => {
+        if (event.type === 'delta' && event.textDelta) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsg.id ? { ...m, text: m.text + event.textDelta } : m,
+            ),
+          );
+        } else if (event.type === 'done' || event.type === 'error') {
+          const errText = event.type === 'error' ? `\n\n_Error: ${event.message}_` : '';
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsg.id ? { ...m, streaming: false, text: m.text + errText } : m,
+            ),
+          );
         }
-      }
+      });
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
         setMessages((prev) =>

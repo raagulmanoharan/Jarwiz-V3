@@ -12,13 +12,11 @@
  * canvas permanently — Esc / Skip / Done always return you to the board.
  */
 
-import { useEffect, useRef, useSyncExternalStore } from 'react';
-import { getActiveBoard, subscribeBoards } from '../boards/boardStore';
+import { useEffect, useSyncExternalStore } from 'react';
 import {
   closeHelp,
   endTour,
   getHelpState,
-  hasSeenTour,
   setTourStep,
   startTour,
   subscribeHelp,
@@ -41,27 +39,22 @@ const TOUR: TourStep[] = [
   {
     anchor: 'center',
     title: 'Welcome to Jarwiz',
-    body: 'An infinite canvas where AI agents work alongside you — researching, summarising, clustering, and drafting, all as cards you can move and connect. Here is the 60-second tour.',
+    body: 'An infinite canvas where AI works alongside you — reading, summarising, clustering, and drafting, all as cards you can move and connect. Here is the 60-second tour.',
   },
   {
     anchor: 'rail',
     title: 'Build anything',
-    body: 'The right rail has your creators and primitives: docs, sticky notes, shapes, arrows, frames. Press d for a doc or n for a sticky note.',
+    body: 'The left rail has your tools: select, pan, docs, shapes, arrows — plus PDF upload, your boards, and the Claude panel.',
   },
   {
     anchor: 'center',
     title: 'Bring in your own material',
-    body: 'Drop a PDF or paste a link straight onto the canvas. Jarwiz reads it and offers smart starting questions, so you are never staring at a blank board.',
+    body: 'Drop a PDF straight onto the canvas. Jarwiz reads it and offers smart starting questions, so you are never staring at a blank board.',
   },
   {
     anchor: 'prompt',
     title: 'Ask anything',
     body: 'Type in the prompt bar and the answer streams onto the board. Select a card first to ground the question on it; the chips suggest the next best prompt.',
-  },
-  {
-    anchor: 'prompt',
-    title: 'Agents with opinions',
-    body: 'Open the Agents menu to scan the whole board: find tensions between cards, surface what you are missing, or get a sharp devil’s-advocate critique.',
   },
   {
     anchor: 'cardbar',
@@ -76,51 +69,38 @@ const TOUR: TourStep[] = [
   {
     anchor: 'topbar',
     title: 'Boards & this guide',
-    body: 'Switch projects from the board chip up here. You can reopen this guide or the shortcut reference anytime from the ? button.',
+    body: 'Rename this board inline up here, switch boards from the logo button (or the rail’s folder icon), and flip light/dark with the theme toggle. Reopen this guide anytime from the rail’s ? button.',
   },
 ];
 
 const FEATURES: Array<{ glyph: string; title: string; body: string }> = [
-  { glyph: '◧', title: 'Build with primitives', body: 'Docs, sticky notes, shapes, arrows, and frames from the right rail.' },
-  { glyph: '⬓', title: 'Drop PDFs & links', body: 'Jarwiz reads them and suggests starting questions.' },
+  { glyph: '◧', title: 'Build with primitives', body: 'Docs, shapes, and arrows from the left rail.' },
+  { glyph: '⬓', title: 'Drop PDFs', body: 'Jarwiz reads them and suggests starting questions.' },
   { glyph: '✦', title: 'Ask & create', body: 'Type in the prompt bar; select a card to ground the answer on it.' },
-  { glyph: '⚖', title: 'Agents with opinions', body: 'Scan for tensions, gaps, or a devil’s-advocate critique.' },
+  { glyph: '⚖', title: 'Scan the board', body: 'Find tensions between cards, or surface what you are missing.' },
   { glyph: '↺', title: 'Refine any card', body: 'Shorten, deepen, reformat as a table or flowchart, or regenerate.' },
   { glyph: '◳', title: 'Cluster & summarise', body: 'Turn a wall of stickies into named themes with one click.' },
-  { glyph: '💬', title: 'Discuss & revise', body: 'Open a thread on a doc and rewrite it in place.' },
+  { glyph: '💬', title: 'Discuss & revise', body: 'Open a thread on a doc and rewrite it in place — or chat in the Claude panel.' },
 ];
 
 const SHORTCUTS: Array<{ keys: string[]; label: string }> = [
-  { keys: ['d'], label: 'New doc' },
-  { keys: ['n'], label: 'New sticky note' },
   { keys: ['V'], label: 'Select tool' },
   { keys: ['H'], label: 'Hand / pan' },
-  { keys: ['T'], label: 'Text' },
   { keys: ['R'], label: 'Rectangle' },
   { keys: ['A'], label: 'Arrow' },
   { keys: ['F'], label: 'Frame' },
+  { keys: ['Tab'], label: 'Continue writing (in a doc)' },
+  { keys: ['Esc'], label: 'Stop a running generation' },
   { keys: [MOD, 'Z'], label: 'Undo' },
 ];
 
 export function HelpLayer() {
   const { panelOpen, tourStep } = useSyncExternalStore(subscribeHelp, getHelpState, getHelpState);
-  const board = useSyncExternalStore(subscribeBoards, getActiveBoard, getActiveBoard);
-  const autoStarted = useRef(false);
 
-  // Auto-launch the tour exactly once for a first-time user — but only after the
-  // new-board dialog (BoardEntry) has been resolved, so the two don't stack.
-  const boardReady = Boolean(board) && !board?.isNew;
-  useEffect(() => {
-    if (autoStarted.current) return;
-    if (boardReady && !hasSeenTour()) {
-      autoStarted.current = true;
-      const t = setTimeout(() => {
-        // Don't barge in if the user already opened help themselves.
-        if (getHelpState().tourStep === null && !getHelpState().panelOpen) startTour();
-      }, 700);
-      return () => clearTimeout(t);
-    }
-  }, [boardReady]);
+  // The tour never auto-launches: it barged in over users mid-edit (it raced
+  // BoardEntry's "Start writing" flow) and a daily-driver product doesn't need
+  // forced onboarding. It stays one click away — "Take the guided tour" in the
+  // help panel — for showing Jarwiz to someone new.
 
   // Esc closes whichever surface is up.
   useEffect(() => {

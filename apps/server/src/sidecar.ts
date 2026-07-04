@@ -10,19 +10,31 @@
  * Writer, Brainstormer) become genuinely real instead of scripted.
  */
 
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 
 const CLI = process.env.CLAUDE_CLI_PATH || 'claude';
 const DEFAULT_TIMEOUT_MS = 60_000;
+const PROBE_TIMEOUT_MS = 5_000;
 
 let cached: boolean | null = null;
 
-/** Is the Claude CLI usable as a sidecar? (no API key, binary present) */
+/**
+ * Is the Claude CLI usable as a sidecar? (no API key, binary present).
+ * The first call actually probes the binary (`claude --version`, cached) so a
+ * keyless machine without the CLI honestly reports demo mode via
+ * /api/capabilities and routes to the mock loop, instead of claiming a sidecar
+ * it can't spawn.
+ */
 export function sidecarAvailable(): boolean {
   if (process.env.ANTHROPIC_API_KEY?.trim()) return false; // prefer the real API
   if (process.env.JZ_DISABLE_SIDECAR) return false;
   if (cached !== null) return cached;
-  cached = true; // resolved lazily on first call; spawn failure flips it off
+  try {
+    const probe = spawnSync(CLI, ['--version'], { stdio: 'ignore', timeout: PROBE_TIMEOUT_MS });
+    cached = probe.status === 0; // ENOENT/timeout leave status null → false
+  } catch {
+    cached = false;
+  }
   return cached;
 }
 

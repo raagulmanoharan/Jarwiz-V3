@@ -9,7 +9,25 @@ import { createShapeId, stopEventPropagation, useEditor, useValue } from 'tldraw
 import { MousePointer2, Hand, Type, Shapes, ArrowUpRight, Upload, Folder, HelpCircle, MessageSquare } from 'lucide-react';
 import { DOC_CARD_SIZE, type DocCardShape } from '../shapes';
 import { isClaudePanelOpen, subscribeClaudePanel, toggleClaudePanel } from './claudePanelStore';
+import { toggleSidePanel } from './sidePanelStore';
+import { toggleHelp } from './help';
 import { useSyncExternalStore } from 'react';
+
+/** Open a native file picker and hand the chosen PDFs to the same ingestion
+ *  path a drag-and-drop takes (registerIngestion's 'files' handler). */
+function pickAndIngestPdfs(editor: ReturnType<typeof useEditor>) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/pdf';
+  input.multiple = true;
+  input.onchange = () => {
+    const files = Array.from(input.files ?? []);
+    if (!files.length) return;
+    const vp = editor.getViewportPageBounds();
+    editor.putExternalContent({ type: 'files', files, point: { x: vp.midX, y: vp.midY } });
+  };
+  input.click();
+}
 
 const ICON_SIZE = 18;
 const ICON_PROPS = { size: ICON_SIZE, strokeWidth: 1.7 };
@@ -73,7 +91,7 @@ export function ToolRail() {
       <RailTool label="Pan (H)" active={toolId === 'hand'} onClick={() => editor.setCurrentTool('hand')}>
         <Hand {...ICON_PROPS} />
       </RailTool>
-      <RailTool label="Doc (T)" active={false} onClick={() => spawnDocCard(editor)}>
+      <RailTool label="New doc" active={false} onClick={() => spawnDocCard(editor)}>
         <Type {...ICON_PROPS} />
       </RailTool>
       <RailTool label="Shape (R)" active={toolId === 'geo'} onClick={() => editor.setCurrentTool('geo')}>
@@ -82,17 +100,17 @@ export function ToolRail() {
       <RailTool label="Arrow (A)" active={toolId === 'arrow'} onClick={() => editor.setCurrentTool('arrow')}>
         <ArrowUpRight {...ICON_PROPS} />
       </RailTool>
-      <RailTool label="Upload" active={false} onClick={() => console.info('[jarwiz] upload coming soon')}>
+      <RailTool label="Upload a PDF" active={false} onClick={() => pickAndIngestPdfs(editor)}>
         <Upload {...ICON_PROPS} />
       </RailTool>
-      <RailTool label="Files" active={false} onClick={() => console.info('[jarwiz] files coming soon')}>
+      <RailTool label="Boards" active={false} onClick={toggleSidePanel}>
         <Folder {...ICON_PROPS} />
       </RailTool>
       <div className="jz-rail-spacer" aria-hidden />
       <RailTool label="Ask Claude" active={claudeOpen} onClick={toggleClaudePanel}>
         <MessageSquare {...ICON_PROPS} />
       </RailTool>
-      <RailTool label="Help" active={false} onClick={() => console.info('[jarwiz] help coming soon')}>
+      <RailTool label="Help" active={false} onClick={toggleHelp}>
         <HelpCircle {...ICON_PROPS} />
       </RailTool>
     </div>

@@ -384,7 +384,32 @@ const sleep = (ms: number, signal: AbortSignal) =>
     signal.addEventListener('abort', done, { once: true });
   });
 
+/** Scripted demo answer — every other AI route degrades to a mock without a
+ *  key; Ask was the lone exception (it used to throw). A canned doc keeps the
+ *  full loop demoable and makes the missing-key state self-explanatory. */
+async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenerator<AskEvent> {
+  yield { type: 'status', message: 'Demo mode…' };
+  yield { type: 'card.create', shape: 'doc', title: 'Demo mode' };
+  const body =
+    `You asked: *${req.prompt.slice(0, 140)}*\n\n` +
+    'Jarwiz is running without a model — set `ANTHROPIC_API_KEY` on the server ' +
+    '(or install the Claude CLI) and real answers will stream onto the board ' +
+    'exactly like this one, grounded on the cards you selected.';
+  for (const piece of chunk(body)) {
+    if (signal.aborted) return;
+    yield { type: 'card.delta', textDelta: piece };
+    await sleep(24, signal);
+  }
+  yield { type: 'card.done' };
+  yield { type: 'done' };
+}
+
 export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGenerator<AskEvent> {
+  if (!process.env.ANTHROPIC_API_KEY?.trim() && !sidecarAvailable()) {
+    yield* streamDemoAsk(req, signal);
+    return;
+  }
+
   yield { type: 'status', message: 'Reading the source…' };
   const { context, citable, images } = await gatherContext(req);
   if (signal.aborted) return;
@@ -478,9 +503,17 @@ async function* streamDiagram(
   images: ImageInput[] = [],
 ): AsyncGenerator<AskEvent> {
   yield { type: 'card.create', shape: 'diagram' };
-  for await (const delta of generateStream(DIAGRAM_SYSTEM, user, signal, images)) {
-    if (signal.aborted) return;
-    yield { type: 'card.delta', textDelta: delta };
+  try {
+    for await (const delta of generateStream(DIAGRAM_SYSTEM, user, signal, images)) {
+      if (signal.aborted) return;
+      yield { type: 'card.delta', textDelta: delta };
+    }
+  } catch (error) {
+    // Close the opened card before the error reaches index.ts's catch (which
+    // emits `error` but knows nothing about cards) — mirrors runtime.ts's
+    // closeOpenCard, so the client never keeps a streaming card open forever.
+    yield { type: 'card.done' };
+    throw error;
   }
   yield { type: 'card.done' };
   yield { type: 'done' };
@@ -557,25 +590,33 @@ async function* streamDoc(
   // title); everything after streams straight into the body as it arrives.
   let buf = '';
   let titleResolved = false;
-  for await (const delta of generateStream(system, user, signal, images)) {
-    if (signal.aborted) return;
-    if (titleResolved) {
-      yield { type: 'card.delta', textDelta: delta };
-      continue;
+  try {
+    for await (const delta of generateStream(system, user, signal, images)) {
+      if (signal.aborted) return;
+      if (titleResolved) {
+        yield { type: 'card.delta', textDelta: delta };
+        continue;
+      }
+      buf += delta;
+      const nl = buf.indexOf('\n');
+      if (nl === -1) continue;
+      titleResolved = true;
+      const firstLine = buf.slice(0, nl);
+      const rest = buf.slice(nl + 1);
+      if (firstLine.startsWith('# ')) {
+        yield { type: 'card.title', title: firstLine.replace(/^#\s+/, '').slice(0, 80) };
+        if (rest) yield { type: 'card.delta', textDelta: rest };
+      } else {
+        yield { type: 'card.delta', textDelta: buf };
+      }
+      buf = '';
     }
-    buf += delta;
-    const nl = buf.indexOf('\n');
-    if (nl === -1) continue;
-    titleResolved = true;
-    const firstLine = buf.slice(0, nl);
-    const rest = buf.slice(nl + 1);
-    if (firstLine.startsWith('# ')) {
-      yield { type: 'card.title', title: firstLine.replace(/^#\s+/, '').slice(0, 80) };
-      if (rest) yield { type: 'card.delta', textDelta: rest };
-    } else {
-      yield { type: 'card.delta', textDelta: buf };
-    }
-    buf = '';
+  } catch (error) {
+    // Close the opened card before the error reaches index.ts's catch (which
+    // emits `error` but knows nothing about cards) — mirrors runtime.ts's
+    // closeOpenCard, so the client never keeps a streaming card open forever.
+    yield { type: 'card.done' };
+    throw error;
   }
   if (!titleResolved && buf) {
     if (buf.startsWith('# ')) yield { type: 'card.title', title: buf.replace(/^#\s+/, '').slice(0, 80) };

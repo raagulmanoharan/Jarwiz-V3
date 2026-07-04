@@ -50,13 +50,34 @@ function _notify(): void {
 
 // ─── Init (called once at module load) ──────────────────────────────────────
 
+/** Validate a persisted entry — localStorage is user-editable and versions
+ *  drift, so never trust the parsed JSON's shape. */
+function _isBoard(v: unknown): v is Board {
+  if (typeof v !== 'object' || v === null) return false;
+  const b = v as Record<string, unknown>;
+  return (
+    typeof b.id === 'string' &&
+    typeof b.name === 'string' &&
+    typeof b.createdAt === 'number' &&
+    typeof b.isNew === 'boolean'
+  );
+}
+
 function _init(): void {
   try {
     const raw = localStorage.getItem(BOARDS_KEY);
     if (raw) {
-      _boards = JSON.parse(raw) as Board[];
-      _activeId = localStorage.getItem(ACTIVE_KEY) ?? _boards[0]?.id ?? LEGACY_ID;
-      return;
+      const parsed: unknown = JSON.parse(raw);
+      const boards = Array.isArray(parsed) ? parsed.filter(_isBoard) : [];
+      if (boards.length > 0) {
+        _boards = boards;
+        // The active id must point at a board we actually have; otherwise the
+        // app would render a phantom board. Reset to the first board if not.
+        const active = localStorage.getItem(ACTIVE_KEY);
+        _activeId = active && boards.some((b) => b.id === active) ? active : boards[0]!.id;
+        return;
+      }
+      // Nothing valid survived the filter — treat as corrupted, fall through.
     }
   } catch {
     /* corrupted — fall through to create defaults */

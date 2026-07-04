@@ -8,7 +8,7 @@
 
 import { useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { stopEventPropagation, useEditor, useValue, type TLShapeId } from 'tldraw';
-import { ASKABLE } from './AskLayer';
+import { ASKABLE } from './askable';
 import { useAsk } from './useAsk';
 import { useDiagram } from '../agents/useDiagram';
 import { useTidy, canTidy } from '../agents/useTidy';

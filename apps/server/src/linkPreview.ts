@@ -2,26 +2,33 @@
  * Server-side link metadata extraction for POST /api/link/preview.
  *
  * Fetches the page (10s budget, capped redirects, real UA, SSRF-guarded on
- * every hop), parses title / description / og:image / favicon / theme-color
- * with cheerio, and — only when ANTHROPIC_API_KEY is set — runs a one-shot
- * claude-haiku-4-5 cleanup over the title/description. Any enrichment
- * failure falls back to the raw metadata; the API key never reaches the
- * client.
+ * every hop with connect-time DNS pinning via publicOnlyAgent), parses title /
+ * description / og:image / favicon / theme-color with cheerio, and — only when
+ * ANTHROPIC_API_KEY is set — runs a one-shot claude-haiku-4-5 cleanup over the
+ * title/description (8s cap). Any enrichment failure or timeout falls back to
+ * the raw metadata; the API key never reaches the client.
  */
 
 import * as cheerio from 'cheerio';
 import type { LinkPreview } from '@jarwiz/shared';
-import { assertPublicHttpUrl } from './ssrf.js';
+import { assertPublicHttpUrl, publicOnlyAgent } from './ssrf.js';
 
 const FETCH_TIMEOUT_MS = 10_000;
 const MAX_REDIRECTS = 5;
 const MAX_HTML_BYTES = 2 * 1024 * 1024; // 2 MiB of HTML is plenty for <head>
+/** Enrichment is optional sugar — never let a slow model hold a preview open. */
+const ENRICH_TIMEOUT_MS = 8_000;
 
 const USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 JarwizLinkPreview/0.1';
 
-/** Fetch with manual redirect-following so every hop is SSRF-checked. */
+/**
+ * Fetch with manual redirect-following so every hop is SSRF-checked, over the
+ * `publicOnlyAgent` dispatcher so the connect-time DNS resolution is re-vetted
+ * too (a fast-flux resolver can't rebind us to a private IP between the
+ * pre-flight check and the socket connect).
+ */
 async function fetchPublicPage(rawUrl: string): Promise<{ finalUrl: URL; html: string }> {
   const deadline = AbortSignal.timeout(FETCH_TIMEOUT_MS);
   let url = await assertPublicHttpUrl(rawUrl);
@@ -30,6 +37,7 @@ async function fetchPublicPage(rawUrl: string): Promise<{ finalUrl: URL; html: s
     const response = await fetch(url, {
       redirect: 'manual',
       signal: deadline,
+      dispatcher: publicOnlyAgent,
       headers: {
         'user-agent': USER_AGENT,
         accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.5',
@@ -147,27 +155,30 @@ async function enrichWithHaiku(preview: LinkPreview): Promise<LinkPreview> {
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const client = new Anthropic({ apiKey });
 
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5',
-      max_tokens: 300,
-      system:
-        'You clean up scraped web page metadata for display on link preview cards. ' +
-        'Respond with strict JSON only: {"title": string, "description": string}. ' +
-        'Trim site-name suffixes and SEO boilerplate from the title, keep it under ' +
-        '90 characters, and rewrite the description as one or two crisp sentences ' +
-        '(under 200 characters). Preserve the original language and meaning. Do not invent facts.',
-      messages: [
-        {
-          role: 'user',
-          content: JSON.stringify({
-            url: preview.url,
-            title: preview.title,
-            description: preview.description,
-            siteName: preview.siteName ?? null,
-          }),
-        },
-      ],
-    });
+    const response = await client.messages.create(
+      {
+        model: 'claude-haiku-4-5',
+        max_tokens: 300,
+        system:
+          'You clean up scraped web page metadata for display on link preview cards. ' +
+          'Respond with strict JSON only: {"title": string, "description": string}. ' +
+          'Trim site-name suffixes and SEO boilerplate from the title, keep it under ' +
+          '90 characters, and rewrite the description as one or two crisp sentences ' +
+          '(under 200 characters). Preserve the original language and meaning. Do not invent facts.',
+        messages: [
+          {
+            role: 'user',
+            content: JSON.stringify({
+              url: preview.url,
+              title: preview.title,
+              description: preview.description,
+              siteName: preview.siteName ?? null,
+            }),
+          },
+        ],
+      },
+      { signal: AbortSignal.timeout(ENRICH_TIMEOUT_MS) },
+    );
 
     const block = response.content.find((b) => b.type === 'text');
     if (!block || block.type !== 'text') return preview;
