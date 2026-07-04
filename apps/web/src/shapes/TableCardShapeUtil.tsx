@@ -8,6 +8,7 @@ import {
   stopEventPropagation,
   useEditor,
   useIsEditing,
+  useValue,
   type RecordProps,
   type TLResizeInfo,
   type TLShape,
@@ -103,6 +104,16 @@ export class TableCardShapeUtil extends ShapeUtil<TableCardShape> {
 function TableCardBody({ shape }: { shape: TableCardShape }) {
   const editor = useEditor();
   const isEditing = useIsEditing(shape.id);
+  // A generated table lands SELECTED, not editing — the add affordances must
+  // already be there (the owner's flow: pill → comparison table → "+ column
+  // for another aspect" → Tab to let Jarwiz fill it). Clicking one from the
+  // selected state performs the add AND enters edit mode, so the very next
+  // keystroke can be Tab.
+  const isSelected = useValue(
+    'table-selected',
+    () => editor.getOnlySelectedShapeId() === shape.id,
+    [editor, shape.id],
+  );
   const { columns, rows } = shape.props;
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
   const isFilling = streamingSet.has(shape.id);
@@ -189,9 +200,20 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
   };
   const isEmpty = rows.every((r) => r.every((c) => !c.trim())) && columns.every((c) => !c.trim());
 
+  // Edit chrome shows on selection too, not just in edit mode.
+  const chrome = isEditing || isSelected;
+  const addRowAndEdit = () => {
+    addRow();
+    if (!isEditing) editor.setEditingShape(shape.id);
+  };
+  const addColumnAndEdit = () => {
+    addColumn();
+    if (!isEditing) editor.setEditingShape(shape.id);
+  };
+
   return (
     <div
-      className={`jz-table${isFilling ? ' jz-table-filling' : ''}${collapsed ? ' jz-card-collapsed' : ''}${isEditing ? ' jz-table--editing' : ''}`}
+      className={`jz-table${isFilling ? ' jz-table-filling' : ''}${collapsed ? ' jz-card-collapsed' : ''}${chrome ? ' jz-table--chrome' : ''}`}
     >
       {/* Measured wrapper: the frame is height:100% (its scrollHeight always
           equals the CURRENT shape height — the fit-height ratchet), so the
@@ -278,11 +300,13 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
       </div>
 
       {/* Cove-style edge affordances instead of a button bar: a slim + strip
-          along the bottom adds a row; its twin on the right edge adds a column. */}
-      {isEditing ? (
+          along the bottom adds a row; its twin on the right edge adds a column.
+          Available from the SELECTED state — adding also enters edit mode so
+          Tab-to-fill is one keystroke away. */}
+      {chrome ? (
         <button
           className="jz-table-edgeadd jz-table-edgeadd-row"
-          onClick={addRow}
+          onClick={addRowAndEdit}
           onPointerDown={stopEventPropagation}
           style={{ pointerEvents: 'all' }}
           title="Add a row"
@@ -291,10 +315,10 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
           +
         </button>
       ) : null}
-      {isEditing ? (
+      {chrome ? (
         <button
           className="jz-table-edgeadd jz-table-edgeadd-col"
-          onClick={addColumn}
+          onClick={addColumnAndEdit}
           onPointerDown={stopEventPropagation}
           style={{ pointerEvents: 'all' }}
           title="Add a column"

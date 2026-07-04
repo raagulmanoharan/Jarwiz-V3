@@ -1548,7 +1548,7 @@ body,
  * the bottom (row) and right (column) instead of labelled buttons. The fit
  * wrapper reserves the right strip's lane while editing so cells never sit
  * under it; the bottom strip is in flow and measured like any other row. */
-.jz-table--editing .jz-table-fit {
+.jz-table--chrome .jz-table-fit {
   padding-right: 16px;
 }
 
