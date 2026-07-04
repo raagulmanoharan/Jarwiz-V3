@@ -599,13 +599,22 @@ async function* streamDoc(
   yield { type: 'card.create', shape };
   // Buffer only until the first line resolves (a "# Title" goes to the card's
   // title); everything after streams straight into the body as it arrives.
+  // `bodyStarted` swallows the blank line(s) between a stripped title and the
+  // body — otherwise the doc card renders an empty band above its content.
   let buf = '';
   let titleResolved = false;
+  let bodyStarted = false;
+  function* bodyDelta(text: string): Generator<AskEvent> {
+    const t = bodyStarted ? text : text.replace(/^\n+/, '');
+    if (!t) return;
+    bodyStarted = true;
+    yield { type: 'card.delta', textDelta: t };
+  }
   try {
     for await (const delta of generateStream(system, user, signal, images)) {
       if (signal.aborted) return;
       if (titleResolved) {
-        yield { type: 'card.delta', textDelta: delta };
+        yield* bodyDelta(delta);
         continue;
       }
       buf += delta;
@@ -616,9 +625,9 @@ async function* streamDoc(
       const rest = buf.slice(nl + 1);
       if (firstLine.startsWith('# ')) {
         yield { type: 'card.title', title: firstLine.replace(/^#\s+/, '').slice(0, 80) };
-        if (rest) yield { type: 'card.delta', textDelta: rest };
+        yield* bodyDelta(rest);
       } else {
-        yield { type: 'card.delta', textDelta: buf };
+        yield* bodyDelta(buf);
       }
       buf = '';
     }
@@ -631,7 +640,7 @@ async function* streamDoc(
   }
   if (!titleResolved && buf) {
     if (buf.startsWith('# ')) yield { type: 'card.title', title: buf.replace(/^#\s+/, '').slice(0, 80) };
-    else yield { type: 'card.delta', textDelta: buf };
+    else yield* bodyDelta(buf);
   }
   yield { type: 'card.done' };
   yield { type: 'done' };

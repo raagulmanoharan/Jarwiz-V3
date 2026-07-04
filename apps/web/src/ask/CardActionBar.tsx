@@ -9,7 +9,7 @@
 import { useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { stopEventPropagation, useEditor, useValue, type TLShapeId } from 'tldraw';
 import { ASKABLE, hasAskableContent } from './askable';
-import { PROFILE_PROMPT } from './profileOffer';
+import { PROFILE_PROMPT } from './profilePrompt';
 import { useAsk } from './useAsk';
 import { useDiagram } from '../agents/useDiagram';
 import { useTidy, canTidy } from '../agents/useTidy';
@@ -65,10 +65,12 @@ export function CardActionBar() {
     if (sel.type !== 'diagram-card') transforms.push({ label: 'As a diagram', run: () => ask('Turn this into a diagram.', [id], { skipClarify: true }) });
     transforms.push({ label: 'Regenerate', run: () => ask('Regenerate this, same intent, fresh take.', [id], { targetId: id }) });
   }
-  if (!sel.multi && hasContent && sel.type === 'pdf-card') {
-    // The durable path to the drop-moment profile (the offer chip is transient).
-    transforms.push({ label: '✦ Profile this document', run: () => ask(PROFILE_PROMPT, [id], { skipClarify: true }) });
-  }
+  // The drop-moment profile (docs/PDF-EDGE.md build 3): a dropped PDF lands
+  // selected, so this bar IS the drop moment — Profile rides it as a fixed
+  // action (a profile is the document's summary; owner call, 2026-07-04),
+  // not buried in the Refine menu.
+  const profileable = !sel.multi && hasContent && sel.type === 'pdf-card';
+
   if (sel.multi && contentful.length > 0) {
     // Multi-select gets the same bar, with cross-selection transforms —
     // as long as at least one selected card actually holds content.
@@ -91,7 +93,7 @@ export function CardActionBar() {
 
   // Nothing meaningful to offer (e.g. a single empty card) → no bar at all.
   // Provenance itself needs no button: the drawn edges ARE the lineage.
-  if (transforms.length === 0) return null;
+  if (transforms.length === 0 && !profileable) return null;
   if (!anchor) return null;
 
   const style: CSSProperties = {
@@ -101,6 +103,15 @@ export function CardActionBar() {
   };
   return (
     <div className="jz-cardbar" style={style} onPointerDown={stopEventPropagation}>
+      {profileable ? (
+        <button
+          className="jz-cardbar-btn"
+          title="A one-glance profile: what this is, who wrote it, red flags, where to start"
+          onClick={() => ask(PROFILE_PROMPT, [id], { skipClarify: true })}
+        >
+          ✦ Profile
+        </button>
+      ) : null}
       {transforms.length > 0 ? (
         <div className="jz-cardbar-group">
           <button className={`jz-cardbar-btn${menu === 'refine' ? ' jz-cardbar-btn--open' : ''}`} onClick={() => setMenu(menu === 'refine' ? null : 'refine')}>

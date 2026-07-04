@@ -20,7 +20,6 @@ import { PromptBar } from './ask/PromptBar';
 import { CardActionBar } from './ask/CardActionBar';
 import { ClarifyLayer } from './ask/ClarifyLayer';
 import { DraftControls } from './ask/DraftControls';
-import { ProfileOfferLayer } from './ask/ProfileOfferLayer';
 import { RegenControls } from './ask/RegenControls';
 import { SelectionAsk } from './ask/SelectionAsk';
 import { Timeline } from './log/Timeline';
@@ -58,7 +57,6 @@ function JarwizOverlay() {
       <EmptyState />
       <BoardEntry />
       <CardActionBar />
-      <ProfileOfferLayer />
       <ClarifyLayer />
       <DraftControls />
       <RegenControls />

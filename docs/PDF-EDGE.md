@@ -56,9 +56,10 @@ provenance + space — produces things they structurally cannot:
 3. **Drop-moment profile card** ✅: on ingest, offer (never force) a compact
    profile: type, parties/authors, dates, red flags, suggested first
    questions. Shipped 2026-07-04 through the Ask pipeline (not suggest — the
-   profile is a streamed, cited, provenance-edged doc card like any answer);
-   the offer chip is the drop-moment shortcut, the Refine menu the durable
-   path. Eval: `scripts/eval-profile.mjs`.
+   profile is a streamed, cited, provenance-edged doc card like any answer).
+   A dropped PDF lands selected, so the card's floating action bar is the
+   offer surface: "✦ Profile" as a fixed action (owner call — no separate
+   chip). Eval: `scripts/eval-profile.mjs`.
 4. **Reader robustness**: 100+ page PDFs (lazy page rendering), scanned-PDF
    OCR at scale, password flow polish, multi-hundred-MB guardrails with
    honest errors. An eval PDF set (contract, paper, financial report,

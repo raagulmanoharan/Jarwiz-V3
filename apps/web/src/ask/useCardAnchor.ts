@@ -36,13 +36,17 @@ export function useCardAnchor(
       });
       const vp = editor.getViewportScreenBounds();
       // Clamp on-screen. Bottom-edge affordances keep clear of the prompt-bar
-      // dock plus their own downward pill stack; top-edge ones (the card
-      // action bar) keep clear of the topbar.
+      // dock plus their own downward pill stack. Top-edge ones (the card
+      // action bar) render ABOVE their anchor (translateY(-100%)), so the
+      // floor is the bar's BOTTOM: 62 keeps the ~36px bar under the browser
+      // edge while staying above the card as long as possible — the topbar's
+      // clusters sit in the corners, so the centre strip it floats in is
+      // clear. (The old floor of 118 shoved the bar INSIDE tall cards.)
       return {
         x: Math.max(margin, Math.min(p.x, vp.w - margin)),
         y:
           edge === 'top'
-            ? Math.max(118, Math.min(p.y + dy, vp.h - 60))
+            ? Math.max(62, Math.min(p.y + dy, vp.h - 60))
             : Math.max(40, Math.min(p.y + dy, vp.h - 230)),
       };
     },

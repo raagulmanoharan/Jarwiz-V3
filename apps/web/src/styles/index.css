@@ -890,62 +890,6 @@ body,
   pointer-events: auto;
 }
 
-/* ─── Drop-moment profile offer (PDF-EDGE build 3) ──────────────────────────
- * "✦ Profile this document" under a just-dropped PDF. Same accent-pill family
- * as the selection ask, plus a quiet ✕ so declining is one honest tap. */
-.jz-profile-offer {
-  position: absolute;
-  z-index: 315;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px;
-  border-radius: 999px;
-  background: var(--jz-surface-raised);
-  border: 1px solid var(--jz-hairline);
-  box-shadow: var(--jz-e3);
-  pointer-events: auto;
-  animation: jz-menu-in var(--jz-dur-base) var(--jz-ease-spring) both;
-}
-
-.jz-profile-offer-main {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 26px;
-  padding: 0 12px;
-  border: none;
-  border-radius: 999px;
-  background: var(--jz-accent);
-  color: #fff;
-  font-family: var(--jz-font-ui);
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: filter var(--jz-dur-fast) var(--jz-ease-out);
-}
-.jz-profile-offer-main:hover { filter: brightness(1.08); }
-
-.jz-profile-offer-x {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--jz-ink-500);
-  font-size: 11px;
-  cursor: pointer;
-  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
-}
-.jz-profile-offer-x:hover {
-  background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
-  color: var(--jz-ink-900);
-}
-
 /* ─── Expand / collapse on tall answer cards ────────────────────────────── */
 .jz-card-more {
   position: absolute;
@@ -2605,8 +2549,19 @@ body,
   background: var(--jz-surface-raised);
   box-shadow: var(--jz-e3);
   border: 1px solid var(--jz-hairline);
-  animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
-}.jz-cardbar-group { position: relative; }
+  /* Own keyframes, not jz-menu-in: the bar is lifted above its anchor by an
+   * inline translate(-50%, -100%), and an animation that sets `transform`
+   * replaces that lift for its duration — the bar would flash INSIDE the card
+   * on entrance. These keyframes carry the lift through the animation. */
+  animation: jz-cardbar-in var(--jz-dur-fast) var(--jz-ease-glide);
+}
+
+@keyframes jz-cardbar-in {
+  from { opacity: 0; transform: translate(-50%, -100%) translateY(4px) scale(0.98); }
+  to   { opacity: 1; transform: translate(-50%, -100%); }
+}
+
+.jz-cardbar-group { position: relative; }
 
 .jz-cardbar-btn {
   display: inline-flex;

@@ -217,3 +217,26 @@ ordinary answer card. Learnings:
   drop path (tldraw handler → upload → offer), no test-only hooks needed.
 - The model skips an optional "# " title line when the prompt says "no
   preamble" — if the card needs a title, ask for the heading explicitly.
+
+### Same day, owner feedback round
+
+Raagul reviewed the screenshots: the Refine bar was rendering *inside* tall
+cards, and the profile belongs on the floating panel as a fixed action ("a
+profile is basically the summary"), not on a transient chip. Three fixes:
+
+- **Profile is now a fixed "✦ Profile" button on the card action bar** for
+  PDF cards. Since a dropped PDF lands selected, the bar appearing IS the
+  drop-moment offer — the chip, its store, and its dismissal semantics all
+  deleted. Less chrome, same moment.
+- **The bar's top-edge clamp was shoving it into cards** (floor 118px,
+  assuming a full-width topbar; the topbar's clusters are actually corner-
+  only). Floor is now 62px: above the card whenever possible, adaptive —
+  sliding over the card only when the card is truly at the screen edge.
+- **Two bugs the round exposed**: (1) `jz-menu-in` animates `transform`,
+  which *replaces* the bar's inline `translate(-50%,-100%)` lift during the
+  entrance — the bar flashed inside the card. My stylesheet repair had just
+  revived that animation; the bar now has its own keyframes that carry the
+  lift. Lesson: never animate `transform` on an element positioned by an
+  inline transform. (2) When the server strips a streamed "# Title" line
+  into the card title, the following blank lines streamed into the body —
+  every titled answer card rendered an empty band above its content.

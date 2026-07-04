@@ -6,7 +6,6 @@
  */
 
 import { createShapeId, type Editor, type TLShapeId, type VecLike } from 'tldraw';
-import { offerProfile } from '../ask/profileOffer';
 import { uploadAsset } from '../lib/uploadAsset';
 import { logEvent } from '../log/eventLog';
 import { PDF_CARD_SIZE, type PdfCardShape } from '../shapes';
@@ -55,12 +54,11 @@ function placePdf(editor: Editor, file: File, center: VecLike): void {
     .then(({ assetId, url }) => {
       updatePdf(editor, id, { src: url, assetId, status: 'ready' });
       // Select the card so its Ask affordance + content pills surface at once.
+      // Select the card: its action bar (with the fixed "✦ Profile" — the
+      // drop-moment offer) and content pills surface at once.
       if (editor.getShape(id)) {
         editor.select(id);
         logEvent(editor, { kind: 'pdf', label: `Added ${file.name}`, shapeIds: [id] });
-        // The drop moment: offer (never force) a one-glance profile of the
-        // document that just landed (docs/PDF-EDGE.md build 3).
-        offerProfile({ cardId: id, assetId, name: file.name });
       }
     })
     .catch(() => updatePdf(editor, id, { status: 'error' }));
