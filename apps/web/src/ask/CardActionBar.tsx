@@ -8,7 +8,7 @@
 
 import { useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { stopEventPropagation, useEditor, useValue, type TLShapeId } from 'tldraw';
-import { ASKABLE } from './askable';
+import { ASKABLE, hasAskableContent } from './askable';
 import { useAsk } from './useAsk';
 import { useDiagram } from '../agents/useDiagram';
 import { useTidy, canTidy } from '../agents/useTidy';
@@ -54,9 +54,14 @@ export function CardActionBar() {
   const prov = sel.multi ? undefined : getProvenance(id);
   const traceable = !sel.multi && hasAncestry(editor, id);
   const tracing = lineage?.rootId === id;
+  // Content gate: an empty card has nothing to shorten, deepen, discuss, or
+  // summarise — offering those reads as broken. Same predicate the prompt
+  // bar's starter chips use.
+  const contentful = ids.filter((i) => hasAskableContent(editor, editor.getShape(i)));
+  const hasContent = !sel.multi && contentful.length === 1;
 
   const transforms: Transform[] = [];
-  if (!sel.multi && ANSWER.has(sel.type)) {
+  if (!sel.multi && hasContent && ANSWER.has(sel.type)) {
     transforms.push(
       { label: 'Make it shorter', run: () => ask('Make this shorter and tighter, keeping the key points.', [id], { targetId: id }) },
       { label: 'Go deeper', run: () => ask('Go deeper — add detail, nuance, and specifics.', [id], { targetId: id }) },
@@ -65,8 +70,9 @@ export function CardActionBar() {
     if (sel.type !== 'diagram-card') transforms.push({ label: 'As a diagram', run: () => ask('Turn this into a diagram.', [id]) });
     transforms.push({ label: 'Regenerate', run: () => ask('Regenerate this, same intent, fresh take.', [id], { targetId: id }) });
   }
-  if (sel.multi) {
-    // Multi-select gets the same bar, with cross-selection transforms.
+  if (sel.multi && contentful.length > 0) {
+    // Multi-select gets the same bar, with cross-selection transforms —
+    // as long as at least one selected card actually holds content.
     transforms.push(
       { label: '✦ Summarise the selection', run: () => ask('Summarise the selected cards together into one concise doc.', ids) },
       { label: '✦ Combine into a doc', run: () => ask('Combine the selected cards into one structured document.', ids) },
@@ -80,7 +86,7 @@ export function CardActionBar() {
   }
   if (canCluster(editor, ids)) transforms.push({ label: '✦ Cluster & summarise', run: () => cluster() });
   if (canTidy(editor, ids)) transforms.push({ label: '⤢ Tidy layout', run: () => tidy(ids) });
-  transforms.push({ label: '◇ Make a flowchart', run: () => diagram('Turn this into a flowchart.', ids) });
+  if (contentful.length > 0) transforms.push({ label: '◇ Make a flowchart', run: () => diagram('Turn this into a flowchart.', ids) });
 
   const runTransform = (t: Transform) => { setMenu(null); t.run(); };
   const zoomTo = (sid: TLShapeId) => {
@@ -90,23 +96,29 @@ export function CardActionBar() {
     if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 120 });
   };
 
+  // Nothing meaningful to offer (e.g. a single empty card) → no bar at all.
+  const showDiscuss = sel.type === 'doc-card' && hasContent;
+  if (transforms.length === 0 && !showDiscuss && !traceable && !prov) return null;
+
   const style = {} as CSSProperties;
   return (
     <div className="jz-cardbar" style={style} onPointerDown={stopEventPropagation}>
-      <div className="jz-cardbar-group">
-        <button className={`jz-cardbar-btn${menu === 'refine' ? ' jz-cardbar-btn--open' : ''}`} onClick={() => setMenu(menu === 'refine' ? null : 'refine')}>
-          ✦ Refine <span className="jz-cardbar-caret" aria-hidden>▾</span>
-        </button>
-        {menu === 'refine' ? (
-          <div className="jz-cardbar-menu" role="menu">
-            {transforms.map((t) => (
-              <button key={t.label} className="jz-cardbar-item" onClick={() => runTransform(t)}>{t.label}</button>
-            ))}
-          </div>
-        ) : null}
-      </div>
+      {transforms.length > 0 ? (
+        <div className="jz-cardbar-group">
+          <button className={`jz-cardbar-btn${menu === 'refine' ? ' jz-cardbar-btn--open' : ''}`} onClick={() => setMenu(menu === 'refine' ? null : 'refine')}>
+            ✦ Refine <span className="jz-cardbar-caret" aria-hidden>▾</span>
+          </button>
+          {menu === 'refine' ? (
+            <div className="jz-cardbar-menu" role="menu">
+              {transforms.map((t) => (
+                <button key={t.label} className="jz-cardbar-item" onClick={() => runTransform(t)}>{t.label}</button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
-      {sel.type === 'doc-card' ? (
+      {showDiscuss ? (
         <button className={`jz-cardbar-btn${openDiscuss === id ? ' jz-cardbar-btn--on' : ''}`} onClick={() => toggleDiscuss(id)}>
           💬 Discuss
         </button>

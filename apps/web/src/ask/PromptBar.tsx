@@ -8,7 +8,7 @@ import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'r
 import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue, type Editor, type TLRichText, type TLShape } from 'tldraw';
 import { Plus, Slash, ArrowUp } from 'lucide-react';
 import type { AnalyzeMode } from '@jarwiz/shared';
-import { ASKABLE } from './askable';
+import { ASKABLE, hasAskableContent } from './askable';
 import { useAsk } from './useAsk';
 import { useAnalyze } from '../agents/useAnalyze';
 import { ensureSeedPrompts, getSeedPrompts, subscribeSeed } from './seedPrompts';
@@ -60,9 +60,14 @@ export function PromptBar() {
     editor.setSelectedShapes(editor.getSelectedShapeIds().filter((x) => x !== id));
   };
   const boardCount = useValue('promptbar-boardcount', () => editor.getCurrentPageShapeIds().size, [editor]);
+  // The sole selected card's type — but only when the card actually holds
+  // content. An empty doc has nothing to "summarise in 3 bullets"; a PDF
+  // mid-upload isn't readable. No content → no starter chips.
   const soleType = useValue('promptbar-soletype', () => {
     const ids = editor.getSelectedShapeIds();
-    return ids.length === 1 ? (editor.getShape(ids[0]!)?.type ?? '') : '';
+    if (ids.length !== 1) return '';
+    const s = editor.getShape(ids[0]!);
+    return s && hasAskableContent(editor, s) ? s.type : '';
   }, [editor]);
   const assetId = useValue('promptbar-assetid', () => {
     const ids = editor.getSelectedShapeIds();
@@ -98,7 +103,9 @@ export function PromptBar() {
       ? []
       : assetId && (seeds?.length ?? 0) > 0
         ? seeds!.map((s) => ({ label: s.label, prompt: s.prompt }))
-        : (STARTERS[soleType] ?? STARTERS.default ?? []).map((s) => ({ label: s, prompt: s }));
+        : soleType // empty card → no chips at all (never fall through to defaults)
+          ? (STARTERS[soleType] ?? STARTERS.default ?? []).map((s) => ({ label: s, prompt: s }))
+          : [];
   const showStarters = !runningMode && !value.trim() && starters.length > 0;
   const showCoach = !coachDone && boardCount >= 5;
 
