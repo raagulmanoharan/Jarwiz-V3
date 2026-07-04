@@ -11,7 +11,7 @@ import type { AnalyzeMode } from '@jarwiz/shared';
 import { ASKABLE, hasAskableContent } from './askable';
 import { useAsk } from './useAsk';
 import { useAnalyze } from '../agents/useAnalyze';
-import { ensureSeedPrompts, getSeedPrompts, subscribeSeed } from './seedPrompts';
+import { cardSeedKey, ensureCardSeeds, ensureSeedPrompts, getSeedPrompts, subscribeSeed } from './seedPrompts';
 
 const clip = (s: string, n = 22) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
@@ -60,25 +60,47 @@ export function PromptBar() {
     editor.setSelectedShapes(editor.getSelectedShapeIds().filter((x) => x !== id));
   };
   const boardCount = useValue('promptbar-boardcount', () => editor.getCurrentPageShapeIds().size, [editor]);
-  // The sole selected card's type — but only when the card actually holds
-  // content. An empty doc has nothing to "summarise in 3 bullets"; a PDF
-  // mid-upload isn't readable. No content → no starter chips.
-  const soleType = useValue('promptbar-soletype', () => {
+  // The sole selected card — only when it actually holds content. An empty doc
+  // has nothing to "summarise in 3 bullets"; a PDF mid-upload isn't readable.
+  // For contentful cards we fetch pills tailored to THEIR text (the static
+  // per-type strings are just the instant fallback while those arrive).
+  const sole = useValue('promptbar-sole', () => {
     const ids = editor.getSelectedShapeIds();
-    if (ids.length !== 1) return '';
+    if (ids.length !== 1) return null;
     const s = editor.getShape(ids[0]!);
-    return s && hasAskableContent(editor, s) ? s.type : '';
+    if (!s || !hasAskableContent(editor, s)) return null;
+    const p = s.props as Record<string, unknown>;
+    const str = (v: unknown) => (typeof v === 'string' ? v : '');
+    if (s.type === 'pdf-card') return { type: s.type, seedKey: str(p.assetId), pdf: true as const };
+    const text =
+      s.type === 'table-card'
+        ? [
+            ...(Array.isArray(p.columns) ? [(p.columns as string[]).join(' | ')] : []),
+            ...(Array.isArray(p.rows) ? (p.rows as string[][]).map((r) => r.join(' | ')) : []),
+          ].join('\n')
+        : s.type === 'diagram-card'
+          ? str(p.code)
+          : str(p.text);
+    const title = str(p.title);
+    return { type: s.type, seedKey: cardSeedKey(s.id, text, title), pdf: false as const, text, title };
   }, [editor]);
-  const assetId = useValue('promptbar-assetid', () => {
-    const ids = editor.getSelectedShapeIds();
-    if (ids.length !== 1) return '';
-    const s = editor.getShape(ids[0]!);
-    return s?.type === 'pdf-card' ? String((s.props as { assetId?: string }).assetId ?? '') : '';
-  }, [editor]);
-  useEffect(() => { if (assetId) ensureSeedPrompts(assetId); }, [assetId]);
+  const soleType = sole?.type ?? '';
+  useEffect(() => {
+    if (!sole) return;
+    if (sole.pdf) {
+      ensureSeedPrompts(sole.seedKey);
+      return;
+    }
+    // Debounced: the seed key fingerprints the card's TEXT, which changes on
+    // every keystroke and every streaming delta. Fetch only after the content
+    // has settled for a beat — otherwise a streaming answer mints hundreds of
+    // keys and stampedes the server with seed generations.
+    const t = setTimeout(() => ensureCardSeeds(sole.seedKey, sole.text ?? '', sole.title), 1200);
+    return () => clearTimeout(t);
+  }, [sole?.seedKey]);
   const seeds = useSyncExternalStore(
     subscribeSeed,
-    () => (assetId ? getSeedPrompts(assetId) : undefined),
+    () => (sole ? getSeedPrompts(sole.seedKey) : undefined),
     () => undefined,
   );
 
@@ -101,7 +123,7 @@ export function PromptBar() {
   const starters: Array<{ label: string; prompt: string }> =
     groundIds.length !== 1
       ? []
-      : assetId && (seeds?.length ?? 0) > 0
+      : (seeds?.length ?? 0) > 0
         ? seeds!.map((s) => ({ label: s.label, prompt: s.prompt }))
         : soleType // empty card → no chips at all (never fall through to defaults)
           ? (STARTERS[soleType] ?? STARTERS.default ?? []).map((s) => ({ label: s, prompt: s }))

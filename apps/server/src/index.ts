@@ -466,14 +466,22 @@ app.post('/api/seed-prompts', async (c) => {
   try {
     body = await c.req.json();
   } catch {
-    return c.json({ error: 'Expected JSON: { assetId }' }, 400);
+    return c.json({ error: 'Expected JSON: { assetId } or { text, title? }' }, 400);
   }
-  const assetId = (body as { assetId?: unknown })?.assetId;
-  if (typeof assetId !== 'string' || !isValidAssetId(assetId)) {
-    return c.json({ error: 'valid assetId required' }, 400);
+  const raw = body as { assetId?: unknown; text?: unknown; title?: unknown };
+  const hasAsset = typeof raw.assetId === 'string' && isValidAssetId(raw.assetId);
+  const hasText = typeof raw.text === 'string' && raw.text.trim().length > 0;
+  if (!hasAsset && !hasText) {
+    return c.json({ error: 'assetId or text required' }, 400);
   }
+  const source = hasAsset
+    ? { assetId: raw.assetId as string }
+    : {
+        text: (raw.text as string).slice(0, 12_000),
+        title: typeof raw.title === 'string' ? raw.title.slice(0, 300) : undefined,
+      };
   try {
-    const prompts = await proposeSeedPrompts(assetId, c.req.raw.signal);
+    const prompts = await proposeSeedPrompts(source, c.req.raw.signal);
     return c.json({ prompts });
   } catch (error) {
     return c.json({ prompts: [], error: error instanceof Error ? error.message : 'failed' });

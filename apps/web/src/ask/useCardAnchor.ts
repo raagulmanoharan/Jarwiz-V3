@@ -16,31 +16,37 @@ export interface CardAnchor {
 
 export function useCardAnchor(
   ids: TLShapeId | TLShapeId[] | null | undefined,
-  opts: { dy?: number; margin?: number } = {},
+  opts: { dy?: number; margin?: number; edge?: 'top' | 'bottom' } = {},
 ): CardAnchor | null {
-  const { dy = 12, margin = 90 } = opts;
+  const { dy = 12, margin = 90, edge = 'bottom' } = opts;
   const editor = useEditor();
   const list = ids == null ? [] : Array.isArray(ids) ? ids : [ids];
   const key = list.join(',');
   return useValue(
-    `jz card anchor ${key} ${dy} ${margin}`,
+    `jz card anchor ${key} ${dy} ${margin} ${edge}`,
     () => {
       const boxes = list
         .map((id) => editor.getShapePageBounds(id))
         .filter((b): b is Box => Boolean(b));
       if (boxes.length === 0) return null;
       const union = boxes.reduce((acc, b) => acc.union(b), boxes[0]!.clone());
-      const p = editor.pageToViewport({ x: union.midX, y: union.maxY });
+      const p = editor.pageToViewport({
+        x: union.midX,
+        y: edge === 'top' ? union.minY : union.maxY,
+      });
       const vp = editor.getViewportScreenBounds();
-      // Keep clear of the bottom chrome (prompt-bar dock + toolbar) plus room for
-      // the affordance's own downward-growing pill stack, so a card selected low
-      // on screen never collides its affordance with the dock.
+      // Clamp on-screen. Bottom-edge affordances keep clear of the prompt-bar
+      // dock plus their own downward pill stack; top-edge ones (the card
+      // action bar) keep clear of the topbar.
       return {
         x: Math.max(margin, Math.min(p.x, vp.w - margin)),
-        y: Math.max(40, Math.min(p.y + dy, vp.h - 230)),
+        y:
+          edge === 'top'
+            ? Math.max(118, Math.min(p.y + dy, vp.h - 60))
+            : Math.max(40, Math.min(p.y + dy, vp.h - 230)),
       };
     },
     // `key` makes the array dependency stable across renders.
-    [editor, key, dy, margin],
+    [editor, key, dy, margin, edge],
   );
 }

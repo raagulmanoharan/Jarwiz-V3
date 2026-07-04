@@ -163,7 +163,14 @@ export function useAsk() {
       // `activeRun` is the global one-run-at-a-time gate: `isAsking` is
       // per-hook-instance and a regen holds no draft, so without it two runs
       // could race and Cancel would target the wrong one.
-      if (!trimmed || isAsking || activeRun || getDraft()) return;
+      if (!trimmed || isAsking || activeRun || getDraft()) {
+        // One run at a time is deliberate — but a refused ask should never be
+        // a silent mystery in the console when something gets stuck.
+        console.warn('[jarwiz] ask refused:', {
+          empty: !trimmed, isAsking, activeRun: Boolean(activeRun), draft: Boolean(getDraft()),
+        });
+        return;
+      }
       clearClarify(); // a fresh ask supersedes any pending question
 
       const sourceShapes = sourceIds

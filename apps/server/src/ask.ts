@@ -144,12 +144,23 @@ export interface SeedPrompt {
 }
 
 /** Predefined, content-aware Ask prompts for a freshly dropped PDF. */
-export async function proposeSeedPrompts(assetId: string, signal: AbortSignal): Promise<SeedPrompt[]> {
-  const extracted = await extractAssetText(assetId, 8_000);
-  if (!extracted?.text) return [];
+export async function proposeSeedPrompts(
+  source: { assetId?: string; text?: string; title?: string },
+  signal: AbortSignal,
+): Promise<SeedPrompt[]> {
+  // Two sources: a stored PDF (by asset id) or inline card text — so every
+  // contentful card gets pills about ITS content, not canned per-type strings.
+  let content = '';
+  if (source.assetId) {
+    const extracted = await extractAssetText(source.assetId, 8_000);
+    content = extracted?.text ?? '';
+  } else if (source.text) {
+    content = source.title ? `${source.title}\n\n${source.text}` : source.text;
+  }
+  if (!content.trim()) return [];
   let raw: string;
   try {
-    raw = await generate(SEED_SYSTEM, `Document text:\n"""\n${extracted.text}\n"""`, signal);
+    raw = await generate(SEED_SYSTEM, `Document text:\n"""\n${content.slice(0, 8_000)}\n"""`, signal);
   } catch {
     return [];
   }

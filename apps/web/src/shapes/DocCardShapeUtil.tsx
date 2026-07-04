@@ -171,11 +171,14 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
 
   if (isEditing) {
     return (
-      <div className={`jz-doc jz-doc-editing${autopilotActive ? ' jz-doc-autopilot' : ''}`}>
+      <>
+        {/* Title lives OUTSIDE the card frame (Flora-style asset label) —
+            small, muted, above-left, stable while the card grows. Sibling of
+            .jz-doc because the card clips (overflow: hidden). */}
         <input
           value={title}
           placeholder="Untitled"
-          className="jz-doc-title-input"
+          className="jz-doc-tag jz-doc-tag--input"
           style={{ pointerEvents: 'all' }}
           onChange={(e) => {
             editor.updateShape<DocCardShape>({
@@ -196,6 +199,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
           onPointerMove={stopEventPropagation}
           onPointerUp={stopEventPropagation}
         />
+        <div className={`jz-doc jz-doc-editing${autopilotActive ? ' jz-doc-autopilot' : ''}`}>
         <textarea
           ref={textareaRef}
           value={text}
@@ -236,16 +240,18 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
             Press <kbd className="jz-autopilot-nudge-kbd">Tab</kbd> to continue
           </div>
         ) : null}
-      </div>
+        </div>
+      </>
     );
   }
 
   return (
+    <>
+    {title ? <div className="jz-doc-tag">{title}</div> : null}
     <div
       className={`jz-doc jz-doc-auto${collapsed ? ' jz-card-collapsed' : ''}${isSelected ? ' jz-doc--selected' : ''}`}
       ref={fitRef}
     >
-      {title ? <div className="jz-doc-title-row"><div className="jz-doc-title">{title}</div></div> : null}
       <div className="jz-doc-content">
         {text ? (
           <DocMarkdown
@@ -274,5 +280,6 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
       </div>
       {overflowing && !isStreaming ? <ExpandToggle shapeId={shape.id} expanded={expanded} /> : null}
     </div>
+    </>
   );
 }

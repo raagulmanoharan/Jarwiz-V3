@@ -1,9 +1,9 @@
 /**
- * The card action bar (Stitch-style) — a fixed contextual bar just below the
- * header that lights up in the SAME place whenever a single card is selected, so
- * the actions are predictable (no hunting, no per-card float). It holds one-tap
- * OPERATIONS on the artifact: Refine ▾ (transforms), Discuss, Based on ▾
- * (provenance). Typed/open questions live in the bottom prompt bar instead.
+ * The card action bar — floats just ABOVE the selected card(s), so the
+ * operations sit visually on the thing they act on (anchored via
+ * useCardAnchor, camera-tracked, clamped clear of the topbar). It holds
+ * one-tap OPERATIONS on the artifact: Refine ▾ (transforms), Discuss, Trace,
+ * Based on ▾ (provenance). Typed/open questions live in the prompt bar.
  */
 
 import { useState, useSyncExternalStore, type CSSProperties } from 'react';
@@ -15,6 +15,7 @@ import { useTidy, canTidy } from '../agents/useTidy';
 import { useCluster, canCluster } from '../agents/useCluster';
 import { getProvenance, getProvenanceMap, subscribeProvenance } from './provenance';
 import { getOpenDiscuss, subscribeDiscuss, toggleDiscuss } from './discuss';
+import { useCardAnchor } from './useCardAnchor';
 import { clearLineage, getLineage, hasAncestry, subscribeLineage, traceLineage } from './lineage';
 
 const ANSWER = new Set(['doc-card', 'table-card', 'diagram-card']);
@@ -48,6 +49,8 @@ export function CardActionBar() {
     [editor],
   );
 
+  const anchor = useCardAnchor((sel?.ids ?? null) as TLShapeId[] | null, { edge: 'top', dy: -10 });
+
   if (!sel) return null;
   const id = sel.id as TLShapeId;
   const ids = sel.ids as TLShapeId[];
@@ -63,24 +66,24 @@ export function CardActionBar() {
   const transforms: Transform[] = [];
   if (!sel.multi && hasContent && ANSWER.has(sel.type)) {
     transforms.push(
-      { label: 'Make it shorter', run: () => ask('Make this shorter and tighter, keeping the key points.', [id], { targetId: id }) },
-      { label: 'Go deeper', run: () => ask('Go deeper — add detail, nuance, and specifics.', [id], { targetId: id }) },
+      { label: 'Make it shorter', run: () => ask('Make this shorter and tighter, keeping the key points.', [id], { targetId: id, skipClarify: true }) },
+      { label: 'Go deeper', run: () => ask('Go deeper — add detail, nuance, and specifics.', [id], { targetId: id, skipClarify: true }) },
     );
-    if (sel.type !== 'table-card') transforms.push({ label: 'As a table', run: () => ask('Reformat this as a comparison table.', [id]) });
-    if (sel.type !== 'diagram-card') transforms.push({ label: 'As a diagram', run: () => ask('Turn this into a diagram.', [id]) });
+    if (sel.type !== 'table-card') transforms.push({ label: 'As a table', run: () => ask('Reformat this as a comparison table.', [id], { skipClarify: true }) });
+    if (sel.type !== 'diagram-card') transforms.push({ label: 'As a diagram', run: () => ask('Turn this into a diagram.', [id], { skipClarify: true }) });
     transforms.push({ label: 'Regenerate', run: () => ask('Regenerate this, same intent, fresh take.', [id], { targetId: id }) });
   }
   if (sel.multi && contentful.length > 0) {
     // Multi-select gets the same bar, with cross-selection transforms —
     // as long as at least one selected card actually holds content.
     transforms.push(
-      { label: '✦ Summarise the selection', run: () => ask('Summarise the selected cards together into one concise doc.', ids) },
-      { label: '✦ Combine into a doc', run: () => ask('Combine the selected cards into one structured document.', ids) },
+      { label: '✦ Summarise the selection', run: () => ask('Summarise the selected cards together into one concise doc.', ids, { skipClarify: true }) },
+      { label: '✦ Combine into a doc', run: () => ask('Combine the selected cards into one structured document.', ids, { skipClarify: true }) },
     );
     if (sel.pdfCount >= 2) {
       transforms.push(
-        { label: 'Find conflicts', run: () => ask('Find conflicts and contradictions between these documents, clause by clause.', ids) },
-        { label: 'Compare clauses', run: () => ask('Compare these documents clause by clause, showing where each one stands and where they differ.', ids) },
+        { label: 'Find conflicts', run: () => ask('Find conflicts and contradictions between these documents, clause by clause.', ids, { skipClarify: true }) },
+        { label: 'Compare clauses', run: () => ask('Compare these documents clause by clause, showing where each one stands and where they differ.', ids, { skipClarify: true }) },
       );
     }
   }
@@ -99,8 +102,13 @@ export function CardActionBar() {
   // Nothing meaningful to offer (e.g. a single empty card) → no bar at all.
   const showDiscuss = sel.type === 'doc-card' && hasContent;
   if (transforms.length === 0 && !showDiscuss && !traceable && !prov) return null;
+  if (!anchor) return null;
 
-  const style = {} as CSSProperties;
+  const style: CSSProperties = {
+    left: anchor.x,
+    top: anchor.y,
+    transform: 'translate(-50%, -100%)',
+  };
   return (
     <div className="jz-cardbar" style={style} onPointerDown={stopEventPropagation}>
       {transforms.length > 0 ? (

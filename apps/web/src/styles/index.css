@@ -23,7 +23,6 @@ body,
 .jz-table-cell,
 .jz-table-headcell,
 .jz-doc-textarea,
-.jz-doc-title-input,
 .jz-note textarea {
   outline: none;
 }
@@ -110,6 +109,11 @@ body,
   box-sizing: border-box;
 }
 
+
+.jz-rail-spacer {
+  flex: 1;
+  min-height: 8px;
+}
 
 .jz-rail-tool {
   display: inline-flex;
@@ -1821,23 +1825,37 @@ body,
   box-sizing: border-box;
 }
 
-/* Title row — only shown in read mode when a title exists */
-.jz-doc-title-row {
-  flex: none;
-  padding: var(--jz-space-5) var(--jz-space-5) 0;
-}
-
-.jz-doc-title {
-  font-family: var(--jz-font-display);
-  font-optical-sizing: auto;
-  font-size: var(--jz-text-heading-size);
-  line-height: var(--jz-text-heading-lh);
-  font-weight: 560;
-  color: var(--jz-ink-900);
+/* Card title — OUTSIDE the frame, Flora-style: a small muted label sitting
+ * just above the card's top-left, like the PDF card's filename. Stable while
+ * the card grows, never competes with the content. */
+.jz-doc-tag {
+  position: absolute;
+  bottom: 100%;
+  left: 2px;
+  margin-bottom: 6px;
+  max-width: 90%;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  line-height: var(--jz-text-caption-lh);
+  font-weight: 500;
+  color: var(--jz-ink-500);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
+  pointer-events: none;
+}
+
+.jz-doc-tag--input {
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0;
+  width: 90%;
+  pointer-events: all;
+}
+
+.jz-doc-tag--input::placeholder {
+  color: var(--jz-ink-400);
 }
 
 .jz-doc-content {
@@ -1956,21 +1974,7 @@ body,
 
 .jz-doc-textarea::placeholder {
   color: var(--jz-ink-400);
-}/* Legacy — kept for any code still referencing title input */
-.jz-doc-title-input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-family: var(--jz-font-display);
-  font-optical-sizing: auto;
-  font-size: var(--jz-text-heading-size);
-  line-height: var(--jz-text-heading-lh);
-  font-weight: 560;
-  color: var(--jz-ink-900);
 }
-
 /* Markdown rendering within doc cards — editorial headings in the serif.
  * gap: 0 because blank lines in source are rendered as explicit empty rows so
  * read mode matches the textarea visually — no phantom gaps, no missing ones. */
@@ -2688,10 +2692,8 @@ body,
 
 /* ─── Card action bar (fixed, below the header — predictable per-card actions) ─ */
 .jz-cardbar {
+  /* Anchored above the selected card by useCardAnchor (inline left/top). */
   position: absolute;
-  left: 50%;
-  top: 80px; /* clears the Flora topbar (14px inset + 52px logo row) */
-  transform: translateX(-50%);
   z-index: 311;
   pointer-events: auto;
   display: flex;
@@ -2825,6 +2827,11 @@ body,
 @keyframes jz-scrim-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+.jz-boardentry-spark {
+  color: var(--jz-accent);
+  margin-right: 6px;
 }
 
 .jz-boardentry {
