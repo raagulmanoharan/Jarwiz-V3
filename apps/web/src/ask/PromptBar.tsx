@@ -14,6 +14,7 @@ import { ASKABLE, hasAskableContent } from './askable';
 import { getShapeTitle } from '../shapes/shapeTitle';
 import { useAsk } from './useAsk';
 import { useCompose } from '../agents/useCompose';
+import { useAnnotate } from '../agents/useAnnotate';
 import { looksLikeBoard } from './boardIntent';
 import { useAnalyze } from '../agents/useAnalyze';
 import { gatherBoardCards } from '../agents/boardText';
@@ -47,7 +48,7 @@ const MODES: Array<{ shape: ModeShape; label: string; hint: string }> = [
   { shape: 'list', label: 'List', hint: 'bullets or a checklist' },
   { shape: 'table', label: 'Table', hint: 'rows × columns' },
   { shape: 'diagram', label: 'Diagram', hint: 'boxes and arrows' },
-  { shape: 'affinity', label: 'Stickies', hint: 'grouped sticky notes' },
+  { shape: 'affinity', label: 'Stickies', hint: 'notes across your cards' },
   { shape: 'board', label: 'Board', hint: 'a set of cards' },
 ];
 
@@ -55,6 +56,7 @@ export function PromptBar() {
   const editor = useEditor();
   const { ask, isAsking } = useAsk();
   const { run: compose, phase: composePhase } = useCompose();
+  const { run: annotate, phase: annotatePhase } = useAnnotate();
   const { analyze, runningMode } = useAnalyze();
   const [value, setValue] = useState('');
   // The "/" mode selector: an explicitly chosen response shape, pinned as a
@@ -165,14 +167,18 @@ export function PromptBar() {
   };
 
   const composing = composePhase === 'planning' || composePhase === 'building';
+  const annotating = annotatePhase === 'thinking';
   const submit = () => {
     const q = value.trim();
-    if (!q || isAsking || composing) return;
-    // Board intent — either picked explicitly ("/" Board) or inferred from the
-    // request — fans out into a set of cards instead of one. Everything else is
-    // a single-card ask, its shape optionally forced by the "/" mode.
+    if (!q || isAsking || composing || annotating) return;
+    // Route by intent:
+    //  - Board (explicit "/" Board or inferred) → fan out into a set of cards.
+    //  - Stickies (explicit "/" Stickies) → drop a note across each relevant card.
+    //  - else → a single-card ask, shape optionally forced by the "/" mode.
     if (mode === 'board' || (!mode && looksLikeBoard(q))) {
       void compose(q);
+    } else if (mode === 'affinity') {
+      void annotate(q);
     } else {
       void ask(q, groundIds, mode ? { forceShape: mode as AskShape } : undefined);
     }
@@ -355,12 +361,14 @@ export function PromptBar() {
           </div>
           <button
             className="jz-promptbar-send"
-            disabled={!value.trim() || isAsking || composing}
+            disabled={!value.trim() || isAsking || composing || annotating}
             onClick={submit}
             title="Send (Enter)"
           >
             {composing ? (
               <span className="jz-promptbar-busy-inline">{composePhase === 'planning' ? 'Planning…' : 'Building…'}</span>
+            ) : annotating ? (
+              <span className="jz-promptbar-busy-inline">Noting…</span>
             ) : busyLabel ? (
               <span className="jz-promptbar-busy-inline">{busyLabel}</span>
             ) : (

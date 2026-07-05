@@ -460,6 +460,30 @@ export interface NoticeResult {
   comments: NoticeComment[];
 }
 
+/* ─── Annotate (Stickies mode — Jarwiz drops notes across many cards) ─────────
+ * Sticky notes are the USER's medium — but when they explicitly pick Stickies
+ * mode and ask ("TL;DR each link", "review my ideas and add your two cents"),
+ * Jarwiz drops a short sticky next to each relevant card. One note per target.
+ */
+
+export interface AnnotateRequest {
+  /** The user's instruction (e.g. "add a tl;dr to each link I've added"). */
+  prompt: string;
+  /** Candidate target cards (selection, else the whole board), id-tagged. */
+  cards: NoticeCard[];
+}
+
+export interface AnnotateNote {
+  /** The card this sticky annotates (one of the sent ids). */
+  cardId: string;
+  /** The sticky's text — short, a couple of sentences at most. */
+  note: string;
+}
+
+export interface AnnotateResult {
+  notes: AnnotateNote[];
+}
+
 /* ─── Compose (board fan-out — one intent → many laid-out cards) ───────────────
  * The orchestrator: read the board (a brief, or a few dropped things) and build
  * it out into a rich spatial working set — a comparison table, sticky-note
