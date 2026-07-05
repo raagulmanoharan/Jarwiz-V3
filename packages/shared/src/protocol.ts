@@ -297,6 +297,12 @@ export interface AskRequest {
    * the normal budget even when its prompt sounds research-y.
    */
   noResearch?: boolean;
+  /**
+   * Run a Thinking Machine skill (server-side): the machine's own system prompt
+   * and research budget replace the normal router, and the `prompt` is just the
+   * subject the user typed into the machine block. See server machines.ts.
+   */
+  machineId?: string;
 }
 
 /* ─── Diagram (canvas pivot P2 — the AI builds primitives) ───────────────────

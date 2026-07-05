@@ -13,6 +13,7 @@ import type { AskEvent, AskRequest, AskShape, AskSource } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
 import { assetPath, extractAssetPages, extractAssetText, getAsset } from './assets.js';
 import { extractSheetText } from './sheets.js';
+import { getMachine, type MachineSkill } from './machines.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 import {
   RESEARCH_MAX_CONTINUATIONS,
@@ -615,6 +616,14 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   const { context, citable, images, linkRefs, framePaths, imageData } = await gatherContext(req);
   if (signal.aborted) return;
 
+  // Thinking Machine skill: the machine's own system prompt + research budget
+  // replace the router entirely. `prompt` is the subject typed into the block.
+  const machine = getMachine(req.machineId);
+  if (machine) {
+    yield* runMachineSkill(machine, req.prompt, signal, images, framePaths, imageData);
+    return;
+  }
+
   // Deep research is IMPLICIT: a research-sounding ask on any card upgrades
   // itself to the dossier pass — no mode, no button (owner call, 2026-07-05).
   // Only prose-bound asks upgrade; an explicit "/table" (or a prompt that
@@ -708,6 +717,64 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   if (wantsChecklist(req.prompt)) system += CHECKLIST_DIRECTIVE;
   system += WEB_DIRECTIVE;
   yield* streamDoc(shape, system, user, signal, images, { web: true, framePaths, imageData });
+}
+
+/**
+ * Run a Thinking Machine skill: the machine's own system prompt drives a doc /
+ * list / table generation on the (optionally deep) web-research budget. The
+ * `subject` is what the user typed into the block. This is what makes a machine
+ * more than an ask — a curated skill + live research, server-side.
+ */
+async function* runMachineSkill(
+  machine: MachineSkill,
+  subject: string,
+  signal: AbortSignal,
+  images: ImageInput[],
+  framePaths?: string[],
+  imageData?: ImageInput[],
+): AsyncGenerator<AskEvent> {
+  yield { type: 'status', message: machine.deep ? 'researching across the web…' : 'thinking…' };
+  const user = subject.trim() || '(no subject provided)';
+  const opts: GenOpts = { web: true, deep: machine.deep, framePaths, imageData };
+
+  if (machine.output === 'table') {
+    const raw = await generate(machine.systemPrompt, user, signal, images, opts);
+    if (signal.aborted) return;
+    let columns: string[] = [];
+    let rows: string[][] = [];
+    try {
+      const json = JSON.parse(raw.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()) as {
+        columns?: unknown;
+        rows?: unknown;
+      };
+      columns = Array.isArray(json.columns) ? json.columns.map((c) => String(c).slice(0, 60)) : [];
+      rows = Array.isArray(json.rows)
+        ? json.rows.map((r) => (Array.isArray(r) ? r.map((c) => String(c ?? '').slice(0, 240)) : []))
+        : [];
+    } catch {
+      /* fall through to a doc if the model didn't return clean JSON */
+    }
+    columns = columns.slice(0, 7);
+    rows = rows.slice(0, 12).map((r) => r.slice(0, 7));
+    if (columns.length > 0) {
+      yield { type: 'card.create', shape: 'table', columns, rowCount: rows.length };
+      for (let r = 0; r < rows.length; r++) {
+        for (let c = 0; c < columns.length; c++) {
+          if (signal.aborted) return;
+          yield { type: 'table.cell', r, c, text: rows[r]?.[c] ?? '' };
+          await sleep(24, signal);
+        }
+      }
+      yield { type: 'card.done' };
+      yield { type: 'done' };
+      return;
+    }
+    // Not clean JSON — degrade to a written answer rather than an empty table.
+    yield* streamDoc('doc', machine.systemPrompt, user, signal, images, opts);
+    return;
+  }
+
+  yield* streamDoc(machine.output === 'list' ? 'list' : 'doc', machine.systemPrompt, user, signal, images, opts);
 }
 
 /**

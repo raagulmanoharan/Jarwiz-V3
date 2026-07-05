@@ -230,6 +230,8 @@ export function useAsk() {
         forceShape?: AskShape;
         /** Deep research pass — big live-web budget, cited dossier answer. */
         deep?: boolean;
+        /** Run a Thinking Machine skill server-side (prompt = the subject). */
+        machineId?: string;
       },
     ) => {
       const trimmed = prompt.trim();
@@ -572,7 +574,7 @@ export function useAsk() {
         const res = await fetch('/api/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: trimmed, sources, currentShape, skipClarify: opts?.skipClarify, shape: opts?.forceShape, deep: opts?.deep }),
+          body: JSON.stringify({ prompt: trimmed, sources, currentShape, skipClarify: opts?.skipClarify, shape: opts?.forceShape, deep: opts?.deep, machineId: opts?.machineId }),
           signal,
         });
         if (!res.ok || !res.body) {

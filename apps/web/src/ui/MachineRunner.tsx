@@ -29,7 +29,10 @@ export function MachineRunner() {
     if (!machine || !subject) return;
 
     editor.updateShape<MachineCardShape>({ id: req.id, type: 'machine-card', props: { status: 'running' } });
-    void ask(`${machine.prompt}\n\nSubject to analyse: "${subject}"`, [req.id], {
+    // The skill (system prompt + research budget) lives server-side; we send the
+    // subject + the machine id, and the server runs that machine's skill.
+    void ask(subject, [req.id], {
+      machineId: machine.id,
       forceShape: machine.output,
       logLabel: `${machine.name}: ${subject}`,
     }).finally(() => {

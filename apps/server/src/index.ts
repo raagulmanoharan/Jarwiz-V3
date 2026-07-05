@@ -339,6 +339,9 @@ app.post('/api/ask', async (c) => {
     skipClarify: raw.skipClarify === true,
     // Deep research pass — bigger web budget, dossier answer. Boolean-gated.
     deep: raw.deep === true,
+    // Thinking Machine skill id — runs that machine's server-side skill instead
+    // of the router (the `prompt` is the subject typed into the block).
+    machineId: typeof raw.machineId === 'string' ? raw.machineId.slice(0, 60) : undefined,
   };
 
   return streamSSE(c, async (stream) => {
