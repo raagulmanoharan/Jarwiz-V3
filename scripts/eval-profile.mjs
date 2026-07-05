@@ -69,9 +69,9 @@ async function run() {
     null,
     { timeout: 30_000 },
   );
-  const profileBtn = page.locator('.jz-cardbar-btn', { hasText: 'Profile' });
+  const profileBtn = page.locator('.jz-cardbar-btn', { hasText: 'Summary' });
   const offered = await profileBtn.waitFor({ timeout: 5000 }).then(() => true).catch(() => false);
-  record('drop moment: PDF lands selected with ✦ Profile as a fixed action', offered);
+  record('drop moment: PDF lands selected with ✦ Summary as a fixed action', offered);
 
   // ── 2. The action bar floats ABOVE the card, never inside it ────────────
   await sleep(600); // let the entrance animation and any camera motion settle
@@ -91,8 +91,8 @@ async function run() {
 
   // ── 3. Profile is NOT buried in the Refine menu ──────────────────────────
   await page.click('.jz-cardbar-btn:has-text("Refine")');
-  const inMenu = await page.locator('.jz-cardbar-item', { hasText: 'Profile' }).count();
-  record('Refine menu holds no duplicate Profile entry', inMenu === 0);
+  const inMenu = await page.locator('.jz-cardbar-item', { hasText: 'Summary' }).count();
+  record('Refine menu holds no duplicate Summary entry', inMenu === 0);
   await page.click('.jz-cardbar-btn:has-text("Refine")'); // close the menu
 
   // ── 4. Accept → streamed profile doc card with provenance edge ──────────

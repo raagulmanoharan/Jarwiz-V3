@@ -11,7 +11,7 @@
  *  otherwise suppresses them, leaving an untitled card. */
 export const PROFILE_PROMPT = [
   'Give me a one-glance profile of this document — compact, scannable in ten seconds.',
-  "Start with a '# Profile — <short document name>' title line.",
+  "Start with a '# Summary — <short document name>' title line.",
   'Then short markdown sections with bold labels, no preamble:',
   '**What this is** — the document type and a one-line gist.',
   "**Who's behind it** — authors or parties and their roles.",

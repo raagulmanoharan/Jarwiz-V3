@@ -17,8 +17,8 @@ import type { DiagramNode, DiagramSpec } from '@jarwiz/shared';
 
 export const NODE_W = 172;
 export const NODE_H = 76;
-export const GAP_X = 56;
-export const GAP_Y = 72;
+export const GAP_X = 88;
+export const GAP_Y = 108;
 
 /** Per node-kind tldraw styling. Monochrome ink on translucent panels — the
  *  GEOMETRY carries the meaning (process/decision/terminal); saturated fills
@@ -90,7 +90,7 @@ export function createFlowNode(editor: Editor, p: PlacedNode): TLShapeId {
   const style = NODE_STYLE[p.node.shape ?? 'rectangle'];
   editor.createShape({
     id, type: 'geo', x: p.x, y: p.y,
-    props: { geo: style.geo, w: NODE_W, h: NODE_H, color: style.color, fill: 'semi', size: 's', font: 'sans', richText: toRichText(p.node.label) },
+    props: { geo: style.geo, w: NODE_W, h: NODE_H, color: style.color, labelColor: 'black', fill: 'semi', size: 's', font: 'sans', richText: toRichText(p.node.label) },
   } as Parameters<typeof editor.createShape>[0]);
   return id;
 }
@@ -100,7 +100,7 @@ export function createFlowEdge(editor: Editor, fromId: TLShapeId, toId: TLShapeI
   const arrowId = createShapeId();
   editor.createShape<TLArrowShape>({
     id: arrowId, type: 'arrow',
-    props: { color: 'grey', size: 's', dash: 'solid', font: 'sans', arrowheadEnd: 'triangle', ...(label ? { richText: toRichText(label) } : {}) },
+    props: { color: 'grey', labelColor: 'black', size: 's', dash: 'solid', font: 'sans', arrowheadEnd: 'triangle', ...(label ? { richText: toRichText(label) } : {}) },
   });
   editor.createBindings([
     { id: createBindingId(), type: 'arrow', fromId: arrowId, toId: fromId, props: { terminal: 'start', normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false, snap: 'none' } },

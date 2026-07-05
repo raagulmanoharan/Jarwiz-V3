@@ -108,10 +108,10 @@ export function CardActionBar() {
       {profileable ? (
         <button
           className="jz-cardbar-btn"
-          title="A one-glance profile: what this is, who wrote it, red flags, where to start"
-          onClick={() => ask(PROFILE_PROMPT, [id], { skipClarify: true, logLabel: 'Profiled the document' })}
+          title="A one-glance summary: what this is, who wrote it, red flags, where to start"
+          onClick={() => ask(PROFILE_PROMPT, [id], { skipClarify: true, logLabel: 'Summarized the document' })}
         >
-          ✦ Profile
+          ✦ Summary
         </button>
       ) : null}
       {transforms.length > 0 ? (

@@ -111,6 +111,11 @@ const handleMount = (editor: Editor) => {
     t.colors.dark.selectionStroke  = 'transparent';
     t.colors.dark.selectionFill   = 'transparent';
     t.colors.dark.background      = 'transparent';
+    // Mute the GREY stroke to a hairline weight-feel (generated flowcharts
+    // draw in grey; the stock value #9398b0 read as a strong lavender border).
+    // Shape labels stay readable because flow shapes set labelColor='black'.
+    t.colors.light.grey.solid = '#c2beb4';
+    t.colors.dark.grey.solid  = '#4e535b';
     return themes;
   });
   // Dev convenience + e2e hook: reach the editor from the console.
