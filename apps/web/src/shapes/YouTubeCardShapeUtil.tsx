@@ -17,6 +17,11 @@ export interface YouTubeCardProps {
   videoId: string;
   url: string;
   title: string;
+  /** Caption transcript fetched at paste time — what asks ground on. */
+  text?: string;
+  /** Whether captions were actually readable (drives the honesty badge).
+   *  Undefined = still fetching. */
+  hasTranscript?: boolean;
 }
 
 declare module '@tldraw/tlschema' {
@@ -38,6 +43,8 @@ export class YouTubeCardShapeUtil extends ShapeUtil<YouTubeCardShape> {
     videoId: T.string,
     url: T.string,
     title: T.string,
+    text: T.string.optional(),
+    hasTranscript: T.boolean.optional(),
   };
 
   override getDefaultProps(): YouTubeCardShape['props'] {
@@ -76,7 +83,7 @@ export class YouTubeCardShapeUtil extends ShapeUtil<YouTubeCardShape> {
 
 function YouTubeCardBody({ shape }: { shape: YouTubeCardShape }) {
   const isEditing = useIsEditing(shape.id);
-  const { videoId, title } = shape.props;
+  const { videoId, title, hasTranscript } = shape.props;
 
   return (
     <div className="jz-card">
@@ -84,6 +91,13 @@ function YouTubeCardBody({ shape }: { shape: YouTubeCardShape }) {
       <div className="jz-yt-header">
         <span className="jz-yt-dot" />
         <span className="jz-yt-title">{title || 'YouTube'}</span>
+        {/* Honesty badge: can Jarwiz actually read this video? Undefined =
+            transcript fetch still in flight — say nothing yet. */}
+        {hasTranscript === true ? (
+          <span className="jz-yt-badge" title="Captions read — asks can quote what's said">transcript ✓</span>
+        ) : hasTranscript === false ? (
+          <span className="jz-yt-badge jz-yt-badge--none" title="No captions — only the title is readable">title only</span>
+        ) : null}
         <span className="jz-yt-hint">{isEditing ? 'playing' : 'double-click to play'}</span>
       </div>
       <div className="jz-yt-frame">

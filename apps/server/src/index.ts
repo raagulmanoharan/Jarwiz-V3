@@ -26,7 +26,7 @@ import type {
   TableAutopilotEvent,
   TableAutopilotRequest,
 } from '@jarwiz/shared';
-import { buildLinkPreview, SsrfError } from './linkPreview.js';
+import { buildLinkPreview, fetchYouTubeText, SsrfError } from './linkPreview.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset, sniffMime } from './assets.js';
 import { proposeSeedPrompts, streamAsk } from './ask.js';
 import type { AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ReviseRequest } from '@jarwiz/shared';
@@ -123,6 +123,28 @@ app.post('/api/link/preview', async (c) => {
     }
     const message = error instanceof Error ? error.message : 'Preview failed';
     return c.json({ error: `Could not fetch a preview: ${message}` }, 502);
+  }
+});
+
+/** YouTube transcript for a video card — caption text when it exists, an
+ *  honest metadata-only fallback when it doesn't (drives the card's badge). */
+app.post('/api/youtube/text', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected a JSON body: { "url": string }' }, 400);
+  }
+  const url = (body as { url?: unknown })?.url;
+  if (typeof url !== 'string' || !/^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//i.test(url.trim())) {
+    return c.json({ error: 'Expected a YouTube URL' }, 400);
+  }
+  try {
+    const result = await fetchYouTubeText(url.trim(), 16_000);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Transcript fetch failed';
+    return c.json({ error: message }, 502);
   }
 });
 

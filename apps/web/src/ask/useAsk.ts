@@ -148,6 +148,19 @@ function toSource(editor: Editor, shape: TLShape): AskSource | null {
       // `url` rides along so the server can direct link citations at it.
       return { kind: 'doc', title: getShapeTitle(shape), text: body, url };
     }
+    case 'youtube-card': {
+      // A video grounds on its caption transcript (fetched at paste time).
+      // With no captions the source stays honest: title only, clearly said.
+      const url = String(p.url ?? '');
+      if (!url.trim()) return null;
+      const title = getShapeTitle(shape);
+      const stored = String(p.text ?? '').trim();
+      const text =
+        stored ||
+        `This is the YouTube video "${title || url}". Its captions have not been read — only the title is known; never guess what is said in it.`;
+      // `url` rides along so answers can cite the video like any web page.
+      return { kind: 'youtube', title, text, url };
+    }
     // ── Native primitives — selected shapes/text/connectors become context ──
     case 'geo':
     case 'text':
@@ -183,7 +196,7 @@ function sourceLabel(shape: TLShape): string {
   if (title) return title.length > 28 ? `${title.slice(0, 27)}…` : title;
   const fallback: Record<string, string> = {
     'pdf-card': 'PDF', 'doc-card': 'Text', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram',
-    'image-card': 'Image', 'link-card': 'Link', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section',
+    'image-card': 'Image', 'link-card': 'Link', 'youtube-card': 'Video', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section',
   };
   return fallback[shape.type] ?? 'Card';
 }

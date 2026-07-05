@@ -12,7 +12,15 @@ import { createShapeId, type Editor, type TLShapeId, type VecLike } from 'tldraw
 import { domainOf } from '../lib/url';
 import { uploadAsset } from '../lib/uploadAsset';
 import { logEvent } from '../log/eventLog';
-import { LINK_CARD_SIZE, PDF_CARD_SIZE, type ImageCardShape, type LinkCardShape, type PdfCardShape } from '../shapes';
+import {
+  LINK_CARD_SIZE,
+  PDF_CARD_SIZE,
+  YOUTUBE_CARD_SIZE,
+  type ImageCardShape,
+  type LinkCardShape,
+  type PdfCardShape,
+  type YouTubeCardShape,
+} from '../shapes';
 
 const MULTI_FILE_CASCADE = 28;
 
@@ -38,10 +46,72 @@ interface LinkPreview {
   text?: string;
 }
 
+/** Extract a YouTube video id from any of the URL shapes people paste. */
+function youTubeVideoId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^(www|m)\./, '');
+    if (host === 'youtu.be') return u.pathname.slice(1).split('/')[0] || null;
+    if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+      if (u.pathname === '/watch') return u.searchParams.get('v');
+      const m = u.pathname.match(/^\/(shorts|embed|live)\/([\w-]{6,})/);
+      if (m) return m[2] ?? null;
+    }
+  } catch {
+    /* not a URL */
+  }
+  return null;
+}
+
+/** A pasted YouTube URL lands as a playable video card, then reads what it
+ *  honestly can: caption transcript when one exists (asks ground on it), a
+ *  metadata-only state otherwise — the header badge tells the user which. */
+function placeYouTube(editor: Editor, url: string, videoId: string, center: VecLike): void {
+  const { w, h } = YOUTUBE_CARD_SIZE;
+  const id = createShapeId();
+  editor.createShape<YouTubeCardShape>({
+    id,
+    type: 'youtube-card',
+    x: center.x - w / 2,
+    y: center.y - h / 2,
+    props: { w, h, videoId, url, title: '' },
+  });
+  editor.select(id);
+  logEvent(editor, { kind: 'artefact', label: 'Added a YouTube video', detail: 'Video', shapeIds: [id] });
+
+  void fetch('/api/youtube/text', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  })
+    .then((r) => (r.ok ? (r.json() as Promise<{ title?: string; text?: string; hasTranscript?: boolean }>) : null))
+    .then((t) => {
+      if (!editor.getShape(id)) return; // deleted or undone while fetching
+      editor.updateShape<YouTubeCardShape>({
+        id,
+        type: 'youtube-card',
+        props: {
+          title: t?.title ?? '',
+          text: t?.text ?? '',
+          hasTranscript: t?.hasTranscript ?? false,
+        },
+      });
+    })
+    .catch(() => {
+      if (!editor.getShape(id)) return;
+      editor.updateShape<YouTubeCardShape>({ id, type: 'youtube-card', props: { hasTranscript: false } });
+    });
+}
+
 /** A pasted URL lands as a link-card immediately (skeleton state) and fills
  *  itself in when the preview arrives — the bare URL is already a working
  *  card, so a failed enrichment just leaves the domain fallback. */
 function placeLink(editor: Editor, url: string, center: VecLike): void {
+  const videoId = youTubeVideoId(url);
+  if (videoId) {
+    placeYouTube(editor, url, videoId, center);
+    return;
+  }
   const { w, h } = LINK_CARD_SIZE;
   const id = createShapeId();
   editor.createShape<LinkCardShape>({

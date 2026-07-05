@@ -48,6 +48,14 @@ function extract(editor: Editor, shape: ReturnType<Editor['getShape']>): Analyze
       ].filter(Boolean).join('\n');
       return t ? { kind: 'link', title, text: t } : null;
     }
+    case 'youtube-card': {
+      // Transcript when captions were readable; otherwise the honest
+      // title-only line stored at paste time (never invent what's said).
+      const t = typeof p.text === 'string' && p.text.trim()
+        ? p.text
+        : title ? `YouTube video "${title}" (captions not readable — title only).` : '';
+      return t ? { kind: 'video', title, text: t } : null;
+    }
     case 'geo':
     case 'text':
     case 'note': {
