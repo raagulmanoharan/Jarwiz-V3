@@ -15,6 +15,15 @@
             background-color: #ffffff; /* Outer frame color */
             -webkit-font-smoothing: antialiased;
         }
+        @keyframes ultra-shimmer {
+            0% { background-position: 200% center; }
+            100% { background-position: 0% center; }
+        }
+        .ultra-gradient {
+            background-image: linear-gradient(110deg, #7c3aed, #db2777, #f59e0b, #db2777, #7c3aed);
+            background-size: 200% auto;
+            animation: ultra-shimmer 5s linear infinite;
+        }
     </style>
 <script type="importmap">
 {

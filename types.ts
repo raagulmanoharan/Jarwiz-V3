@@ -17,3 +17,14 @@ export interface SiteInfo {
   themeColor: string;
   category: string;
 }
+
+export type ResourceKind = 'video' | 'paper' | 'doc' | 'article';
+
+export interface SuggestedResource {
+  title: string;
+  description: string;
+  url: string;
+  type: ResourceKind;
+  reason: string;
+  source: string;
+}

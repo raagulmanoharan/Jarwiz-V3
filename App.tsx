@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { CardData } from './types';
+import { CardData, SuggestedResource } from './types';
 import LinkCard from './components/LinkCard';
+import UltraThink from './components/UltraThink';
 import { analyzeLink } from './services/geminiService';
 import { Plus, PanelLeft, ListFilter, User, HelpCircle, FilePlus, LayoutGrid, Folder, ClipboardPaste, Upload, X } from 'lucide-react';
 
@@ -194,6 +195,39 @@ const App: React.FC = () => {
     setCards(prev => prev.filter(c => c.id !== id));
   };
 
+  const addResourceCard = (resource: SuggestedResource) => {
+    const typeColor: Record<string, string> = {
+      video: '#dc2626',
+      paper: '#4f46e5',
+      doc: '#0891b2',
+      article: '#059669',
+    };
+
+    const newCard: CardData = {
+      id: Math.random().toString(36).substr(2, 9),
+      url: resource.url,
+      title: resource.title,
+      description: resource.description,
+      // Live preview screenshot; LinkCard falls back to a placeholder on error,
+      // and YouTube URLs render as an embed regardless of this value.
+      thumbnail: `https://api.microlink.io?url=${encodeURIComponent(resource.url)}&screenshot=true&embed=screenshot.url`,
+      x: 0,
+      y: 0,
+      color: typeColor[resource.type] || '#3b82f6',
+      type: 'link',
+    };
+
+    setCards(prev => {
+      // Guard against adding the same resource twice.
+      if (prev.some(c => c.url === newCard.url)) return prev;
+      const next = [...prev, newCard];
+      return next.map((c, i) => {
+        const p = getAutoLayoutPosition(i);
+        return { ...c, x: p.x, y: p.y };
+      });
+    });
+  };
+
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     setContextMenu({
@@ -330,9 +364,10 @@ const App: React.FC = () => {
             <h2 className="text-zinc-500 font-medium text-sm tracking-tight pointer-events-auto">
               {activeProject}
             </h2>
-            <div className="flex items-center gap-4 pointer-events-auto">
+            <div className="flex items-center gap-3 pointer-events-auto">
+               <UltraThink cards={cards} onAddResource={addResourceCard} />
                {cards.length > 1 && (
-                 <button 
+                 <button
                   onClick={reLayout}
                   className="group flex items-center gap-2 px-3 py-1.5 bg-[#fcf9f4] hover:bg-white border border-[#e5dfd3] rounded-lg text-zinc-400 hover:text-zinc-800 transition-all shadow-sm active:scale-95"
                   title="Rearrange all cards"
