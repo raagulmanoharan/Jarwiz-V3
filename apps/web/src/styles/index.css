@@ -2037,11 +2037,13 @@ body,
   padding: 0 2px;
   /* One family everywhere on cards: the UI sans, weight doing the work —
    * the format tool can't change fonts, so nothing on a card should render
-   * in one (owner call, 2026-07-05). */
+   * in one (owner call, 2026-07-05). Weight 500 matches the video header
+   * title and status pills so EVERY card label reads the same, regular
+   * weight — no card's name looks bolder than another's (owner call). */
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-caption-size);
   line-height: var(--jz-text-caption-lh);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--jz-ink-500);
   white-space: nowrap;
   overflow: hidden;
