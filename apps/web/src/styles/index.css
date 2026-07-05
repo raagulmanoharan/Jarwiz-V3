@@ -701,10 +701,10 @@ body,
   display: block;
 }
 
+/* The page fills the stage edge-to-edge (card aspect is locked to the page),
+ * so no inner radius/shadow — the card frame is the page's frame. */
 .jz-pdf-canvas {
   display: block;
-  border-radius: 3px;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.18);
   background: #fff;
 }
 
@@ -743,12 +743,6 @@ body,
 .jz-pdf-hl {
   background: color-mix(in srgb, var(--jz-accent) 32%, transparent);
   border-radius: 2px;
-}
-
-.jz-pdf-selecthint {
-  flex: none;
-  font-size: 10.5px;
-  color: var(--jz-ink-400);
 }
 
 .jz-pdf-message {
@@ -797,10 +791,13 @@ body,
 }
 
 .jz-pdf-name {
+  /* Long filenames truncate; the pager keeps its full width (flex: none). */
+  flex: 0 1 auto;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  margin-right: auto;
 }
 
 .jz-pdf-pwrow {

@@ -13,6 +13,7 @@ import {
   T,
   resizeBox,
   stopEventPropagation,
+  useEditor,
   useIsEditing,
   type RecordProps,
   type TLResizeInfo,
@@ -49,7 +50,6 @@ export type PdfCardShape = TLShape<'pdf-card'>;
 
 export const PDF_CARD_SIZE = { w: 420, h: 540 };
 const FOOTER_H = 40;
-const PAD = 10;
 
 export class PdfCardShapeUtil extends ShapeUtil<PdfCardShape> {
   static override type = 'pdf-card' as const;
@@ -78,7 +78,14 @@ export class PdfCardShapeUtil extends ShapeUtil<PdfCardShape> {
   }
 
   override onResize(shape: PdfCardShape, info: TLResizeInfo<PdfCardShape>) {
-    return resizeBox(shape, info, { minWidth: 240, minHeight: 240 });
+    const next = resizeBox(shape, info, { minWidth: 240, minHeight: 240 });
+    // The card tracks the page's aspect ratio (set once the document loads),
+    // so the page always fills the stage edge-to-edge — no letterbox bars.
+    const aspect = Number(shape.meta.jzPdfAspect);
+    if (aspect > 0 && next.props?.w) {
+      next.props.h = Math.round(next.props.w * aspect) + FOOTER_H;
+    }
+    return next;
   }
 
   override getGeometry(shape: PdfCardShape) {
@@ -99,6 +106,7 @@ export class PdfCardShapeUtil extends ShapeUtil<PdfCardShape> {
 }
 
 function PdfCardBody({ shape }: { shape: PdfCardShape }) {
+  const editor = useEditor();
   const { src, name, status, w, h } = shape.props;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const textRef = useRef<HTMLDivElement | null>(null);
@@ -126,8 +134,10 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
   const [pwError, setPwError] = useState(false);
   const [attempt, setAttempt] = useState('');
 
-  const areaW = Math.max(40, w - PAD * 2);
-  const areaH = Math.max(40, h - FOOTER_H - PAD);
+  // The page fills the stage completely — the card's aspect is locked to the
+  // page's (below + onResize), so contain-fit leaves no bars.
+  const areaW = Math.max(40, w);
+  const areaH = Math.max(40, h - FOOTER_H);
 
   // Load (and cache) the document when the URL becomes available. Encrypted
   // PDFs surface a password prompt in the card; the entered password retries.
@@ -157,6 +167,24 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
             setPwError(false);
             setPageCount(doc.numPages);
             if (getPdfPage(shape.id) > doc.numPages) setPdfPage(shape.id, doc.numPages);
+            // Lock the card to the page's aspect ratio so the render fills
+            // the stage exactly (no letterbox bars, no side padding).
+            doc.getPage(1).then((p1) => {
+              if (cancelled) return;
+              const vp1 = p1.getViewport({ scale: 1 });
+              const aspect = vp1.height / vp1.width;
+              const cur = editor.getShape(shape.id) as PdfCardShape | undefined;
+              if (!cur) return;
+              const targetH = Math.round(cur.props.w * aspect) + FOOTER_H;
+              if (Math.abs(cur.props.h - targetH) > 2 || Number(cur.meta.jzPdfAspect) !== aspect) {
+                editor.updateShape<PdfCardShape>({
+                  id: shape.id,
+                  type: 'pdf-card',
+                  props: { h: targetH },
+                  meta: { ...cur.meta, jzPdfAspect: aspect },
+                });
+              }
+            });
           },
           () => {
             if (!cancelled && !task.onPassword) setLoadError(true);
@@ -245,7 +273,7 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
 
   return (
     <div className="jz-card jz-pdf-card">
-      <div className="jz-pdf-stage" style={{ padding: PAD }}>
+      <div className="jz-pdf-stage">
         {status === 'uploading' ? (
           <PdfMessage label={`Uploading ${name || 'PDF'}…`} spinner />
         ) : status === 'error' ? (
@@ -308,11 +336,6 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
         <span className="jz-pdf-name" title={name}>
           {name || 'Document.pdf'}
         </span>
-        {status === 'ready' && total > 0 ? (
-          <span className="jz-pdf-selecthint">
-            {selectText ? 'select text to ask' : 'double-click to select text'}
-          </span>
-        ) : null}
         {status === 'ready' && total > 0 ? (
           <span className="jz-pdf-pager">
             <button
