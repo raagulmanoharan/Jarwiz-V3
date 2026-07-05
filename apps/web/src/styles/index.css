@@ -2860,7 +2860,7 @@ body,
   z-index: 1;
   background: var(--jz-card-surface);
   margin: -36px -56px 18px;
-  padding: 28px 56px 12px;
+  padding: 40px 56px 14px;
   border-bottom: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-lg) var(--jz-radius-lg) 0 0;
 }
