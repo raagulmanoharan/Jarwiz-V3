@@ -103,16 +103,27 @@ function YouTubeCardBody({ shape }: { shape: YouTubeCardShape }) {
       <div className="jz-yt-header">
         <span className="jz-yt-dot" />
         <span className="jz-yt-title">{title || 'YouTube'}</span>
-        {/* Honesty badges: can Jarwiz read (and see) this video? Undefined =
-            ingest still in flight — say nothing yet. */}
-        {hasTranscript === true ? (
-          <span className="jz-yt-badge" title="Captions read — asks can quote what's said">transcript ✓</span>
-        ) : hasTranscript === false ? (
-          <span className="jz-yt-badge jz-yt-badge--none" title="No captions — the speech isn't readable">title only</span>
-        ) : null}
-        {frames && frames.length > 0 ? (
-          <span className="jz-yt-badge" title="Sampled stills — asks can see what's on screen">watched ✓</span>
-        ) : null}
+        {/* One quiet metadata pill. "processed" = asks can use this video
+            (transcript and/or frames); anything less reads as "processing" —
+            the tooltip carries the honest detail. */}
+        {hasTranscript === true || (frames?.length ?? 0) > 0 ? (
+          <span
+            className="jz-yt-badge"
+            title={[
+              hasTranscript ? 'captions read' : 'no captions',
+              (frames?.length ?? 0) > 0 ? `${frames!.length} frames sampled` : null,
+            ].filter(Boolean).join(' · ')}
+          >
+            processed
+          </span>
+        ) : (
+          <span
+            className="jz-yt-badge"
+            title={hasTranscript === false ? 'No captions found — Jarwiz has the title; frames may still land' : 'Reading captions and sampling frames…'}
+          >
+            processing
+          </span>
+        )}
         <span className="jz-yt-hint">{isEditing ? 'playing' : 'double-click to play'}</span>
       </div>
       <div className="jz-yt-frame">
