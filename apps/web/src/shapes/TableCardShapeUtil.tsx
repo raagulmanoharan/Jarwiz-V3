@@ -14,6 +14,7 @@ import {
   type TLShape,
 } from 'tldraw';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
+import { formatControlledTextarea, shortcutMarker, toggleInline } from '../ask/textFormat';
 import { uploadAsset } from '../lib/uploadAsset';
 import { useAutopilot } from '../agents/useAutopilot';
 import { useTypingPause } from '../agents/useTypingPause';
@@ -265,6 +266,13 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
   const showNudge = isEditing && paused && hasEmptyCells && !isFilling;
 
   const cellKeys = (e: React.KeyboardEvent) => {
+    // ⌘/Ctrl B·I·U — same operations as the format bar, on this cell.
+    const marker = shortcutMarker(e);
+    if (marker && e.currentTarget instanceof HTMLTextAreaElement) {
+      e.preventDefault();
+      formatControlledTextarea(e.currentTarget, (t, s, en) => toggleInline(t, s, en, marker));
+      return;
+    }
     if (e.key === 'Tab') resetPause();
     autopilot.onKeyDown(shape.id, e);
   };

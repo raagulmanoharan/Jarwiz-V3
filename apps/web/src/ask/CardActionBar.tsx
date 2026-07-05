@@ -9,9 +9,9 @@
 import { useState, type CSSProperties } from 'react';
 import { stopEventPropagation, useEditor, useValue, type Editor, type TLShapeId } from 'tldraw';
 import { Bold, Italic, Underline, Strikethrough, List, ListTodo, Maximize2 } from 'lucide-react';
-import { AFFINITY_COLORS, NOTE_PAPER, type DocCardShape, type NoteCardShape } from '../shapes';
+import { AFFINITY_COLORS, NOTE_PAPER, type NoteCardShape } from '../shapes';
 import { ASKABLE, hasAskableContent } from './askable';
-import { toggleInline, toggleLinePrefix, type FormatResult } from './textFormat';
+import { formatControlledTextarea, toggleInline, toggleLinePrefix, type FormatResult } from './textFormat';
 import { openDocFocus } from '../ui/focusDoc';
 import { PROFILE_PROMPT } from './profilePrompt';
 import { useAsk } from './useAsk';
@@ -40,20 +40,29 @@ const FORMATS: Array<{ key: string; label: string; icon: React.ReactNode; run: (
   { key: 'checklist', label: 'Checklist', icon: <ListTodo {...FMT_ICON} />, run: (t, s, e) => toggleLinePrefix(t, s, e, '- [ ] ') },
 ];
 
-/** Apply a format to the text card being edited. Outside edit mode the first
- *  press enters it (cursor at the end), so the bar is always safe to click. */
-export function applyDocFormat(editor: Editor, id: TLShapeId, run: (text: string, s: number, e: number) => FormatResult): void {
-  const ta = document.querySelector<HTMLTextAreaElement>('.jz-doc-textarea');
-  if (!ta || editor.getEditingShapeId() !== id) {
-    editor.setEditingShape(id);
+/** Line-shape formats (bullets/checklist) apply to prose, not table cells. */
+const TABLE_FORMAT_KEYS = new Set(['bold', 'italic', 'underline', 'strike']);
+
+/** Apply a format to the card being edited — the doc's textarea, or whichever
+ *  table cell holds the focus. Runs through the textarea's own onChange
+ *  (formatControlledTextarea), so each surface's write path (auto-title,
+ *  cell link-enrichment) stays intact. Outside edit mode the first press
+ *  enters it, so the bar is always safe to click. */
+export function applyCardFormat(editor: Editor, id: TLShapeId, run: (text: string, s: number, e: number) => FormatResult): void {
+  if (editor.getEditingShapeId() === id) {
+    const active = document.activeElement;
+    if (active instanceof HTMLTextAreaElement && (active.classList.contains('jz-doc-textarea') || active.classList.contains('jz-table-input'))) {
+      formatControlledTextarea(active, run);
+      return;
+    }
+    const docTa = document.querySelector<HTMLTextAreaElement>('.jz-doc-textarea');
+    if (docTa) {
+      formatControlledTextarea(docTa, run);
+      return;
+    }
     return;
   }
-  const { text, selStart, selEnd } = run(ta.value, ta.selectionStart, ta.selectionEnd);
-  editor.updateShape<DocCardShape>({ id, type: 'doc-card', props: { text } });
-  requestAnimationFrame(() => {
-    ta.focus();
-    ta.setSelectionRange(selStart, selEnd);
-  });
+  editor.setEditingShape(id);
 }
 
 export function CardActionBar() {
@@ -156,9 +165,11 @@ export function CardActionBar() {
   // A sticky always gets its colour switcher — even empty (colour is how the
   // user organises annotations, independent of content).
   const sticky = !sel.multi && sel.type === 'note-card';
-  // A text card always gets its format group — formatting is for WRITING, so
-  // it can't gate on already having content.
-  const formattable = !sel.multi && sel.type === 'doc-card';
+  // Text and table cards get the format group — formatting is for WRITING,
+  // so it can't gate on already having content. Tables take the inline
+  // formats only (bullets/checklists are prose shapes).
+  const formattable = !sel.multi && (sel.type === 'doc-card' || sel.type === 'table-card');
+  const visibleFormats = sel.type === 'table-card' ? FORMATS.filter((f) => TABLE_FORMAT_KEYS.has(f.key)) : FORMATS;
 
   // Nothing meaningful to offer (e.g. a single empty card) → no bar at all.
   // Provenance itself needs no button: the drawn edges ARE the lineage.
@@ -187,7 +198,7 @@ export function CardActionBar() {
       ) : null}
       {formattable ? (
         <div className="jz-cardbar-fmt" role="group" aria-label="Text formatting">
-          {FORMATS.map((f) => (
+          {visibleFormats.map((f) => (
             <button
               key={f.key}
               className="jz-cardbar-iconbtn"
@@ -196,19 +207,21 @@ export function CardActionBar() {
               // preventDefault keeps focus (and the selection) in the card's
               // textarea — a normal click would blur it before we can format.
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => applyDocFormat(editor, id, f.run)}
+              onClick={() => applyCardFormat(editor, id, f.run)}
             >
               {f.icon}
             </button>
           ))}
-          <button
-            className="jz-cardbar-iconbtn"
-            title="Edit full screen"
-            aria-label="Edit full screen"
-            onClick={() => openDocFocus(id)}
-          >
-            <Maximize2 {...FMT_ICON} />
-          </button>
+          {sel.type === 'doc-card' ? (
+            <button
+              className="jz-cardbar-iconbtn"
+              title="Edit full screen"
+              aria-label="Edit full screen"
+              onClick={() => openDocFocus(id)}
+            >
+              <Maximize2 {...FMT_ICON} />
+            </button>
+          ) : null}
         </div>
       ) : null}
       {sticky ? (

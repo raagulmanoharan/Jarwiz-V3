@@ -38,6 +38,24 @@ export function toggleInline(text: string, start: number, end: number, marker: s
   };
 }
 
+/** Apply a format to a textarea React controls: the native value setter plus
+ *  a bubbling input event runs the component's OWN onChange, so the edit
+ *  flows through whatever that textarea writes to (a doc's text, a table
+ *  cell, a header) — no caller needs to know the write path. */
+export function formatControlledTextarea(
+  ta: HTMLTextAreaElement,
+  run: (t: string, s: number, e: number) => FormatResult,
+): void {
+  const { text, selStart, selEnd } = run(ta.value, ta.selectionStart, ta.selectionEnd);
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+  setter?.call(ta, text);
+  ta.dispatchEvent(new Event('input', { bubbles: true }));
+  requestAnimationFrame(() => {
+    ta.focus();
+    ta.setSelectionRange(selStart, selEnd);
+  });
+}
+
 /** The ⌘/Ctrl-key → inline marker mapping shared by every doc editor surface
  *  (card textarea, focus mode). Returns null when the key isn't a shortcut. */
 export function shortcutMarker(e: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; key: string }): string | null {

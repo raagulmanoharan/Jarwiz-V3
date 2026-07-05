@@ -7,7 +7,7 @@
  *   ![alt](src)      → thumbnail image (https / data:image / /api/assets only)
  *   [label](url)     → link chip (https only)
  *   bare https URL   → link chip labelled with its hostname
- *   **bold**         → emphasis
+ *   **bold** *italic* __underline__ ~~strike~~ — the format bar's vocabulary
  *   newline          → line break
  *
  * Anything unsafe or unrecognized renders as the literal text it is.
@@ -17,7 +17,7 @@ import { Fragment, type ReactNode } from 'react';
 import { stopEventPropagation } from 'tldraw';
 
 const TOKEN_RE =
-  /!\[([^\]]*)\]\(([^)\s]+)\)|\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*\n]+?)\*\*|(https?:\/\/[^\s)<>"']+)/g;
+  /!\[([^\]]*)\]\(([^)\s]+)\)|\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*\n]+?)\*\*|\*([^*\n]+?)\*|__([^_\n]+?)__|~~([^~\n]+?)~~|(https?:\/\/[^\s)<>"']+)/g;
 
 function safeHref(url: string): string | null {
   return /^https?:\/\//i.test(url) ? url : null;
@@ -66,7 +66,7 @@ function renderLine(line: string, key: number): ReactNode {
   for (const m of line.matchAll(TOKEN_RE)) {
     const idx = m.index ?? 0;
     if (idx > last) parts.push(plain(line.slice(last, idx)));
-    const [whole, imgAlt, imgSrc, linkLabel, linkHref, bold, bareUrl] = m;
+    const [whole, imgAlt, imgSrc, linkLabel, linkHref, bold, italic, underline, strike, bareUrl] = m;
     if (imgSrc !== undefined) {
       const src = safeImgSrc(imgSrc);
       parts.push(
@@ -77,6 +77,12 @@ function renderLine(line: string, key: number): ReactNode {
       parts.push(href ? <CellLink key={n++} href={href} label={linkLabel!} /> : whole);
     } else if (bold !== undefined) {
       parts.push(<strong key={n++}>{bold}</strong>);
+    } else if (italic !== undefined) {
+      parts.push(<em key={n++}>{italic}</em>);
+    } else if (underline !== undefined) {
+      parts.push(<u key={n++}>{underline}</u>);
+    } else if (strike !== undefined) {
+      parts.push(<s key={n++}>{strike}</s>);
     } else if (bareUrl !== undefined) {
       const href = safeHref(bareUrl);
       parts.push(href ? <CellLink key={n++} href={href} label={hostLabel(bareUrl)} /> : whole);
