@@ -64,6 +64,8 @@ async function run() {
     window.editor.select(d.id);
   });
   await sleep(400);
+  const emptyChip = await page.locator('.jz-pb-ground').count();
+  record('an empty selected card shows no ground chip', emptyChip === 0, `${emptyChip} chips`);
   await page.fill('.jz-promptbar-input', 'List three questions worth asking before adopting a new compiler.');
   await page.focus('.jz-promptbar-input');
   await page.keyboard.press('Enter');
@@ -175,6 +177,20 @@ async function run() {
     flow.selectedIsGroup && flow.kidCount >= 3 && flow.allGrey,
     `${flow.kidCount} children, grey=${flow.allGrey}`,
   );
+  const finish = await page.evaluate(() => {
+    const group = window.editor.getCurrentPageShapes().find((s) => s.type === 'group');
+    const kids = window.editor.getSortedChildIdsForParent(group.id).map((id) => window.editor.getShape(id));
+    const geos = kids.filter((k) => k.type === 'geo');
+    const b = window.editor.getShapePageBounds(group.id);
+    return {
+      sans: geos.every((g) => g.props.font === 'sans'),
+      inView: window.editor.getViewportPageBounds().contains(b),
+      zoom: Math.round(window.editor.getZoomLevel() * 100),
+      stylePanel: Boolean(document.querySelector('.tlui-style-panel')),
+    };
+  });
+  record('diagram uses the app font and fits the view un-clipped', finish.sans && finish.inView, `sans=${finish.sans} inView=${finish.inView} zoom=${finish.zoom}%`);
+  record('no tldraw style panel for a generated diagram', !finish.stylePanel);
   const groundChip = await page.textContent('.jz-pb-ground').catch(() => null);
   record('the group grounds an ask as one unit', Boolean(groundChip), `chip: ${groundChip ?? 'none'}`);
   await page.screenshot({ path: '/tmp/jz-fix-flowchart-group.png' });

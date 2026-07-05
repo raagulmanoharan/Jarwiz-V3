@@ -58,7 +58,9 @@ export function PromptBar() {
     'promptbar-ground',
     () => editor.getSelectedShapeIds()
       .map((id) => ({ id, shape: editor.getShape(id) }))
-      .filter((x) => x.shape && ASKABLE.has(x.shape.type))
+      // Content-gated: an empty card is the user's own scratch space, not
+      // context — it gets no ground chip and contributes nothing to the ask.
+      .filter((x) => x.shape && ASKABLE.has(x.shape.type) && hasAskableContent(editor, x.shape))
       .map((x) => ({ id: x.id, label: shapeLabel(editor, x.shape!) })),
     [editor],
   );

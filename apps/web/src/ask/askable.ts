@@ -23,7 +23,9 @@ export function hasAskableContent(editor: Editor, shape: TLShape | undefined): b
   const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
   switch (shape.type) {
     case 'doc-card':
-      return Boolean(str(p.text) || str(p.title));
+      // Text only — a title alone is a NAME, not content (the grounding path
+      // in useAsk.toSource applies the same rule).
+      return Boolean(str(p.text));
     case 'note-card':
       return Boolean(str(p.text));
     case 'diagram-card':

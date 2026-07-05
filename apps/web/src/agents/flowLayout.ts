@@ -90,7 +90,7 @@ export function createFlowNode(editor: Editor, p: PlacedNode): TLShapeId {
   const style = NODE_STYLE[p.node.shape ?? 'rectangle'];
   editor.createShape({
     id, type: 'geo', x: p.x, y: p.y,
-    props: { geo: style.geo, w: NODE_W, h: NODE_H, color: style.color, fill: 'semi', size: 's', richText: toRichText(p.node.label) },
+    props: { geo: style.geo, w: NODE_W, h: NODE_H, color: style.color, fill: 'semi', size: 's', font: 'sans', richText: toRichText(p.node.label) },
   } as Parameters<typeof editor.createShape>[0]);
   return id;
 }
@@ -100,7 +100,7 @@ export function createFlowEdge(editor: Editor, fromId: TLShapeId, toId: TLShapeI
   const arrowId = createShapeId();
   editor.createShape<TLArrowShape>({
     id: arrowId, type: 'arrow',
-    props: { color: 'grey', size: 's', dash: 'solid', arrowheadEnd: 'triangle', ...(label ? { richText: toRichText(label) } : {}) },
+    props: { color: 'grey', size: 's', dash: 'solid', font: 'sans', arrowheadEnd: 'triangle', ...(label ? { richText: toRichText(label) } : {}) },
   });
   editor.createBindings([
     { id: createBindingId(), type: 'arrow', fromId: arrowId, toId: fromId, props: { terminal: 'start', normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false, snap: 'none' } },
@@ -119,7 +119,14 @@ export function groupFlowchart(editor: Editor, created: TLShapeId[]): TLShapeId 
   if (created.length < 2) return null;
   editor.groupShapes(created);
   const parent = editor.getShape(created[0]!)?.parentId;
-  return typeof parent === 'string' && parent.startsWith('shape:') ? (parent as TLShapeId) : null;
+  const groupId =
+    typeof parent === 'string' && parent.startsWith('shape:') ? (parent as TLShapeId) : null;
+  // Tag it so chrome can treat a generated diagram specially (e.g. the style
+  // panel stays hidden — its color/thickness dials don't apply here).
+  if (groupId) {
+    editor.updateShape({ id: groupId, type: 'group', meta: { jzFlowchart: true } });
+  }
+  return groupId;
 }
 
 /** Place a whole spec at once (used by templates). Caller owns the history mark. */

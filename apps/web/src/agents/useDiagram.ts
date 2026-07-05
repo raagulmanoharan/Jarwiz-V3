@@ -134,7 +134,9 @@ export function useDiagram() {
             Math.max(...ys) - Math.min(...ys) + 260,
           );
           const union = allBounds.reduce((acc, b) => acc.union(b), area);
-          editor.zoomToBounds(union, { animation: { duration: 320 }, inset: 60 });
+          // Fit, never magnify: targetZoom caps at 100% so a small diagram
+          // doesn't blow up and clip (owner report 2026-07-05).
+          editor.zoomToBounds(union, { animation: { duration: 320 }, inset: 100, targetZoom: 1 });
         }
 
         // Draw the nodes one by one — cursor hops to each, then it pops in.
@@ -162,7 +164,13 @@ export function useDiagram() {
         const groupId = groupFlowchart(editor, created);
         editor.select(...(groupId ? [groupId] : created));
         const b = editor.getSelectionPageBounds();
-        if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 80 });
+        if (b) {
+          // Pad the frame's bottom for the prompt-bar overlay (~180px of
+          // screen the camera doesn't know about) so the last row isn't
+          // hidden behind it.
+          const padded = new Box(b.x, b.y, b.w, b.h + 180 / editor.getZoomLevel());
+          editor.zoomToBounds(padded, { animation: { duration: 300 }, inset: 90, targetZoom: 1 });
+        }
       } catch (err) {
         if (cancelled) {
           if (created.length) editor.deleteShapes(created); // undo the partial draw
