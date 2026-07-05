@@ -153,6 +153,26 @@ export function CardActionBar() {
       );
     }
   }
+  // An image is a vision input — offer moves that read the picture.
+  if (!sel.multi && hasContent && sel.type === 'image-card') {
+    transforms.push(
+      { label: '✦ Describe this', run: () => ask('Describe what you see in this image — subject, composition, colours, and any text.', [id], { skipClarify: true, logLabel: 'Described the image' }) },
+      { label: 'Extract the text', run: () => ask('Transcribe any text visible in this image, exactly, as a list.', [id], { skipClarify: true }) },
+    );
+  }
+  // A video reads from its transcript and watched frames — offer moves that
+  // fit motion content (only once it has been processed).
+  if (!sel.multi && sel.type === 'youtube-card') {
+    const vp = editor.getShape(id)?.props as Record<string, unknown> | undefined;
+    const processed = vp?.hasTranscript === true || (Array.isArray(vp?.frames) && vp!.frames.length > 0);
+    if (processed) {
+      transforms.push(
+        { label: '✦ Summarise the video', run: () => ask('Summarise this video — what it covers and the key points, in order.', [id], { skipClarify: true, logLabel: 'Summarised the video' }) },
+        { label: 'Key moments', run: () => ask('List the key moments of this video with their timestamps.', [id], { skipClarify: true }) },
+        { label: 'Dissect the style', run: () => ask('Dissect this video’s editing and narration style: hook, pacing, cut rhythm, tone, and how it closes.', [id], { skipClarify: true }) },
+      );
+    }
+  }
   // A spreadsheet reads like data, not prose — offer analysis moves that fit
   // a grid, plus the shared table/diagram reshapes.
   if (!sel.multi && hasContent && sel.type === 'sheet-card') {
@@ -184,7 +204,12 @@ export function CardActionBar() {
   }
   if (canCluster(editor, ids)) transforms.push({ label: '✦ Cluster & summarise', run: () => cluster() });
   if (canTidy(editor, ids)) transforms.push({ label: '⤢ Tidy layout', run: () => tidy(ids) });
-  if (contentful.length > 0) transforms.push({ label: '◇ Make a flowchart', run: () => diagram('Turn this into a flowchart.', ids) });
+  // A flowchart is a text-structure move — offer it where there's structure to
+  // draw (prose, tables, docs), not on a raw image or video (owner audit,
+  // 2026-07-05). Multi-select keeps it — combining cards into a flow is valid.
+  const FLOWCHARTABLE = new Set(['doc-card', 'table-card', 'note-card', 'link-card', 'pdf-card', 'sheet-card', 'diagram-card']);
+  const flowchartable = sel.multi ? contentful.length > 0 : contentful.length > 0 && FLOWCHARTABLE.has(sel.type);
+  if (flowchartable) transforms.push({ label: '◇ Make a flowchart', run: () => diagram('Turn this into a flowchart.', ids) });
 
   const runTransform = (t: Transform) => { setMenu(null); t.run(); };
 
