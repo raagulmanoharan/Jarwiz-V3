@@ -516,3 +516,26 @@ every primitive reads as one visual family.
   web_fetch); paywalls → headline/description only; bot-walled (Airbnb) →
   thin scrape but research-around fills the gap. LinkedIn is the clearest
   "can't" today; honest fallback = a "can't read this" badge + paste-the-text.
+
+## 2026-07-05 (deep night) — Ultra Think, rebuilt on Claude
+
+- **The Gemini question, answered honestly.** PR #4 ("Ultra Think") was
+  generated against `main` — the ORIGINAL flat scaffold (root App.tsx,
+  services/geminiService.ts, Gemini) that predates the monorepo restructure
+  and was never merged forward. The live app (apps/web + apps/server +
+  packages/shared) is 100% Claude/Anthropic — zero Gemini refs. So PR #4
+  can't merge; the feature had to be re-implemented on our stack.
+- **Ultra Think, natively on Claude.** discover.ts summarises the board and
+  runs Claude web_search (grounded) to surface REAL related resources, then
+  validates (http(s)) and dedupes (vs board + within) before returning typed
+  SuggestedResource[]. Verified: a tldraw/canvas/CRDT board returned 8
+  diverse, anchored, real links (tldraw docs, Yjs/Automerge, the Ink & Switch
+  local-first essay, a CRDT benchmarks repo, Matuschak's canvas note).
+- UI: a gradient "Ultra think" topbar button (gated ≥3 cards, shimmer at
+  rest, spin while searching) → "N found" → a drawer of add-able rows (kind
+  icon, title, description, accent "because you saved…" reason, source, Plus→
+  check). Add spawns a real card via putExternalContent (reusing link/video
+  ingestion). Full flow verified end to end.
+- Lesson for future sessions: when a PR "mentions Gemini," check its BASE —
+  `main` is the stale pre-restructure app; all real work lives on the
+  monorepo feature branches (PR #2 lineage).
