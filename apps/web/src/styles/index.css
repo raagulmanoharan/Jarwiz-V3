@@ -1981,6 +1981,12 @@ body,
   color: var(--jz-ink-400);
 }
 
+/* Unselected cards show an inert label — clicks fall through to the shape
+ * beneath, which selects it and swaps the label for the editable input. */
+.jz-title-tag--label {
+  pointer-events: none;
+}
+
 .jz-doc-content {
   flex: 1;
   min-height: 0;
