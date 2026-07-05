@@ -437,6 +437,131 @@ body,
   color: var(--jz-ink-500);
 }
 
+/* ── Proactive comments — FigJam-style pins Jarwiz leaves on cards ─────────── */
+.jz-comment {
+  position: absolute;
+  z-index: 55;
+  transform: translate(-42%, -52%);
+  pointer-events: auto;
+}
+.jz-comment-pin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1.5px solid var(--jz-card);
+  border-radius: 50% 50% 50% 2px; /* teardrop — the FigJam tell */
+  color: #fff;
+  background: var(--jz-accent);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(8, 9, 11, 0.28);
+  animation: jz-comment-pulse 2.6s ease-in-out infinite;
+  transition: transform var(--jz-dur-fast, 120ms) var(--jz-ease-out, ease);
+}
+.jz-comment-pin:hover { transform: scale(1.08); }
+.jz-comment-pin--open { animation: none; }
+@keyframes jz-comment-pulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(8, 9, 11, 0.28), 0 0 0 0 color-mix(in srgb, var(--jz-accent) 45%, transparent); }
+  50% { box-shadow: 0 2px 8px rgba(8, 9, 11, 0.28), 0 0 0 5px color-mix(in srgb, var(--jz-accent) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-comment-pin { animation: none; }
+}
+
+.jz-comment-pop {
+  position: absolute;
+  top: 28px;
+  left: -8px;
+  width: 268px;
+  background: var(--jz-card);
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-lg);
+  box-shadow: 0 12px 40px rgba(8, 9, 11, 0.3);
+  padding: 11px 12px 12px;
+  animation: jz-tl-in var(--jz-dur-med, 180ms) var(--jz-ease-out, ease);
+}
+.jz-comment-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 7px;
+}
+.jz-comment-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--jz-accent);
+  flex: none;
+}
+.jz-comment-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--jz-ink-900);
+}
+.jz-comment-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--jz-radius-pill);
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  color: var(--jz-accent);
+}
+.jz-comment-kind--risk { background: color-mix(in srgb, #e8894a 16%, transparent); color: #d9762f; }
+.jz-comment-kind--tension { background: color-mix(in srgb, #e0b23a 16%, transparent); color: #b78c11; }
+.jz-comment-kind--gap { background: color-mix(in srgb, #4a8fe8 16%, transparent); color: #2f74d9; }
+.jz-comment-x {
+  margin-left: auto;
+  display: inline-flex;
+  border: none;
+  background: transparent;
+  color: var(--jz-ink-400);
+  cursor: pointer;
+  padding: 1px;
+}
+.jz-comment-body {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--jz-ink-700, var(--jz-ink-900));
+  margin-bottom: 10px;
+}
+.jz-comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.jz-comment-fix {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-accent);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 11px;
+  cursor: pointer;
+}
+.jz-comment-fix:hover { filter: brightness(1.06); }
+.jz-comment-dismiss {
+  border: none;
+  background: transparent;
+  color: var(--jz-ink-500);
+  font-size: 11.5px;
+  padding: 5px 6px;
+  cursor: pointer;
+}
+.jz-comment-dismiss:hover { color: var(--jz-ink-900); }
+
 /* Hamburger / logo button — fully round. The default face is the Jarwiz mark
  * (brand); when the side panel is open the icon cross-fades to a hamburger so
  * the same button reads as a "close" affordance. Both glyphs are stacked and

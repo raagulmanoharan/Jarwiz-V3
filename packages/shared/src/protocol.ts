@@ -419,6 +419,41 @@ export interface DiscoverResult {
   resources: SuggestedResource[];
 }
 
+/* ─── Notice (proactive comments — FigJam-style) ──────────────────────────────
+ * Jarwiz quietly reviews the board and, when it spots something genuinely worth
+ * flagging, leaves a short comment PINNED to the specific card it's about — a
+ * contradiction, a risk, a timing/season issue, a missing piece. Non-intrusive:
+ * a handful at most, only when there's real signal.
+ */
+
+export type NoticeKind = 'risk' | 'tension' | 'gap' | 'idea';
+
+/** A board card tagged with its stable shape id so a comment can pin to it. */
+export interface NoticeCard extends AnalyzeCard {
+  id: string;
+}
+
+export interface NoticeComment {
+  /** The shape id this comment pins to (must be one of the sent card ids). */
+  cardId: string;
+  kind: NoticeKind;
+  /** One or two tight sentences — what Jarwiz noticed, in a collaborator's voice. */
+  body: string;
+  /** Optional one-click follow-up: a prompt Jarwiz would run on that card to
+   *  address the note (prefilled into the prompt bar, grounded on the card). */
+  suggestion?: string;
+}
+
+export interface NoticeRequest {
+  cards: NoticeCard[];
+  /** Today's date (ISO yyyy-mm-dd) so Jarwiz can catch timing/season issues. */
+  today?: string;
+}
+
+export interface NoticeResult {
+  comments: NoticeComment[];
+}
+
 /* ─── Revise (Big Rocks 3.3 — conversational depth) ──────────────────────────
  * Argue with an answer card: a follow-up instruction revises the doc IN PLACE
  * (not a new card), keeping the dialogue on the one artifact.

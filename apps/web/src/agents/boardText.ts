@@ -105,3 +105,16 @@ export function gatherBoardCards(editor: Editor, opts?: { selectionOnly?: boolea
   }
   return out;
 }
+
+/** Same scan, but each card carries its stable shape id — so a proactive
+ *  comment can pin back to the exact card it's about (see notice.ts). */
+export function gatherBoardCardsWithIds(editor: Editor): Array<AnalyzeCard & { id: TLShapeId }> {
+  const out: Array<AnalyzeCard & { id: TLShapeId }> = [];
+  for (const shape of editor.getCurrentPageShapes()) {
+    if (out.length >= MAX_CARDS) break;
+    if (!(CARD_TYPES.has(shape.type) || PRIMITIVE_TYPES.has(shape.type))) continue;
+    const card = extract(editor, shape);
+    if (card) out.push({ ...card, text: card.text.slice(0, MAX_TEXT), id: shape.id });
+  }
+  return out;
+}

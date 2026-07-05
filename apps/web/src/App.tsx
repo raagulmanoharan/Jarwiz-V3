@@ -20,6 +20,7 @@ import { PromptBar } from './ask/PromptBar';
 import { CardActionBar } from './ask/CardActionBar';
 import { ProvenanceLayer } from './ask/ProvenanceLayer';
 import { ClarifyLayer } from './ask/ClarifyLayer';
+import { CommentLayer } from './ask/CommentLayer';
 import { DraftControls } from './ask/DraftControls';
 import { RegenControls } from './ask/RegenControls';
 import { SelectionAsk } from './ask/SelectionAsk';
@@ -63,6 +64,7 @@ function JarwizOverlay() {
       <CardTitleTag />
       <CardActionBar />
       <ClarifyLayer />
+      <CommentLayer />
       <DraftControls />
       <RegenControls />
       <SelectionAsk />

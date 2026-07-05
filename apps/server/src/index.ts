@@ -30,6 +30,7 @@ import { buildLinkPreview, fetchYouTubeText, SsrfError } from './linkPreview.js'
 import { ingestVideo, videoTools } from './video.js';
 import { parseSheetGrid } from './sheets.js';
 import { discoverResources } from './discover.js';
+import { reviewBoard } from './notice.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset, sniffMime } from './assets.js';
 import { proposeSeedPrompts, streamAsk } from './ask.js';
 import type { AnalyzeCard, AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ReviseRequest } from '@jarwiz/shared';
@@ -464,6 +465,36 @@ app.post('/api/discover', async (c) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Discovery failed';
     return c.json({ resources: [], error: message }, 502);
+  }
+});
+
+/** Notice — proactive comments Jarwiz pins to cards after the board settles. */
+app.post('/api/notice', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected JSON: { cards[] }' }, 400);
+  }
+  const raw = body as { cards?: unknown; today?: unknown };
+  if (!Array.isArray(raw.cards)) return c.json({ error: 'cards must be an array' }, 400);
+  const cards = raw.cards
+    .filter((card) => typeof (card as { id?: unknown })?.id === 'string')
+    .slice(0, 24)
+    .map((card) => ({
+      id: String((card as { id: string }).id),
+      kind: typeof (card as AnalyzeCard)?.kind === 'string' ? (card as AnalyzeCard).kind : 'note',
+      title: typeof (card as AnalyzeCard)?.title === 'string' ? (card as AnalyzeCard).title!.slice(0, 200) : undefined,
+      text: typeof (card as AnalyzeCard)?.text === 'string' ? (card as AnalyzeCard).text.slice(0, 2000) : '',
+      assetId: typeof (card as AnalyzeCard)?.assetId === 'string' ? (card as AnalyzeCard).assetId : undefined,
+    }));
+  const today = typeof raw.today === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.today) ? raw.today : undefined;
+  try {
+    const comments = await reviewBoard({ cards, today }, c.req.raw.signal);
+    return c.json({ comments });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Review failed';
+    return c.json({ comments: [], error: message }, 502);
   }
 });
 

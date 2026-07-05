@@ -18,6 +18,7 @@ import { gatherBoardCards } from '../agents/boardText';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { isAutopilotRunning, subscribeAutopilot } from '../agents/autopilotStore';
 import { cardSeedKey, ensureCardSeeds, ensureSeedPrompts, getSeedPrompts, subscribeSeed } from './seedPrompts';
+import { getPromptFill, subscribePromptFill } from './promptFill';
 
 const clip = (s: string, n = 22) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
@@ -129,6 +130,23 @@ export function PromptBar() {
     () => (sole ? getSeedPrompts(sole.seedKey) : undefined),
     () => undefined,
   );
+
+  // A comment's "let Jarwiz fix it" (and any future affordance) hands a
+  // ready-made prompt to the bar: drop it in, ground it on its card, focus —
+  // the user reviews and hits Enter. We prefill, never auto-send.
+  const fill = useSyncExternalStore(subscribePromptFill, getPromptFill, getPromptFill);
+  useEffect(() => {
+    if (!fill) return;
+    if (fill.groundId && editor.getShape(fill.groundId)) editor.select(fill.groundId);
+    setValue(fill.text);
+    setMode(null);
+    requestAnimationFrame(() => {
+      const ta = document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input');
+      ta?.focus();
+      ta?.setSelectionRange(fill.text.length, fill.text.length);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fill?.nonce]);
 
   const pickMode = (shape: AskShape) => {
     setMode(shape);
