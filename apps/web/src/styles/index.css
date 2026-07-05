@@ -1475,7 +1475,7 @@ body,
  * so the head reads as part of the same quiet grid, not a separate chrome. */
 .jz-table-headcell {
   border-right: 1px solid var(--jz-hairline);
-  padding: 7px 12px;
+  padding: 9px 12px;
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-body-sm-size);
   font-weight: 700;
@@ -1513,7 +1513,7 @@ body,
 
 .jz-table-cell {
   border-right: 1px solid var(--jz-hairline);
-  padding: 7px 12px;
+  padding: 9px 12px;
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-body-sm-size);
   line-height: var(--jz-text-body-sm-lh, 1.45);
@@ -1562,6 +1562,13 @@ body,
   field-sizing: content; /* auto-height to content where supported */
 }
 
+/* A body cell in edit mode IS the textarea — it must keep the cell padding
+ * (the input reset above zeroes it, which is right only for the header's
+ * nested input). This was the text-hugging-the-hairlines bug. */
+.jz-table-cell.jz-table-input {
+  padding: 9px 12px;
+}
+
 /* Edge add-affordances (edit mode) — Cove/Notion grain: a slim + strip along
  * the bottom (row) and right (column) instead of labelled buttons. The fit
  * wrapper reserves the right strip's lane while editing so cells never sit
@@ -1570,40 +1577,58 @@ body,
   padding-right: 18px; /* lane for the right-edge + strip */
 }
 
-.jz-table-edgeadd {
+/* Hover rails (Notion direction, owner pick 2026-07-05): soft full-length
+ * +row / +column rails that fade in when the pointer is over the table.
+ * Their space is RESERVED while the edit chrome is active (fit--chrome),
+ * so revealing them never resizes the card — only opacity moves. */
+.jz-table-rail {
   border: none;
-  background: transparent;
   cursor: pointer;
   font-family: var(--jz-font-ui);
-  font-size: 13px;
+  font-size: 11.5px;
+  font-weight: 600;
   line-height: 1;
-  color: var(--jz-ink-300);
-  padding: 0;
+  color: var(--jz-ink-500);
+  background: color-mix(in srgb, var(--jz-ink-900) 4.5%, transparent);
+  border-radius: var(--jz-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
+  opacity: 0;
   transition:
+    opacity var(--jz-dur-fast) var(--jz-ease-out),
     color var(--jz-dur-fast) var(--jz-ease-out),
     background var(--jz-dur-fast) var(--jz-ease-out);
 }
-.jz-table-edgeadd:hover {
+
+.jz-table:hover .jz-table-rail,
+.jz-table-rail:focus-visible {
+  opacity: 1;
+}
+
+.jz-table-rail:hover {
   color: var(--jz-ink-900);
-  background: color-mix(in srgb, var(--jz-ink-900) 5%, transparent);
+  background: color-mix(in srgb, var(--jz-ink-900) 9%, transparent);
 }
 
-.jz-table-edgeadd-row {
+.jz-table-rail-row {
+  height: 22px;
+  margin-top: 6px;
   width: 100%;
-  height: 16px;
-  border-top: 1px solid var(--jz-hairline);
 }
 
-.jz-table-edgeadd-col {
+.jz-table-rail-col {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 16px;
-  border-left: 1px solid var(--jz-hairline);
+  top: var(--jz-space-3);
+  right: var(--jz-space-3);
+  bottom: calc(var(--jz-space-3) + 28px);
+  width: 22px;
+}
+
+/* Gutter reserved for the column rail while edit chrome is up. */
+.jz-table-fit--chrome {
+  padding-right: calc(var(--jz-space-3) + 28px);
 }
 
 .jz-table-hint {
@@ -1681,7 +1706,9 @@ body,
    reserved gutter column, no always-on chrome. */
 .jz-table-headcell-edit {
   position: relative;
-  padding-right: 44px; /* room for the type button + delete × */
+  display: flex;
+  align-items: center;
+  padding-right: 26px; /* room for the delete × (type chip is inline-left) */
 }
 
 .jz-table-del {
@@ -1739,22 +1766,26 @@ body,
    The type button lives in the edit header (click cycles); static headers of
    non-text columns wear a quiet glyph; empty photo cells offer an upload. */
 .jz-table-coltype {
-  position: absolute;
-  top: 50%;
-  right: 22px;
-  transform: translateY(-50%);
-  width: 18px;
-  height: 18px;
+  flex: none;
+  width: 17px;
+  height: 17px;
+  margin-right: 7px;
   padding: 0;
   border: none;
   border-radius: var(--jz-radius-xs);
-  background: transparent;
-  color: var(--jz-ink-300);
+  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+  color: var(--jz-ink-400);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   transition: color var(--jz-dur-fast) var(--jz-ease-out), background var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-coltype-txt {
+  font-size: 8.5px;
+  font-weight: 650;
+  letter-spacing: 0.2px;
 }
 .jz-table-coltype:hover {
   color: var(--jz-ink-900);

@@ -297,11 +297,23 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
           equals the CURRENT shape height — the fit-height ratchet), so the
           hook measures this auto-height child instead, which reports true
           content height and lets the card shrink to fit as well as grow. */}
-      <div className="jz-table-fit" ref={fitRef}>
+      <div className={`jz-table-fit${chrome ? ' jz-table-fit--chrome' : ''}`} ref={fitRef}>
       <div className="jz-table-head" style={{ gridTemplateColumns: gridCols }}>
         {columns.map((label, col) =>
           isEditing ? (
             <div key={col} className="jz-table-headcell jz-table-headcell-edit">
+              {/* Type chip leads the header (Notion-style), not a floating glyph. */}
+              <button
+                className="jz-table-coltype"
+                title={`Column type: ${colType(col)} — click to change`}
+                aria-label={`Column type: ${colType(col)}`}
+                tabIndex={-1}
+                style={{ pointerEvents: 'all' }}
+                onPointerDown={stopEventPropagation}
+                onClick={() => cycleType(col)}
+              >
+                <ColTypeGlyph type={colType(col)} />
+              </button>
               <textarea
                 className="jz-table-input"
                 value={label}
@@ -314,17 +326,6 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
                 onPointerMove={stopEventPropagation}
                 onPointerUp={stopEventPropagation}
               />
-              <button
-                className="jz-table-coltype"
-                title={`Column type: ${colType(col)} — click to change`}
-                aria-label={`Column type: ${colType(col)}`}
-                tabIndex={-1}
-                style={{ pointerEvents: 'all' }}
-                onPointerDown={stopEventPropagation}
-                onClick={() => cycleType(col)}
-              >
-                <ColTypeGlyph type={colType(col)} />
-              </button>
               {columns.length > 1 ? (
                 <button
                   className="jz-table-del jz-table-del-col"
@@ -406,25 +407,26 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
         ))}
       </div>
 
-      {/* Cove-style edge affordances instead of a button bar: a slim + strip
-          along the bottom adds a row; its twin on the right edge adds a column.
-          Available from the SELECTED state — adding also enters edit mode so
-          Tab-to-fill is one keystroke away. */}
+      {/* Hover rails (owner pick, 2026-07-05): soft +row / +column rails that
+          fade in when the pointer is over the table. Available from the
+          SELECTED state — adding also enters edit mode so Tab-to-fill is one
+          keystroke away. Layout space is reserved (fit--chrome), so the
+          reveal never resizes the card. */}
       {chrome ? (
         <button
-          className="jz-table-edgeadd jz-table-edgeadd-row"
+          className="jz-table-rail jz-table-rail-row"
           onClick={addRowAndEdit}
           onPointerDown={stopEventPropagation}
           style={{ pointerEvents: 'all' }}
           title="Add a row"
           aria-label="Add a row"
         >
-          +
+          + row
         </button>
       ) : null}
       {chrome ? (
         <button
-          className="jz-table-edgeadd jz-table-edgeadd-col"
+          className="jz-table-rail jz-table-rail-col"
           onClick={addColumnAndEdit}
           onPointerDown={stopEventPropagation}
           style={{ pointerEvents: 'all' }}
@@ -480,9 +482,6 @@ function ColTypeGlyph({ type }: { type: ColumnType }) {
       </svg>
     );
   }
-  return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M4 7V5h16v2M12 5v14M9 19h6" />
-    </svg>
-  );
+  // Text columns read as "Aa" — the serif-T glyph looked like a stray char.
+  return <span className="jz-coltype-txt" aria-hidden>Aa</span>;
 }
