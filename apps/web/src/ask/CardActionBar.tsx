@@ -153,11 +153,20 @@ export function CardActionBar() {
       );
     }
   }
-  // The drop-moment profile (docs/PDF-EDGE.md build 3): a dropped PDF lands
-  // selected, so this bar IS the drop moment — Profile rides it as a fixed
-  // action (a profile is the document's summary; owner call, 2026-07-04),
-  // not buried in the Refine menu.
-  const profileable = !sel.multi && hasContent && sel.type === 'pdf-card';
+  // A spreadsheet reads like data, not prose — offer analysis moves that fit
+  // a grid, plus the shared table/diagram reshapes.
+  if (!sel.multi && hasContent && sel.type === 'sheet-card') {
+    transforms.push(
+      { label: 'Key insights', run: () => ask('What are the key insights in this spreadsheet? Call out notable totals, trends, and outliers.', [id], { skipClarify: true, logLabel: 'Analysed the sheet' }) },
+      { label: 'Summarise the columns', run: () => ask('Summarise what each column of this spreadsheet holds and what the data is about.', [id], { skipClarify: true }) },
+      { label: '◇ Chart the trend', run: () => diagram('Turn the main trend in this spreadsheet into a diagram.', [id]) },
+    );
+  }
+  // The drop-moment profile (docs/PDF-EDGE.md build 3): a dropped PDF or
+  // spreadsheet lands selected, so this bar IS the drop moment — Profile
+  // rides it as a fixed action (a profile is the file's summary; owner call,
+  // 2026-07-04), not buried in the Refine menu.
+  const profileable = !sel.multi && hasContent && (sel.type === 'pdf-card' || sel.type === 'sheet-card');
 
   if (sel.multi && contentful.length > 0) {
     // Multi-select gets the same bar, with cross-selection transforms —

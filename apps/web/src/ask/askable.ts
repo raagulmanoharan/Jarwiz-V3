@@ -8,7 +8,7 @@ import { renderPlaintextFromRichText, type Editor, type TLRichText, type TLShape
 
 export const ASKABLE = new Set([
   'pdf-card', 'doc-card', 'table-card', 'diagram-card', 'note-card', 'image-card', 'link-card',
-  'youtube-card',
+  'youtube-card', 'sheet-card',
   'geo', 'text', 'note', 'arrow', 'frame', 'group',
 ]);
 
@@ -36,6 +36,7 @@ export function hasAskableContent(editor: Editor, shape: TLShape | undefined): b
       return rows.some((r) => Array.isArray(r) && r.some((c) => str(c)));
     }
     case 'pdf-card':
+    case 'sheet-card':
       return p.status === 'ready'; // uploading/error → nothing readable yet
     case 'image-card':
       return Boolean(str(p.src));

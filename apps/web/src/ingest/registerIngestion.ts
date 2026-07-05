@@ -15,10 +15,12 @@ import { logEvent } from '../log/eventLog';
 import {
   LINK_CARD_SIZE,
   PDF_CARD_SIZE,
+  SHEET_CARD_SIZE,
   YOUTUBE_CARD_SIZE,
   type ImageCardShape,
   type LinkCardShape,
   type PdfCardShape,
+  type SheetCardShape,
   type YouTubeCardShape,
 } from '../shapes';
 
@@ -181,10 +183,14 @@ async function placeFiles(editor: Editor, files: File[], center: VecLike): Promi
   for (const file of files) {
     const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
     const isImage = /^image\/(png|jpeg|gif|webp)$/.test(file.type);
-    if (!isPdf && !isImage) continue;
+    const isSheet =
+      /\.(xlsx|xls|csv|tsv)$/i.test(file.name) ||
+      /spreadsheet|excel|ms-excel|csv/i.test(file.type);
+    if (!isPdf && !isImage && !isSheet) continue;
     const offset = placed * MULTI_FILE_CASCADE;
     const at = { x: center.x + offset, y: center.y + offset };
     if (isPdf) placePdf(editor, file, at);
+    else if (isSheet) placeSheet(editor, file, at);
     else await placeImage(editor, file, at);
     placed += 1;
   }
@@ -252,4 +258,28 @@ function placePdf(editor: Editor, file: File, center: VecLike): void {
 function updatePdf(editor: Editor, id: TLShapeId, props: Partial<PdfCardShape['props']>): void {
   if (!editor.getShape(id)) return; // deleted or undone while uploading
   editor.updateShape<PdfCardShape>({ id, type: 'pdf-card', props });
+}
+
+/** A dropped .xlsx/.xls/.csv lands as a sheet card (PDF's spreadsheet twin):
+ *  uploads to the blob store, then the card fetches its parsed grid. */
+function placeSheet(editor: Editor, file: File, center: VecLike): void {
+  const { w, h } = SHEET_CARD_SIZE;
+  const id = createShapeId();
+  editor.createShape<SheetCardShape>({
+    id,
+    type: 'sheet-card',
+    x: center.x - w / 2,
+    y: center.y - h / 2,
+    props: { w, h, src: '', assetId: '', name: file.name, status: 'uploading' },
+  });
+  void uploadAsset(file, 'sheet')
+    .then(({ assetId, url }) => {
+      if (!editor.getShape(id)) return;
+      editor.updateShape<SheetCardShape>({ id, type: 'sheet-card', props: { src: url, assetId, status: 'ready' } });
+      editor.select(id);
+      logEvent(editor, { kind: 'artefact', label: `Added ${file.name}`, detail: 'Spreadsheet', shapeIds: [id] });
+    })
+    .catch(() => {
+      if (editor.getShape(id)) editor.updateShape<SheetCardShape>({ id, type: 'sheet-card', props: { status: 'error' } });
+    });
 }

@@ -12,6 +12,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { AskEvent, AskRequest, AskShape, AskSource } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
 import { assetPath, extractAssetPages, extractAssetText, getAsset } from './assets.js';
+import { extractSheetText } from './sheets.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 import {
   RESEARCH_MAX_CONTINUATIONS,
@@ -337,6 +338,13 @@ async function gatherContext(
       } else {
         parts.push(`${head}\n(Image could not be read.)`);
       }
+      continue;
+    }
+    if (s.assetId && s.kind === 'sheet') {
+      // A spreadsheet grounds on its cells (CSV-ish per sheet), not PDF pages.
+      const csv = await extractSheetText(s.assetId, PER_SOURCE_CHARS * 2);
+      if (csv.trim()) parts.push(`${head}\n"""\n${csv}\n"""`);
+      else parts.push(`${head}\n(Spreadsheet could not be read.)`);
       continue;
     }
     if (s.assetId) {

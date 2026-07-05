@@ -105,6 +105,12 @@ function toSource(editor: Editor, shape: TLShape): AskSource | null {
       const assetId = String(p.assetId ?? '');
       return assetId ? { kind: 'pdf', assetId, title: String(p.name ?? '') } : null;
     }
+    case 'sheet-card': {
+      // A spreadsheet grounds on its cells — the server extracts them from the
+      // stored file by assetId (kind 'sheet' routes to the sheet parser).
+      const assetId = String(p.assetId ?? '');
+      return assetId && p.status === 'ready' ? { kind: 'sheet', assetId, title: String(p.name ?? '') } : null;
+    }
     case 'doc-card': {
       const text = String(p.text ?? '');
       // A title alone is not groundable content — it's usually just a name.
@@ -196,7 +202,7 @@ function sourceLabel(shape: TLShape): string {
   if (title) return title.length > 28 ? `${title.slice(0, 27)}…` : title;
   const fallback: Record<string, string> = {
     'pdf-card': 'PDF', 'doc-card': 'Text', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram',
-    'image-card': 'Image', 'link-card': 'Link', 'youtube-card': 'Video', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section',
+    'image-card': 'Image', 'link-card': 'Link', 'youtube-card': 'Video', 'sheet-card': 'Sheet', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section',
   };
   return fallback[shape.type] ?? 'Card';
 }

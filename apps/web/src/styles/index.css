@@ -921,6 +921,131 @@ body,
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Spreadsheet card — the PDF card's grid twin (footer + glyph shared
+ *    language; stage holds a scrollable read-only table instead of a page). ── */
+.jz-sheet-card {
+  display: flex;
+  flex-direction: column;
+}
+.jz-sheet-stage {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--jz-card);
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+.jz-sheet-scroll {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+.jz-sheet-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--jz-ink-700);
+  white-space: nowrap;
+}
+.jz-sheet-table td {
+  border: 1px solid var(--jz-hairline);
+  padding: 3px 8px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The header row + the row-number gutter read as chrome, not data. */
+.jz-sheet-table .jz-sheet-th {
+  font-weight: 600;
+  color: var(--jz-ink-900);
+  background: var(--jz-surface-raised);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.jz-sheet-rownum {
+  color: var(--jz-ink-400);
+  background: var(--jz-surface-raised);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+.jz-sheet-more {
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--jz-ink-400);
+}
+.jz-sheet-footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--jz-line);
+  font-size: 11.5px;
+  color: var(--jz-ink-500);
+  min-width: 0;
+}
+.jz-sheet-name {
+  flex: 0 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  margin-right: auto;
+}
+.jz-sheet-dims {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--jz-ink-400);
+}
+.jz-sheet-tabs {
+  flex: 0 1 auto;
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+  min-width: 0;
+}
+.jz-sheet-tab {
+  flex: none;
+  padding: 2px 9px;
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-pill);
+  background: transparent;
+  color: var(--jz-ink-500);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jz-sheet-tab--on {
+  background: var(--jz-surface-raised);
+  color: var(--jz-ink-900);
+  border-color: var(--jz-hairline-strong);
+}
+.jz-sheet-message {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--jz-ink-400);
+  font-size: 12.5px;
+}
+.jz-sheet-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--jz-hairline);
+  border-top-color: var(--jz-ink-400);
+  border-radius: 50%;
+  animation: jz-pdf-spin 0.8s linear infinite;
+}
+
 /* Inline page citation chip on answer cards */
 .jz-cite {
   display: inline-flex;

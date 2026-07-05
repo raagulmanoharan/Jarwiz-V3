@@ -9,7 +9,7 @@ import { renderPlaintextFromRichText, type Editor, type TLRichText, type TLShape
 import type { AnalyzeCard } from '@jarwiz/shared';
 
 const CARD_TYPES = new Set([
-  'doc-card', 'note-card', 'table-card', 'diagram-card', 'link-card', 'pdf-card', 'youtube-card',
+  'doc-card', 'note-card', 'table-card', 'diagram-card', 'link-card', 'pdf-card', 'youtube-card', 'sheet-card',
 ]);
 const PRIMITIVE_TYPES = new Set(['geo', 'text', 'note', 'arrow', 'frame']);
 const MAX_CARDS = 30;
@@ -76,6 +76,14 @@ function extract(editor: Editor, shape: ReturnType<Editor['getShape']>): Analyze
       if (p.status !== 'ready' || !assetId) return null;
       const name = typeof p.name === 'string' && p.name.trim() ? p.name.trim() : undefined;
       return { kind: 'pdf', title: name, text: '', assetId };
+    }
+    case 'sheet-card': {
+      // Ready spreadsheets join the scan by reference, same as PDFs — the
+      // server swaps the assetId for the sheet's extracted cells (capped).
+      const assetId = typeof p.assetId === 'string' ? p.assetId : '';
+      if (p.status !== 'ready' || !assetId) return null;
+      const name = typeof p.name === 'string' && p.name.trim() ? p.name.trim() : undefined;
+      return { kind: 'sheet', title: name, text: '', assetId };
     }
     default:
       return null;

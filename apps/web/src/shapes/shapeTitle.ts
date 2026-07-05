@@ -11,7 +11,7 @@
 import type { Editor, TLShape, TLShapePartial } from 'tldraw';
 
 const TITLE_PROP = new Set(['doc-card', 'diagram-card', 'link-card', 'youtube-card']);
-const NAME_PROP = new Set(['pdf-card', 'image-card', 'frame']);
+const NAME_PROP = new Set(['pdf-card', 'sheet-card', 'image-card', 'frame']);
 
 /** Shape types that carry the outside title tag. Deliberately absent:
  *  stickies and diagrams need no labels (owner call 2026-07-05), frames
@@ -19,7 +19,7 @@ const NAME_PROP = new Set(['pdf-card', 'image-card', 'frame']);
  *  in the header itself (owner call 2026-07-05 — no duplicate tag). Video
  *  stays in TITLE_PROP above so grounding/search still read its title. */
 export const TITLED = new Set([
-  'doc-card', 'table-card', 'pdf-card', 'image-card', 'link-card',
+  'doc-card', 'table-card', 'pdf-card', 'sheet-card', 'image-card', 'link-card',
 ]);
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '');

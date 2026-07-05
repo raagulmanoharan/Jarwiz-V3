@@ -12,6 +12,7 @@
 
 import type { AnalyzeCard, AnalyzeMode, AnalyzeRequest } from '@jarwiz/shared';
 import { extractAssetText, isValidAssetId } from './assets.js';
+import { extractSheetText } from './sheets.js';
 import { streamText, type TextStreamEvent } from './textStream.js';
 
 /** Cost caps for PDFs joining a board scan: extracted TEXT only (never the
@@ -68,6 +69,18 @@ async function resolvePdfCards(cards: AnalyzeCard[]): Promise<AnalyzeCard[]> {
   let docs = 0;
   const out: AnalyzeCard[] = [];
   for (const card of cards) {
+    // Spreadsheets join the scan by reference too — swap the assetId for the
+    // sheet's extracted cell text (capped), the same as PDFs.
+    if (card.kind === 'sheet' && card.assetId) {
+      if (!isValidAssetId(card.assetId) || docs >= PDF_MAX_DOCS) {
+        out.push({ kind: 'sheet', title: card.title, text: '(spreadsheet present on the board, not included in this scan)' });
+        continue;
+      }
+      docs += 1;
+      const csv = await extractSheetText(card.assetId, PDF_MAX_CHARS);
+      out.push({ kind: 'sheet', title: card.title, text: csv ? `(spreadsheet cells)\n${csv}` : '(spreadsheet could not be read)' });
+      continue;
+    }
     if (card.kind !== 'pdf' || !card.assetId) {
       out.push(card);
       continue;

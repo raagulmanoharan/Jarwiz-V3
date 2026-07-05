@@ -10,7 +10,7 @@
 import type { AgentId } from './agents.js';
 
 /** The kinds of cards an agent (or the user) can place on the board. */
-export type CardKind = 'link' | 'youtube' | 'image' | 'pdf' | 'note' | 'doc' | 'table';
+export type CardKind = 'link' | 'youtube' | 'image' | 'pdf' | 'sheet' | 'note' | 'doc' | 'table';
 
 /** Metadata extracted by the server's POST /api/link/preview endpoint. */
 export interface LinkPreview {

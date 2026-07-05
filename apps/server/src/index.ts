@@ -28,6 +28,7 @@ import type {
 } from '@jarwiz/shared';
 import { buildLinkPreview, fetchYouTubeText, SsrfError } from './linkPreview.js';
 import { ingestVideo, videoTools } from './video.js';
+import { parseSheetGrid } from './sheets.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset, sniffMime } from './assets.js';
 import { proposeSeedPrompts, streamAsk } from './ask.js';
 import type { AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ReviseRequest } from '@jarwiz/shared';
@@ -85,6 +86,15 @@ app.get('/api/assets/:id', async (c) => {
   return new Response(new Uint8Array(buf), {
     headers: { 'Content-Type': sniffMime(buf), 'Cache-Control': 'private, max-age=3600' },
   });
+});
+
+/** Parsed grid for a sheet card — the capped rows/sheets it renders. */
+app.get('/api/sheet/:id/grid', async (c) => {
+  const id = c.req.param('id');
+  if (!isValidAssetId(id)) return c.json({ error: 'invalid asset id' }, 400);
+  const grid = await parseSheetGrid(id);
+  if (!grid) return c.json({ error: 'could not parse spreadsheet' }, 422);
+  return c.json(grid);
 });
 
 /**

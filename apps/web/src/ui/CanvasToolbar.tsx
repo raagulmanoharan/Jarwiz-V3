@@ -16,7 +16,7 @@ const CREATION_TOOLS = new Set(['geo', 'text', 'arrow', 'line', 'draw', 'frame',
  *  their look is the design system's, and the opacity dial reads as clutter
  *  in the corner (owner call, 2026-07-05). */
 const JZ_CARDS = new Set([
-  'doc-card', 'note-card', 'table-card', 'diagram-card', 'pdf-card',
+  'doc-card', 'note-card', 'table-card', 'diagram-card', 'pdf-card', 'sheet-card',
   'image-card', 'link-card', 'youtube-card',
 ]);
 
