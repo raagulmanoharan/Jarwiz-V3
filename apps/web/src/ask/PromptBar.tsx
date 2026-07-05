@@ -24,7 +24,7 @@ function shapeLabel(editor: Editor, shape: TLShape): string {
   let body = typeof p.text === 'string' ? p.text : '';
   if (!body && p.richText) { try { body = renderPlaintextFromRichText(editor, p.richText as TLRichText); } catch { /* ignore */ } }
   if (body.trim()) return clip(body.trim());
-  const kind: Record<string, string> = { 'doc-card': 'Doc', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram', 'image-card': 'Image', 'link-card': 'Link', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section', arrow: 'Connector', group: 'Diagram' };
+  const kind: Record<string, string> = { 'doc-card': 'Text', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram', 'image-card': 'Image', 'link-card': 'Link', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section', arrow: 'Connector', group: 'Diagram' };
   return kind[shape.type] ?? 'Card';
 }
 
@@ -50,6 +50,13 @@ export function PromptBar() {
   // chip until the ask is sent (or the chip dismissed).
   const [mode, setMode] = useState<AskShape | null>(null);
   const [modeMenu, setModeMenu] = useState(false);
+  const [modeIdx, setModeIdx] = useState(0);
+  // Inline filtering, Claude-Code style: while the input reads "/que…", the
+  // menu narrows to matching modes. Opened from the button, it shows all.
+  const modeQuery = value.startsWith('/') ? value.slice(1).trim().toLowerCase() : '';
+  const visibleModes = modeQuery
+    ? MODES.filter((m) => m.label.toLowerCase().startsWith(modeQuery) || m.shape.startsWith(modeQuery))
+    : MODES;
   const [coachDone, setCoachDone] = useState(() => {
     try { return localStorage.getItem(COACH_KEY) === '1'; } catch { return true; }
   });
@@ -117,8 +124,9 @@ export function PromptBar() {
   const pickMode = (shape: AskShape) => {
     setMode(shape);
     setModeMenu(false);
-    // If the menu was opened by typing "/", swallow that slash.
-    setValue((v) => (v.trim() === '/' ? '' : v));
+    setModeIdx(0);
+    // Swallow the "/query" that summoned the menu — it was a command, not prose.
+    setValue((v) => (v.startsWith('/') ? '' : v));
     requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input')?.focus());
   };
 
@@ -179,14 +187,8 @@ export function PromptBar() {
       ) : null}
 
       <div className="jz-promptbar" style={{ '--pb-max': '560px' } as CSSProperties}>
-        {ground.length > 0 || mode ? (
+        {ground.length > 0 ? (
           <div className="jz-pb-grounds">
-            {mode ? (
-              <span className="jz-pb-ground jz-pb-mode" title="Answer shape — picked with /">
-                {MODES.find((m) => m.shape === mode)?.label ?? mode}
-                <button className="jz-pb-ground-x" aria-label="Clear answer shape" onClick={() => setMode(null)}>✕</button>
-              </span>
-            ) : null}
             {ground.slice(0, 3).map((g) => (
               <span key={g.id} className="jz-pb-ground" title={g.label}>
                 {g.label}
@@ -205,45 +207,79 @@ export function PromptBar() {
           onChange={(e) => {
             const next = e.target.value;
             setValue(next);
-            // Typing "/" in an empty input opens the mode menu (a "/" mid-
-            // sentence is just a character).
-            if (next.trim() === '/' && !modeMenu) setModeMenu(true);
-            else if (modeMenu && next.trim() !== '/') setModeMenu(false);
+            setModeIdx(0);
+            // A leading "/" is a command: open the menu and filter it live as
+            // the user types (a "/" mid-sentence is just a character).
+            if (next.startsWith('/')) setModeMenu(true);
+            else if (modeMenu) setModeMenu(false);
           }}
           onKeyDown={(e) => {
             e.stopPropagation();
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!modeMenu) submit(); }
-            if (e.key === 'Escape') {
-              if (modeMenu) setModeMenu(false);
-              else (e.target as HTMLTextAreaElement).blur();
+            if (modeMenu) {
+              // Number keys quick-pick; arrows walk; Enter takes the highlight.
+              const n = Number(e.key);
+              if (Number.isInteger(n) && n >= 1 && n <= visibleModes.length) {
+                e.preventDefault();
+                pickMode(visibleModes[n - 1]!.shape);
+                return;
+              }
+              if (e.key === 'ArrowDown') { e.preventDefault(); setModeIdx((i) => Math.min(i + 1, visibleModes.length - 1)); return; }
+              if (e.key === 'ArrowUp') { e.preventDefault(); setModeIdx((i) => Math.max(i - 1, 0)); return; }
+              if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                if (visibleModes[modeIdx]) pickMode(visibleModes[modeIdx]!.shape);
+                return;
+              }
+              if (e.key === 'Escape') { setModeMenu(false); return; }
             }
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
+            if (e.key === 'Escape') (e.target as HTMLTextAreaElement).blur();
           }}
         />
 
         {modeMenu ? (
           <div className="jz-mode-menu" role="menu" aria-label="Answer shape">
             <span className="jz-mode-menu-title">Answer as…</span>
-            {MODES.map((m) => (
-              <button key={m.shape} className="jz-mode-item" role="menuitem" onClick={() => pickMode(m.shape)}>
-                <span className="jz-mode-item-label">{m.label}</span>
-                <span className="jz-mode-item-hint">{m.hint}</span>
-              </button>
-            ))}
+            {visibleModes.length === 0 ? (
+              <span className="jz-mode-item-hint" style={{ padding: '6px 8px' }}>No matching shape</span>
+            ) : (
+              visibleModes.map((m, i) => (
+                <button
+                  key={m.shape}
+                  className={`jz-mode-item${i === modeIdx ? ' jz-mode-item--active' : ''}`}
+                  role="menuitem"
+                  onMouseEnter={() => setModeIdx(i)}
+                  onClick={() => pickMode(m.shape)}
+                >
+                  <span className="jz-mode-item-num" aria-hidden>{i + 1}</span>
+                  <span className="jz-mode-item-label">{m.label}</span>
+                  <span className="jz-mode-item-hint">{m.hint}</span>
+                </button>
+              ))
+            )}
           </div>
         ) : null}
 
         <div className="jz-promptbar-footer">
           <div className="jz-promptbar-footer-left">
-            {/* The / button = the mode selector (same menu as typing "/").
-                The old dead + (attach) stays gone until it does something. */}
-            <button
-              className={`jz-promptbar-icon-btn${modeMenu ? ' jz-promptbar-icon-btn--active' : ''}`}
-              title="Answer shape (/)"
-              aria-label="Choose the answer's shape"
-              onClick={() => setModeMenu((v) => !v)}
-            >
-              <Slash size={16} strokeWidth={1.8} />
-            </button>
+            {/* The / button IS the mode selector; once a shape is picked the
+                chip takes its place (dismiss to hand the choice back to the
+                model). Same menu as typing "/" in the input. */}
+            {mode ? (
+              <span className="jz-pb-ground jz-pb-mode" title="Answer shape — picked with /">
+                {MODES.find((m) => m.shape === mode)?.label ?? mode}
+                <button className="jz-pb-ground-x" aria-label="Clear answer shape (the model decides)" onClick={() => setMode(null)}>✕</button>
+              </span>
+            ) : (
+              <button
+                className={`jz-promptbar-icon-btn${modeMenu ? ' jz-promptbar-icon-btn--active' : ''}`}
+                title="Answer shape (/)"
+                aria-label="Choose the answer's shape"
+                onClick={() => setModeMenu((v) => !v)}
+              >
+                <Slash size={16} strokeWidth={1.8} />
+              </button>
+            )}
           </div>
           <button
             className="jz-promptbar-send"

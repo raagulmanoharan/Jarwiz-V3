@@ -171,7 +171,7 @@ function sourceLabel(shape: TLShape): string {
   if (title) return title.length > 28 ? `${title.slice(0, 27)}…` : title;
   if (shape.type === 'pdf-card') return typeof p.name === 'string' ? String(p.name) : 'PDF';
   const fallback: Record<string, string> = {
-    'doc-card': 'Doc', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram',
+    'doc-card': 'Text', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram',
     'image-card': 'Image', 'link-card': 'Link', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section',
   };
   return fallback[shape.type] ?? 'Card';
@@ -580,7 +580,7 @@ const ARTEFACT_LABEL: Record<string, string> = {
   diagram: 'Diagram',
   affinity: 'Sticky notes',
   list: 'List',
-  doc: 'Doc',
+  doc: 'Text',
 };
 
 /** Keep the streamed draft — log it and drop the draft state (the card stays). */
@@ -591,7 +591,7 @@ export function finalizeDraft(editor: Editor): TLShapeId | null {
   logEvent(editor, {
     kind: 'artefact',
     label: d.logLabel ?? d.prompt,
-    detail: ARTEFACT_LABEL[d.shape] ?? 'Doc',
+    detail: ARTEFACT_LABEL[d.shape] ?? 'Text',
     shapeIds: [d.id, ...(d.groupIds ?? []), ...d.sourceIds],
   });
   clearDraft();

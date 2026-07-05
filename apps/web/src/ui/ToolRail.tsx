@@ -109,7 +109,7 @@ export function ToolRail() {
       <RailTool label="Pan (H)" active={toolId === 'hand'} onClick={() => editor.setCurrentTool('hand')}>
         <Hand {...ICON_PROPS} />
       </RailTool>
-      <RailTool label="New doc" active={false} onClick={() => spawnDocCard(editor)}>
+      <RailTool label="Text card" active={false} onClick={() => spawnDocCard(editor)}>
         <Type {...ICON_PROPS} />
       </RailTool>
       <RailTool label="Sticky note" active={false} onClick={() => spawnStickyNote(editor)}>

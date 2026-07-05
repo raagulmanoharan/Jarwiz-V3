@@ -2622,8 +2622,7 @@ body,
 .jz-mode-item {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 14px;
+  gap: 10px;
   padding: 7px 8px;
   border: none;
   border-radius: var(--jz-radius-xs);
@@ -2633,8 +2632,24 @@ body,
   text-align: left;
   transition: background var(--jz-dur-fast) var(--jz-ease-out);
 }
-.jz-mode-item:hover {
+.jz-mode-item--active {
   background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+}
+
+/* Number badge — press 1-5 to quick-pick while the menu is open. */
+.jz-mode-item-num {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--jz-radius-xs);
+  border: 1px solid var(--jz-hairline);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--jz-ink-400);
+  align-self: center;
 }
 .jz-mode-item-label {
   font-size: 13px;
@@ -2642,6 +2657,7 @@ body,
   color: var(--jz-ink-900);
 }
 .jz-mode-item-hint {
+  margin-left: auto;
   font-size: var(--jz-text-micro-size);
   color: var(--jz-ink-400);
 }
