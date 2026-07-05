@@ -32,7 +32,7 @@ VARY the shapes to fit the content — this is the whole point, don't make every
 
 These are Jarwiz's artefacts. Do NOT produce sticky notes — sticky notes are the USER's own annotation medium, never something you author. A set of tips, ideas, options, or review points belongs in a "list" or "table", not stickies.
 
-Each card must be genuinely useful and DISTINCT — no two cover the same ground, no filler. Design the SET like a real board: e.g. for a trip — a stays comparison table, a day-by-day plan doc, top picks as a list, a budget table. Ground every card in the actual board content and subject.
+Each card must be genuinely useful and DISTINCT — no two cover the same ground, no filler. Keep every card CONCISE and scannable — it's one card on a board, not a full essay; favour tight lists and compact tables over long prose so cards stay short. Design the SET like a real board: e.g. for a trip — a stays comparison table, a day-by-day plan doc, top picks as a list, a budget table. Ground every card in the actual board content and subject.
 
 Return ONLY a JSON array (no prose, no code fences) of ${MIN_CARDS}–${MAX_CARDS} objects, in the order they should be laid out:
 {"type": "doc"|"list"|"table", "title": string (short, 2–5 words), "prompt": string (a COMPLETE, self-contained instruction you will run to generate THIS card — specific, names the board's subject, says what the card should contain)}`;

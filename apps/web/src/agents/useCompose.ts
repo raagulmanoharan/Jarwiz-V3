@@ -4,12 +4,11 @@
  * (card.create / delta / table.cell) per slot, so composed cards are identical
  * to hand-typed ones.
  *
- * Layout is a SHELF PACKER that re-tidies on every card using measured sizes:
- * cards flow left-to-right and wrap to a new row when the row is full, and a
- * relayout pass runs whenever a card is created or finishes — so nothing ever
- * overlaps, whatever each card's final height turns out to be. Tables get a
- * width proportional to their column count so columns stay readable (not narrow
- * and tall).
+ * Layout: cards sit SIDE BY SIDE in one row at a common top edge, flowing left
+ * to right. Widths are fixed (doc = DOC_W, table ∝ column count) and compose
+ * cards are NOT marked "streaming" — so the page-shaping width-grow never fires
+ * and can't bump a neighbour. Fixed widths + shared top = cards can never
+ * overlap, whatever each one's final height.
  */
 
 import { useCallback, useRef, useState } from 'react';
@@ -18,7 +17,6 @@ import type { ComposeEvent } from '@jarwiz/shared';
 import { DOC_CARD_SIZE, TABLE_CARD_SIZE, type DocCardShape, type TableCardShape } from '../shapes';
 import { setShapeTitle } from '../shapes/shapeTitle';
 import { readSSE } from './sse';
-import { startStreaming, stopStreaming } from './streaming';
 import { gatherBoardCards } from './boardText';
 
 export type ComposePhase = 'idle' | 'planning' | 'building' | 'done' | 'error';
@@ -89,7 +87,6 @@ export function useCompose() {
           const title = titles.get(slotIdx);
           const shape = editor.getShape(id);
           if (title && shape) setShapeTitle(editor, shape, title);
-          startStreaming(id);
           relayout(); // place the newcomer after the finished cards
           if (!framed) { framed = true; frame(editor, created); }
           break;
@@ -116,7 +113,6 @@ export function useCompose() {
         }
         case 'card.done': {
           if (!slot?.cardId) break;
-          stopStreaming(slot.cardId);
           // A slot that produced no content (a rare generation miss) shouldn't
           // leave an empty husk on the board — drop it.
           const s = editor.getShape(slot.cardId);
@@ -153,7 +149,6 @@ export function useCompose() {
           setPhase('error');
         }
       });
-      created.forEach((id) => stopStreaming(id));
       // Sweep any husks — a slot whose generation errored before card.done can
       // leave a titled-but-empty card. Drop them so the board is all real cards.
       for (const id of [...created]) {
@@ -181,7 +176,6 @@ export function useCompose() {
       window.setTimeout(() => { relayout(); if (created.length) frame(editor, created); }, 900);
       setPhase((p) => (p === 'error' ? 'error' : 'done'));
     } catch (err) {
-      created.forEach((id) => stopStreaming(id));
       if ((err as Error).name !== 'AbortError') setPhase('error');
     } finally {
       if (abortRef.current === ac) abortRef.current = null;
@@ -197,9 +191,8 @@ export function useCompose() {
 }
 
 /** Lay the created cards SIDE BY SIDE in one row using their measured widths —
- *  each card at the same top edge, flowing left to right. Reading a board left
- *  to right beats scrolling a tall stack; the infinite canvas has the room.
- *  Position-independent widths mean this never overlaps, whatever the heights. */
+ *  each card at the same top edge, flowing left to right. Widths are fixed, so
+ *  this never overlaps, whatever the heights. */
 function shelfPack(editor: Editor, ids: TLShapeId[], originX: number, originY: number): void {
   let x = originX;
   for (const id of ids) {
