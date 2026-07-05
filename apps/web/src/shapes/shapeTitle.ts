@@ -14,10 +14,12 @@ const TITLE_PROP = new Set(['doc-card', 'diagram-card', 'link-card', 'youtube-ca
 const NAME_PROP = new Set(['pdf-card', 'image-card', 'frame']);
 
 /** Shape types that carry the outside title tag. Deliberately absent:
- *  stickies and diagrams need no labels (owner call 2026-07-05), and frames
- *  already draw tldraw's own name heading. */
+ *  stickies and diagrams need no labels (owner call 2026-07-05), frames
+ *  already draw tldraw's own name heading, and video cards show their title
+ *  in the header itself (owner call 2026-07-05 — no duplicate tag). Video
+ *  stays in TITLE_PROP above so grounding/search still read its title. */
 export const TITLED = new Set([
-  'doc-card', 'table-card', 'pdf-card', 'image-card', 'link-card', 'youtube-card',
+  'doc-card', 'table-card', 'pdf-card', 'image-card', 'link-card',
 ]);
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '');

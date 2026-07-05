@@ -99,10 +99,11 @@ function YouTubeCardBody({ shape }: { shape: YouTubeCardShape }) {
 
   return (
     <div className="jz-card">
-      {/* The header is the drag bar: pointer events fall through to the canvas. */}
+      {/* The header is the drag bar: pointer events fall through to the canvas.
+          It carries the video's title (no external tag — the header IS the
+          title, like a PDF's footer). */}
       <div className="jz-yt-header">
-        <span className="jz-yt-dot" />
-        <span className="jz-yt-title">{title || 'YouTube'}</span>
+        <span className="jz-yt-title">{title || 'Video'}</span>
         {/* One quiet metadata pill. "processed" = asks can use this video
             (transcript and/or frames); anything less reads as "processing" —
             the tooltip carries the honest detail. */}

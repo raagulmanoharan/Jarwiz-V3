@@ -18,6 +18,7 @@ const tldrawAssetUrls = getAssetUrlsByImport();
 import { useSync } from '@tldraw/sync';
 import { PromptBar } from './ask/PromptBar';
 import { CardActionBar } from './ask/CardActionBar';
+import { ProvenanceLayer } from './ask/ProvenanceLayer';
 import { ClarifyLayer } from './ask/ClarifyLayer';
 import { DraftControls } from './ask/DraftControls';
 import { RegenControls } from './ask/RegenControls';
@@ -56,6 +57,7 @@ function JarwizOverlay() {
       <HelpLayer />
 
       {/* Behavioural overlays — the ask/refine loop on cards. */}
+      <ProvenanceLayer />
       <EmptyState />
       <BoardEntry />
       <CardTitleTag />

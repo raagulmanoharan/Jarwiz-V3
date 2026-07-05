@@ -12,12 +12,10 @@
 
 import { useCallback, useRef, useState } from 'react';
 import {
-  createBindingId,
   createShapeId,
   renderPlaintextFromRichText,
   useEditor,
   type Editor,
-  type TLArrowShape,
   type TLRichText,
   type TLShape,
   type TLShapeId,
@@ -344,13 +342,11 @@ export function useAsk() {
         createdIds.push(id);
         const d = getDraft();
         if (!d) {
-          const arrowIds = contributingIds
-            .map((from) => createEdge(editor, from, id))
-            .filter(Boolean) as TLShapeId[];
+          recordSources(editor, id, contributingIds);
           setDraft({
             id,
             groupIds: [],
-            arrowIds,
+            arrowIds: [],
             status: 'streaming',
             prompt: trimmed,
             sourceIds,
@@ -467,11 +463,13 @@ export function useAsk() {
               });
             }
             if (pdfSourceId) setResponsePdfSource(id, pdfSourceId);
-            // Record what this answer was built from (show-your-work, 2.2).
+            // Record what this answer was built from (show-your-work, 2.2):
+            // the session store feeds "Based on:" labels, the card meta feeds
+            // the on-click lineage overlay (ProvenanceLayer).
             setProvenance(id, contributingIds, sourceLabels);
+            recordSources(editor, id, contributingIds);
             startStreaming(id);
-            const arrowIds = contributingIds.map((from) => createEdge(editor, from, id)).filter(Boolean) as TLShapeId[];
-            setDraft({ id, arrowIds, status: 'streaming', prompt: trimmed, logLabel: opts?.logLabel, sourceIds, shape: event.shape, pdfSourceId });
+            setDraft({ id, arrowIds: [], status: 'streaming', prompt: trimmed, logLabel: opts?.logLabel, sourceIds, shape: event.shape, pdfSourceId });
             frameCard(editor, [id], sourceIds);
             break;
           }
@@ -723,31 +721,15 @@ export function placeInLane(
   return { x, y: laneTop };
 }
 
-/** A quiet provenance link — a gently curved, dotted, low-key arrow that only
- *  stands out when you click it. Returns the arrow id (for discard). */
-function createEdge(editor: Editor, fromId: TLShapeId, toId: TLShapeId): TLShapeId | null {
-  if (!editor.getShape(fromId) || !editor.getShape(toId)) return null;
-  const arrowId = createShapeId();
-  editor.createShape<TLArrowShape>({
-    id: arrowId,
-    type: 'arrow',
-    props: { color: 'grey', size: 's', dash: 'dotted', bend: 28, arrowheadStart: 'none', arrowheadEnd: 'arrow' },
-  });
-  editor.createBindings([
-    {
-      id: createBindingId(),
-      type: 'arrow',
-      fromId: arrowId,
-      toId: fromId,
-      props: { terminal: 'start', normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false, snap: 'none' },
-    },
-    {
-      id: createBindingId(),
-      type: 'arrow',
-      fromId: arrowId,
-      toId: toId,
-      props: { terminal: 'end', normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false, snap: 'none' },
-    },
-  ]);
-  return arrowId;
+/** Record an answer's lineage on the card itself (durable, survives reload):
+ *  `meta.jzSources` holds the ids of the cards it was built from. The canvas
+ *  no longer carries persistent arrow shapes — ProvenanceLayer draws a subtle
+ *  hairline only for the card you click (owner call, 2026-07-05). */
+export const PROV_META_KEY = 'jzSources';
+function recordSources(editor: Editor, cardId: TLShapeId, sourceIds: TLShapeId[]): void {
+  const card = editor.getShape(cardId);
+  if (!card) return;
+  const ids = sourceIds.filter((id) => id !== cardId && editor.getShape(id));
+  if (ids.length === 0) return;
+  editor.updateShape({ id: cardId, type: card.type, meta: { ...card.meta, [PROV_META_KEY]: ids } });
 }
