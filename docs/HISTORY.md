@@ -403,3 +403,44 @@ every primitive reads as one visual family.
   rather than raw shape count; PDFs join scans as capped extracted text;
   and a scan card's own pills phrase themselves as GENERATION — one per
   named gap ("Draft the success metrics") — closing diagnose → generate.
+
+## 2026-07-05 (evening) — Jarwiz reaches the live web
+
+- **Web access on every ask** via Anthropic server tools
+  (`web_search_20260209` / `web_fetch_20260209`, declared per-generation in
+  `apps/server/src/webTools.ts`): prose/list/table answers and table fills
+  can search and fetch today's pages, cited inline as markdown links with
+  closing "Source:" lines. Handle `stop_reason: "pause_turn"` by replaying
+  the assistant content (bounded continuations) — server tools legitimately
+  pause long turns. The keyless dev path mirrors this with the Claude CLI's
+  own WebSearch/WebFetch (`--allowed-tools`, longer timeout); it works but
+  emits no mid-run statuses, so only the API path narrates
+  "searching the web…" on the avatar.
+- **Deep research is an intent, not a button.** A research-sounding ask on
+  any card ("what do guests say", "find reviews", "is this legit",
+  "research this") upgrades itself to a dossier pass: subject-adaptive
+  mission (listing → reviews/prices; repo → maturity/traction; paper →
+  credibility/counter-sources), 10 searches + 8 fetches, longer output,
+  5-minute sidecar window. First ✦ Research shipped as a card-bar button on
+  link cards; owner killed it same session — the prompt IS the mode. The
+  intent regex is tested against every canned prompt in the app so a
+  refine-bar "Go deeper" can never trigger a 5-minute run.
+- Verified live twice: a hotel link surfaced cross-platform reviews and the
+  fact the property was REBRANDED (Leela → St. Regis, 2022) as the lead
+  verdict; a repo link chose entirely different angles and even
+  fact-checked the probe's own typo'd URL.
+- **Long answers grow page-ward**: while streaming, a doc card whose
+  content height passes 1.4× its width widens a step (416 → … → 800)
+  before growing tall — dossiers land page-shaped, not skyscraper-shaped.
+  Width growth only runs while streaming so user-set widths are never
+  fought over.
+- **Formatting parity locked in**: in-card markdown headings flattened to
+  body size (weight-only hierarchy — the format tool has no type scale, so
+  cards never show text a user couldn't produce); `---` (and em-dash
+  autocorrect variants) renders the system hairline divider — typing it is
+  the divider control; bare URLs in card text are clickable, protocol
+  stripped and clipped at 48 chars so tracking tails can't stretch the
+  measure.
+- Probe gotcha for future sessions: a fresh board shows the board-entry
+  dialog (`jz-boardentry-scrim`) which swallows prompt-bar clicks — press
+  Escape first, or create a shape (any shape auto-dismisses it).
