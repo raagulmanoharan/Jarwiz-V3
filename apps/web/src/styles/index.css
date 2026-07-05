@@ -2364,10 +2364,11 @@ body,
 }
 
 .jz-diagram-title {
-  font-family: var(--jz-font-display);
+  /* One family on every card — bolder text, never a different font. */
+  font-family: var(--jz-font-ui);
   font-size: var(--jz-text-heading-size);
   line-height: var(--jz-text-heading-lh);
-  font-weight: 560;
+  font-weight: 650;
   color: var(--jz-ink-900);
   overflow: hidden;
   text-overflow: ellipsis;
