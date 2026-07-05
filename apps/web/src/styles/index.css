@@ -2807,12 +2807,15 @@ body,
 
 .jz-cardbar-group { position: relative; }
 
-/* Sticky colour switcher — the muted palette as small round swatches. */
-.jz-cardbar-swatches {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 7px;
+/* Sticky colour switcher — a dropdown off the bar: the button shows the
+ * current tint as a dot; the menu lays the muted-primary palette out as a
+ * row of swatches. */
+.jz-cardbar-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--jz-radius-pill);
+  border: 1px solid var(--jz-hairline-strong);
+  display: inline-block;
 }
 
 .jz-cardbar-swatch {
@@ -2881,6 +2884,17 @@ body,
   box-shadow: var(--jz-e4);
   border: 1px solid var(--jz-hairline);
   animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
+}
+
+/* Tint variant: the palette as one row of swatches (after the base rule so
+ * the row direction wins the cascade). */
+.jz-cardbar-menu--tints {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  min-width: 0;
+  width: max-content;
 }
 
 .jz-cardbar-item {

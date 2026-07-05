@@ -40,8 +40,11 @@ export const NOTE_CARD_SIZE = { w: 220, h: 220 };
  *  notes, not artifacts demanding attention). */
 export const NOTE_PAPER = '#f1ece0';
 
-/** Muted paper tints, cycled by index — desaturated sand/sage/mist/clay. */
-export const AFFINITY_COLORS = ['#ece5d3', '#e2e7e0', '#e0e5ec', '#eae0e0', '#e6e1ec', '#eae4da'] as const;
+/** Muted primary tints, cycled by index — each hue clearly readable (red /
+ *  orange / yellow / green / blue / purple) but softened to sit inside the
+ *  Flora chrome. The earlier palette was so desaturated the colours read as
+ *  one (owner call 2026-07-05). */
+export const AFFINITY_COLORS = ['#eaccc4', '#f0dcbe', '#eee6b8', '#cfe0cb', '#c9dbe9', '#dcd2e8'] as const;
 
 /** Pick a stable cluster tint by index. */
 export function affinityColor(index: number): string {

@@ -30,7 +30,7 @@ export function CardActionBar() {
   const { diagram } = useDiagram();
   const { tidy } = useTidy();
   const { cluster } = useCluster();
-  const [menu, setMenu] = useState<null | 'refine'>(null);
+  const [menu, setMenu] = useState<null | 'refine' | 'tint'>(null);
 
   // One or more askable shapes selected → the bar lights up (same place always).
   const sel = useValue(
@@ -140,16 +140,33 @@ export function CardActionBar() {
         </button>
       ) : null}
       {sticky ? (
-        <div className="jz-cardbar-swatches" role="group" aria-label="Sticky colour">
-          {STICKY_TINTS.map((c) => (
-            <button
-              key={c}
-              className={`jz-cardbar-swatch${stickyColor === c ? ' jz-cardbar-swatch--on' : ''}`}
-              style={{ background: c }}
-              aria-label="Sticky colour"
-              onClick={() => editor.updateShape<NoteCardShape>({ id, type: 'note-card', props: { color: c } })}
-            />
-          ))}
+        <div className="jz-cardbar-group">
+          <button
+            className={`jz-cardbar-btn${menu === 'tint' ? ' jz-cardbar-btn--open' : ''}`}
+            aria-label="Sticky colour"
+            title="Sticky colour"
+            onClick={() => setMenu(menu === 'tint' ? null : 'tint')}
+          >
+            <span className="jz-cardbar-dot" style={{ background: stickyColor ?? NOTE_PAPER }} aria-hidden />
+            <span className="jz-cardbar-caret" aria-hidden>▾</span>
+          </button>
+          {menu === 'tint' ? (
+            <div className="jz-cardbar-menu jz-cardbar-menu--tints" role="menu" aria-label="Sticky colour">
+              {STICKY_TINTS.map((c) => (
+                <button
+                  key={c}
+                  className={`jz-cardbar-swatch${stickyColor === c ? ' jz-cardbar-swatch--on' : ''}`}
+                  style={{ background: c }}
+                  role="menuitem"
+                  aria-label="Sticky colour"
+                  onClick={() => {
+                    setMenu(null);
+                    editor.updateShape<NoteCardShape>({ id, type: 'note-card', props: { color: c } });
+                  }}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
       {transforms.length > 0 ? (
