@@ -941,6 +941,9 @@ body,
   overflow: auto;
 }
 .jz-sheet-table {
+  /* Fill the card's width: with few columns the browser stretches them to
+   * 100%; with many they hit their min-width and the stage scrolls. */
+  width: 100%;
   border-collapse: collapse;
   font-size: 12px;
   line-height: 1.35;
@@ -950,9 +953,15 @@ body,
 .jz-sheet-table td {
   border: 1px solid var(--jz-hairline);
   padding: 3px 8px;
-  max-width: 220px;
+  min-width: 88px;
+  max-width: 340px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* The row-number gutter stays tight — it's chrome, not a data column. */
+.jz-sheet-table .jz-sheet-rownum {
+  min-width: 0;
+  width: 34px;
 }
 /* The header row + the row-number gutter read as chrome, not data. */
 .jz-sheet-table .jz-sheet-th {

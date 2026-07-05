@@ -344,7 +344,7 @@ export function CardActionBar() {
       {transforms.length > 0 ? (
         <div className="jz-cardbar-group">
           <button className={`jz-cardbar-btn${menu === 'refine' ? ' jz-cardbar-btn--open' : ''}`} onClick={() => setMenu(menu === 'refine' ? null : 'refine')}>
-            ✦ Refine <span className="jz-cardbar-caret" aria-hidden>▾</span>
+            ✦ Actions <span className="jz-cardbar-caret" aria-hidden>▾</span>
           </button>
           {menu === 'refine' ? (
             <div className="jz-cardbar-menu" role="menu">

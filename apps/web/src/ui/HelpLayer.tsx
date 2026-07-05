@@ -58,13 +58,13 @@ const TOUR: TourStep[] = [
   },
   {
     anchor: 'cardbar',
-    title: 'Refine any card',
-    body: 'Select a card and this action bar floats above it — make it shorter, go deeper, turn it into a table or flowchart, or regenerate it.',
+    title: 'Card actions',
+    body: 'Select a card and this action bar floats above it — under Actions you can make it shorter, go deeper, turn it into a table or flowchart, or regenerate it.',
   },
   {
     anchor: 'center',
     title: 'Turn notes into themes',
-    body: 'Select three or more sticky notes, then Refine → Cluster & summarise. Jarwiz sorts them into named themes and writes the summary for you.',
+    body: 'Select three or more sticky notes, then Actions → Cluster & summarise. Jarwiz sorts them into named themes and writes the summary for you.',
   },
   {
     anchor: 'topbar',
@@ -78,7 +78,7 @@ const FEATURES: Array<{ glyph: string; title: string; body: string }> = [
   { glyph: '⬓', title: 'Drop PDFs', body: 'Jarwiz reads them and suggests starting questions.' },
   { glyph: '✦', title: 'Ask & create', body: 'Type in the prompt bar; select a card to ground the answer on it.' },
   { glyph: '⚖', title: 'Scan the board', body: 'Find tensions between cards, or surface what you are missing.' },
-  { glyph: '↺', title: 'Refine any card', body: 'Shorten, deepen, reformat as a table or flowchart, or regenerate.' },
+  { glyph: '↺', title: 'Card actions', body: 'Shorten, deepen, reformat as a table or flowchart, summarise, or regenerate.' },
   { glyph: '◳', title: 'Cluster & summarise', body: 'Turn a wall of stickies into named themes with one click.' },
 ];
 

@@ -7,7 +7,7 @@
  * The grid renders as a scrollable read-only table; asks ground on the cells.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   HTMLContainer,
   Rectangle2d,
@@ -15,6 +15,7 @@ import {
   T,
   resizeBox,
   stopEventPropagation,
+  useEditor,
   type RecordProps,
   type TLResizeInfo,
   type TLShape,
@@ -94,11 +95,18 @@ export class SheetCardShapeUtil extends ShapeUtil<SheetCardShape> {
   }
 }
 
+/** Fit the card's height to the grid so a short sheet isn't a tall empty
+ *  card — capped, and only ONCE per shape (a later user resize is respected). */
+const MAX_FIT_H = 560;
+
 function SheetCardBody({ shape }: { shape: SheetCardShape }) {
+  const editor = useEditor();
   const { assetId, name, status } = shape.props;
   const [sheets, setSheets] = useState<Grid[] | null>(null);
   const [active, setActive] = useState(0);
   const [failed, setFailed] = useState(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const fittedRef = useRef(false);
 
   useEffect(() => {
     if (status !== 'ready' || !assetId) return;
@@ -119,6 +127,20 @@ function SheetCardBody({ shape }: { shape: SheetCardShape }) {
 
   const grid = sheets?.[Math.min(active, (sheets?.length ?? 1) - 1)];
 
+  // Once the first grid renders, shrink the card's height to hug the content
+  // (up to a cap) so a 7-row sheet isn't a tall, empty box.
+  useEffect(() => {
+    if (fittedRef.current || !grid || !scrollRef.current) return;
+    const table = scrollRef.current.querySelector('.jz-sheet-table') as HTMLElement | null;
+    if (!table) return;
+    fittedRef.current = true;
+    const target = Math.max(180, Math.min(Math.ceil(table.scrollHeight) + FOOTER_H + 8, MAX_FIT_H));
+    const cur = editor.getShape(shape.id);
+    if (cur && Math.abs((cur.props as SheetCardProps).h - target) > 4) {
+      editor.updateShape<SheetCardShape>({ id: shape.id, type: 'sheet-card', props: { h: target } });
+    }
+  }, [grid, editor, shape.id]);
+
   return (
     <div className="jz-card jz-sheet-card">
       <div className="jz-sheet-stage" onPointerDown={status === 'ready' ? stopEventPropagation : undefined}>
@@ -131,7 +153,7 @@ function SheetCardBody({ shape }: { shape: SheetCardShape }) {
         ) : !grid ? (
           <SheetMessage label="Reading…" spinner />
         ) : (
-          <div className="jz-sheet-scroll">
+          <div className="jz-sheet-scroll" ref={scrollRef}>
             <table className="jz-sheet-table">
               <tbody>
                 {grid.rows.map((row, ri) => (
