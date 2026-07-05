@@ -2129,14 +2129,16 @@ body,
   gap: 0;
 }
 
+/* A blank source line reads as a half-row breath, not a full empty row —
+ * paragraph rhythm stays tight (owner call, 2026-07-05). */
 .jz-md-blank {
-  height: var(--jz-text-body-lh);
+  height: calc(var(--jz-text-body-lh) / 2);
 }
 
 /* Space before block-level elements that follow something else */
 .jz-markdown > * + .jz-md-h1,
 .jz-markdown > * + .jz-md-h2,
-.jz-markdown > * + .jz-md-h3 { margin-top: var(--jz-space-5); }
+.jz-markdown > * + .jz-md-h3 { margin-top: var(--jz-space-3); }
 .jz-markdown > .jz-md-p + .jz-md-ul,
 .jz-markdown > .jz-md-ul + .jz-md-p { margin-top: var(--jz-space-3); }
 
@@ -2193,20 +2195,34 @@ body,
 }
 
 /* Markdown tables inside a doc card — the table card's quiet grid language:
- * hairline rules, bolder header band, body-size cells. */
+ * hairline rules, bolder header band, rounded frame. border-collapse breaks
+ * corner radii, so the frame is the table's own border and cells draw only
+ * their inner right/bottom hairlines. */
 .jz-md-table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   width: 100%;
   margin: var(--jz-space-2) 0;
   font-size: var(--jz-text-body-size);
   line-height: var(--jz-text-body-lh);
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-sm);
+  overflow: hidden;
 }
 .jz-md-table th,
 .jz-md-table td {
-  border: 1px solid var(--jz-hairline);
+  border-right: 1px solid var(--jz-hairline);
+  border-bottom: 1px solid var(--jz-hairline);
   padding: var(--jz-space-2) var(--jz-space-3);
   text-align: left;
   vertical-align: top;
+}
+.jz-md-table th:last-child,
+.jz-md-table td:last-child {
+  border-right: none;
+}
+.jz-md-table tr:last-child td {
+  border-bottom: none;
 }
 .jz-md-table th {
   font-weight: 650;
@@ -2216,10 +2232,10 @@ body,
   color: var(--jz-ink-700);
 }
 
-/* Images in card text — bounded by the card, softly rounded. */
+/* Images in card text — fill the card's width, softly rounded. */
 .jz-md-img {
   display: block;
-  max-width: 100%;
+  width: 100%;
   border-radius: var(--jz-radius-sm);
   margin: var(--jz-space-2) 0;
 }
