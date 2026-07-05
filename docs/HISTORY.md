@@ -484,3 +484,35 @@ every primitive reads as one visual family.
   extensionless).
 - Probe lesson repeated: "Compare…" routes to a TABLE — a probe watching
   for a doc-card reports null while the right artifact sits on the board.
+
+## 2026-07-05 (late night) — 5-persona dogfood + the fixes it surfaced
+
+- Ran an end-to-end pass as PM / student / creator / designer / traveller,
+  each hitting a different capability cluster (real headless Chromium on the
+  production build, real clicks/typing/upload, real sidecar model calls).
+  Wins: link-grounded student summary + cited live research; the creator's
+  video dissection read cut-rhythm/palette/typography straight off sampled
+  frames; the traveller's hotel query auto-escalated to the cited dossier.
+- Four real breakpoints found and fixed the same session:
+  1. **Image cards were vision-blind on the sidecar** (video frames weren't).
+     Fixed by staging image-card base64 into the sidecar's temp frame dir and
+     Reading it — dropped images now get a real critique in dev. Verified.
+  2. **Comparison tables wrote "Not covered in this source" for an analytical
+     column the user asked for** (Risk). TABLE_SYSTEM now reasons judgement
+     columns from the source; placeholder reserved for absent FACTUAL columns.
+  3. **Leaked CLI narration** ("Have enough confirmed info now.") opened
+     answers and stole the doc title slot — cleanOutput now peels leading
+     agentic-preamble lines.
+  4. **"What am I missing" hidden at 2 cards** — threshold ≥3 → ≥2.
+  ("&amp; in a cell" was a false alarm — the notification pane HTML-escaped a
+  plain ampersand.)
+- Probe gotcha logged: the persisted board (shared persistence key)
+  accumulates shapes across probe runs; a wedged record makes a later
+  createShape throw a validation error. Wrap createShape and/or hard-reset
+  the store between runs.
+- Link-access boundary (owner asked re: LinkedIn): public
+  articles/blogs/docs/GitHub/YouTube/PDF → full read; login-walled
+  (LinkedIn, X, IG, FB) → NO (auth stops both our scrape and the model's
+  web_fetch); paywalls → headline/description only; bot-walled (Airbnb) →
+  thin scrape but research-around fills the gap. LinkedIn is the clearest
+  "can't" today; honest fallback = a "can't read this" badge + paste-the-text.
