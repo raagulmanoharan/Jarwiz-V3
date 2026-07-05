@@ -8,6 +8,7 @@ import { renderPlaintextFromRichText, type Editor, type TLRichText, type TLShape
 
 export const ASKABLE = new Set([
   'pdf-card', 'doc-card', 'table-card', 'diagram-card', 'note-card', 'image-card', 'link-card',
+  'youtube-card',
   'geo', 'text', 'note', 'arrow', 'frame', 'group',
 ]);
 
@@ -39,6 +40,10 @@ export function hasAskableContent(editor: Editor, shape: TLShape | undefined): b
     case 'image-card':
       return Boolean(str(p.src));
     case 'link-card':
+      return Boolean(str(p.url));
+    case 'youtube-card':
+      // The URL is enough: transcript-less videos still ground honestly
+      // (title-only, clearly stated) rather than being silently dropped.
       return Boolean(str(p.url));
     case 'frame':
     case 'group':
