@@ -15,12 +15,13 @@ export interface Machine {
   blurb: string;
   /** lucide-react icon name, resolved in the palette. */
   icon: string;
-  /** The card shape the analysis lands in (server forces the same). */
-  output: AskShape;
+  /** The output the machine produces — a single card shape, or 'board' to fan
+   *  out into a framework of several cards (server drives both). */
+  output: AskShape | 'board';
 }
 
 export const MACHINES: Machine[] = [
-  { id: 'swot', name: 'SWOT Analysis', blurb: 'Researched, cited strengths/weaknesses/opportunities/threats', icon: 'Grid2x2', output: 'doc' },
+  { id: 'swot', name: 'SWOT Analysis', blurb: 'Researched SWOT + TOWS, fanned into a board', icon: 'Grid2x2', output: 'board' },
   { id: 'competitive', name: 'Competitive Analysis', blurb: 'Web-researched comparison vs real competitors', icon: 'Swords', output: 'table' },
   { id: 'risk', name: 'Risk Assessment', blurb: 'Researched risks, likelihood, impact, mitigation', icon: 'ShieldAlert', output: 'table' },
   { id: 'proscons', name: 'Pros & Cons', blurb: 'Weigh the case for and against', icon: 'Scale', output: 'table' },

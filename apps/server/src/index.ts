@@ -33,6 +33,8 @@ import { discoverResources } from './discover.js';
 import { reviewBoard } from './notice.js';
 import { streamCompose } from './compose.js';
 import { annotateBoard } from './annotate.js';
+import { getMachine } from './machines.js';
+import { streamMachineBoard } from './machineBoard.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset, sniffMime } from './assets.js';
 import { proposeSeedPrompts, streamAsk } from './ask.js';
 import type { AnalyzeCard, AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ReviseRequest } from '@jarwiz/shared';
@@ -552,10 +554,17 @@ app.post('/api/compose', async (c) => {
       }))
     : [];
   const intent = typeof raw.intent === 'string' ? raw.intent.slice(0, 400) : undefined;
+  const machine = getMachine(typeof (raw as { machineId?: unknown }).machineId === 'string' ? (raw as { machineId: string }).machineId : undefined);
   return streamSSE(c, async (stream) => {
     const signal = c.req.raw.signal;
     try {
-      for await (const event of streamCompose({ board, intent }, signal)) {
+      // A board Thinking Machine fans its analysis into a framework of cards; the
+      // generic planner handles a free-form "plan my …" fan-out.
+      const events =
+        machine && machine.output === 'board'
+          ? streamMachineBoard(machine, intent ?? '', signal)
+          : streamCompose({ board, intent }, signal);
+      for await (const event of events) {
         await stream.writeSSE({ data: JSON.stringify(event) });
       }
     } catch (error) {

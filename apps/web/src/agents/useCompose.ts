@@ -42,7 +42,7 @@ export function useCompose() {
   const [phase, setPhase] = useState<ComposePhase>('idle');
   const abortRef = useRef<AbortController | null>(null);
 
-  const run = useCallback(async (intent?: string) => {
+  const run = useCallback(async (intent?: string, opts?: { machineId?: string; anchorId?: TLShapeId }) => {
     if (phase === 'planning' || phase === 'building') return;
     const board = gatherBoardCards(editor);
     if (board.length === 0 && !intent?.trim()) return;
@@ -51,10 +51,12 @@ export function useCompose() {
     abortRef.current = ac;
     setPhase('planning');
 
-    // Composition origin: a fresh strip to the right of everything on the board.
+    // Origin: beside the anchor (a machine block) when one's given, else a fresh
+    // strip to the right of everything on the board.
+    const anchor = opts?.anchorId ? editor.getShapePageBounds(opts.anchorId) : null;
     const bounds = editor.getCurrentPageBounds();
-    const originX = bounds ? bounds.maxX + 120 : editor.getViewportPageBounds().minX + 80;
-    const originY = bounds ? bounds.minY : editor.getViewportPageBounds().minY + 80;
+    const originX = anchor ? anchor.maxX + 120 : bounds ? bounds.maxX + 120 : editor.getViewportPageBounds().minX + 80;
+    const originY = anchor ? anchor.minY : bounds ? bounds.minY : editor.getViewportPageBounds().minY + 80;
 
     const titles = new Map<number, string>();
     const slots = new Map<number, Slot>();
@@ -135,7 +137,7 @@ export function useCompose() {
       const res = await fetch('/api/compose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ board, intent }),
+        body: JSON.stringify({ board, intent, machineId: opts?.machineId }),
         signal: ac.signal,
       });
       if (!res.ok || !res.body) throw new Error(`Compose failed (${res.status})`);

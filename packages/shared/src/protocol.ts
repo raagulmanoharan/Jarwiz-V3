@@ -509,6 +509,9 @@ export interface ComposeRequest {
   board: AnalyzeCard[];
   /** Optional explicit steer ("plan my Goa weekend"); else inferred from board. */
   intent?: string;
+  /** When set, run this Thinking Machine's BOARD skill on `intent` (the typed
+   *  subject) instead of the generic board planner. See server machineBoard.ts. */
+  machineId?: string;
 }
 
 /** SSE for a compose run: the plan up front, then each card's Ask events

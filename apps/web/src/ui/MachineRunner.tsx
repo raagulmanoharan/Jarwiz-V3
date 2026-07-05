@@ -9,14 +9,17 @@
 import { useEffect } from 'react';
 import { useEditor } from 'tldraw';
 import { useAsk } from '../ask/useAsk';
+import { useCompose } from '../agents/useCompose';
 import { MACHINES } from '../machines/catalog';
 import { getMachineRun, subscribeMachineRun } from '../machines/runStore';
 import { useSyncExternalStore } from 'react';
+import type { AskShape } from '@jarwiz/shared';
 import type { MachineCardShape } from '../shapes';
 
 export function MachineRunner() {
   const editor = useEditor();
   const { ask } = useAsk();
+  const { run: compose } = useCompose();
   const req = useSyncExternalStore(subscribeMachineRun, getMachineRun, getMachineRun);
 
   useEffect(() => {
@@ -29,17 +32,24 @@ export function MachineRunner() {
     if (!machine || !subject) return;
 
     editor.updateShape<MachineCardShape>({ id: req.id, type: 'machine-card', props: { status: 'running' } });
-    // The skill (system prompt + research budget) lives server-side; we send the
-    // subject + the machine id, and the server runs that machine's skill.
-    void ask(subject, [req.id], {
-      machineId: machine.id,
-      forceShape: machine.output,
-      logLabel: `${machine.name}: ${subject}`,
-    }).finally(() => {
+    const finish = () => {
       if (editor.getShape(req.id)) {
         editor.updateShape<MachineCardShape>({ id: req.id, type: 'machine-card', props: { status: 'done' } });
       }
-    });
+    };
+
+    // The skill (system prompt + research budget) lives server-side. A 'board'
+    // machine fans out into several cards beside the block (compose); everything
+    // else lands as one card (ask). Either way the subject + machine id go up.
+    if (machine.output === 'board') {
+      void compose(subject, { machineId: machine.id, anchorId: req.id }).finally(finish);
+    } else {
+      void ask(subject, [req.id], {
+        machineId: machine.id,
+        forceShape: machine.output as AskShape,
+        logLabel: `${machine.name}: ${subject}`,
+      }).finally(finish);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [req?.nonce]);
 

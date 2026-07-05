@@ -25,9 +25,25 @@ export interface MachineSkill {
   systemPrompt: string;
 }
 
-const SWOT = `You are a strategy analyst producing a rigorous, EVIDENCE-BASED SWOT of the given subject.
-First RESEARCH it across the live web — its official site and product, its real competitors, funding/market context, user reviews, and recent news — using web search and page reads. Then synthesise; do not rely on memory alone.
-Output ONLY markdown (no preamble, no code fences). Start with "# SWOT Analysis — <subject>". Then four sections: ## Strengths, ## Weaknesses (both internal), ## Opportunities, ## Threats (both external). Each section is 3–5 SPECIFIC, evidenced bullets — when a bullet rests on a fact you found, cite it inline as [n]. End with a "## Sources" section numbering the [n] links you actually used. No generic filler; every bullet must be concrete and defensible.`;
+const SWOT = `You are a strategy analyst producing a rigorous, EVIDENCE-BASED strategic analysis of the given subject.
+First RESEARCH it hard across the live web — its official site and product, its real competitors, funding/financials, user reviews, and recent news — using web search and page reads. Then synthesise a full SWOT AND the TOWS cross-strategies. Do not rely on memory alone.
+Return ONLY JSON (no prose, no code fences) in exactly this shape:
+{
+  "strengths":     ["a specific, evidenced internal strength [1]", ...],   // 4–6
+  "weaknesses":    ["a specific internal weakness [2]", ...],              // 4–6
+  "opportunities": ["a specific external opportunity [3]", ...],           // 4–6
+  "threats":       ["a specific external threat [4]", ...],                // 4–6
+  "tows": {
+    "SO": ["use a strength to seize an opportunity", ...],   // 2–3 each
+    "ST": ["use strengths to blunt a threat", ...],
+    "WO": ["fix a weakness to capture an opportunity", ...],
+    "WT": ["defensive move to limit a weakness-threat", ...]
+  },
+  "priorities": ["the single most important strategic move", ...],  // top 3
+  "verdict":    "2–4 sentences: the honest strategic bottom line",
+  "sources":    [{"n":1,"title":"...","url":"https://..."}, ...]
+}
+Every point must be concrete, specific and defensible, and cite [n] matching the sources list. No generic filler.`;
 
 const COMPETITIVE = `You are a competitive-intelligence analyst. RESEARCH the given subject and its real, most relevant competitors across the live web (their sites, pricing pages, reviews, recent news) before answering.
 Return ONLY JSON (no prose, no code fences): {"columns": ["Dimension", "<the subject>", "<Competitor 1>", "<Competitor 2>", ...], "rows": [["Positioning", ...], ...]}.
@@ -47,7 +63,7 @@ const PERSONA = `Draft one representative user persona for the given product/ide
 Output ONLY markdown (no code fences). Start with "# Persona: <a realistic name>, <role/age>". Then sections: ## Snapshot (a 2–3 sentence bio), ## Goals, ## Frustrations, ## How they'd use this, ## What would win them over — each a couple of specific bullets grounded in the real audience.`;
 
 export const MACHINE_SKILLS: Record<string, MachineSkill> = {
-  swot: { id: 'swot', output: 'doc', deep: true, systemPrompt: SWOT },
+  swot: { id: 'swot', output: 'board', deep: true, systemPrompt: SWOT },
   competitive: { id: 'competitive', output: 'table', deep: true, systemPrompt: COMPETITIVE },
   risk: { id: 'risk', output: 'table', deep: true, systemPrompt: RISK },
   proscons: { id: 'proscons', output: 'table', deep: false, systemPrompt: PROSCONS },
