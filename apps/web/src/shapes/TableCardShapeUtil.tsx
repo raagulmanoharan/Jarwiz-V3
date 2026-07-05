@@ -218,7 +218,6 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
     });
   };
   const addColumn = () => {
-    const nextCols = columns.length + 1;
     editor.updateShape<TableCardShape>({
       id: shape.id,
       type: 'table-card',
@@ -226,7 +225,9 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
         columns: [...columns, ''],
         rows: rows.map((r) => [...r, '']),
         columnTypes: [...columns.map((_, i) => colType(i)), 'text'],
-        w: Math.max(shape.props.w, nextCols * MIN_COL_W),
+        // WIDEN by one column's worth — existing columns keep their exact
+        // width (squeezing them read as "fill changed my table").
+        w: Math.round(shape.props.w * (columns.length + 1) / Math.max(1, columns.length)),
       },
     });
   };

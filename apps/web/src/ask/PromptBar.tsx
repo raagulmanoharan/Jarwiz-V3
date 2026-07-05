@@ -152,6 +152,11 @@ export function PromptBar() {
   );
   const useStarter = (q: string) => {
     if (editingSole) {
+      // Hand off in READ mode: edit mode shows raw markdown and its height
+      // only ratchets up (the "long empty card" bug) — read mode renders the
+      // stream and fit-height can shrink the card to the final content.
+      editor.setEditingShape(null);
+      editor.select(editingSole);
       void ask(q, [editingSole], { targetId: editingSole, skipClarify: true });
       return;
     }
