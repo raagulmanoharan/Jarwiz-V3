@@ -12,6 +12,14 @@ import { DefaultStylePanel, useEditor, useValue } from 'tldraw';
  *  pre-flight even before anything is selected. */
 const CREATION_TOOLS = new Set(['geo', 'text', 'arrow', 'line', 'draw', 'frame', 'highlight', 'note']);
 
+/** The Jarwiz cards — none of them take tldraw styles (color/size/opacity);
+ *  their look is the design system's, and the opacity dial reads as clutter
+ *  in the corner (owner call, 2026-07-05). */
+const JZ_CARDS = new Set([
+  'doc-card', 'note-card', 'table-card', 'diagram-card', 'pdf-card',
+  'image-card', 'link-card', 'youtube-card',
+]);
+
 export function CanvasStylePanel() {
   const editor = useEditor();
   const show = useValue(
@@ -32,8 +40,8 @@ export function CanvasStylePanel() {
         }
         return false;
       };
-      // Doc-cards have no tldraw styles; generated diagrams keep their look.
-      if (selected.length > 0 && selected.every((s) => s.type === 'doc-card' || inFlowchart(s)))
+      // Jarwiz cards have no tldraw styles; generated diagrams keep their look.
+      if (selected.length > 0 && selected.every((s) => JZ_CARDS.has(s.type) || inFlowchart(s)))
         return false;
       return selected.length > 0 || CREATION_TOOLS.has(editor.getCurrentToolId());
     },
