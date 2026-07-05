@@ -1617,11 +1617,6 @@ body,
   background: color-mix(in srgb, var(--jz-ink-900) 9%, transparent);
 }
 
-.jz-table-rail-row {
-  height: 22px;
-  margin-top: 6px;
-  width: 100%;
-}
 
 .jz-table-rail-col {
   position: absolute;
@@ -1753,23 +1748,10 @@ body,
   opacity: 1;
 }
 
-.jz-table-del-row {
-  position: absolute;
-  top: 50%;
-  right: 2px;
-  transform: translateY(-50%);
-  opacity: 0;
-  background: var(--jz-card-surface);
-  transition: opacity var(--jz-dur-fast) var(--jz-ease-out);
-}
-.jz-table-row:hover .jz-table-del-row,
-.jz-table-del-row:focus-visible {
-  opacity: 1;
-}
 
 /* ── Typed columns: text / link / photo ─────────────────────────────────────
-   The type button lives in the edit header (click cycles); static headers of
-   non-text columns wear a quiet glyph; empty photo cells offer an upload. */
+   Types have no header UI (owner call) — they steer behavior only: link
+   columns enrich bare URLs, empty photo cells offer an upload. */
 .jz-table-cellupload {
   border: 1px dashed var(--jz-hairline-strong);
   border-radius: var(--jz-radius-sm);

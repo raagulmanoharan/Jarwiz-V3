@@ -208,11 +208,15 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
     next[row][col] = value;
     editor.updateShape<TableCardShape>({ id: shape.id, type: 'table-card', props: { rows: next } });
   };
-  const addRow = () => {
-    editor.updateShape<TableCardShape>({
-      id: shape.id,
-      type: 'table-card',
-      props: { rows: [...rows, columns.map(() => '')] },
+  /** Insert an empty row at `at` and put the caret in its first cell —
+   *  Shift+Enter's landing spot (rows have no add/delete chrome at all). */
+  const insertRow = (at: number) => {
+    const next = rows.map((r) => [...r]);
+    next.splice(at, 0, columns.map(() => ''));
+    editor.updateShape<TableCardShape>({ id: shape.id, type: 'table-card', props: { rows: next } });
+    requestAnimationFrame(() => {
+      const cells = document.querySelectorAll<HTMLTextAreaElement>('.jz-table-cell.jz-table-input');
+      cells[at * columns.length]?.focus();
     });
   };
   const addColumn = () => {
@@ -259,12 +263,31 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
   const hasEmptyCells = rows.some((r) => r.some((c) => !c.trim()));
   const showNudge = isEditing && paused && hasEmptyCells && !isFilling;
 
-  const cellKeys = (e: React.KeyboardEvent) => {
+  const cellKeys = (e: React.KeyboardEvent, row?: number) => {
     // ⌘/Ctrl B·I·U — same operations as the format bar, on this cell.
     const marker = shortcutMarker(e);
     if (marker && e.currentTarget instanceof HTMLTextAreaElement) {
       e.preventDefault();
       formatControlledTextarea(e.currentTarget, (t, s, en) => toggleInline(t, s, en, marker));
+      return;
+    }
+    // Shift+Enter inserts a row below the current one (below the header →
+    // a first row). Rows need no chrome: this is the whole row model.
+    if (e.key === 'Enter' && e.shiftKey) {
+      e.preventDefault();
+      insertRow(row === undefined ? 0 : row + 1);
+      return;
+    }
+    // Backspace on a fully empty row removes the row (Notion-list style).
+    if (
+      e.key === 'Backspace' &&
+      row !== undefined &&
+      rows.length > 1 &&
+      (e.currentTarget as HTMLTextAreaElement).value === '' &&
+      rows[row]!.every((c) => !c.trim())
+    ) {
+      e.preventDefault();
+      removeRow(row);
       return;
     }
     if (e.key === 'Tab') resetPause();
@@ -274,10 +297,6 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
 
   // Edit chrome shows on selection too, not just in edit mode.
   const chrome = isEditing || isSelected;
-  const addRowAndEdit = () => {
-    addRow();
-    if (!isEditing) editor.setEditingShape(shape.id);
-  };
   const addColumnAndEdit = () => {
     addColumn();
     if (!isEditing) editor.setEditingShape(shape.id);
@@ -343,7 +362,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
                   style={{ pointerEvents: 'all' }}
                   onChange={(e) => setCell(row, col, e.currentTarget.value)}
                   onBlur={(e) => enrichLinkCell(row, col, e.currentTarget.value)}
-                  onKeyDown={cellKeys}
+                  onKeyDown={(e) => cellKeys(e, row)}
                   onPointerDown={stopEventPropagation}
                   onPointerMove={stopEventPropagation}
                   onPointerUp={stopEventPropagation}
@@ -366,41 +385,13 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
                 </div>
               ),
             )}
-            {/* Row delete floats at the row's right edge, hover-revealed. */}
-            {isEditing && rows.length > 1 ? (
-              <button
-                className="jz-table-del jz-table-del-row"
-                title="Delete row"
-                aria-label="Delete row"
-                tabIndex={-1}
-                style={{ pointerEvents: 'all' }}
-                onPointerDown={stopEventPropagation}
-                onClick={() => removeRow(row)}
-              >
-                ×
-              </button>
-            ) : null}
           </div>
         ))}
       </div>
 
-      {/* Hover rails (owner pick, 2026-07-05): soft +row / +column rails that
-          fade in when the pointer is over the table. Available from the
-          SELECTED state — adding also enters edit mode so Tab-to-fill is one
-          keystroke away. Layout space is reserved (fit--chrome), so the
-          reveal never resizes the card. */}
-      {chrome ? (
-        <button
-          className="jz-table-rail jz-table-rail-row"
-          onClick={addRowAndEdit}
-          onPointerDown={stopEventPropagation}
-          style={{ pointerEvents: 'all' }}
-          title="Add a row"
-          aria-label="Add a row"
-        >
-          + row
-        </button>
-      ) : null}
+      {/* Rows have NO chrome (owner call): Shift+Enter inserts a row below
+          the caret, Backspace on an empty row removes it. Columns keep a
+          hover-revealed "+" on the header band and a × per header. */}
       {chrome ? (
         <button
           className="jz-table-rail jz-table-rail-col"
