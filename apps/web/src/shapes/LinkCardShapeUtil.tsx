@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import {
   HTMLContainer,
   Rectangle2d,
@@ -6,6 +6,7 @@ import {
   T,
   resizeBox,
   stopEventPropagation,
+  useEditor,
   type RecordProps,
   type TLResizeInfo,
   type TLShape,
@@ -89,10 +90,32 @@ export class LinkCardShapeUtil extends ShapeUtil<LinkCardShape> {
   override component(shape: LinkCardShape) {
     return (
       <HTMLContainer>
-        {shape.props.loading ? <LinkCardSkeleton /> : <LinkCardBody {...shape.props} />}
+        <LinkCardAuto shape={shape} />
       </HTMLContainer>
     );
   }
+}
+
+/** The card is exactly as tall as its content — media band plus however much
+ *  title/description the preview actually has; a short preview means a short
+ *  card, never dead space (owner call, 2026-07-05). Width stays the user's. */
+function LinkCardAuto({ shape }: { shape: LinkCardShape }) {
+  const editor = useEditor();
+  const fitRef = useRef<HTMLDivElement | null>(null);
+  const { loading, title, description, image, url, w, h } = shape.props;
+  useLayoutEffect(() => {
+    const el = fitRef.current;
+    if (!el) return;
+    const target = Math.ceil(el.offsetHeight);
+    if (target > 40 && Math.abs(target - h) > 2) {
+      editor.updateShape<LinkCardShape>({ id: shape.id, type: 'link-card', props: { h: target } });
+    }
+  }, [editor, shape.id, loading, title, description, image, url, w, h]);
+  return (
+    <div ref={fitRef} className="jz-link-fit">
+      {loading ? <LinkCardSkeleton /> : <LinkCardBody {...shape.props} />}
+    </div>
+  );
 }
 
 function LinkCardSkeleton() {

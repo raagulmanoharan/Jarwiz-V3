@@ -469,7 +469,12 @@ body,
   overflow: hidden;
 }
 
-/* Link card */
+/* Link card — the fit wrapper is content-height (its measured height drives
+ * the shape's h), so the card inside must be auto, not 100%-of-frame. */
+.jz-link-fit .jz-card {
+  height: auto;
+}
+
 .jz-link-media {
   position: relative;
   aspect-ratio: 16 / 9;
@@ -1438,9 +1443,9 @@ body,
 .jz-table-fit {
   display: flex;
   flex-direction: column;
-  /* Breathing room like the doc card — the grid sits inset from the frame,
-   * its hairlines stopping at the padding edge (Notion/Cove grain). */
-  padding: var(--jz-space-5);
+  /* Tight frame inset (owner call: 4-8px) — the grid nearly fills the card;
+   * cells carry their own padding, so more here reads as dead air. */
+  padding: var(--jz-space-3);
 }
 
 /* While Autopilot fills it, the card wears a faint agent-colored ring. */
