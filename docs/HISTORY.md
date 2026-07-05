@@ -464,3 +464,23 @@ every primitive reads as one visual family.
   stores real og:image URLs (verified with github.com) but the browser
   can't render the pixels here — letter placeholder is the sandbox look,
   not the product look.
+
+## 2026-07-05 (night) — Jarwiz watches
+
+- **The watching pipeline is real and verified end to end in one session**:
+  two locally-built test videos with opposite identities (16 hard-cut hype
+  slides vs a 3-shot slow film) went through the REAL paste flow; dedup kept
+  16 frames for one and exactly 3 for the other (the frame pattern IS the
+  editing fingerprint); and a transcript-less "compare the editing and
+  visual style" ask produced a table whose every cell was a pure-vision
+  observation — it read the words off the slides, inferred cut rhythm from
+  frame density, named both palettes, and honestly noted "text cards, not
+  live footage".
+- Dev-sandbox tricks worth remembering: pip's yt-dlp + imageio-ffmpeg's
+  static binary (no drawtext — render slides as HTML via Chromium
+  screenshots, assemble with the concat demuxer); serve test media over
+  localhost so yt-dlp's generic extractor exercises the real download path;
+  the sidecar sees frames via .jpg symlinks it Reads (asset files are
+  extensionless).
+- Probe lesson repeated: "Compare…" routes to a TABLE — a probe watching
+  for a doc-card reports null while the right artifact sits on the board.
