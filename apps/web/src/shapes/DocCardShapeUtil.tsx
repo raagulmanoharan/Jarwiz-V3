@@ -161,13 +161,16 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
     }
   }, [text]);
 
-  // Streaming agent cards auto-fit height in read mode.
+  // Streaming agent cards auto-fit in read mode: height tracks the content,
+  // and a long answer widens page-ward (to ~2× default) before growing tall —
+  // a research dossier lands as a page, not a skyscraper column.
   const fitRef = useRef<HTMLDivElement | null>(null);
   const overflowing = useFitHeight(shape.id, fitRef, [text, title], {
     enabled: !isEditing && isStreaming,
     streaming: isStreaming,
     expanded,
     maxHeight: MAX_CARD_H,
+    growWidth: { max: 720, step: 120, ratio: 1.4 },
   });
   const collapsed = overflowing && !expanded && !isStreaming;
 
