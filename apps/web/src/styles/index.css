@@ -1965,10 +1965,13 @@ body,
   outline: none;
   background: transparent;
   padding: 0 2px;
-  font-family: var(--jz-font-ui);
-  font-size: var(--jz-text-caption-size);
+  /* The card's name speaks in the same editorial voice as its headings —
+   * Fraunces, like .jz-md-h* — not the UI sans (owner call, 2026-07-05). */
+  font-family: var(--jz-font-display);
+  font-optical-sizing: auto;
+  font-size: 13px;
   line-height: var(--jz-text-caption-lh);
-  font-weight: 500;
+  font-weight: 540;
   color: var(--jz-ink-500);
   white-space: nowrap;
   overflow: hidden;
@@ -2902,10 +2905,12 @@ body,
   border: none;
   outline: none;
   background: transparent;
-  font-family: var(--jz-font-ui);
-  font-size: var(--jz-text-caption-size);
+  /* Same voice as the on-canvas title tag (editorial serif). */
+  font-family: var(--jz-font-display);
+  font-optical-sizing: auto;
+  font-size: 13px;
   line-height: var(--jz-text-caption-lh);
-  font-weight: 500;
+  font-weight: 540;
   color: var(--jz-ink-500);
   padding: 0;
 }
