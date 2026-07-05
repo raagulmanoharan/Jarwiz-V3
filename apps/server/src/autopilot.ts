@@ -19,6 +19,7 @@ import type {
 } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
+import { WEB_FILL_DIRECTIVE, WEB_MAX_CONTINUATIONS, webToolset } from './webTools.js';
 
 /** Enough for 2-3 full paragraphs or a dense bullet list — feels substantial. */
 const AUTOPILOT_MAX_TOKENS = 900;
@@ -216,19 +217,34 @@ async function fetchFilledRows(
 ): Promise<string[][]> {
   const client = new Anthropic();
   const userTurn = JSON.stringify({ columns: request.columns, rows: request.rows });
-  const message = await client.messages.create(
-    {
-      model: AGENT_MODEL,
-      max_tokens: 1024,
-      system: [{ type: 'text', text: TABLE_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
-      messages: [{ role: 'user', content: userTurn }],
-    },
-    { signal },
-  );
-  const text = message.content
-    .filter((b): b is Anthropic.Messages.TextBlock => b.type === 'text')
-    .map((b) => b.text)
-    .join('');
+  const messages: Anthropic.MessageParam[] = [{ role: 'user', content: userTurn }];
+  let text = '';
+  // Live web for fills (prices, rates, ratings). Server tools may pause a long
+  // turn (stop_reason "pause_turn"); resume by replaying the assistant content.
+  for (let turn = 0; turn <= WEB_MAX_CONTINUATIONS; turn++) {
+    const message = await client.messages.create(
+      {
+        model: AGENT_MODEL,
+        max_tokens: 1024,
+        system: [
+          {
+            type: 'text',
+            text: TABLE_SYSTEM_PROMPT + WEB_FILL_DIRECTIVE,
+            cache_control: { type: 'ephemeral' },
+          },
+        ],
+        messages,
+        tools: webToolset(),
+      },
+      { signal },
+    );
+    text += message.content
+      .filter((b): b is Anthropic.Messages.TextBlock => b.type === 'text')
+      .map((b) => b.text)
+      .join('');
+    if (message.stop_reason !== 'pause_turn') break;
+    messages.push({ role: 'assistant', content: message.content });
+  }
   return parseRows(text);
 }
 
@@ -250,7 +266,12 @@ async function fetchFilledRowsSidecar(
   signal: AbortSignal,
 ): Promise<string[][]> {
   const user = JSON.stringify({ columns: request.columns, rows: request.rows });
-  const text = await sidecarGenerate({ system: TABLE_SYSTEM_PROMPT, user, signal });
+  const text = await sidecarGenerate({
+    system: TABLE_SYSTEM_PROMPT + WEB_FILL_DIRECTIVE,
+    user,
+    signal,
+    web: true,
+  });
   return parseRows(text);
 }
 

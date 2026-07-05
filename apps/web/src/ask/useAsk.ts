@@ -348,6 +348,12 @@ export function useAsk() {
 
       const apply = (event: AskEvent) => {
         switch (event.type) {
+          case 'status': {
+            // Live server-side phase ("searching the web…") on the avatar —
+            // a search can hold the stream for 10s+; never let it read as stall.
+            setPresenceStatus(PRESENCE.id, event.message);
+            break;
+          }
           case 'clarify': {
             // Ambiguous request — surface the question instead of guessing. The
             // run ends here; ClarifyLayer re-asks with the answer folded in.

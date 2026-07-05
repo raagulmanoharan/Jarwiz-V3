@@ -13,6 +13,7 @@ import type { AskEvent, AskRequest, AskShape, AskSource } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
 import { extractAssetPages, extractAssetText } from './assets.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
+import { WEB_DIRECTIVE, WEB_MAX_CONTINUATIONS, WEB_TABLE_DIRECTIVE, webToolset } from './webTools.js';
 
 const MAX_TOKENS = 1400;
 const PER_SOURCE_CHARS = 8_000;
@@ -334,29 +335,49 @@ function withImageNote(user: string, images: ImageInput[]): string {
   return `${user}\n\n[${images.length} image(s) attached: ${names}. They are NOT visible in this text-only mode — answer from the text, and say plainly if the image is essential and you cannot see it.]`;
 }
 
+/** `web: true` hands the model live search/fetch tools (webTools.ts). */
+interface GenOpts {
+  web?: boolean;
+}
+
 async function generate(
   system: string,
   user: string,
   signal: AbortSignal,
   images: ImageInput[] = [],
+  opts: GenOpts = {},
 ): Promise<string> {
   if (process.env.ANTHROPIC_API_KEY?.trim()) {
     const client = new Anthropic();
-    const msg = await client.messages.create(
-      {
-        model: AGENT_MODEL,
-        max_tokens: MAX_TOKENS,
-        system,
-        messages: [{ role: 'user', content: buildContent(user, images) }],
-      },
-      { signal },
-    );
-    return msg.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map((b) => b.text)
-      .join('');
+    const tools = opts.web ? webToolset() : undefined;
+    const messages: Anthropic.MessageParam[] = [
+      { role: 'user', content: buildContent(user, images) },
+    ];
+    let text = '';
+    // Server tools may pause a long turn (stop_reason "pause_turn"); resume by
+    // replaying the assistant content until the model actually finishes.
+    for (let turn = 0; turn <= WEB_MAX_CONTINUATIONS; turn++) {
+      const msg = await client.messages.create(
+        {
+          model: AGENT_MODEL,
+          max_tokens: MAX_TOKENS,
+          system,
+          messages,
+          ...(tools ? { tools } : {}),
+        },
+        { signal },
+      );
+      text += msg.content
+        .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+        .map((b) => b.text)
+        .join('');
+      if (!tools || msg.stop_reason !== 'pause_turn') break;
+      messages.push({ role: 'assistant', content: msg.content });
+    }
+    return text;
   }
-  if (sidecarAvailable()) return sidecarGenerate({ system, user: withImageNote(user, images), signal });
+  if (sidecarAvailable())
+    return sidecarGenerate({ system, user: withImageNote(user, images), signal, web: opts.web });
   throw new Error('No model available (set ANTHROPIC_API_KEY or install the Claude CLI).');
 }
 
@@ -367,36 +388,61 @@ async function generate(
  * sidecar (dev only) can't token-stream, so it generates once and chunks the
  * result to approximate the same feel.
  */
+/** What generateStream yields: body text, or a live status ("searching…"). */
+type GenEvent = { type: 'text'; text: string } | { type: 'status'; message: string };
+
 async function* generateStream(
   system: string,
   user: string,
   signal: AbortSignal,
   images: ImageInput[] = [],
-): AsyncGenerator<string> {
+  opts: GenOpts = {},
+): AsyncGenerator<GenEvent> {
   if (process.env.ANTHROPIC_API_KEY?.trim()) {
     const client = new Anthropic();
-    const stream = client.messages.stream(
-      {
-        model: AGENT_MODEL,
-        max_tokens: MAX_TOKENS,
-        system,
-        messages: [{ role: 'user', content: buildContent(user, images) }],
-      },
-      { signal },
-    );
-    for await (const event of stream) {
-      if (signal.aborted) return;
-      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-        yield event.delta.text;
+    const tools = opts.web ? webToolset() : undefined;
+    const messages: Anthropic.MessageParam[] = [
+      { role: 'user', content: buildContent(user, images) },
+    ];
+    // Server tools may pause a long turn (stop_reason "pause_turn"); resume by
+    // replaying the assistant content until the model actually finishes.
+    for (let turn = 0; turn <= WEB_MAX_CONTINUATIONS; turn++) {
+      const stream = client.messages.stream(
+        {
+          model: AGENT_MODEL,
+          max_tokens: MAX_TOKENS,
+          system,
+          messages,
+          ...(tools ? { tools } : {}),
+        },
+        { signal },
+      );
+      for await (const event of stream) {
+        if (signal.aborted) return;
+        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+          yield { type: 'text', text: event.delta.text };
+        } else if (
+          event.type === 'content_block_start' &&
+          event.content_block.type === 'server_tool_use'
+        ) {
+          yield {
+            type: 'status',
+            message:
+              event.content_block.name === 'web_fetch' ? 'reading a page…' : 'searching the web…',
+          };
+        }
       }
+      const final = await stream.finalMessage();
+      if (!tools || final.stop_reason !== 'pause_turn') return;
+      messages.push({ role: 'assistant', content: final.content });
     }
     return;
   }
   if (sidecarAvailable()) {
-    const text = await sidecarGenerate({ system, user: withImageNote(user, images), signal });
+    const text = await sidecarGenerate({ system, user: withImageNote(user, images), signal, web: opts.web });
     for (const piece of chunk(text)) {
       if (signal.aborted) return;
-      yield piece;
+      yield { type: 'text', text: piece };
       await sleep(18, signal);
     }
     return;
@@ -449,7 +495,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
     return;
   }
 
-  yield { type: 'status', message: 'Reading the source…' };
+  yield { type: 'status', message: 'reading the source…' };
   const { context, citable, images, linkRefs } = await gatherContext(req);
   if (signal.aborted) return;
 
@@ -481,12 +527,11 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   }
 
   if (shape === 'table') {
-    // Cross-document conflict requests get the clause-diff table treatment.
-    const tableSystem =
-      looksLikeDiff(req.prompt) && req.sources.filter((s) => s.assetId).length >= 2
-        ? CLAUSE_DIFF_SYSTEM
-        : TABLE_SYSTEM;
-    const raw = await generate(tableSystem, user, signal, images);
+    // Cross-document conflict requests get the clause-diff table treatment
+    // (purely extractive across the given documents — no web there).
+    const isDiff = looksLikeDiff(req.prompt) && req.sources.filter((s) => s.assetId).length >= 2;
+    const tableSystem = isDiff ? CLAUSE_DIFF_SYSTEM : TABLE_SYSTEM + WEB_TABLE_DIRECTIVE;
+    const raw = await generate(tableSystem, user, signal, images, { web: !isDiff });
     if (signal.aborted) return;
     let columns: string[] = [];
     let rows: string[][] = [];
@@ -522,7 +567,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
       return;
     }
     // Not clean JSON — degrade to a written answer.
-    yield* streamDoc('doc', DOC_SYSTEM, user, signal, images);
+    yield* streamDoc('doc', DOC_SYSTEM + WEB_DIRECTIVE, user, signal, images, { web: true });
     return;
   }
 
@@ -530,7 +575,8 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   let system = citable ? base + CITE_DIRECTIVE : base;
   if (linkRefs.length > 0) system += linkCiteDirective(linkRefs);
   if (wantsChecklist(req.prompt)) system += CHECKLIST_DIRECTIVE;
-  yield* streamDoc(shape, system, user, signal, images);
+  system += WEB_DIRECTIVE;
+  yield* streamDoc(shape, system, user, signal, images, { web: true });
 }
 
 /**
@@ -546,9 +592,10 @@ async function* streamDiagram(
 ): AsyncGenerator<AskEvent> {
   yield { type: 'card.create', shape: 'diagram' };
   try {
-    for await (const delta of generateStream(DIAGRAM_SYSTEM, user, signal, images)) {
+    for await (const ev of generateStream(DIAGRAM_SYSTEM, user, signal, images)) {
       if (signal.aborted) return;
-      yield { type: 'card.delta', textDelta: delta };
+      if (ev.type === 'status') yield { type: 'status', message: ev.message };
+      else yield { type: 'card.delta', textDelta: ev.text };
     }
   } catch (error) {
     // Close the opened card before the error reaches index.ts's catch (which
@@ -626,6 +673,7 @@ async function* streamDoc(
   user: string,
   signal: AbortSignal,
   images: ImageInput[] = [],
+  opts: GenOpts = {},
 ): AsyncGenerator<AskEvent> {
   yield { type: 'card.create', shape };
   // Buffer only until the first line resolves (a "# Title" goes to the card's
@@ -641,9 +689,21 @@ async function* streamDoc(
     bodyStarted = true;
     yield { type: 'card.delta', textDelta: t };
   }
+  let searching = false;
   try {
-    for await (const delta of generateStream(system, user, signal, images)) {
+    for await (const ev of generateStream(system, user, signal, images, opts)) {
       if (signal.aborted) return;
+      if (ev.type === 'status') {
+        searching = true;
+        yield { type: 'status', message: ev.message };
+        continue;
+      }
+      if (searching) {
+        // Text resumed after a web hop — flip the avatar back to writing.
+        searching = false;
+        yield { type: 'status', message: 'writing…' };
+      }
+      const delta = ev.text;
       if (titleResolved) {
         yield* bodyDelta(delta);
         continue;

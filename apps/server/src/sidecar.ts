@@ -14,6 +14,8 @@ import { spawn, spawnSync } from 'node:child_process';
 
 const CLI = process.env.CLAUDE_CLI_PATH || 'claude';
 const DEFAULT_TIMEOUT_MS = 60_000;
+/** Web-enabled runs search/fetch before answering — give them real headroom. */
+const WEB_TIMEOUT_MS = 180_000;
 const PROBE_TIMEOUT_MS = 5_000;
 
 let cached: boolean | null = null;
@@ -45,25 +47,34 @@ export interface SidecarOptions {
   user: string;
   timeoutMs?: number;
   signal?: AbortSignal;
+  /** Allow the CLI's WebSearch/WebFetch so the answer can use live data —
+   *  the sidecar's mirror of the API path's server tools (webTools.ts). */
+  web?: boolean;
 }
 
 /**
  * One headless completion. Resolves the model's plain-text output. Rejects on
  * non-zero exit, timeout, or abort. Tools are disabled so it never wanders off
- * into agentic file/web actions — pure text in, text out.
+ * into agentic file actions — pure text in, text out — except `web`, which
+ * whitelists exactly the two read-only web tools.
  */
 export function sidecarGenerate({
   system,
   user,
-  timeoutMs = DEFAULT_TIMEOUT_MS,
+  timeoutMs,
   signal,
+  web,
 }: SidecarOptions): Promise<string> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(new Error('aborted'));
 
+    const toolArgs = web
+      ? ['--allowed-tools', 'WebSearch,WebFetch']
+      : ['--disallowed-tools', '*'];
+    const limitMs = timeoutMs ?? (web ? WEB_TIMEOUT_MS : DEFAULT_TIMEOUT_MS);
     const child = spawn(
       CLI,
-      ['-p', '--output-format', 'text', '--system-prompt', system, '--disallowed-tools', '*'],
+      ['-p', '--output-format', 'text', '--system-prompt', system, ...toolArgs],
       { stdio: ['pipe', 'pipe', 'pipe'] },
     );
 
@@ -72,7 +83,7 @@ export function sidecarGenerate({
     const timer = setTimeout(() => {
       child.kill('SIGKILL');
       reject(new Error('sidecar timed out'));
-    }, timeoutMs);
+    }, limitMs);
 
     const onAbort = () => {
       child.kill('SIGKILL');
