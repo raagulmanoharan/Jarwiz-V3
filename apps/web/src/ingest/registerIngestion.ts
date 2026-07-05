@@ -84,7 +84,16 @@ function placeYouTube(editor: Editor, url: string, videoId: string, center: VecL
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url }),
   })
-    .then((r) => (r.ok ? (r.json() as Promise<{ title?: string; text?: string; hasTranscript?: boolean }>) : null))
+    .then((r) =>
+      r.ok
+        ? (r.json() as Promise<{
+            title?: string;
+            text?: string;
+            hasTranscript?: boolean;
+            frames?: Array<{ assetId?: string }>;
+          }>)
+        : null,
+    )
     .then((t) => {
       if (!editor.getShape(id)) return; // deleted or undone while fetching
       editor.updateShape<YouTubeCardShape>({
@@ -94,6 +103,7 @@ function placeYouTube(editor: Editor, url: string, videoId: string, center: VecL
           title: t?.title ?? '',
           text: t?.text ?? '',
           hasTranscript: t?.hasTranscript ?? false,
+          frames: (t?.frames ?? []).map((f) => String(f?.assetId ?? '')).filter(Boolean),
         },
       });
     })
@@ -110,6 +120,12 @@ function placeLink(editor: Editor, url: string, center: VecLike): void {
   const videoId = youTubeVideoId(url);
   if (videoId) {
     placeYouTube(editor, url, videoId, center);
+    return;
+  }
+  // A direct media URL is also a video card — native <video> player, poster
+  // from the first watched frame, same ingest (captions rarely; frames yes).
+  if (/\.(mp4|mov|webm|mkv|m4v)(\?|#|$)/i.test(url)) {
+    placeYouTube(editor, url, '', center);
     return;
   }
   const { w, h } = LINK_CARD_SIZE;

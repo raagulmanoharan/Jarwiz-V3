@@ -11,7 +11,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { AskEvent, AskRequest, AskShape, AskSource } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
-import { extractAssetPages, extractAssetText } from './assets.js';
+import { assetPath, extractAssetPages, extractAssetText, getAsset } from './assets.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 import {
   RESEARCH_MAX_CONTINUATIONS,
@@ -263,8 +263,9 @@ interface ImageInput {
   title: string;
 }
 
-/** At most this many images per Ask (keeps the request and token cost bounded). */
-const MAX_IMAGES = 4;
+/** At most this many images per Ask (keeps the request and token cost bounded).
+ *  Watched-video frames raised this from 4 — a video IS many small images. */
+const MAX_IMAGES = 14;
 /** Skip an image whose base64 is larger than the model accepts (~5MB raw). */
 const MAX_IMAGE_CHARS = 7_000_000;
 
@@ -281,16 +282,47 @@ function parseImageDataUrl(dataUrl: string, title: string): ImageInput | null {
 
 async function gatherContext(
   req: AskRequest,
-): Promise<{ context: string; citable: boolean; images: ImageInput[]; linkRefs: Array<{ title: string; url: string }> }> {
+): Promise<{
+  context: string;
+  citable: boolean;
+  images: ImageInput[];
+  linkRefs: Array<{ title: string; url: string }>;
+  framePaths: string[];
+}> {
   const parts: string[] = [];
   const images: ImageInput[] = [];
   const linkRefs: Array<{ title: string; url: string }> = [];
+  /** Server-local frame files — the CLI sidecar Reads these (it can't take base64). */
+  const framePaths: string[] = [];
   let citable = false;
   let i = 0;
   for (const s of req.sources) {
     i += 1;
     if (s.url?.trim()) linkRefs.push({ title: s.title?.trim() || s.url, url: s.url.trim() });
     const head = `Source ${i} (${s.kind}${s.title ? `: ${s.title}` : ''}${s.url ? ` — ${s.url}` : ''}):`;
+    // Watched-video frames become vision inputs, evenly thinned to the budget.
+    if (s.frameAssetIds?.length) {
+      const room = Math.max(0, MAX_IMAGES - images.length);
+      const pick =
+        s.frameAssetIds.length <= room
+          ? s.frameAssetIds
+          : Array.from({ length: room }, (_, k) =>
+              s.frameAssetIds![Math.floor((k * (s.frameAssetIds!.length - 1)) / Math.max(1, room - 1))]!,
+            );
+      let loaded = 0;
+      for (const fid of pick) {
+        const buf = await getAsset(fid);
+        if (!buf) continue;
+        images.push({ mediaType: 'image/jpeg', data: buf.toString('base64'), title: `${s.title ?? 'video'} frame ${loaded + 1}` });
+        const p = assetPath(fid);
+        if (p) framePaths.push(p);
+        loaded += 1;
+      }
+      if (loaded > 0) {
+        parts.push(`${head}\n(${loaded} sampled frames from this video are attached as images, in time order.)${s.text?.trim() ? `\n"""\n${s.text.trim().slice(0, PER_SOURCE_CHARS)}\n"""` : ''}`);
+        continue;
+      }
+    }
     if (s.kind === 'image' && s.dataUrl) {
       const img = images.length < MAX_IMAGES ? parseImageDataUrl(s.dataUrl, s.title || `Image ${i}`) : null;
       if (img) {
@@ -325,7 +357,7 @@ async function gatherContext(
     if (s.text?.trim()) parts.push(`${head}\n"""\n${s.text.trim().slice(0, PER_SOURCE_CHARS)}\n"""`);
     else parts.push(head);
   }
-  return { context: parts.join('\n\n'), citable, images, linkRefs };
+  return { context: parts.join('\n\n'), citable, images, linkRefs, framePaths };
 }
 
 const CITE_DIRECTIVE =
@@ -371,10 +403,12 @@ function withImageNote(user: string, images: ImageInput[]): string {
 }
 
 /** `web: true` hands the model live search/fetch tools; `deep: true` upgrades
- *  to the research budget (more searches/fetches, longer output, more time). */
+ *  to the research budget (more searches/fetches, longer output, more time);
+ *  `framePaths` lets the text-only sidecar SEE video frames by Reading files. */
 interface GenOpts {
   web?: boolean;
   deep?: boolean;
+  framePaths?: string[];
 }
 
 /** The per-mode generation budget the two generators share. */
@@ -426,9 +460,10 @@ async function generate(
   if (sidecarAvailable())
     return sidecarGenerate({
       system,
-      user: withImageNote(user, images),
+      user: opts.framePaths?.length ? user : withImageNote(user, images),
       signal,
       web: opts.web || opts.deep,
+      imagePaths: opts.framePaths,
       timeoutMs: sidecarTimeoutMs,
     });
   throw new Error('No model available (set ANTHROPIC_API_KEY or install the Claude CLI).');
@@ -494,9 +529,10 @@ async function* generateStream(
   if (sidecarAvailable()) {
     const text = await sidecarGenerate({
       system,
-      user: withImageNote(user, images),
+      user: opts.framePaths?.length ? user : withImageNote(user, images),
       signal,
       web: opts.web || opts.deep,
+      imagePaths: opts.framePaths,
       timeoutMs: sidecarTimeoutMs,
     });
     for (const piece of chunk(text)) {
@@ -555,7 +591,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   }
 
   yield { type: 'status', message: 'reading the source…' };
-  const { context, citable, images, linkRefs } = await gatherContext(req);
+  const { context, citable, images, linkRefs, framePaths } = await gatherContext(req);
   if (signal.aborted) return;
 
   // Deep research is IMPLICIT: a research-sounding ask on any card upgrades
@@ -568,7 +604,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   if (deep) {
     yield { type: 'status', message: 'researching across the web…' };
     const user = `Research request:\n${req.prompt}\n\n${context || '(No canvas sources — research the request itself.)'}`;
-    yield* streamDoc('doc', RESEARCH_SYSTEM, user, signal, images, { web: true, deep: true });
+    yield* streamDoc('doc', RESEARCH_SYSTEM, user, signal, images, { web: true, deep: true, framePaths });
     return;
   }
 
@@ -604,7 +640,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
     // (purely extractive across the given documents — no web there).
     const isDiff = looksLikeDiff(req.prompt) && req.sources.filter((s) => s.assetId).length >= 2;
     const tableSystem = isDiff ? CLAUSE_DIFF_SYSTEM : TABLE_SYSTEM + WEB_TABLE_DIRECTIVE;
-    const raw = await generate(tableSystem, user, signal, images, { web: !isDiff });
+    const raw = await generate(tableSystem, user, signal, images, { web: !isDiff, framePaths });
     if (signal.aborted) return;
     let columns: string[] = [];
     let rows: string[][] = [];
@@ -640,7 +676,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
       return;
     }
     // Not clean JSON — degrade to a written answer.
-    yield* streamDoc('doc', DOC_SYSTEM + WEB_DIRECTIVE, user, signal, images, { web: true });
+    yield* streamDoc('doc', DOC_SYSTEM + WEB_DIRECTIVE, user, signal, images, { web: true, framePaths });
     return;
   }
 
@@ -649,7 +685,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   if (linkRefs.length > 0) system += linkCiteDirective(linkRefs);
   if (wantsChecklist(req.prompt)) system += CHECKLIST_DIRECTIVE;
   system += WEB_DIRECTIVE;
-  yield* streamDoc(shape, system, user, signal, images, { web: true });
+  yield* streamDoc(shape, system, user, signal, images, { web: true, framePaths });
 }
 
 /**

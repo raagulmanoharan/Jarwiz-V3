@@ -158,8 +158,10 @@ function toSource(editor: Editor, shape: TLShape): AskSource | null {
       const text =
         stored ||
         `This is the YouTube video "${title || url}". Its captions have not been read — only the title is known; never guess what is said in it.`;
-      // `url` rides along so answers can cite the video like any web page.
-      return { kind: 'youtube', title, text, url };
+      // Watched frames ride along as asset ids → the server loads them as
+      // vision inputs; `url` lets answers cite the video like any web page.
+      const frames = Array.isArray(p.frames) ? (p.frames as string[]).slice(0, 12) : undefined;
+      return { kind: 'youtube', title, text, url, frameAssetIds: frames?.length ? frames : undefined };
     }
     // ── Native primitives — selected shapes/text/connectors become context ──
     case 'geo':

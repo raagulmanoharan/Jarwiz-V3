@@ -27,6 +27,7 @@ import type {
   TableAutopilotRequest,
 } from '@jarwiz/shared';
 import { buildLinkPreview, fetchYouTubeText, SsrfError } from './linkPreview.js';
+import { ingestVideo, videoTools } from './video.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset, sniffMime } from './assets.js';
 import { proposeSeedPrompts, streamAsk } from './ask.js';
 import type { AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ReviseRequest } from '@jarwiz/shared';
@@ -126,8 +127,10 @@ app.post('/api/link/preview', async (c) => {
   }
 });
 
-/** YouTube transcript for a video card — caption text when it exists, an
- *  honest metadata-only fallback when it doesn't (drives the card's badge). */
+/** Video ingest for a video card — captions + WATCHED frames when the host
+ *  has yt-dlp/ffmpeg (video.ts), caption-scrape fallback otherwise, honest
+ *  metadata-only state when nothing is readable (drives the card's badge).
+ *  Accepts YouTube URLs and (dev/tests) direct http(s) media URLs. */
 app.post('/api/youtube/text', async (c) => {
   let body: unknown;
   try {
@@ -136,12 +139,24 @@ app.post('/api/youtube/text', async (c) => {
     return c.json({ error: 'Expected a JSON body: { "url": string }' }, 400);
   }
   const url = (body as { url?: unknown })?.url;
-  if (typeof url !== 'string' || !/^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//i.test(url.trim())) {
-    return c.json({ error: 'Expected a YouTube URL' }, 400);
+  if (typeof url !== 'string' || !/^https?:\/\//i.test(url.trim())) {
+    return c.json({ error: 'Expected a video URL' }, 400);
+  }
+  const trimmed = url.trim().slice(0, 2000);
+  if (videoTools().ytdlp) {
+    try {
+      const result = await ingestVideo(trimmed, true);
+      return c.json(result);
+    } catch {
+      /* fall through to the scrape (yt-dlp blocked ≠ page blocked) */
+    }
+  }
+  if (!/^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//i.test(trimmed)) {
+    return c.json({ error: 'Video unreachable' }, 502);
   }
   try {
-    const result = await fetchYouTubeText(url.trim(), 16_000);
-    return c.json(result);
+    const result = await fetchYouTubeText(trimmed, 16_000);
+    return c.json({ ...result, frames: [] });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Transcript fetch failed';
     return c.json({ error: message }, 502);
@@ -292,6 +307,10 @@ app.post('/api/ask', async (c) => {
             typeof s?.dataUrl === 'string' && s.dataUrl.startsWith('data:image/') ? s.dataUrl : undefined,
           // Web-page source URL — link citations point at it. http(s) only.
           url: typeof s?.url === 'string' && /^https?:\/\//i.test(s.url) ? s.url.slice(0, 2000) : undefined,
+          // Watched-video frames: validated ids only, hard-capped per source.
+          frameAssetIds: Array.isArray(s?.frameAssetIds)
+            ? s.frameAssetIds.filter((f): f is string => typeof f === 'string' && isValidAssetId(f)).slice(0, 12)
+            : undefined,
         }))
       : [],
     // The shape of the card being refined in place — keeps a same-type tweak on

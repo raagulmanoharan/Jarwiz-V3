@@ -71,6 +71,12 @@ export function sniffMime(buf: Buffer): string {
   return 'application/octet-stream';
 }
 
+/** Absolute path of a stored asset — for callers (the CLI sidecar) that read
+ *  files directly instead of taking bytes. */
+export function assetPath(id: string): string | null {
+  return isValidAssetId(id) ? join(ASSET_DIR, id) : null;
+}
+
 export async function getAsset(id: string): Promise<Buffer | null> {
   if (!isValidAssetId(id)) return null;
   await ensureDir();

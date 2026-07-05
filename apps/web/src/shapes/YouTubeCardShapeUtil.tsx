@@ -22,6 +22,9 @@ export interface YouTubeCardProps {
   /** Whether captions were actually readable (drives the honesty badge).
    *  Undefined = still fetching. */
   hasTranscript?: boolean;
+  /** Watched frames (asset ids, time order) — asks ship these as vision
+   *  inputs so the model sees the video, not just its transcript. */
+  frames?: string[];
 }
 
 declare module '@tldraw/tlschema' {
@@ -45,6 +48,7 @@ export class YouTubeCardShapeUtil extends ShapeUtil<YouTubeCardShape> {
     title: T.string,
     text: T.string.optional(),
     hasTranscript: T.boolean.optional(),
+    frames: T.arrayOf(T.string).optional(),
   };
 
   override getDefaultProps(): YouTubeCardShape['props'] {
@@ -83,7 +87,15 @@ export class YouTubeCardShapeUtil extends ShapeUtil<YouTubeCardShape> {
 
 function YouTubeCardBody({ shape }: { shape: YouTubeCardShape }) {
   const isEditing = useIsEditing(shape.id);
-  const { videoId, title, hasTranscript } = shape.props;
+  const { videoId, url, title, hasTranscript, frames } = shape.props;
+  // Direct media URLs (no YouTube id) play in a native <video> and wear the
+  // first WATCHED frame as their poster — the pipeline's stills do the job
+  // YouTube's thumbnail server does for youtube ids.
+  const poster = videoId
+    ? `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg`
+    : frames?.[0]
+      ? `/api/assets/${encodeURIComponent(frames[0])}`
+      : '';
 
   return (
     <div className="jz-card">
@@ -91,25 +103,48 @@ function YouTubeCardBody({ shape }: { shape: YouTubeCardShape }) {
       <div className="jz-yt-header">
         <span className="jz-yt-dot" />
         <span className="jz-yt-title">{title || 'YouTube'}</span>
-        {/* Honesty badge: can Jarwiz actually read this video? Undefined =
-            transcript fetch still in flight — say nothing yet. */}
+        {/* Honesty badges: can Jarwiz read (and see) this video? Undefined =
+            ingest still in flight — say nothing yet. */}
         {hasTranscript === true ? (
           <span className="jz-yt-badge" title="Captions read — asks can quote what's said">transcript ✓</span>
         ) : hasTranscript === false ? (
-          <span className="jz-yt-badge jz-yt-badge--none" title="No captions — only the title is readable">title only</span>
+          <span className="jz-yt-badge jz-yt-badge--none" title="No captions — the speech isn't readable">title only</span>
+        ) : null}
+        {frames && frames.length > 0 ? (
+          <span className="jz-yt-badge" title="Sampled stills — asks can see what's on screen">watched ✓</span>
         ) : null}
         <span className="jz-yt-hint">{isEditing ? 'playing' : 'double-click to play'}</span>
       </div>
       <div className="jz-yt-frame">
-        <iframe
-          src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}`}
-          title={title || 'YouTube video'}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowFullScreen
-          referrerPolicy="strict-origin-when-cross-origin"
-          // While not editing, the iframe must not swallow canvas drags.
-          style={{ pointerEvents: isEditing ? 'all' : 'none' }}
-        />
+        {isEditing && videoId ? (
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1`}
+            title={title || 'YouTube video'}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            style={{ pointerEvents: 'all' }}
+          />
+        ) : isEditing && url ? (
+          <video src={url} controls autoPlay style={{ pointerEvents: 'all' }} />
+        ) : (
+          // At rest the card wears the video's poster + a play glyph — an
+          // inert iframe reads as a broken embed and steals scroll/drag focus.
+          <div className="jz-yt-poster">
+            {poster ? (
+              <img
+                src={poster}
+                alt=""
+                draggable={false}
+                referrerPolicy="no-referrer"
+                onError={(e) => e.currentTarget.classList.add('jz-yt-poster-img--dead')}
+              />
+            ) : null}
+            <span className="jz-yt-play" aria-hidden>
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M8 5.5v13l11-6.5z" /></svg>
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

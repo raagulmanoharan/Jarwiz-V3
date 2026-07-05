@@ -257,6 +257,10 @@ export interface AskSource {
   /** Source web page URL (link-card sources) — answers cite it as a markdown
    *  link and close with a Source reference line. */
   url?: string;
+  /** Watched video frames (video-card sources): asset ids of sampled stills,
+   *  in time order. The server loads them as vision inputs so the model sees
+   *  the video, not just its transcript. */
+  frameAssetIds?: string[];
 }
 
 export interface AskRequest {

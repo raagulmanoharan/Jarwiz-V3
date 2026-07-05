@@ -671,6 +671,38 @@ body,
   background: #1c1917;
 }
 
+/* Poster face (at rest): thumbnail + play glyph; the live iframe mounts only
+ * while editing, so the resting card never reads as a broken embed. */
+.jz-yt-poster {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.jz-yt-poster img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.jz-yt-poster img.jz-yt-poster-img--dead {
+  visibility: hidden; /* unreachable thumbnail → dark face + glyph only */
+}
+.jz-yt-play {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  border-radius: var(--jz-radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: rgba(8, 9, 11, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
 .jz-yt-frame iframe {
   position: absolute;
   inset: 0;

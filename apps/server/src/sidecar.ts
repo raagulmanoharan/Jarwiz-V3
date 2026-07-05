@@ -11,6 +11,9 @@
  */
 
 import { spawn, spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const CLI = process.env.CLAUDE_CLI_PATH || 'claude';
 const DEFAULT_TIMEOUT_MS = 60_000;
@@ -50,6 +53,9 @@ export interface SidecarOptions {
   /** Allow the CLI's WebSearch/WebFetch so the answer can use live data —
    *  the sidecar's mirror of the API path's server tools (webTools.ts). */
   web?: boolean;
+  /** Video-frame image files the model should SEE: whitelists Read and tells
+   *  the model to open each one — the sidecar's stand-in for vision inputs. */
+  imagePaths?: string[];
 }
 
 /**
@@ -64,14 +70,40 @@ export function sidecarGenerate({
   timeoutMs,
   signal,
   web,
+  imagePaths,
 }: SidecarOptions): Promise<string> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(new Error('aborted'));
 
-    const toolArgs = web
-      ? ['--allowed-tools', 'WebSearch,WebFetch']
+    const allow: string[] = [];
+    if (web) allow.push('WebSearch', 'WebFetch');
+    if (imagePaths?.length) allow.push('Read');
+    const toolArgs = allow.length > 0
+      ? ['--allowed-tools', allow.join(',')]
       : ['--disallowed-tools', '*'];
-    const limitMs = timeoutMs ?? (web ? WEB_TIMEOUT_MS : DEFAULT_TIMEOUT_MS);
+    const limitMs = timeoutMs ?? (web || imagePaths?.length ? WEB_TIMEOUT_MS : DEFAULT_TIMEOUT_MS);
+    // Asset files are extensionless; Read renders images by extension. Give
+    // the model .jpg views via symlinks in a throwaway dir.
+    let frameDir: string | null = null;
+    let frameLinks: string[] = [];
+    if (imagePaths?.length) {
+      try {
+        frameDir = mkdtempSync(join(tmpdir(), 'jz-frames-'));
+        frameLinks = imagePaths.map((p, i) => {
+          const link = join(frameDir!, `frame_${String(i + 1).padStart(2, '0')}.jpg`);
+          symlinkSync(p, link);
+          return link;
+        });
+      } catch {
+        frameLinks = imagePaths; // symlink denied → raw paths still work for Read
+      }
+    }
+    const turn = frameLinks.length
+      ? `${user}\n\n[${frameLinks.length} sampled video frames are attached as image files, in time order. Read EACH file below to actually see the video before answering:\n${frameLinks.join('\n')}]`
+      : user;
+    const cleanupFrames = () => {
+      if (frameDir) rmSync(frameDir, { recursive: true, force: true });
+    };
     const child = spawn(
       CLI,
       ['-p', '--output-format', 'text', '--system-prompt', system, ...toolArgs],
@@ -97,16 +129,18 @@ export function sidecarGenerate({
       clearTimeout(timer);
       cached = false; // binary not actually usable — stop trying
       signal?.removeEventListener('abort', onAbort);
+      cleanupFrames();
       reject(e);
     });
     child.on('close', (code) => {
       clearTimeout(timer);
       signal?.removeEventListener('abort', onAbort);
+      cleanupFrames();
       if (code === 0) resolve(cleanOutput(out));
       else reject(new Error(err.trim() || `claude exited ${code}`));
     });
 
-    child.stdin.write(user);
+    child.stdin.write(turn);
     child.stdin.end();
   });
 }
