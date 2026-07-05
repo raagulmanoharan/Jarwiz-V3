@@ -7,7 +7,7 @@
 import { renderPlaintextFromRichText, type Editor, type TLRichText, type TLShape } from 'tldraw';
 
 export const ASKABLE = new Set([
-  'pdf-card', 'doc-card', 'table-card', 'diagram-card', 'note-card', 'image-card',
+  'pdf-card', 'doc-card', 'table-card', 'diagram-card', 'note-card', 'image-card', 'link-card',
   'geo', 'text', 'note', 'arrow', 'frame', 'group',
 ]);
 

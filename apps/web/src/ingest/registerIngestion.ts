@@ -2,14 +2,17 @@
  * Drop / paste ingestion. A dropped PDF uploads to the server blob store and
  * lands as a pdf-card holding just the asset URL; a dropped/pasted IMAGE lands
  * as an image-card holding a data URL (local-first — it persists with the
- * board and needs no server). Other content is ignored for now. Drops land at
- * the drop point; pastes at the viewport center.
+ * board and needs no server); a pasted/dropped URL lands as a link-card that
+ * enriches itself with the server's SSRF-guarded preview (title, description,
+ * og:image, favicon). Drops land at the drop point; pastes at the viewport
+ * center.
  */
 
 import { createShapeId, type Editor, type TLShapeId, type VecLike } from 'tldraw';
+import { domainOf } from '../lib/url';
 import { uploadAsset } from '../lib/uploadAsset';
 import { logEvent } from '../log/eventLog';
-import { PDF_CARD_SIZE, type ImageCardShape, type PdfCardShape } from '../shapes';
+import { LINK_CARD_SIZE, PDF_CARD_SIZE, type ImageCardShape, type LinkCardShape, type PdfCardShape } from '../shapes';
 
 const MULTI_FILE_CASCADE = 28;
 
@@ -17,6 +20,65 @@ export function registerIngestion(editor: Editor): void {
   editor.registerExternalContentHandler('files', ({ files, point }) => {
     void placeFiles(editor, files, resolvePoint(editor, point));
   });
+  // tldraw routes pasted text that parses as a URL (and links dragged from
+  // another tab) through the 'url' handler.
+  editor.registerExternalContentHandler('url', ({ url, point }) => {
+    placeLink(editor, url, resolvePoint(editor, point));
+  });
+}
+
+/** What the server's link-preview endpoint returns (apps/server linkPreview.ts). */
+interface LinkPreview {
+  title?: string;
+  description?: string;
+  image?: string;
+  favicon?: string;
+  themeColor?: string;
+  siteName?: string;
+}
+
+/** A pasted URL lands as a link-card immediately (skeleton state) and fills
+ *  itself in when the preview arrives — the bare URL is already a working
+ *  card, so a failed enrichment just leaves the domain fallback. */
+function placeLink(editor: Editor, url: string, center: VecLike): void {
+  const { w, h } = LINK_CARD_SIZE;
+  const id = createShapeId();
+  editor.createShape<LinkCardShape>({
+    id,
+    type: 'link-card',
+    x: center.x - w / 2,
+    y: center.y - h / 2,
+    props: { w, h, url, title: '', description: '', image: '', favicon: '', themeColor: '', siteName: '', loading: true },
+  });
+  editor.select(id);
+  logEvent(editor, { kind: 'artefact', label: `Added ${domainOf(url)}`, detail: 'Link', shapeIds: [id] });
+
+  void fetch('/api/link/preview', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  })
+    .then((r) => (r.ok ? (r.json() as Promise<LinkPreview>) : null))
+    .then((p) => {
+      if (!editor.getShape(id)) return; // deleted or undone while fetching
+      editor.updateShape<LinkCardShape>({
+        id,
+        type: 'link-card',
+        props: {
+          loading: false,
+          title: p?.title ?? '',
+          description: p?.description ?? '',
+          image: p?.image ?? '',
+          favicon: p?.favicon ?? '',
+          themeColor: p?.themeColor ?? '',
+          siteName: p?.siteName ?? '',
+        },
+      });
+    })
+    .catch(() => {
+      if (!editor.getShape(id)) return;
+      editor.updateShape<LinkCardShape>({ id, type: 'link-card', props: { loading: false } });
+    });
 }
 
 /** Drops carry a page point; pastes do not — fall back to the viewport center. */

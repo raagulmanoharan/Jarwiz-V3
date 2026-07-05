@@ -137,6 +137,14 @@ function toSource(editor: Editor, shape: TLShape): AskSource | null {
       if (!src.startsWith('data:image/')) return null;
       return { kind: 'image', title: String(p.name ?? ''), dataUrl: src };
     }
+    case 'link-card': {
+      // The preview (title + description + URL) is the groundable content —
+      // the model reasons about what the link IS, not the full page.
+      const url = String(p.url ?? '');
+      if (!url.trim()) return null;
+      const bits = [String(p.title ?? ''), String(p.description ?? ''), url].filter((s) => s.trim());
+      return { kind: 'doc', title: getShapeTitle(shape), text: `Link: ${bits.join('\n')}` };
+    }
     // ── Native primitives — selected shapes/text/connectors become context ──
     case 'geo':
     case 'text':
