@@ -38,6 +38,40 @@ export function toggleInline(text: string, start: number, end: number, marker: s
   };
 }
 
+/** Insert a block on its own line at the caret (a table skeleton, an image),
+ *  guaranteeing a blank-ish separation so it renders as its own block. When
+ *  `selectToken` is given, the caret lands on that substring (e.g. the first
+ *  "Column" of a fresh table) so the user can type straight over it. */
+export function insertBlock(
+  text: string,
+  start: number,
+  end: number,
+  block: string,
+  selectToken?: string,
+): FormatResult {
+  const before = text.slice(0, start);
+  const after = text.slice(end);
+  const pre = before.length === 0 || before.endsWith('\n') ? '' : '\n';
+  const post = after.length === 0 || after.startsWith('\n') ? '' : '\n';
+  const at = start + pre.length;
+  let selStart = at;
+  let selEnd = at + block.length;
+  if (selectToken) {
+    const idx = block.indexOf(selectToken);
+    if (idx >= 0) {
+      selStart = at + idx;
+      selEnd = selStart + selectToken.length;
+    }
+  }
+  return { text: before + pre + block + post + after, selStart, selEnd };
+}
+
+/** A 2×2 markdown table skeleton, caret on the first header cell. */
+export function insertTableBlock(text: string, start: number, end: number): FormatResult {
+  const block = ['| Column | Column |', '| --- | --- |', '|  |  |'].join('\n');
+  return insertBlock(text, start, end, block, 'Column');
+}
+
 /** Apply a format to a textarea React controls: the native value setter plus
  *  a bubbling input event runs the component's OWN onChange, so the edit
  *  flows through whatever that textarea writes to (a doc's text, a table

@@ -3128,6 +3128,14 @@ body,
   border-right: 1px solid var(--jz-hairline);
 }
 
+/* Divides inline text formats from block inserts (table/image/full-screen). */
+.jz-cardbar-fmt-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 3px 3px;
+  background: var(--jz-hairline);
+}
+
 .jz-cardbar-iconbtn {
   display: inline-flex;
   align-items: center;

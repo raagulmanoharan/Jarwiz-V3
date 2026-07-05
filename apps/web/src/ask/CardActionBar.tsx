@@ -6,12 +6,13 @@
  * questions live in the prompt bar; provenance lives in the drawn edges.
  */
 
-import { useState, type CSSProperties } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import { stopEventPropagation, useEditor, useValue, type Editor, type TLShapeId } from 'tldraw';
-import { Bold, Italic, Underline, Strikethrough, List, ListTodo, Maximize2 } from 'lucide-react';
+import { Bold, Italic, Underline, Strikethrough, List, ListTodo, Maximize2, Table2, Image as ImageIcon } from 'lucide-react';
 import { AFFINITY_COLORS, NOTE_PAPER, type NoteCardShape } from '../shapes';
 import { ASKABLE, hasAskableContent } from './askable';
-import { formatControlledTextarea, toggleInline, toggleLinePrefix, type FormatResult } from './textFormat';
+import { formatControlledTextarea, insertBlock, insertTableBlock, toggleInline, toggleLinePrefix, type FormatResult } from './textFormat';
+import { uploadAsset } from '../lib/uploadAsset';
 import { openDocFocus } from '../ui/focusDoc';
 import { PROFILE_PROMPT } from './profilePrompt';
 import { useAsk } from './useAsk';
@@ -72,6 +73,22 @@ export function CardActionBar() {
   const { tidy } = useTidy();
   const { cluster } = useCluster();
   const [menu, setMenu] = useState<null | 'refine' | 'tint'>(null);
+  // Hidden picker for "insert image" — uploads to the blob store, then drops
+  // a markdown image at the caret (the doc card renders it inline).
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const imageTargetRef = useRef<TLShapeId | null>(null);
+
+  const onPickImage = async (file: File | undefined, cardId: TLShapeId) => {
+    if (!file) return;
+    editor.setEditingShape(cardId); // mount the textarea so the caret exists
+    try {
+      const { url } = await uploadAsset(file, 'image');
+      const alt = file.name.replace(/\.[a-z0-9]+$/i, '');
+      applyCardFormat(editor, cardId, (t, s, e) => insertBlock(t, s, e, `![${alt}](${url})`, alt));
+    } catch {
+      /* upload failed — leave the card untouched */
+    }
+  };
 
   // One or more askable shapes selected → the bar lights up (same place always).
   const sel = useValue(
@@ -187,6 +204,18 @@ export function CardActionBar() {
   };
   return (
     <div className={`jz-cardbar${below ? ' jz-cardbar--below' : ''}`} style={style} onPointerDown={stopEventPropagation}>
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.currentTarget.files?.[0];
+          const target = imageTargetRef.current;
+          e.currentTarget.value = ''; // let the same file be picked again
+          if (target) void onPickImage(file, target);
+        }}
+      />
       {profileable ? (
         <button
           className="jz-cardbar-btn"
@@ -213,14 +242,38 @@ export function CardActionBar() {
             </button>
           ))}
           {sel.type === 'doc-card' ? (
-            <button
-              className="jz-cardbar-iconbtn"
-              title="Edit full screen"
-              aria-label="Edit full screen"
-              onClick={() => openDocFocus(id)}
-            >
-              <Maximize2 {...FMT_ICON} />
-            </button>
+            <>
+              <span className="jz-cardbar-fmt-sep" aria-hidden />
+              <button
+                className="jz-cardbar-iconbtn"
+                title="Insert table"
+                aria-label="Insert table"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => applyCardFormat(editor, id, insertTableBlock)}
+              >
+                <Table2 {...FMT_ICON} />
+              </button>
+              <button
+                className="jz-cardbar-iconbtn"
+                title="Insert image"
+                aria-label="Insert image"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  imageTargetRef.current = id;
+                  imageInputRef.current?.click();
+                }}
+              >
+                <ImageIcon {...FMT_ICON} />
+              </button>
+              <button
+                className="jz-cardbar-iconbtn"
+                title="Edit full screen"
+                aria-label="Edit full screen"
+                onClick={() => openDocFocus(id)}
+              >
+                <Maximize2 {...FMT_ICON} />
+              </button>
+            </>
           ) : null}
         </div>
       ) : null}

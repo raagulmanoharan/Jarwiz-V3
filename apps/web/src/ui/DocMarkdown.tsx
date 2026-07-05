@@ -228,7 +228,10 @@ function renderInline(text: string, onCite?: (page: number) => void): React.Reac
   // [p.N] page citations, [label](url) links, bare http(s) URLs (a pasted
   // link is clickable as-is), and ![alt](url) images. (__ is underline
   // here, not md-strong — the format bar writes it and nothing else does.)
-  const pattern = /\*\*([^*]+)\*\*|\*([^*]+)\*|__([^_]+)__|~~([^~]+)~~|`([^`]+)`|\[p{1,2}\.\s*([\d\s,&–-]+)\]|!\[([^\]]*)\]\((https?:\/\/[^\s)]+|data:image\/[^\s)]+)\)|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>"')\]]+)/g;
+  // Image URLs accept http(s), data:, AND root-relative /api/assets paths —
+  // the "insert image" upload returns a same-origin asset URL, not an absolute
+  // one; without the `/…` alternative it rendered as literal text.
+  const pattern = /\*\*([^*]+)\*\*|\*([^*]+)\*|__([^_]+)__|~~([^~]+)~~|`([^`]+)`|\[p{1,2}\.\s*([\d\s,&–-]+)\]|!\[([^\]]*)\]\((https?:\/\/[^\s)]+|data:image\/[^\s)]+|\/[^\s)]+)\)|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>"')\]]+)/g;
   let match;
 
   while ((match = pattern.exec(text)) !== null) {
