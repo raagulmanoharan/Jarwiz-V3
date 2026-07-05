@@ -132,6 +132,13 @@ function parseMetadata(html: string, finalUrl: URL): LinkPreview {
   const themeColor = meta('meta[name="theme-color"]');
   const siteName = meta('meta[property="og:site_name"]');
 
+  // Readable page text, from the same fetch — so a pasted link is groundable
+  // content (summarise / ask / scan), not just a pretty preview. Prefer the
+  // article/main region; strip chrome; cap hard.
+  $('script, style, noscript, svg, nav, header, footer, aside, form').remove();
+  const region = $('article').length ? $('article') : $('main').length ? $('main') : $('body');
+  const text = region.text().replace(/\s+/g, ' ').trim().slice(0, 8_000);
+
   return {
     url: finalUrl.href,
     title: title || finalUrl.hostname,
@@ -140,6 +147,7 @@ function parseMetadata(html: string, finalUrl: URL): LinkPreview {
     ...(favicon ? { favicon } : {}),
     ...(themeColor ? { themeColor } : {}),
     ...(siteName ? { siteName } : {}),
+    ...(text ? { text } : {}),
   };
 }
 

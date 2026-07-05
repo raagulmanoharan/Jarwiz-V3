@@ -138,12 +138,14 @@ function toSource(editor: Editor, shape: TLShape): AskSource | null {
       return { kind: 'image', title: String(p.name ?? ''), dataUrl: src };
     }
     case 'link-card': {
-      // The preview (title + description + URL) is the groundable content —
-      // the model reasons about what the link IS, not the full page.
+      // Preview + extracted page text — the model answers from the page's
+      // actual content, not just its meta tags.
       const url = String(p.url ?? '');
       if (!url.trim()) return null;
       const bits = [String(p.title ?? ''), String(p.description ?? ''), url].filter((s) => s.trim());
-      return { kind: 'doc', title: getShapeTitle(shape), text: `Link: ${bits.join('\n')}` };
+      const pageText = String(p.text ?? '').trim();
+      const body = `Link: ${bits.join('\n')}${pageText ? `\n\nPage content:\n${pageText}` : ''}`;
+      return { kind: 'doc', title: getShapeTitle(shape), text: body };
     }
     // ── Native primitives — selected shapes/text/connectors become context ──
     case 'geo':

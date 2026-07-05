@@ -116,6 +116,17 @@ export function CardActionBar() {
     if (sel.type !== 'diagram-card') transforms.push({ label: 'As a diagram', run: () => ask('Turn this into a diagram.', [id], { skipClarify: true }) });
     transforms.push({ label: 'Regenerate', run: () => ask('Regenerate this, same intent, fresh take.', [id], { targetId: id }) });
   }
+  // A link card with extracted page text refines like a document — the page
+  // content is on the card, so these read the page, not just its meta tags.
+  if (!sel.multi && hasContent && sel.type === 'link-card') {
+    const pageText = String((editor.getShape(id)?.props as Record<string, unknown>)?.text ?? '');
+    if (pageText.trim()) {
+      transforms.push(
+        { label: '✦ Summarise the page', run: () => ask('Summarise this page — what it is, the key points, and anything actionable.', [id], { skipClarify: true, logLabel: 'Summarized the page' }) },
+        { label: 'Key takeaways', run: () => ask('Extract the key takeaways from this page as a short, specific list.', [id], { skipClarify: true }) },
+      );
+    }
+  }
   // The drop-moment profile (docs/PDF-EDGE.md build 3): a dropped PDF lands
   // selected, so this bar IS the drop moment — Profile rides it as a fixed
   // action (a profile is the document's summary; owner call, 2026-07-04),

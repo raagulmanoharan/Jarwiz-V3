@@ -41,7 +41,11 @@ function extract(editor: Editor, shape: ReturnType<Editor['getShape']>): Analyze
       return text.trim() ? { kind: 'table', title, text } : null;
     }
     case 'link-card': {
-      const t = [typeof p.title === 'string' ? p.title : '', typeof p.description === 'string' ? p.description : ''].filter(Boolean).join('\n');
+      const t = [
+        typeof p.title === 'string' ? p.title : '',
+        typeof p.description === 'string' ? p.description : '',
+        typeof p.text === 'string' ? p.text : '', // extracted page text (capped by MAX_TEXT)
+      ].filter(Boolean).join('\n');
       return t ? { kind: 'link', title, text: t } : null;
     }
     case 'geo':

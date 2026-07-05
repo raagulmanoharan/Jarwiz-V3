@@ -376,3 +376,30 @@ every primitive reads as one visual family.
   the bar used to squat on the content at its clamp floor. It now flips
   below the card's bottom edge when there's no headroom above, and only
   docks over the card when neither edge is on-screen.
+
+## 2026-07-05 (later still) — Links become readable, text cards become writable
+
+- **Paste a URL → link card** (skeleton → SSRF-guarded preview), and the
+  same fetch now extracts the page's READABLE TEXT (article/main region,
+  8k cap) into the card's optional `text` prop. That one field upgrades
+  links from decoration to material: asks ground on page content, the
+  Refine menu gains "✦ Summarise the page" / "Key takeaways", contextual
+  pills get real substance, and board scans read linked pages.
+- **Text card formatting**: B/I/U/S + bullet/checklist buttons on the
+  refine bar operating on the editing textarea's selection as markdown
+  edits (shared pure helpers in ask/textFormat.ts; ⌘B/I/U shortcuts).
+  DocMarkdown learned __underline__ and ~~strike~~. Buttons preventDefault
+  on mousedown so the textarea keeps its selection.
+- **Focus mode**: Maximize on the format group opens the card as a
+  full-screen page — deep-dimmed board, sticky label-voice header (pinned
+  14px below the screen edge, with a fixed dim strip covering the gap so
+  text fades out rather than showing raw), autosizing textarea so the page
+  grows forever and the backdrop scrolls. Esc/X/backdrop closes; edits are
+  live on the shape so there is no save step. Gotcha: `flex: 1` on the
+  textarea silently overrode the autosize height (flex-basis 0) — pinning
+  the page at min-height with an inner scrollbar.
+- **Scan quality**: tensions/gaps open with a framing sentence (bullet-
+  first cards read broken); scan chips gate on gatherBoardCards() substance
+  rather than raw shape count; PDFs join scans as capped extracted text;
+  and a scan card's own pills phrase themselves as GENERATION — one per
+  named gap ("Draft the success metrics") — closing diagnose → generate.

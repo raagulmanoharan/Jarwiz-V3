@@ -21,6 +21,8 @@ export interface LinkPreview {
   favicon?: string;
   themeColor?: string;
   siteName?: string;
+  /** Readable page text (capped server-side) — what asks/refines ground on. */
+  text?: string;
 }
 
 /**

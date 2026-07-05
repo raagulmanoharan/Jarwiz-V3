@@ -35,6 +35,7 @@ interface LinkPreview {
   favicon?: string;
   themeColor?: string;
   siteName?: string;
+  text?: string;
 }
 
 /** A pasted URL lands as a link-card immediately (skeleton state) and fills
@@ -72,6 +73,7 @@ function placeLink(editor: Editor, url: string, center: VecLike): void {
           favicon: p?.favicon ?? '',
           themeColor: p?.themeColor ?? '',
           siteName: p?.siteName ?? '',
+          text: p?.text ?? '',
         },
       });
     })

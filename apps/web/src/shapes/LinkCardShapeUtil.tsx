@@ -24,6 +24,9 @@ export interface LinkCardProps {
   themeColor: string;
   siteName: string;
   loading: boolean;
+  /** Readable page text (server-extracted, capped) — what asks ground on.
+   *  Optional so link cards persisted before extraction stay valid. */
+  text?: string;
 }
 
 declare module '@tldraw/tlschema' {
@@ -50,6 +53,7 @@ export class LinkCardShapeUtil extends ShapeUtil<LinkCardShape> {
     themeColor: T.string,
     siteName: T.string,
     loading: T.boolean,
+    text: T.string.optional(),
   };
 
   override getDefaultProps(): LinkCardShape['props'] {
