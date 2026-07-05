@@ -229,26 +229,19 @@ export function useAsk() {
       const sourceShapes = sourceIds
         .map((id) => editor.getShape(id))
         .filter((s): s is TLShape => Boolean(s));
+      // Shapes with no content simply don't count as context (toSource returned
+      // null for them). If the whole selection was empty, the ask proceeds as a
+      // free-standing question — same as asking with nothing selected. What
+      // must NEVER happen is sending an empty-text "source": given a blank
+      // source to ground on, the model fills the vacuum with confident
+      // invention (dogfood 2026-07-04 finding #1).
       const sources = sourceShapes.map((s) => toSource(editor, s)).filter((s): s is AskSource => Boolean(s));
-      // A selection with no usable content must not run — and must not fail
-      // silently either. Say why, at the card. (A deliberately sourceless ask
-      // — no ids at all — still proceeds as a free-standing query.)
-      if (sourceIds.length > 0 && sources.length === 0) {
-        endPresence(PRESENCE.id);
-        const emptyTaskId = `ask_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-        setAgentTask({
-          id: emptyTaskId,
-          anchorId: sourceIds[0] ?? null,
-          status: 'error',
-          label: 'Ask',
-          error: "The selected card is empty — there's nothing to ground this on yet.",
-        });
-        setTimeout(() => clearAgentTask(emptyTaskId), 6000); // transient, not a dead end
-        return;
-      }
 
-      // Human-readable labels for the "Based on:" header (show-your-work, 2.2).
-      const sourceLabels = sourceShapes.map((s) => sourceLabel(s));
+      // Provenance (edges + "Based on:" labels) tracks the shapes that
+      // actually CONTRIBUTED content — an empty card earns no lineage edge.
+      const contributingShapes = sourceShapes.filter((s) => toSource(editor, s) !== null);
+      const contributingIds = contributingShapes.map((s) => s.id);
+      const sourceLabels = contributingShapes.map((s) => sourceLabel(s));
 
       const pdfSourceId = sourceShapes.find((s) => s.type === 'pdf-card')?.id ?? null;
 
@@ -323,7 +316,7 @@ export function useAsk() {
         createdIds.push(id);
         const d = getDraft();
         if (!d) {
-          const arrowIds = sourceIds
+          const arrowIds = contributingIds
             .map((from) => createEdge(editor, from, id))
             .filter(Boolean) as TLShapeId[];
           setDraft({
@@ -441,9 +434,9 @@ export function useAsk() {
             }
             if (pdfSourceId) setResponsePdfSource(id, pdfSourceId);
             // Record what this answer was built from (show-your-work, 2.2).
-            setProvenance(id, sourceIds, sourceLabels);
+            setProvenance(id, contributingIds, sourceLabels);
             startStreaming(id);
-            const arrowIds = sourceIds.map((from) => createEdge(editor, from, id)).filter(Boolean) as TLShapeId[];
+            const arrowIds = contributingIds.map((from) => createEdge(editor, from, id)).filter(Boolean) as TLShapeId[];
             setDraft({ id, arrowIds, status: 'streaming', prompt: trimmed, logLabel: opts?.logLabel, sourceIds, shape: event.shape, pdfSourceId });
             frameCard(editor, [id], sourceIds);
             break;

@@ -325,9 +325,12 @@ three owner directives on top. Learnings:
 
 - **Vacuums get filled with confident nonsense.** An ask grounded on an
   empty card made the model riff on its own system prompt. The fix is
-  structural, not prompt-side: toSource now returns null for contentless
-  shapes and the ask refuses with an honest pill. Every grounding path
-  should assume "no content" is a reachable state.
+  structural, not prompt-side: toSource returns null for contentless
+  shapes, so empty cards simply don't count as context — the ask proceeds
+  as a free-standing question (a first-cut refusal pill was rightly
+  challenged by the owner: never block the user when ignoring the empty
+  card gives the behavior they meant). Provenance edges now come only
+  from shapes that actually contributed.
 - **tldraw groups ARE the "invisible frame".** Generated flowcharts group
   on completion: click selects the diagram as one askable unit (toSource
   walks the group's children), double-click enters it to edit — zero new

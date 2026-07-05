@@ -314,7 +314,9 @@ spine of the product holds.
 
 ## 2026-07-05 — Fixes landed (same-day)
 
-Bugs 1–2 (empty-source gating + honest refusal pill; truly-blank onboarding),
+Bugs 1–2 (empty cards no longer count as ask context — the ask runs
+free-standing and the empty card earns no provenance edge; truly-blank
+onboarding),
 5 (stranded shimmer), 6 (diagram camera-follow + occupancy-aware placement),
 7 (word-boundary pill labels), 3–4 via prompt rules (one-sided comparison
 column says "Not covered in this source"; doc answers may not emit code/

@@ -48,28 +48,37 @@ async function run() {
     record('"Start blank" creates nothing', shapes === 0, `${shapes} shapes`);
   } else record('"Start blank" creates nothing', false, 'no onboarding dialog');
 
-  // ── 2. Asking about an EMPTY card refuses with an honest pill ────────────
+  // ── 2. An empty card doesn't count as context ─────────────────────────────
+  // The ask proceeds as a FREE-STANDING question: no empty-text source may
+  // reach the model (that's what caused the hallucination), and the empty
+  // card earns no provenance edge.
+  let askBody = null;
+  page.on('request', (req) => {
+    if (req.url().includes('/api/ask') && req.method() === 'POST') {
+      try { askBody = JSON.parse(req.postData() || 'null'); } catch {}
+    }
+  });
   await page.evaluate(() => {
     window.editor.createShape({ type: 'doc-card', x: 200, y: 160, props: { title: 'Empty starter', text: '' } });
     const d = window.editor.getCurrentPageShapes().find((s) => s.type === 'doc-card');
     window.editor.select(d.id);
   });
   await sleep(400);
-  await page.fill('.jz-promptbar-input', 'Brainstorm the concerns as sticky notes.');
+  await page.fill('.jz-promptbar-input', 'List three questions worth asking before adopting a new compiler.');
   await page.focus('.jz-promptbar-input');
   await page.keyboard.press('Enter');
-  const gateErr = await page
-    .waitForSelector('.jz-task--error', { timeout: 5000 })
-    .then((el) => el.textContent())
-    .catch(() => null);
-  const noteCards = await page.evaluate(
-    () => window.editor.getCurrentPageShapes().filter((s) => s.type === 'note-card').length,
+  await page.waitForSelector('.jz-draft-keep', { timeout: 180_000 });
+  const arrows = await page.evaluate(
+    () => window.editor.getCurrentPageShapes().filter((s) => s.type === 'arrow').length,
   );
   record(
-    'empty-card ask refuses honestly, creates nothing',
-    Boolean(gateErr && /empty/i.test(gateErr)) && noteCards === 0,
-    gateErr ?? 'no pill',
+    'empty card is ignored: ask runs free-standing, zero sources sent',
+    Boolean(askBody) && Array.isArray(askBody.sources) && askBody.sources.length === 0,
+    `sources=${askBody?.sources?.length ?? '?'}`,
   );
+  record('no provenance edge from a card that contributed nothing', arrows === 0, `${arrows} arrows`);
+  await page.click('.jz-draft-keep');
+  await sleep(400);
   await page.screenshot({ path: '/tmp/jz-fix-empty-gate.png' });
 
   // ── 3. Sticky tool spawns ONE editable sticky ────────────────────────────
