@@ -140,6 +140,20 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
 
   const gridCols = `repeat(${Math.max(1, columns.length)}, minmax(0, 1fr))`;
 
+  // Media-aware width: a table that holds images grows to give every column
+  // real room (photos at 140px-wide columns read as thumbnails of nothing).
+  // Grow-only — a manual widen is never fought.
+  const hasImages = rows.some((r) => r.some((c) => typeof c === 'string' && c.includes('![')));
+  const MEDIA_COL_W = 220;
+  if (hasImages && shape.props.w < columns.length * MEDIA_COL_W) {
+    queueMicrotask(() => {
+      const cur = editor.getShape(shape.id) as TableCardShape | undefined;
+      if (cur && cur.props.w < cur.props.columns.length * MEDIA_COL_W) {
+        editor.updateShape<TableCardShape>({ id: shape.id, type: 'table-card', props: { w: cur.props.columns.length * MEDIA_COL_W } });
+      }
+    });
+  }
+
   // ── Column types (text / link / photo) ────────────────────────────────────
   const colType = (i: number): ColumnType => {
     const t = (shape.props.columnTypes ?? [])[i];
