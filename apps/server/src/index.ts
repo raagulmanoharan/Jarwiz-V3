@@ -366,6 +366,7 @@ app.post('/api/analyze', async (c) => {
       kind: typeof card?.kind === 'string' ? card.kind : 'note',
       title: typeof card?.title === 'string' ? card.title.slice(0, 200) : undefined,
       text: typeof card?.text === 'string' ? card.text.slice(0, 2000) : '',
+      assetId: typeof card?.assetId === 'string' ? card.assetId : undefined,
     })),
   };
 

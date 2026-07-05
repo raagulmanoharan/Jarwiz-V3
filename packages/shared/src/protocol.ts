@@ -346,6 +346,9 @@ export interface AnalyzeCard {
   kind: string;
   title?: string;
   text: string;
+  /** PDF cards: the server-side asset whose extracted text joins the scan
+   *  (capped server-side — see analyze.ts PDF_* limits). */
+  assetId?: string;
 }
 
 export interface AnalyzeRequest {

@@ -24,7 +24,7 @@ function plain(editor: Editor, richText: unknown): string {
   }
 }
 
-function extract(editor: Editor, shape: ReturnType<Editor['getShape']>): { kind: string; title?: string; text: string } | null {
+function extract(editor: Editor, shape: ReturnType<Editor['getShape']>): AnalyzeCard | null {
   if (!shape) return null;
   const p = shape.props as Record<string, unknown>;
   const title = typeof p.title === 'string' && p.title.trim() ? p.title.trim() : undefined;
@@ -56,6 +56,15 @@ function extract(editor: Editor, shape: ReturnType<Editor['getShape']>): { kind:
     }
     case 'frame':
       return typeof p.name === 'string' && p.name.trim() ? { kind: 'frame', text: `Section: ${p.name.trim()}` } : null;
+    case 'pdf-card': {
+      // Ready PDFs join the scan by reference — the server swaps the assetId
+      // for the document's extracted text (capped there, so a 100-page
+      // contract can't blow up a casual scan).
+      const assetId = typeof p.assetId === 'string' ? p.assetId : '';
+      if (p.status !== 'ready' || !assetId) return null;
+      const name = typeof p.name === 'string' && p.name.trim() ? p.name.trim() : undefined;
+      return { kind: 'pdf', title: name, text: '', assetId };
+    }
     default:
       return null;
   }
