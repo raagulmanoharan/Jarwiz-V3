@@ -292,12 +292,19 @@ async function gatherContext(
 const CITE_DIRECTIVE =
   '\n\nThe source text is tagged with [p.N] page markers. When a statement draws on a specific page, cite it inline as [p.N] (use the marker from the text). Cite the page where the fact actually appears; do not invent page numbers.';
 
-/** Web-page sources get link citations — the parallel of [p.N] for PDFs. */
+/** Web-page sources get link citations — the parallel of [p.N] for PDFs.
+ *  With ONE source, inline cites are pure repetition (the same URL after
+ *  every line) — a single closing Source line covers the whole answer.
+ *  Inline cites earn their place only when there are pages to tell apart. */
 function linkCiteDirective(refs: Array<{ title: string; url: string }>): string {
   const list = refs.map((r) => `- ${r.title}: ${r.url}`).join('\n');
+  const inline =
+    refs.length > 1
+      ? 'Statements drawing on a specific page cite it inline as a markdown link — ([source](URL)) with that page\'s real URL. '
+      : 'Do NOT add inline citations after each statement — with a single source they are noise. ';
   return (
     `\n\nSome sources are web pages:\n${list}\n` +
-    'When a statement draws on a web page, cite it inline as a markdown link — ([source](URL)) with the page\'s real URL. ' +
+    inline +
     'End the answer with a reference line per page used: "Source: [Title](URL)". Never invent URLs.'
   );
 }
