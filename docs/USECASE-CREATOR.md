@@ -124,11 +124,29 @@ oEmbed gives title/author/thumbnail only; real stats need a YouTube Data
 API key (server env, like ANTHROPIC_API_KEY). Ship without; add when a key
 exists.
 
-**G7 — No-caption rescue via ASR. (large, defer)**
-Whisper-class transcription of the audio would cover the caption-less
-fifth, but needs download + audio pipeline + real cost controls, and tests
-YouTube's ToS patience. The badge (G3) keeps us honest until this earns
-its build.
+**G7 — Actually watching the video: frames + ASR. (medium — the recipe
+exists)**
+The reference implementation is `bradautomates/claude-video` (the "/watch"
+skill — owner spotted it in the wild, 2026-07-05): give the model FRAMES
+plus a timestamped transcript and it genuinely dissects editing style —
+cuts, on-screen text, visual pacing. Its recipe, translated to our server:
+- `yt-dlp` for captions first (also more robust than our hand-rolled
+  `captionTracks` scrape — worth adopting for G1's fetch even alone), and
+  for the video download only when frames are needed.
+- `ffmpeg` keyframe extraction (`-skip_frame nokey` ≈ 0.5s for a 49-min
+  video), duration-aware frame budgets (~30 frames ≤30s … 100 capped),
+  and a cheap dedup pass (16×16 grayscale, mean-abs-diff vs last KEPT
+  frame) so static footage doesn't bill duplicate images.
+- Frames enter the ask as image blocks with `t=MM:SS` markers — our
+  pipeline already ships vision inputs (images ride asks today); the work
+  is raising MAX_IMAGES for video asks and storing frames as assets on
+  the card.
+- Whisper (Groq `whisper-large-v3` preferred) only as the caption-less
+  fallback — needs a key, mono 16kHz mp3 (~480 kB/min).
+Cost shape from their measurements: ~197 tokens/frame at 512px; transcript
+often dominates on long videos. Server needs `yt-dlp` + `ffmpeg` installed
+(not present in the dev sandbox; standard on a real host). Until this
+lands, the badge (G3) keeps us honest about what we can't see.
 
 ## 4 · Who does what (the intervention split)
 
