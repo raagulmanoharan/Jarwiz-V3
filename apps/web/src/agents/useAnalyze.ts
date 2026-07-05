@@ -76,7 +76,9 @@ export function useAnalyze() {
         if (errorMsg) throw new Error(errorMsg);
         clearAgentTask(taskId);
         const b = editor.getShapePageBounds(id);
-        if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 120 });
+        // targetZoom caps at 100% — framing a single card must never magnify
+        // it past natural size (text balloons and padding reads as broken).
+        if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 120, targetZoom: 1 });
       } catch (err) {
         if (cancelled) {
           const s = editor.getShape(id) as DocCardShape | undefined;

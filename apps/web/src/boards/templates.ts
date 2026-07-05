@@ -84,7 +84,7 @@ export function applyTemplate(editor: Editor, templateId: string, boardName: str
     if (ids.length) {
       editor.select(...ids);
       const b = editor.getSelectionPageBounds();
-      if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 80 });
+      if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 80, targetZoom: 1 });
       editor.selectNone();
     }
     return;
@@ -94,7 +94,7 @@ export function applyTemplate(editor: Editor, templateId: string, boardName: str
   editor.createShapes(shapes);
   editor.selectAll();
   const bounds = editor.getSelectionPageBounds();
-  if (bounds) editor.zoomToBounds(bounds, { animation: { duration: 300 }, inset: 80 });
+  if (bounds) editor.zoomToBounds(bounds, { animation: { duration: 300 }, inset: 80, targetZoom: 1 });
   editor.selectNone();
 }
 

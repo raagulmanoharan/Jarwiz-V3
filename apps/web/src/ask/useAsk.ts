@@ -628,7 +628,7 @@ function pairBounds(editor: Editor, responseIds: TLShapeId[], sourceIds: TLShape
 /** Frame the source + response together, centred (used when the draft appears). */
 function frameCard(editor: Editor, responseIds: TLShapeId[], sourceIds: TLShapeId[]): void {
   const u = pairBounds(editor, responseIds, sourceIds);
-  if (u) editor.zoomToBounds(u, { animation: { duration: 420, easing: easeOutCubic }, inset: 130 });
+  if (u) editor.zoomToBounds(u, { animation: { duration: 420, easing: easeOutCubic }, inset: 130, targetZoom: 1 });
 }
 
 /** Keep the source + response centred as the response grows — re-frame only
@@ -637,7 +637,7 @@ function followCard(editor: Editor, responseIds: TLShapeId[], sourceIds: TLShape
   const u = pairBounds(editor, responseIds, sourceIds);
   if (!u) return;
   if (editor.getViewportPageBounds().contains(u)) return;
-  editor.zoomToBounds(u, { animation: { duration: 280, easing: easeOutCubic }, inset: 130 });
+  editor.zoomToBounds(u, { animation: { duration: 280, easing: easeOutCubic }, inset: 130, targetZoom: 1 });
 }
 
 /* ── affinity layout ───────────────────────────────────────────────────────

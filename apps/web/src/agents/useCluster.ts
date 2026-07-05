@@ -117,7 +117,7 @@ export function useCluster() {
       clearAgentTask(taskId);
       editor.select(...created, ...noteIds);
       const b = editor.getSelectionPageBounds();
-      if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 80 });
+      if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 80, targetZoom: 1 });
       editor.selectNone();
     } catch (err) {
       if (summaryId) stopStreaming(summaryId);

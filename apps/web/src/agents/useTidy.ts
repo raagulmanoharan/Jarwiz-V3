@@ -95,7 +95,7 @@ export function useTidy() {
 
       editor.select(...nodeIds);
       const b = editor.getSelectionPageBounds();
-      if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 80 });
+      if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 80, targetZoom: 1 });
     },
     [editor],
   );

@@ -245,7 +245,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
               setPdfPage(pdfId, page);
               editor.select(pdfId);
               const bounds = editor.getShapePageBounds(pdfId);
-              if (bounds) editor.zoomToBounds(bounds, { animation: { duration: 220 }, inset: 80 });
+              if (bounds) editor.zoomToBounds(bounds, { animation: { duration: 220 }, inset: 80, targetZoom: 1 });
             }}
             onToggleTask={isStreaming ? undefined : (ordinal, checked) => toggleTask(editor, shape, ordinal, checked)}
           />
