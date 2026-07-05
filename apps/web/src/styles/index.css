@@ -1567,6 +1567,11 @@ body,
  * nested input). This was the text-hugging-the-hairlines bug. */
 .jz-table-cell.jz-table-input {
   padding: 9px 12px;
+  border-right: 1px solid var(--jz-hairline);
+}
+
+.jz-table-cell.jz-table-input:last-child {
+  border-right: none;
 }
 
 /* Edge add-affordances (edit mode) — Cove/Notion grain: a slim + strip along
@@ -1622,7 +1627,7 @@ body,
   position: absolute;
   top: var(--jz-space-3);
   right: var(--jz-space-3);
-  bottom: calc(var(--jz-space-3) + 28px);
+  height: 37px; /* the header band — column ops live with the columns */
   width: 22px;
 }
 
@@ -1765,40 +1770,6 @@ body,
 /* ── Typed columns: text / link / photo ─────────────────────────────────────
    The type button lives in the edit header (click cycles); static headers of
    non-text columns wear a quiet glyph; empty photo cells offer an upload. */
-.jz-table-coltype {
-  flex: none;
-  width: 17px;
-  height: 17px;
-  margin-right: 7px;
-  padding: 0;
-  border: none;
-  border-radius: var(--jz-radius-xs);
-  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
-  color: var(--jz-ink-400);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: color var(--jz-dur-fast) var(--jz-ease-out), background var(--jz-dur-fast) var(--jz-ease-out);
-}
-
-.jz-coltype-txt {
-  font-size: 8.5px;
-  font-weight: 650;
-  letter-spacing: 0.2px;
-}
-.jz-table-coltype:hover {
-  color: var(--jz-ink-900);
-  background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
-}
-
-.jz-table-coltype-static {
-  display: inline-flex;
-  vertical-align: -1px;
-  margin-right: 5px;
-  color: var(--jz-ink-400);
-}
-
 .jz-table-cellupload {
   border: 1px dashed var(--jz-hairline-strong);
   border-radius: var(--jz-radius-sm);

@@ -147,12 +147,6 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
     const t = (shape.props.columnTypes ?? [])[i];
     return t === 'link' || t === 'photo' ? t : 'text';
   };
-  const cycleType = (i: number) => {
-    const order: ColumnType[] = ['text', 'link', 'photo'];
-    const next = order[(order.indexOf(colType(i)) + 1) % order.length]!;
-    const types = columns.map((_, c) => (c === i ? next : colType(c)));
-    editor.updateShape<TableCardShape>({ id: shape.id, type: 'table-card', props: { columnTypes: types } });
-  };
 
   /** Write one cell on the LATEST shape — async completions (an upload, a
    *  fetched link title) must never stomp edits made while they were away. */
@@ -302,18 +296,6 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
         {columns.map((label, col) =>
           isEditing ? (
             <div key={col} className="jz-table-headcell jz-table-headcell-edit">
-              {/* Type chip leads the header (Notion-style), not a floating glyph. */}
-              <button
-                className="jz-table-coltype"
-                title={`Column type: ${colType(col)} — click to change`}
-                aria-label={`Column type: ${colType(col)}`}
-                tabIndex={-1}
-                style={{ pointerEvents: 'all' }}
-                onPointerDown={stopEventPropagation}
-                onClick={() => cycleType(col)}
-              >
-                <ColTypeGlyph type={colType(col)} />
-              </button>
               <textarea
                 className="jz-table-input"
                 value={label}
@@ -342,11 +324,6 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
             </div>
           ) : (
             <div key={col} className="jz-table-headcell jz-table-headcell-static">
-              {colType(col) !== 'text' ? (
-                <span className="jz-table-coltype-static" aria-hidden>
-                  <ColTypeGlyph type={colType(col)} />
-                </span>
-              ) : null}
               {label || `Column ${col + 1}`}
             </div>
           ),
