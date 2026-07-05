@@ -1822,9 +1822,25 @@ body,
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  /* Unhurried glide — same choreography as before. */
-  transition: transform var(--jz-dur-slow) var(--jz-ease-glide);
+  /* Movement is scripted (cursorMotion.ts) — human arcs, overshoot, tremor —
+     so transform gets NO transition; only presence fades are CSS-driven. */
+  transition: opacity var(--jz-dur-slow) var(--jz-ease-out);
   will-change: transform;
+}
+
+/* Off-duty (reduced motion, or a hand-off frame between poses): fade, don't
+   unmount — the rAF loop keeps the transform warm. */
+.jz-avatar--hidden {
+  opacity: 0;
+}
+
+/* The idle roam is calm company, not activity: no thinking ring, and the
+   badge recedes until Jarwiz is actually doing something. */
+.jz-avatar--idle .jz-avatar-ring {
+  display: none;
+}
+.jz-avatar--idle .jz-avatar-badge {
+  opacity: 0.82;
 }
 
 .jz-avatar-circle-wrap {

@@ -403,3 +403,31 @@ every primitive reads as one visual family.
   rather than raw shape count; PDFs join scans as capped extracted text;
   and a scan card's own pills phrase themselves as GENERATION — one per
   named gap ("Draft the success metrics") — closing diagnose → generate.
+
+## 2026-07-05 (later still) — Jarwiz becomes a living entity on the board
+
+**Intent:** "Jarwiz needs to be a living entity on the board, with its own
+mind — like a user cursor on a FigJam board, moving around, looking at what
+you've added. When a card or PDF is added, the time it takes to process
+should be visible: the cursor comes, lands on it, and reads."
+
+- The avatar no longer exists only during agent runs. A rAF **brain**
+  (`agents/AgentCursorLayer.tsx`) keeps it on the canvas full-time with three
+  tiers of attention: an active run owns it outright (presence store,
+  priority unchanged); a freshly dropped link/PDF/image pulls it over into a
+  **"reading…"** pose held for the card's real processing window (link-preview
+  fetch / blob upload, with a cap so a stuck pipeline can't trap it — and a
+  floor so even an instant image gets a beat of attention); otherwise it
+  idles like a curious collaborator — roams the viewport, parks on card
+  corners (the same spot ask choreography uses), drifts faintly in place.
+- **Human motion** (`agents/cursorMotion.ts`): curved bezier arcs with
+  overshoot-and-settle, pace proportional to *screen* distance (so zoom
+  doesn't change the beat), zig-zag reading sweeps, sub-pixel tremor at
+  rest. The `.jz-avatar` CSS transform transition is gone (opacity-only
+  now) — scripted motion and a 420ms transition fight each other.
+- **Attention feed** (`agents/jarwizLife.ts`): ingestion explicitly reports
+  each *user-added* card. Presence stays honest — agent-created cards keep
+  their own run choreography, and reading ends when the shape's own
+  `loading`/`status` props resolve, not on a fake timer.
+- Reduced motion preserves the old calm exactly: no roaming, instant parks,
+  visible only while working.
