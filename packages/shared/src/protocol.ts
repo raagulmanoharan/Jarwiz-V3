@@ -377,6 +377,37 @@ export interface AnalyzeResult {
   text: string;
 }
 
+/* ─── Discover (Ultra Think — grounded resource discovery) ────────────────────
+ * Read the board and surface REAL related resources from the live web (Claude
+ * grounded search). The links must be real — an ungrounded model invents dead
+ * URLs — so the server validates and dedupes before returning them.
+ */
+
+export type ResourceKind = 'video' | 'article' | 'paper' | 'doc' | 'repo' | 'other';
+
+export interface SuggestedResource {
+  title: string;
+  description: string;
+  /** A real, reachable http(s) URL (validated server-side). */
+  url: string;
+  kind: ResourceKind;
+  /** "because you saved …" — why this fits the board. */
+  reason: string;
+  /** Source domain (e.g. "arxiv.org"), derived from the URL. */
+  source: string;
+}
+
+export interface DiscoverRequest {
+  /** The board's cards, summarised like an analyze scan. */
+  cards: AnalyzeCard[];
+  /** URLs already on the board — never suggest a duplicate. */
+  existingUrls?: string[];
+}
+
+export interface DiscoverResult {
+  resources: SuggestedResource[];
+}
+
 /* ─── Revise (Big Rocks 3.3 — conversational depth) ──────────────────────────
  * Argue with an answer card: a follow-up instruction revises the doc IN PLACE
  * (not a new card), keeping the dialogue on the one artifact.

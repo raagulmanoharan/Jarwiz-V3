@@ -29,9 +29,10 @@ import type {
 import { buildLinkPreview, fetchYouTubeText, SsrfError } from './linkPreview.js';
 import { ingestVideo, videoTools } from './video.js';
 import { parseSheetGrid } from './sheets.js';
+import { discoverResources } from './discover.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset, sniffMime } from './assets.js';
 import { proposeSeedPrompts, streamAsk } from './ask.js';
-import type { AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ReviseRequest } from '@jarwiz/shared';
+import type { AnalyzeCard, AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ReviseRequest } from '@jarwiz/shared';
 import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
 import { generateDiagram } from './diagram.js';
@@ -436,7 +437,37 @@ app.post('/api/analyze', async (c) => {
       await stream.writeSSE({ data: JSON.stringify({ type: 'error', message }) });
     }
   });
-});/** Predefined, content-aware Ask prompts for a dropped PDF (the blank-slate on-ramp). */
+});
+
+/** Ultra Think — grounded discovery of real related resources for the board. */
+app.post('/api/discover', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected JSON: { cards[] }' }, 400);
+  }
+  const raw = body as { cards?: unknown; existingUrls?: unknown };
+  if (!Array.isArray(raw.cards)) return c.json({ error: 'cards must be an array' }, 400);
+  const cards = raw.cards.slice(0, 24).map((card) => ({
+    kind: typeof (card as AnalyzeCard)?.kind === 'string' ? (card as AnalyzeCard).kind : 'note',
+    title: typeof (card as AnalyzeCard)?.title === 'string' ? (card as AnalyzeCard).title!.slice(0, 200) : undefined,
+    text: typeof (card as AnalyzeCard)?.text === 'string' ? (card as AnalyzeCard).text.slice(0, 2000) : '',
+    assetId: typeof (card as AnalyzeCard)?.assetId === 'string' ? (card as AnalyzeCard).assetId : undefined,
+  }));
+  const existingUrls = Array.isArray(raw.existingUrls)
+    ? raw.existingUrls.filter((u): u is string => typeof u === 'string' && /^https?:\/\//i.test(u)).slice(0, 60)
+    : [];
+  try {
+    const resources = await discoverResources({ cards, existingUrls }, c.req.raw.signal);
+    return c.json({ resources });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Discovery failed';
+    return c.json({ resources: [], error: message }, 502);
+  }
+});
+
+/** Predefined, content-aware Ask prompts for a dropped PDF (the blank-slate on-ramp). */
 app.post('/api/seed-prompts', async (c) => {
   let body: unknown;
   try {
