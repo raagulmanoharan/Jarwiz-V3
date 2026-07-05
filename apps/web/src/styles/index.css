@@ -341,14 +341,39 @@ body,
   overflow-y: auto;
   padding: 4px;
 }
+/* A theme header groups the resources researched for one board topic. */
+.jz-ultra-group + .jz-ultra-group {
+  margin-top: 2px;
+}
+.jz-ultra-topic {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--jz-ink-400);
+  padding: 8px 8px 3px;
+}
+/* The whole row is a click-to-add button — full width, left-aligned. */
 .jz-ultra-row {
+  width: 100%;
   display: flex;
   gap: 9px;
   padding: 9px 8px;
+  border: none;
+  background: transparent;
+  text-align: left;
   border-radius: var(--jz-radius-sm);
+  cursor: pointer;
 }
 .jz-ultra-row:hover {
   background: var(--jz-surface-raised);
+}
+.jz-ultra-row:hover .jz-ultra-add {
+  border-color: var(--jz-accent);
+  color: var(--jz-accent);
+}
+.jz-ultra-row--done {
+  cursor: default;
 }
 .jz-ultra-kind {
   flex: none;
@@ -361,12 +386,23 @@ body,
   background: var(--jz-surface-raised);
   color: var(--jz-ink-500);
 }
+.jz-ultra-row:hover .jz-ultra-kind {
+  background: var(--jz-card);
+}
 .jz-ultra-body {
   flex: 1;
   min-width: 0;
 }
+/* Title + source share the top line; the reason gets its OWN full-width line
+ * below so the URL never crowds or hides it. */
+.jz-ultra-toprow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
 .jz-ultra-rtitle {
-  display: block;
+  flex: 1;
+  min-width: 0;
   font-size: 12.5px;
   font-weight: 600;
   color: var(--jz-ink-900);
@@ -378,35 +414,31 @@ body,
 .jz-ultra-rtitle:hover {
   text-decoration: underline;
 }
+.jz-ultra-source {
+  flex: none;
+  font-size: 10.5px;
+  color: var(--jz-ink-400);
+  white-space: nowrap;
+}
 .jz-ultra-desc {
   font-size: 11.5px;
   line-height: 1.4;
   color: var(--jz-ink-600);
-  margin-top: 1px;
+  margin-top: 2px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.jz-ultra-meta {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin-top: 3px;
-}
 .jz-ultra-reason {
-  flex: 1;
-  min-width: 0;
+  margin-top: 4px;
   font-size: 11px;
+  line-height: 1.4;
   color: var(--jz-accent);
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-}
-.jz-ultra-source {
-  flex: none;
-  font-size: 10.5px;
-  color: var(--jz-ink-400);
 }
 .jz-ultra-add {
   flex: none;
@@ -419,18 +451,12 @@ body,
   border: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-pill);
   background: transparent;
-  color: var(--jz-ink-700);
-  cursor: pointer;
-}
-.jz-ultra-add:hover {
-  border-color: var(--jz-accent);
-  color: var(--jz-accent);
+  color: var(--jz-ink-500);
 }
 .jz-ultra-add--done {
   background: color-mix(in srgb, var(--jz-accent) 16%, transparent);
   border-color: transparent;
   color: var(--jz-accent);
-  cursor: default;
 }
 
 /* Hamburger / logo button — fully round. The default face is the Jarwiz mark

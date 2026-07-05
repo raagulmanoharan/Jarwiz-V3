@@ -391,10 +391,13 @@ export interface SuggestedResource {
   /** A real, reachable http(s) URL (validated server-side). */
   url: string;
   kind: ResourceKind;
-  /** "because you saved …" — why this fits the board. */
+  /** The specific connection/gap this fills — smarter than "because you
+   *  saved X"; names what on the board it advances and why it's worth it. */
   reason: string;
   /** Source domain (e.g. "arxiv.org"), derived from the URL. */
   source: string;
+  /** The board theme this belongs to — the drawer groups results by topic. */
+  topic: string;
 }
 
 export interface DiscoverRequest {
