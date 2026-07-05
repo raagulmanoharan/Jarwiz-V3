@@ -242,14 +242,16 @@ function parseImageDataUrl(dataUrl: string, title: string): ImageInput | null {
 
 async function gatherContext(
   req: AskRequest,
-): Promise<{ context: string; citable: boolean; images: ImageInput[] }> {
+): Promise<{ context: string; citable: boolean; images: ImageInput[]; linkRefs: Array<{ title: string; url: string }> }> {
   const parts: string[] = [];
   const images: ImageInput[] = [];
+  const linkRefs: Array<{ title: string; url: string }> = [];
   let citable = false;
   let i = 0;
   for (const s of req.sources) {
     i += 1;
-    const head = `Source ${i} (${s.kind}${s.title ? `: ${s.title}` : ''}):`;
+    if (s.url?.trim()) linkRefs.push({ title: s.title?.trim() || s.url, url: s.url.trim() });
+    const head = `Source ${i} (${s.kind}${s.title ? `: ${s.title}` : ''}${s.url ? ` — ${s.url}` : ''}):`;
     if (s.kind === 'image' && s.dataUrl) {
       const img = images.length < MAX_IMAGES ? parseImageDataUrl(s.dataUrl, s.title || `Image ${i}`) : null;
       if (img) {
@@ -284,11 +286,21 @@ async function gatherContext(
     if (s.text?.trim()) parts.push(`${head}\n"""\n${s.text.trim().slice(0, PER_SOURCE_CHARS)}\n"""`);
     else parts.push(head);
   }
-  return { context: parts.join('\n\n'), citable, images };
+  return { context: parts.join('\n\n'), citable, images, linkRefs };
 }
 
 const CITE_DIRECTIVE =
   '\n\nThe source text is tagged with [p.N] page markers. When a statement draws on a specific page, cite it inline as [p.N] (use the marker from the text). Cite the page where the fact actually appears; do not invent page numbers.';
+
+/** Web-page sources get link citations — the parallel of [p.N] for PDFs. */
+function linkCiteDirective(refs: Array<{ title: string; url: string }>): string {
+  const list = refs.map((r) => `- ${r.title}: ${r.url}`).join('\n');
+  return (
+    `\n\nSome sources are web pages:\n${list}\n` +
+    'When a statement draws on a web page, cite it inline as a markdown link — ([source](URL)) with the page\'s real URL. ' +
+    'End the answer with a reference line per page used: "Source: [Title](URL)". Never invent URLs.'
+  );
+}
 
 /** Build the user message content — a plain string, or text + image blocks when
  *  vision inputs are present (API path only). */
@@ -428,7 +440,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   }
 
   yield { type: 'status', message: 'Reading the source…' };
-  const { context, citable, images } = await gatherContext(req);
+  const { context, citable, images, linkRefs } = await gatherContext(req);
   if (signal.aborted) return;
 
   // Disambiguation: if the request is genuinely unclear, ask one short question
@@ -506,6 +518,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
 
   const base = shape === 'list' ? LIST_SYSTEM : DOC_SYSTEM;
   let system = citable ? base + CITE_DIRECTIVE : base;
+  if (linkRefs.length > 0) system += linkCiteDirective(linkRefs);
   if (wantsChecklist(req.prompt)) system += CHECKLIST_DIRECTIVE;
   yield* streamDoc(shape, system, user, signal, images);
 }

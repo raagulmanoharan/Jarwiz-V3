@@ -145,7 +145,8 @@ function toSource(editor: Editor, shape: TLShape): AskSource | null {
       const bits = [String(p.title ?? ''), String(p.description ?? ''), url].filter((s) => s.trim());
       const pageText = String(p.text ?? '').trim();
       const body = `Link: ${bits.join('\n')}${pageText ? `\n\nPage content:\n${pageText}` : ''}`;
-      return { kind: 'doc', title: getShapeTitle(shape), text: body };
+      // `url` rides along so the server can direct link citations at it.
+      return { kind: 'doc', title: getShapeTitle(shape), text: body, url };
     }
     // ── Native primitives — selected shapes/text/connectors become context ──
     case 'geo':

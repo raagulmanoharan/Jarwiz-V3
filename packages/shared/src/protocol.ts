@@ -254,6 +254,9 @@ export interface AskSource {
    *  model as a vision input on the API path; noted but unseen on the dev
    *  sidecar (which is text-only). */
   dataUrl?: string;
+  /** Source web page URL (link-card sources) — answers cite it as a markdown
+   *  link and close with a Source reference line. */
+  url?: string;
 }
 
 export interface AskRequest {

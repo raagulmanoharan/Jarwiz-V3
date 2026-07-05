@@ -2180,6 +2180,19 @@ body,
   color: var(--jz-ink-900);
 }
 
+/* Inline link citation — the web-page parallel of the [p.N] chip. */
+.jz-md-link {
+  color: var(--jz-ink-700);
+  text-decoration: underline;
+  text-decoration-color: var(--jz-ink-400);
+  text-underline-offset: 2px;
+  transition: color var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-md-link:hover {
+  color: var(--jz-ink-900);
+}
+
 .jz-markdown em {
   font-style: italic;
 }

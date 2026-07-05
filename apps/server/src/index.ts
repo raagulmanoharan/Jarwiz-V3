@@ -268,6 +268,8 @@ app.post('/api/ask', async (c) => {
           // Image data URL for vision sources (validated/parsed in ask.ts).
           dataUrl:
             typeof s?.dataUrl === 'string' && s.dataUrl.startsWith('data:image/') ? s.dataUrl : undefined,
+          // Web-page source URL — link citations point at it. http(s) only.
+          url: typeof s?.url === 'string' && /^https?:\/\//i.test(s.url) ? s.url.slice(0, 2000) : undefined,
         }))
       : [],
     // The shape of the card being refined in place — keeps a same-type tweak on

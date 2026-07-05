@@ -125,9 +125,10 @@ function renderInline(text: string, onCite?: (page: number) => void): React.Reac
   let pos = 0;
 
   // Inline patterns: **bold**, *italic*, __underline__, ~~strike~~, `code`,
-  // and [p.N] page citations. (__ is underline here, not md-strong — the
-  // format bar writes it and nothing else produces it.)
-  const pattern = /\*\*([^*]+)\*\*|\*([^*]+)\*|__([^_]+)__|~~([^~]+)~~|`([^`]+)`|\[p{1,2}\.\s*([\d\s,&–-]+)\]/g;
+  // [p.N] page citations, and [label](url) links — link-source answers cite
+  // the web page the way PDF answers cite pages. (__ is underline here, not
+  // md-strong — the format bar writes it and nothing else produces it.)
+  const pattern = /\*\*([^*]+)\*\*|\*([^*]+)\*|__([^_]+)__|~~([^~]+)~~|`([^`]+)`|\[p{1,2}\.\s*([\d\s,&–-]+)\]|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
   let match;
 
   while ((match = pattern.exec(text)) !== null) {
@@ -143,6 +144,21 @@ function renderInline(text: string, onCite?: (page: number) => void): React.Reac
       parts.push(<s key={`s-${pos}`}>{match[4]}</s>);
     } else if (match[5]) {
       parts.push(<code key={`code-${pos}`}>{match[5]}</code>);
+    } else if (match[7] && match[8]) {
+      parts.push(
+        <a
+          key={`link-${pos}`}
+          className="jz-md-link"
+          href={match[8]}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ pointerEvents: 'all' }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {match[7]}
+        </a>,
+      );
     } else if (match[6]) {
       const pageList = match[6];
       const first = Number((pageList.match(/\d+/) ?? ['0'])[0]);
