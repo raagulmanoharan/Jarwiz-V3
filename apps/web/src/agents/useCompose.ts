@@ -213,28 +213,41 @@ export function useCompose() {
   return { phase, run, cancel };
 }
 
-/** Grid layout for a machine board (e.g. SWOT 2×2 + a strategy row): cards sit
- *  in fixed columns; each row's top is the previous row's tallest card. Uniform
- *  widths + row heights from measured content = a clean framework, no overlap. */
+/** Grid layout for a machine board (e.g. SWOT). Cards sit in fixed columns.
+ *  Row tops are shared so a real matrix aligns — but the row heights come only
+ *  from the columns that actually STACK (the 2×2 quadrants in cols 0–1); a
+ *  single tall card in its own column (TOWS, Verdict in cols 2–3) sits beside
+ *  the matrix, top-aligned, without inflating the rows. So the four quadrants
+ *  form a clean aligned 2×2 and the strategy cards grow the board sideways. */
 function gridPack(
   editor: Editor,
   cells: Array<{ id: TLShapeId; col: number; row: number }>,
   originX: number,
   originY: number,
 ): void {
-  const measured = cells
-    .map((c) => ({ ...c, b: editor.getShapePageBounds(c.id), s: editor.getShape(c.id) }))
-    .filter((c) => c.b && c.s);
-  const rows = [...new Set(measured.map((c) => c.row))].sort((a, b) => a - b);
+  const byCol = new Map<number, number>(); // col → card count
+  for (const c of cells) byCol.set(c.col, (byCol.get(c.col) ?? 0) + 1);
+
+  // Row heights from stacking columns only (>1 card in the column).
+  const rowH = new Map<number, number>();
+  for (const c of cells) {
+    if ((byCol.get(c.col) ?? 0) < 2) continue;
+    const b = editor.getShapePageBounds(c.id);
+    if (b) rowH.set(c.row, Math.max(rowH.get(c.row) ?? 0, b.h));
+  }
+  const rowY = new Map<number, number>();
   let y = originY;
-  for (const row of rows) {
-    const inRow = measured.filter((c) => c.row === row);
-    const rowH = Math.max(0, ...inRow.map((c) => c.b!.h));
-    for (const c of inRow) {
-      const x = originX + c.col * (CELL_W + H_GAP);
-      if (c.s!.x !== x || c.s!.y !== y) editor.updateShape({ id: c.id, type: c.s!.type, x, y });
-    }
-    y += rowH + V_GAP;
+  for (const row of [...rowH.keys()].sort((a, b) => a - b)) {
+    rowY.set(row, y);
+    y += rowH.get(row)! + V_GAP;
+  }
+
+  for (const c of cells) {
+    const s = editor.getShape(c.id);
+    if (!s) continue;
+    const x = originX + c.col * (CELL_W + H_GAP);
+    const cy = rowY.get(c.row) ?? originY;
+    if (s.x !== x || s.y !== cy) editor.updateShape({ id: c.id, type: s.type, x, y: cy });
   }
 }
 

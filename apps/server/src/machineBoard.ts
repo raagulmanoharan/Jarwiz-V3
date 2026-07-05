@@ -91,12 +91,13 @@ function buildSwotCards(o: Record<string, unknown>): CardSpec[] {
     { title: 'Weaknesses', shape: 'list', md: bullets(o.weaknesses), col: 1, row: 0 },
     { title: 'Opportunities', shape: 'list', md: bullets(o.opportunities), col: 0, row: 1 },
     { title: 'Threats', shape: 'list', md: bullets(o.threats), col: 1, row: 1 },
-    // The strategy row beneath the matrix — TOWS and the verdict side by side.
+    // The two strategy cards sit to the RIGHT of the 2×2 matrix, side by side
+    // (their own columns), so the board grows horizontally, not downward.
     {
       title: 'TOWS — Strategic Moves',
       shape: 'table',
-      col: 0,
-      row: 2,
+      col: 2,
+      row: 0,
       columns: ['Cross-strategy', 'Moves'],
       rows: [
         towsRow('Strengths × Opportunities (SO)', 'SO'),
@@ -108,8 +109,8 @@ function buildSwotCards(o: Record<string, unknown>): CardSpec[] {
     {
       title: 'Strategic Verdict',
       shape: 'doc',
-      col: 1,
-      row: 2,
+      col: 3,
+      row: 0,
       md: `${String(o.verdict ?? '').trim()}${priorities ? `\n\n## Top priorities\n${priorities}` : ''}${sourceMd ? `\n\n## Sources\n${sourceMd}` : ''}`,
     },
   ];
