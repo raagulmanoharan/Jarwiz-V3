@@ -13,6 +13,7 @@ import {
   type TLShape,
 } from 'tldraw';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
+import { continueProse } from '../agents/autopilotStore';
 import { useAutopilot } from '../agents/useAutopilot';
 import { useTypingPause } from '../agents/useTypingPause';
 import { NOTE_RADIUS, roundedRectPath } from './cardGeometry';
@@ -134,9 +135,14 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
           onPointerUp={stopEventPropagation}
         />
         {showNudge && (
-          <div className="jz-autopilot-nudge" aria-hidden>
-            <span className="jz-autopilot-nudge-spark">✦</span>Tab
-          </div>
+          <button
+            className="jz-autopilot-nudge"
+            style={{ pointerEvents: 'all' }}
+            onPointerDown={stopEventPropagation}
+            onClick={() => void continueProse(editor, shape.id)}
+          >
+            <span className="jz-autopilot-nudge-spark">✦</span>Continue
+          </button>
         )}
         </>
       ) : (

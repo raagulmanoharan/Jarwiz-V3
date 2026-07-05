@@ -19,7 +19,7 @@ import { Sparkle } from 'lucide-react';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { useAutopilot } from '../agents/useAutopilot';
 import { useTypingPause } from '../agents/useTypingPause';
-import { isAutopilotReady, isAutopilotRunning, subscribeAutopilot } from '../agents/autopilotStore';
+import { abortAutopilot, continueProse, isAutopilotReady, isAutopilotRunning, subscribeAutopilot } from '../agents/autopilotStore';
 import { DocMarkdown } from '../ui/DocMarkdown';
 import { getResponsePdfSource } from '../pdf/provenance';
 import { setPdfPage } from '../pdf/pdfView';
@@ -229,15 +229,28 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
           </div>
         )}
         {autopilotActive ? (
-          <div className="jz-autopilot-nudge jz-autopilot-nudge--takeover" aria-live="polite">
+          <button
+            className="jz-autopilot-nudge jz-autopilot-nudge--takeover"
+            aria-live="polite"
+            style={{ pointerEvents: 'all' }}
+            onPointerDown={stopEventPropagation}
+            onClick={() => abortAutopilot(shape.id)}
+          >
             <Sparkle size={12} strokeWidth={1.7} color="white" fill="white" />
-            Press <kbd className="jz-autopilot-nudge-kbd">Tab</kbd> to take over
-          </div>
+            Writing — click (or type) to take over
+          </button>
         ) : showNudge ? (
-          <div className="jz-autopilot-nudge" aria-hidden>
+          // A clickable offer, not a keyboard trick (owner call 2026-07-05):
+          // appears after an idle pause; click hands the pen to Jarwiz.
+          <button
+            className="jz-autopilot-nudge"
+            style={{ pointerEvents: 'all' }}
+            onPointerDown={stopEventPropagation}
+            onClick={() => void continueProse(editor, shape.id)}
+          >
             <Sparkle size={12} strokeWidth={1.7} color="white" fill="white" />
-            Press <kbd className="jz-autopilot-nudge-kbd">Tab</kbd> to continue
-          </div>
+            Continue writing
+          </button>
         ) : null}
       </div>
     );

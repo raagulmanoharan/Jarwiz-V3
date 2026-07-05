@@ -50,7 +50,7 @@ body,
  * but a grid needs SOME "you are here" while Tabbing across cells. */
 .jz-table-input:focus {
   background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
-  border-radius: var(--jz-radius-xs);
+  border-radius: 0; /* square, like the cell — the global focus rule rounds */
 }
 
 /* ─── Calm the tldraw chrome ────────────────────────────────────────────── */
@@ -1607,7 +1607,8 @@ body,
     background var(--jz-dur-fast) var(--jz-ease-out);
 }
 
-.jz-table:hover .jz-table-rail,
+.tl-html-container:hover .jz-table-rail,
+.jz-table-rail:hover,
 .jz-table-rail:focus-visible {
   opacity: 1;
 }
@@ -1621,15 +1622,11 @@ body,
 .jz-table-rail-col {
   position: absolute;
   top: var(--jz-space-3);
-  right: var(--jz-space-3);
-  height: 37px; /* the header band — column ops live with the columns */
-  width: 22px;
+  right: -34px; /* OUTSIDE the card, beside the header band (owner call) */
+  height: 37px;
+  width: 26px;
 }
 
-/* Gutter reserved for the column rail while edit chrome is up. */
-.jz-table-fit--chrome {
-  padding-right: calc(var(--jz-space-3) + 28px);
-}
 
 .jz-table-hint {
   position: absolute;
@@ -1748,6 +1745,28 @@ body,
   opacity: 1;
 }
 
+
+/* "✦ Fill" — the fresh column's header offers Jarwiz's help as a BUTTON
+ * (the old idle Tab-to-fill hint is gone; AI never rides a navigation key). */
+.jz-table-fillnudge {
+  flex: none;
+  border: none;
+  cursor: pointer;
+  margin-right: 8px;
+  padding: 3px 8px;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-ink-900);
+  color: var(--jz-surface);
+  font-family: var(--jz-font-ui);
+  font-size: 10.5px;
+  font-weight: 650;
+  white-space: nowrap;
+  transition: opacity var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-table-fillnudge:hover {
+  opacity: 0.85;
+}
 
 /* ── Typed columns: text / link / photo ─────────────────────────────────────
    Types have no header UI (owner call) — they steer behavior only: link

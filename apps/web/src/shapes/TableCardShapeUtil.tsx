@@ -1,4 +1,4 @@
-import { useRef, useSyncExternalStore } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
 import {
   HTMLContainer,
   Rectangle2d,
@@ -14,10 +14,10 @@ import {
   type TLShape,
 } from 'tldraw';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
+import { fillTable } from '../agents/autopilotStore';
 import { formatControlledTextarea, shortcutMarker, toggleInline } from '../ask/textFormat';
 import { uploadAsset } from '../lib/uploadAsset';
 import { useAutopilot } from '../agents/useAutopilot';
-import { useTypingPause } from '../agents/useTypingPause';
 import { useFitHeight } from './useFitHeight';
 import { MAX_CARD_H, isExpanded, subscribeExpand } from './cardExpand';
 import { ExpandToggle } from './ExpandToggle';
@@ -50,7 +50,7 @@ export const TABLE_HEADER_H = 44;
 /** Each column keeps at least this much width; adding columns widens the card. */
 const MIN_COL_W = 150;
 
-/** A starter comparison grid: headers filled, body empty and ready for Tab. */
+/** A starter comparison grid: headers filled, body empty and ready to type. */
 export function starterTableProps(): TableCardProps {
   return {
     ...TABLE_CARD_SIZE,
@@ -112,11 +112,9 @@ export class TableCardShapeUtil extends ShapeUtil<TableCardShape> {
 function TableCardBody({ shape }: { shape: TableCardShape }) {
   const editor = useEditor();
   const isEditing = useIsEditing(shape.id);
-  // A generated table lands SELECTED, not editing — the add affordances must
-  // already be there (the owner's flow: pill → comparison table → "+ column
-  // for another aspect" → Tab to let Jarwiz fill it). Clicking one from the
-  // selected state performs the add AND enters edit mode, so the very next
-  // keystroke can be Tab.
+  // A generated table lands SELECTED, not editing — the add affordance must
+  // already be there (the owner's flow: pill → comparison table → "+" adds a
+  // column → its header offers "✦ Fill"). Adding also enters edit mode.
   const isSelected = useValue(
     'table-selected',
     () => editor.getOnlySelectedShapeId() === shape.id,
@@ -256,12 +254,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
     });
   };
 
-  const [paused, resetPause] = useTypingPause(
-    isEditing ? rows.map((r) => r.join('|')).join('\n') + '\n' + columns.join('|') : '',
-    1800,
-  );
   const hasEmptyCells = rows.some((r) => r.some((c) => !c.trim()));
-  const showNudge = isEditing && paused && hasEmptyCells && !isFilling;
 
   const cellKeys = (e: React.KeyboardEvent, row?: number) => {
     // ⌘/Ctrl B·I·U — same operations as the format bar, on this cell.
@@ -290,19 +283,42 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
       removeRow(row);
       return;
     }
-    if (e.key === 'Tab') resetPause();
     autopilot.onKeyDown(shape.id, e);
   };
   const isEmpty = rows.every((r) => r.every((c) => !c.trim())) && columns.every((c) => !c.trim());
 
   // Edit chrome shows on selection too, not just in edit mode.
   const chrome = isEditing || isSelected;
+  // The column just added via "+" — its header offers "✦ Fill" (click hands
+  // the column to Jarwiz) until it's used, dismissed by typing elsewhere, or
+  // the column gains content.
+  const [freshCol, setFreshCol] = useState<number | null>(null);
   const addColumnAndEdit = () => {
     addColumn();
+    setFreshCol(columns.length); // index of the column being added
     if (!isEditing) editor.setEditingShape(shape.id);
+  };
+  const runFill = () => {
+    setFreshCol(null);
+    void fillTable(editor, shape.id);
   };
 
   return (
+    <>
+    {/* The column "+" hovers OUTSIDE the frame beside the header band — a
+        sibling of .jz-table because the card clips (overflow: hidden). */}
+    {chrome ? (
+      <button
+        className="jz-table-rail jz-table-rail-col"
+        onClick={addColumnAndEdit}
+        onPointerDown={stopEventPropagation}
+        style={{ pointerEvents: 'all' }}
+        title="Add a column"
+        aria-label="Add a column"
+      >
+        +
+      </button>
+    ) : null}
     <div
       className={`jz-table${isFilling ? ' jz-table-filling' : ''}${collapsed ? ' jz-card-collapsed' : ''}${chrome ? ' jz-table--chrome' : ''}`}
     >
@@ -310,11 +326,22 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
           equals the CURRENT shape height — the fit-height ratchet), so the
           hook measures this auto-height child instead, which reports true
           content height and lets the card shrink to fit as well as grow. */}
-      <div className={`jz-table-fit${chrome ? ' jz-table-fit--chrome' : ''}`} ref={fitRef}>
+      <div className="jz-table-fit" ref={fitRef}>
       <div className="jz-table-head" style={{ gridTemplateColumns: gridCols }}>
         {columns.map((label, col) =>
           isEditing ? (
             <div key={col} className="jz-table-headcell jz-table-headcell-edit">
+              {freshCol === col && hasEmptyCells && !isFilling ? (
+                <button
+                  className="jz-table-fillnudge"
+                  title="Let Jarwiz fill this column from the other cells"
+                  style={{ pointerEvents: 'all' }}
+                  onPointerDown={stopEventPropagation}
+                  onClick={runFill}
+                >
+                  ✦ Fill
+                </button>
+              ) : null}
               <textarea
                 className="jz-table-input"
                 value={label}
@@ -390,29 +417,11 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
       </div>
 
       {/* Rows have NO chrome (owner call): Shift+Enter inserts a row below
-          the caret, Backspace on an empty row removes it. Columns keep a
-          hover-revealed "+" on the header band and a × per header. */}
-      {chrome ? (
-        <button
-          className="jz-table-rail jz-table-rail-col"
-          onClick={addColumnAndEdit}
-          onPointerDown={stopEventPropagation}
-          style={{ pointerEvents: 'all' }}
-          title="Add a column"
-          aria-label="Add a column"
-        >
-          +
-        </button>
-      ) : null}
-      {showNudge && (
-        <div className="jz-autopilot-nudge jz-autopilot-nudge--table" aria-hidden>
-          <span className="jz-autopilot-nudge-spark">✦</span>Tab to fill
-        </div>
-      )}
-
+          the caret, Backspace on an empty row removes it. Column ops: the
+          "+" outside the frame (above) and a × per header. */}
       {!isEditing && isEmpty ? (
         <div className="jz-table-hint" aria-hidden>
-          Double-click, then press Tab to fill
+          Double-click to type
         </div>
       ) : null}
       </div>
@@ -429,27 +438,6 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
         }}
       />
     </div>
+    </>
   );
-}
-
-function ColTypeGlyph({ type }: { type: ColumnType }) {
-  if (type === 'photo') {
-    return (
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <rect x="3" y="3" width="18" height="18" rx="2" />
-        <circle cx="9" cy="9" r="2" />
-        <path d="m21 15-4.5-4.5L5 22" />
-      </svg>
-    );
-  }
-  if (type === 'link') {
-    return (
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
-        <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
-      </svg>
-    );
-  }
-  // Text columns read as "Aa" — the serif-T glyph looked like a stray char.
-  return <span className="jz-coltype-txt" aria-hidden>Aa</span>;
 }

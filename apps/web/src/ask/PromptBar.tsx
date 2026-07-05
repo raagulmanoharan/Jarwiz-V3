@@ -135,7 +135,27 @@ export function PromptBar() {
     setMode(null); // the mode applies to one ask, like the text it rode with
   };
   const runTool = (mode: AnalyzeMode) => { void analyze(mode); };
-  const useStarter = (q: string) => { setValue(q); requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input')?.focus()); };
+  // While the sole card is being EDITED, a pill is an offer for Jarwiz to
+  // take over THIS card — clicking runs the ask straight into it (in-place),
+  // no prompt-bar detour. Only refinable kinds can stream in place.
+  const editingSole = useValue(
+    'promptbar-editing-sole',
+    () => {
+      const editing = editor.getEditingShapeId();
+      if (!editing) return null;
+      const t = editor.getShape(editing)?.type;
+      return t === 'doc-card' || t === 'table-card' || t === 'diagram-card' ? editing : null;
+    },
+    [editor],
+  );
+  const useStarter = (q: string) => {
+    if (editingSole) {
+      void ask(q, [editingSole], { targetId: editingSole, skipClarify: true });
+      return;
+    }
+    setValue(q);
+    requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input')?.focus());
+  };
 
   const placeholder = groundIds.length ? 'Ask about the selection…' : 'What would you like to change or create?';
   const busyLabel = runningMode ? (runningMode === 'tensions' ? 'Scanning…' : runningMode === 'gaps' ? 'Reviewing…' : 'Critiquing…') : null;
