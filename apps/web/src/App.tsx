@@ -31,6 +31,7 @@ import { BoardEntry } from './boards/BoardEntry';
 import { getRestoreError, isRestoring, subscribeRestore } from './boards/backup';
 import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
 import { CardTitleTag } from './ui/CardTitleTag';
+import { DocFocusOverlay } from './ui/DocFocusOverlay';
 import { EmptyState } from './ui/EmptyState';
 import { Topbar } from './ui/Topbar';
 import { HelpLayer } from './ui/HelpLayer';
@@ -65,6 +66,8 @@ function JarwizOverlay() {
       <SelectionAsk />
       <AgentTaskLayer />
       <Timeline />
+      {/* Last = on top: focus mode covers the whole board when open. */}
+      <DocFocusOverlay />
     </>
   );
 }

@@ -8,10 +8,11 @@
 
 import { useState, type CSSProperties } from 'react';
 import { stopEventPropagation, useEditor, useValue, type Editor, type TLShapeId } from 'tldraw';
-import { Bold, Italic, Underline, Strikethrough, List, ListTodo } from 'lucide-react';
+import { Bold, Italic, Underline, Strikethrough, List, ListTodo, Maximize2 } from 'lucide-react';
 import { AFFINITY_COLORS, NOTE_PAPER, type DocCardShape, type NoteCardShape } from '../shapes';
 import { ASKABLE, hasAskableContent } from './askable';
 import { toggleInline, toggleLinePrefix, type FormatResult } from './textFormat';
+import { openDocFocus } from '../ui/focusDoc';
 import { PROFILE_PROMPT } from './profilePrompt';
 import { useAsk } from './useAsk';
 import { useDiagram } from '../agents/useDiagram';
@@ -189,6 +190,14 @@ export function CardActionBar() {
               {f.icon}
             </button>
           ))}
+          <button
+            className="jz-cardbar-iconbtn"
+            title="Edit full screen"
+            aria-label="Edit full screen"
+            onClick={() => openDocFocus(id)}
+          >
+            <Maximize2 {...FMT_ICON} />
+          </button>
         </div>
       ) : null}
       {sticky ? (

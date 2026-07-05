@@ -38,7 +38,9 @@ body,
    double-click-to-edit. The blinking caret is the editing indicator there. */
 .jarwiz-app .jz-note textarea:focus-visible,
 .jarwiz-app .jz-doc-textarea:focus-visible,
-.jarwiz-app .jz-title-tag:focus-visible {
+.jarwiz-app .jz-title-tag:focus-visible,
+.jarwiz-app .jz-focus-textarea:focus-visible,
+.jarwiz-app .jz-focus-title:focus-visible {
   outline: none;
 }
 
@@ -2809,6 +2811,105 @@ body,
 }
 
 .jz-cardbar-group { position: relative; }
+
+/* ─── Focus mode — a text card as a full-screen page (Google-Docs-like) ── */
+
+.jz-focus-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--jz-ink-900) 45%, rgba(0, 0, 0, 0.35));
+  pointer-events: all;
+  animation: jz-focus-fade var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-focus-page {
+  display: flex;
+  flex-direction: column;
+  width: min(860px, 94vw);
+  height: min(88vh, 1100px);
+  background: var(--jz-card-surface);
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-lg);
+  box-shadow: var(--jz-e4);
+  box-sizing: border-box;
+  padding: 40px 56px 48px;
+  animation: jz-focus-rise var(--jz-dur-base) var(--jz-ease-glide);
+}
+
+.jz-focus-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.jz-focus-title {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--jz-font-ui);
+  font-size: 21px;
+  font-weight: 600;
+  color: var(--jz-ink-900);
+  padding: 0;
+}
+
+.jz-focus-title::placeholder {
+  color: var(--jz-ink-400);
+}
+
+.jz-focus-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+.jz-focus-close {
+  margin-left: 8px;
+}
+
+.jz-focus-textarea {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--jz-font-ui);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--jz-ink-700);
+  padding: 0;
+}
+
+.jz-focus-textarea::placeholder {
+  color: var(--jz-ink-400);
+}
+
+@keyframes jz-focus-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes jz-focus-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jz-focus-backdrop,
+  .jz-focus-page {
+    animation: none;
+  }
+}
 
 /* Text-card format group — compact icon buttons on the bar (B I U S • ☑). */
 .jz-cardbar-fmt {

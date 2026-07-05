@@ -38,6 +38,13 @@ export function toggleInline(text: string, start: number, end: number, marker: s
   };
 }
 
+/** The ⌘/Ctrl-key → inline marker mapping shared by every doc editor surface
+ *  (card textarea, focus mode). Returns null when the key isn't a shortcut. */
+export function shortcutMarker(e: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; key: string }): string | null {
+  if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return null;
+  return e.key === 'b' ? '**' : e.key === 'i' ? '*' : e.key === 'u' ? '__' : null;
+}
+
 /** Toggle a line prefix ("- " bullets, "- [ ] " checklist) on every line the
  *  selection touches. If ALL touched lines already carry it, strip it;
  *  otherwise add it (converting between bullet and checklist cleanly). */
