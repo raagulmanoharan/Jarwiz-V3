@@ -17,9 +17,21 @@ export function webToolset(): Anthropic.Messages.ToolUnion[] {
   ];
 }
 
+/** Deep research gets a real leash: enough searches to cover reviews, prices,
+ *  reputation, and alternatives as separate angles, plus page fetches. */
+export function researchToolset(): Anthropic.Messages.ToolUnion[] {
+  return [
+    { type: 'web_search_20260209', name: 'web_search', max_uses: 10 },
+    { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 8 },
+  ];
+}
+
 /** Server tools may pause a long turn (`stop_reason: "pause_turn"`); resume by
  *  replaying the assistant content. This caps how many times we do. */
 export const WEB_MAX_CONTINUATIONS = 6;
+
+/** A research pass legitimately pauses more often — many tool rounds. */
+export const RESEARCH_MAX_CONTINUATIONS = 12;
 
 /** Appended to the prose/list systems when the web is on. */
 export const WEB_DIRECTIVE = `

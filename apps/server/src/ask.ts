@@ -13,9 +13,20 @@ import type { AskEvent, AskRequest, AskShape, AskSource } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
 import { extractAssetPages, extractAssetText } from './assets.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
-import { WEB_DIRECTIVE, WEB_MAX_CONTINUATIONS, WEB_TABLE_DIRECTIVE, webToolset } from './webTools.js';
+import {
+  RESEARCH_MAX_CONTINUATIONS,
+  WEB_DIRECTIVE,
+  WEB_MAX_CONTINUATIONS,
+  WEB_TABLE_DIRECTIVE,
+  researchToolset,
+  webToolset,
+} from './webTools.js';
 
 const MAX_TOKENS = 1400;
+/** A research dossier is a longer artifact — several cited sections. */
+const RESEARCH_MAX_TOKENS = 2800;
+/** Deep runs chain many searches; the CLI sidecar needs matching headroom. */
+const RESEARCH_SIDECAR_TIMEOUT_MS = 300_000;
 const PER_SOURCE_CHARS = 8_000;
 
 const DOC_SYSTEM = `You answer a question about the provided source document(s) on a canvas, as a clear written card. Use clean markdown: an optional short "# " title line, then tight paragraphs (and sub-headings only if it genuinely helps). Never include code blocks, fenced code, or Mermaid/diagram source — the card renders prose only; if a diagram would help, describe the flow in words (the canvas has a separate diagram tool). Ground every claim in the provided content; if the sources don't contain the answer, say so plainly rather than inventing. Be specific and concise — no preamble, no sign-off.`;
@@ -43,6 +54,12 @@ const DIAGRAM_SYSTEM = `You turn the user's request and the source document(s) i
 Output ONLY valid Mermaid source: no prose, no explanation, NO \`\`\` code fences. Put the diagram-type keyword on the very first line. Keep node labels short and ground every node in the provided content. Aim for 6–18 nodes — clear beats exhaustive. Wrap any label containing punctuation or spaces in double quotes. Never invent facts that aren't in the sources.`;
 
 const AFFINITY_SYSTEM = `You run an affinity-mapping exercise: turn the request and the source(s) into clustered sticky notes. Return ONLY a JSON object {"clusters": [{"label": string, "notes": string[]}]}. Make 3–6 clusters; each has a short 1–4 word "label" (the theme) and 2–6 short "notes" (each one idea, a few words). Group related ideas under the same theme. Ground notes in the provided content when a source is given; otherwise brainstorm sensible ideas for the request. No prose, no code fences.`;
+
+const RESEARCH_SYSTEM = `You are running a DEEP RESEARCH pass on something the user dropped onto their canvas — often a link (a hotel, a rental listing, a product, a company, an article) they are evaluating. Your job: autonomously find everything a decision-maker would want to know, far beyond what the page says about itself.
+
+Work the live web hard, angle by angle: fetch the given URL for ground truth, then search independent sources — reviews on OTHER platforms (Google, TripAdvisor, Reddit, forums, industry sites), current prices/rates and availability, reputation and recent news, and strong comparable alternatives. Cross-check what the page claims against what outsiders say; hunt for red flags (recurring complaints, hidden fees, scams, discontinued/renamed/rebranded).
+
+Then write ONE dossier as clean markdown: a "# " title naming the subject; a one-paragraph verdict up top (what this is and whether it holds up); then tight sections with **bold lead-ins** — what independent reviews actually say (recurring praise AND complaints, with ratings/counts), the price/value picture, red flags or surprises, and the best alternatives if any deserve a look. Be specific: numbers, ratings, dates, names. Every externally sourced claim cites its page inline as a markdown link ([source](URL)); end with one "Source: [Title](URL)" line per page used. Never invent a URL or a fact; if an angle came up empty, say so in one honest line. No preamble, no narration of your searching — the card is the finished dossier.`;
 
 /** Steers a doc/list answer to render as an interactive markdown checklist. */
 const CHECKLIST_DIRECTIVE =
@@ -335,9 +352,21 @@ function withImageNote(user: string, images: ImageInput[]): string {
   return `${user}\n\n[${images.length} image(s) attached: ${names}. They are NOT visible in this text-only mode — answer from the text, and say plainly if the image is essential and you cannot see it.]`;
 }
 
-/** `web: true` hands the model live search/fetch tools (webTools.ts). */
+/** `web: true` hands the model live search/fetch tools; `deep: true` upgrades
+ *  to the research budget (more searches/fetches, longer output, more time). */
 interface GenOpts {
   web?: boolean;
+  deep?: boolean;
+}
+
+/** The per-mode generation budget the two generators share. */
+function genBudget(opts: GenOpts) {
+  return {
+    tools: opts.deep ? researchToolset() : opts.web ? webToolset() : undefined,
+    maxTokens: opts.deep ? RESEARCH_MAX_TOKENS : MAX_TOKENS,
+    maxTurns: opts.deep ? RESEARCH_MAX_CONTINUATIONS : WEB_MAX_CONTINUATIONS,
+    sidecarTimeoutMs: opts.deep ? RESEARCH_SIDECAR_TIMEOUT_MS : undefined,
+  };
 }
 
 async function generate(
@@ -347,20 +376,20 @@ async function generate(
   images: ImageInput[] = [],
   opts: GenOpts = {},
 ): Promise<string> {
+  const { tools, maxTokens, maxTurns, sidecarTimeoutMs } = genBudget(opts);
   if (process.env.ANTHROPIC_API_KEY?.trim()) {
     const client = new Anthropic();
-    const tools = opts.web ? webToolset() : undefined;
     const messages: Anthropic.MessageParam[] = [
       { role: 'user', content: buildContent(user, images) },
     ];
     let text = '';
     // Server tools may pause a long turn (stop_reason "pause_turn"); resume by
     // replaying the assistant content until the model actually finishes.
-    for (let turn = 0; turn <= WEB_MAX_CONTINUATIONS; turn++) {
+    for (let turn = 0; turn <= maxTurns; turn++) {
       const msg = await client.messages.create(
         {
           model: AGENT_MODEL,
-          max_tokens: MAX_TOKENS,
+          max_tokens: maxTokens,
           system,
           messages,
           ...(tools ? { tools } : {}),
@@ -377,7 +406,13 @@ async function generate(
     return text;
   }
   if (sidecarAvailable())
-    return sidecarGenerate({ system, user: withImageNote(user, images), signal, web: opts.web });
+    return sidecarGenerate({
+      system,
+      user: withImageNote(user, images),
+      signal,
+      web: opts.web || opts.deep,
+      timeoutMs: sidecarTimeoutMs,
+    });
   throw new Error('No model available (set ANTHROPIC_API_KEY or install the Claude CLI).');
 }
 
@@ -398,19 +433,19 @@ async function* generateStream(
   images: ImageInput[] = [],
   opts: GenOpts = {},
 ): AsyncGenerator<GenEvent> {
+  const { tools, maxTokens, maxTurns, sidecarTimeoutMs } = genBudget(opts);
   if (process.env.ANTHROPIC_API_KEY?.trim()) {
     const client = new Anthropic();
-    const tools = opts.web ? webToolset() : undefined;
     const messages: Anthropic.MessageParam[] = [
       { role: 'user', content: buildContent(user, images) },
     ];
     // Server tools may pause a long turn (stop_reason "pause_turn"); resume by
     // replaying the assistant content until the model actually finishes.
-    for (let turn = 0; turn <= WEB_MAX_CONTINUATIONS; turn++) {
+    for (let turn = 0; turn <= maxTurns; turn++) {
       const stream = client.messages.stream(
         {
           model: AGENT_MODEL,
-          max_tokens: MAX_TOKENS,
+          max_tokens: maxTokens,
           system,
           messages,
           ...(tools ? { tools } : {}),
@@ -439,7 +474,13 @@ async function* generateStream(
     return;
   }
   if (sidecarAvailable()) {
-    const text = await sidecarGenerate({ system, user: withImageNote(user, images), signal, web: opts.web });
+    const text = await sidecarGenerate({
+      system,
+      user: withImageNote(user, images),
+      signal,
+      web: opts.web || opts.deep,
+      timeoutMs: sidecarTimeoutMs,
+    });
     for (const piece of chunk(text)) {
       if (signal.aborted) return;
       yield { type: 'text', text: piece };
@@ -498,6 +539,16 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   yield { type: 'status', message: 'reading the source…' };
   const { context, citable, images, linkRefs } = await gatherContext(req);
   if (signal.aborted) return;
+
+  // Deep research: one mission, one dossier card. No triage, no shape routing —
+  // the model roams the web (fetch the URL, search reviews/prices/reputation/
+  // alternatives) and writes the findings as a cited doc.
+  if (req.deep) {
+    yield { type: 'status', message: 'researching across the web…' };
+    const user = `Research request:\n${req.prompt}\n\n${context || '(No canvas sources — research the request itself.)'}`;
+    yield* streamDoc('doc', RESEARCH_SYSTEM, user, signal, images, { web: true, deep: true });
+    return;
+  }
 
   // Disambiguation: if the request is genuinely unclear, ask one short question
   // (with tappable options) instead of guessing. Skipped once the user answers.

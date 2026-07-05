@@ -282,6 +282,8 @@ app.post('/api/ask', async (c) => {
     shape: SHAPES.includes(raw.shape as (typeof SHAPES)[number]) ? raw.shape : undefined,
     // Set once the user answered a clarifying question — skips re-triage.
     skipClarify: raw.skipClarify === true,
+    // Deep research pass — bigger web budget, dossier answer. Boolean-gated.
+    deep: raw.deep === true,
   };
 
   return streamSSE(c, async (stream) => {

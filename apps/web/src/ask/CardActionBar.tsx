@@ -141,6 +141,14 @@ export function CardActionBar() {
   // action (a profile is the document's summary; owner call, 2026-07-04),
   // not buried in the Refine menu.
   const profileable = !sel.multi && hasContent && sel.type === 'pdf-card';
+  // The link-card twin: ✦ Research sends Jarwiz roaming the live web around
+  // the pasted page — reviews on other platforms, prices, reputation,
+  // alternatives. Deliberately NOT gated on extracted page text: a bot-walled
+  // page (Airbnb, hotels) is exactly when outside research matters most.
+  const researchable =
+    !sel.multi &&
+    sel.type === 'link-card' &&
+    Boolean(String((editor.getShape(id)?.props as Record<string, unknown>)?.url ?? '').trim());
 
   if (sel.multi && contentful.length > 0) {
     // Multi-select gets the same bar, with cross-selection transforms —
@@ -173,7 +181,7 @@ export function CardActionBar() {
 
   // Nothing meaningful to offer (e.g. a single empty card) → no bar at all.
   // Provenance itself needs no button: the drawn edges ARE the lineage.
-  if (transforms.length === 0 && !profileable && !sticky && !formattable) return null;
+  if (transforms.length === 0 && !profileable && !researchable && !sticky && !formattable) return null;
   if (!anchor) return null;
 
   // Flipped below the card (no headroom above), the bar renders downward from
@@ -194,6 +202,21 @@ export function CardActionBar() {
           onClick={() => ask(PROFILE_PROMPT, [id], { skipClarify: true, logLabel: 'Summarized the document' })}
         >
           ✦ Summary
+        </button>
+      ) : null}
+      {researchable ? (
+        <button
+          className="jz-cardbar-btn"
+          title="Jarwiz roams the live web: reviews across platforms, prices, reputation, red flags, alternatives"
+          onClick={() =>
+            ask(
+              'Run a deep research pass on this: independent reviews across platforms, current prices/rates, reputation and recent news, red flags, and strong alternatives — everything a decision-maker should know.',
+              [id],
+              { skipClarify: true, deep: true, logLabel: 'Researched the link' },
+            )
+          }
+        >
+          ✦ Research
         </button>
       ) : null}
       {formattable ? (

@@ -281,6 +281,12 @@ export interface AskRequest {
    * stickies on its own; they're the user's annotation medium.
    */
   shape?: AskShape;
+  /**
+   * Deep research pass — the model gets a bigger live-web budget (many
+   * searches + page fetches) and a dossier mission: reviews across platforms,
+   * prices, reputation, red flags, alternatives. Always answers as a doc.
+   */
+  deep?: boolean;
 }
 
 /* ─── Diagram (canvas pivot P2 — the AI builds primitives) ───────────────────
