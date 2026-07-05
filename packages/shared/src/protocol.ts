@@ -502,6 +502,12 @@ export interface ComposePlanCard {
   slot: number;
   type: AskShape;
   title: string;
+  /** Optional grid placement (a machine board like SWOT lays out as a grid:
+   *  the four quadrants 2×2, then strategy cards beneath). Absent → flow layout. */
+  col?: number;
+  row?: number;
+  /** Columns this card spans (default 1) — a full-width strategy card is span 2. */
+  span?: number;
 }
 
 export interface ComposeRequest {

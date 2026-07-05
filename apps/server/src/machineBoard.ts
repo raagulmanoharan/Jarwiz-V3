@@ -68,6 +68,11 @@ interface CardSpec {
   md?: string;
   columns?: string[];
   rows?: string[][];
+  /** Grid placement — the client lays a machine board out as a grid. */
+  col: number;
+  row: number;
+  /** Columns spanned (default 1); a full-width card is span 2. */
+  span?: number;
 }
 
 /** SWOT board: build the six cards from the structured research result. */
@@ -81,13 +86,18 @@ function buildSwotCards(o: Record<string, unknown>): CardSpec[] {
   const priorities = strList(o.priorities).map((p, i) => `${i + 1}. ${p}`).join('\n');
 
   return [
-    { title: 'Strengths', shape: 'list', md: bullets(o.strengths) },
-    { title: 'Weaknesses', shape: 'list', md: bullets(o.weaknesses) },
-    { title: 'Opportunities', shape: 'list', md: bullets(o.opportunities) },
-    { title: 'Threats', shape: 'list', md: bullets(o.threats) },
+    // The SWOT 2×2: internal (top row) over external (bottom row).
+    { title: 'Strengths', shape: 'list', md: bullets(o.strengths), col: 0, row: 0 },
+    { title: 'Weaknesses', shape: 'list', md: bullets(o.weaknesses), col: 1, row: 0 },
+    { title: 'Opportunities', shape: 'list', md: bullets(o.opportunities), col: 0, row: 1 },
+    { title: 'Threats', shape: 'list', md: bullets(o.threats), col: 1, row: 1 },
+    // Full-width strategy cards beneath the matrix — wide so they read short.
     {
       title: 'TOWS — Strategic Moves',
       shape: 'table',
+      col: 0,
+      row: 2,
+      span: 2,
       columns: ['Cross-strategy', 'Moves'],
       rows: [
         towsRow('Strengths × Opportunities (SO)', 'SO'),
@@ -99,6 +109,9 @@ function buildSwotCards(o: Record<string, unknown>): CardSpec[] {
     {
       title: 'Strategic Verdict',
       shape: 'doc',
+      col: 0,
+      row: 3,
+      span: 2,
       md: `${String(o.verdict ?? '').trim()}${priorities ? `\n\n## Top priorities\n${priorities}` : ''}${sourceMd ? `\n\n## Sources\n${sourceMd}` : ''}`,
     },
   ];
@@ -143,7 +156,10 @@ export async function* streamMachineBoard(
     return;
   }
 
-  yield { type: 'plan', cards: cards.map((c, i) => ({ slot: i, type: c.shape, title: c.title })) };
+  yield {
+    type: 'plan',
+    cards: cards.map((c, i) => ({ slot: i, type: c.shape, title: c.title, col: c.col, row: c.row, span: c.span ?? 1 })),
+  };
   for (let i = 0; i < cards.length; i++) {
     if (signal.aborted) return;
     const c = cards[i]!;

@@ -2617,6 +2617,12 @@ body,
   border: 1px solid var(--jz-hairline);
   box-sizing: border-box;
 }
+/* Read mode (auto-height): the measured element must lay out at its CONTENT
+ * height, not fill the shape — otherwise scrollHeight == the shape height and
+ * the fit can never shrink a card, leaving dead space under short content. */
+.jz-doc-auto {
+  height: auto;
+}
 
 /* The primitive title — OUTSIDE the frame, Flora-style: a small muted label
  * sitting just above the selected shape's top-left corner (ui/CardTitleTag,

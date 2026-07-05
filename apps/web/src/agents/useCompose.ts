@@ -23,6 +23,8 @@ export type ComposePhase = 'idle' | 'planning' | 'building' | 'done' | 'error';
 
 const DOC_W = 500;
 const H_GAP = 48; // between cards, laid side by side in a single row
+const CELL_W = 480; // uniform card width in a machine-board grid (e.g. SWOT 2×2)
+const V_GAP = 64; // between grid rows — clears the floating title tag above a card
 
 /** A readable table width: ~190px per column, clamped so it's never cramped
  *  (the owner's "less narrow, easier to read, less tall") nor absurdly wide. */
@@ -60,10 +62,20 @@ export function useCompose() {
 
     const titles = new Map<number, string>();
     const slots = new Map<number, Slot>();
+    const gridPos = new Map<number, { col: number; row: number; span: number }>();
     const created: TLShapeId[] = [];
+    let isGrid = false; // a machine board that supplied col/row → grid layout
     let framed = false;
 
-    const relayout = () => shelfPack(editor, created, originX, originY);
+    const relayout = () => {
+      if (!isGrid) return shelfPack(editor, created, originX, originY);
+      const cells: Array<{ id: TLShapeId; col: number; row: number }> = [];
+      for (const [slotIdx, slot] of slots) {
+        const g = gridPos.get(slotIdx);
+        if (slot.cardId && g) cells.push({ id: slot.cardId, col: g.col, row: g.row });
+      }
+      gridPack(editor, cells, originX, originY);
+    };
 
     const applySlot = (slotIdx: number, ev: Extract<ComposeEvent, { type: 'slot' }>['event']) => {
       const slot = slots.get(slotIdx);
@@ -71,18 +83,21 @@ export function useCompose() {
         case 'card.create': {
           const id = createShapeId();
           created.push(id);
+          // In a grid, a card's width is its span of cells; else its natural width.
+          const g = gridPos.get(slotIdx);
+          const gridW = g ? g.span * CELL_W + (g.span - 1) * H_GAP : CELL_W;
           if (ev.shape === 'table') {
             const cols = (ev.columns ?? []).slice(0, 6);
             const rows = Array.from({ length: ev.rowCount ?? 0 }, () => cols.map(() => ''));
             editor.createShape<TableCardShape>({
               id, type: 'table-card', x: originX, y: originY,
-              props: { w: tableWidth(cols.length), h: TABLE_CARD_SIZE.h, columns: cols, rows },
+              props: { w: isGrid ? gridW : tableWidth(cols.length), h: TABLE_CARD_SIZE.h, columns: cols, rows },
             });
             slots.set(slotIdx, { cardId: id, kind: 'table', cols, rows });
           } else {
             editor.createShape<DocCardShape>({
               id, type: 'doc-card', x: originX, y: originY,
-              props: { w: DOC_W, h: DOC_CARD_SIZE.h, title: titles.get(slotIdx) ?? '', text: '', sourcePdfId: '' },
+              props: { w: isGrid ? gridW : DOC_W, h: DOC_CARD_SIZE.h, title: titles.get(slotIdx) ?? '', text: '', sourcePdfId: '' },
             });
             slots.set(slotIdx, { cardId: id, kind: 'doc' });
           }
@@ -144,7 +159,13 @@ export function useCompose() {
       await readSSE<ComposeEvent>(res.body, (e) => {
         if (e.type === 'plan') {
           setPhase('building');
-          for (const c of e.cards) titles.set(c.slot, c.title);
+          for (const c of e.cards) {
+            titles.set(c.slot, c.title);
+            if (c.col !== undefined && c.row !== undefined) {
+              gridPos.set(c.slot, { col: c.col, row: c.row, span: c.span ?? 1 });
+              isGrid = true;
+            }
+          }
         } else if (e.type === 'slot') {
           applySlot(e.slot, e.event);
         } else if (e.type === 'error') {
@@ -190,6 +211,31 @@ export function useCompose() {
   }, []);
 
   return { phase, run, cancel };
+}
+
+/** Grid layout for a machine board (e.g. SWOT 2×2 + a strategy row): cards sit
+ *  in fixed columns; each row's top is the previous row's tallest card. Uniform
+ *  widths + row heights from measured content = a clean framework, no overlap. */
+function gridPack(
+  editor: Editor,
+  cells: Array<{ id: TLShapeId; col: number; row: number }>,
+  originX: number,
+  originY: number,
+): void {
+  const measured = cells
+    .map((c) => ({ ...c, b: editor.getShapePageBounds(c.id), s: editor.getShape(c.id) }))
+    .filter((c) => c.b && c.s);
+  const rows = [...new Set(measured.map((c) => c.row))].sort((a, b) => a - b);
+  let y = originY;
+  for (const row of rows) {
+    const inRow = measured.filter((c) => c.row === row);
+    const rowH = Math.max(0, ...inRow.map((c) => c.b!.h));
+    for (const c of inRow) {
+      const x = originX + c.col * (CELL_W + H_GAP);
+      if (c.s!.x !== x || c.s!.y !== y) editor.updateShape({ id: c.id, type: c.s!.type, x, y });
+    }
+    y += rowH + V_GAP;
+  }
 }
 
 /** Lay the created cards SIDE BY SIDE in one row using their measured widths —
