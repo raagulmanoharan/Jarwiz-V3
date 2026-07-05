@@ -14,6 +14,7 @@ import { ASKABLE, hasAskableContent } from './askable';
 import { getShapeTitle } from '../shapes/shapeTitle';
 import { useAsk } from './useAsk';
 import { useAnalyze } from '../agents/useAnalyze';
+import { gatherBoardCards } from '../agents/boardText';
 import { cardSeedKey, ensureCardSeeds, ensureSeedPrompts, getSeedPrompts, subscribeSeed } from './seedPrompts';
 
 const clip = (s: string, n = 22) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
@@ -29,8 +30,6 @@ function shapeLabel(editor: Editor, shape: TLShape): string {
   const kind: Record<string, string> = { 'pdf-card': 'PDF', 'doc-card': 'Text', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram', 'image-card': 'Image', 'link-card': 'Link', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section', arrow: 'Connector', group: 'Diagram' };
   return kind[shape.type] ?? 'Card';
 }
-
-const COACH_KEY = 'jz-coach-agents';
 
 /** The "/" mode menu — every shape an answer can take. Stickies appear here
  *  deliberately: the router never chooses them (they're the user's annotation
@@ -59,10 +58,6 @@ export function PromptBar() {
   const visibleModes = modeQuery
     ? MODES.filter((m) => m.label.toLowerCase().startsWith(modeQuery) || m.shape.startsWith(modeQuery))
     : MODES;
-  const [coachDone, setCoachDone] = useState(() => {
-    try { return localStorage.getItem(COACH_KEY) === '1'; } catch { return true; }
-  });
-
   const ground = useValue(
     'promptbar-ground',
     () => editor.getSelectedShapeIds()
@@ -77,7 +72,10 @@ export function PromptBar() {
   const dropGround = (id: string) => {
     editor.setSelectedShapes(editor.getSelectedShapeIds().filter((x) => x !== id));
   };
-  const boardCount = useValue('promptbar-boardcount', () => editor.getCurrentPageShapeIds().size, [editor]);
+  // Gate the board-scan chips on SUBSTANCE, not shape count: the same
+  // collector the scans run on must find enough contentful cards — three
+  // empty cards, a couple of arrows, or a lone sticky summon nothing.
+  const meaningfulCount = useValue('promptbar-meaningful', () => gatherBoardCards(editor).length, [editor]);
   // The sole selected card — only when it actually holds content (an empty
   // doc has nothing to ask about; a PDF mid-upload isn't readable). Pills are
   // generated from the card's own text — nothing scripted.
@@ -120,9 +118,6 @@ export function PromptBar() {
     () => undefined,
   );
 
-  const dismissCoach = () => { setCoachDone(true); try { localStorage.setItem(COACH_KEY, '1'); } catch {} };
-  useEffect(() => { if (runningMode) dismissCoach(); }, [runningMode]);
-
   const pickMode = (shape: AskShape) => {
     setMode(shape);
     setModeMenu(false);
@@ -145,7 +140,7 @@ export function PromptBar() {
   const placeholder = groundIds.length ? 'Ask about the selection…' : 'What would you like to change or create?';
   const busyLabel = runningMode ? (runningMode === 'tensions' ? 'Scanning…' : runningMode === 'gaps' ? 'Reviewing…' : 'Critiquing…') : null;
 
-  const showChips = !runningMode && groundIds.length === 0 && boardCount >= 3;
+  const showChips = !runningMode && groundIds.length === 0 && meaningfulCount >= 3;
   // Pills are ALWAYS contextual — generated from the card's own content.
   // Nothing scripted: until the tailored pills arrive (or if the card is
   // empty) we show nothing. Predictable operations live on the card's
@@ -160,7 +155,6 @@ export function PromptBar() {
   // wait reads as "thinking", not "nothing here" (feel pass, ROADMAP §10 #4).
   const showSeedWait =
     !runningMode && !value.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
-  const showCoach = !coachDone && boardCount >= 5;
 
   return (
     <div className="jz-promptbar-dock" onPointerDown={stopEventPropagation}>
