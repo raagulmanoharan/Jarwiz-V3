@@ -60,6 +60,14 @@ export function DocMarkdown({ content, onCite, onToggleTask }: DocMarkdownProps)
       continue;
     }
 
+    // Hairline divider — a line of only dashes ("---", also the em-dash
+    // variants autocorrect produces). Typing it IS the divider control.
+    if (/^[-—–]{2,}$/.test(line.trim())) {
+      elements.push(<hr key={`hr-${i}`} className="jz-md-hr" />);
+      i++;
+      continue;
+    }
+
     // Lists (including task lists: "- [ ] …" / "- [x] …")
     if (line.startsWith('- ')) {
       const listItems: React.ReactNode[] = [];
@@ -125,10 +133,10 @@ function renderInline(text: string, onCite?: (page: number) => void): React.Reac
   let pos = 0;
 
   // Inline patterns: **bold**, *italic*, __underline__, ~~strike~~, `code`,
-  // [p.N] page citations, and [label](url) links — link-source answers cite
-  // the web page the way PDF answers cite pages. (__ is underline here, not
-  // md-strong — the format bar writes it and nothing else produces it.)
-  const pattern = /\*\*([^*]+)\*\*|\*([^*]+)\*|__([^_]+)__|~~([^~]+)~~|`([^`]+)`|\[p{1,2}\.\s*([\d\s,&–-]+)\]|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+  // [p.N] page citations, [label](url) links, and bare http(s) URLs — a
+  // pasted link is clickable as-is, no markdown required. (__ is underline
+  // here, not md-strong — the format bar writes it and nothing else does.)
+  const pattern = /\*\*([^*]+)\*\*|\*([^*]+)\*|__([^_]+)__|~~([^~]+)~~|`([^`]+)`|\[p{1,2}\.\s*([\d\s,&–-]+)\]|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>"')\]]+)/g;
   let match;
 
   while ((match = pattern.exec(text)) !== null) {
@@ -157,6 +165,25 @@ function renderInline(text: string, onCite?: (page: number) => void): React.Reac
           onClick={(e) => e.stopPropagation()}
         >
           {match[7]}
+        </a>,
+      );
+    } else if (match[9]) {
+      // Bare URL — clickable, shown without the protocol and clipped so a
+      // long tracking-parameter tail can't wreck the card's measure.
+      const url = match[9];
+      const label = url.replace(/^https?:\/\//, '');
+      parts.push(
+        <a
+          key={`url-${pos}`}
+          className="jz-md-link"
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ pointerEvents: 'all' }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {label.length > 48 ? `${label.slice(0, 47)}…` : label}
         </a>,
       );
     } else if (match[6]) {

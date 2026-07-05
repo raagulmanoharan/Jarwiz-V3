@@ -46,7 +46,7 @@ declare module '@tldraw/tlschema' {
 
 export type DocCardShape = TLShape<'doc-card'>;
 
-export const DOC_CARD_SIZE = { w: 364, h: 240 };
+export const DOC_CARD_SIZE = { w: 416, h: 240 };
 
 export class DocCardShapeUtil extends ShapeUtil<DocCardShape> {
   static override type = 'doc-card' as const;
@@ -170,7 +170,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
     streaming: isStreaming,
     expanded,
     maxHeight: MAX_CARD_H,
-    growWidth: { max: 720, step: 120, ratio: 1.4 },
+    growWidth: { max: 800, step: 128, ratio: 1.4 },
   });
   const collapsed = overflowing && !expanded && !isStreaming;
 

@@ -2139,9 +2139,10 @@ body,
 .jz-markdown > .jz-md-p + .jz-md-ul,
 .jz-markdown > .jz-md-ul + .jz-md-p { margin-top: var(--jz-space-3); }
 
-/* Headings are just BOLDER text, same family as the body — the format tool
- * can't change fonts, so the card never renders one the user couldn't make
- * (owner call, 2026-07-05). Size still steps for hierarchy. */
+/* Headings are just BOLDER text — same family AND same size as the body. The
+ * format tool offers bold, not a type scale, so the card never renders text
+ * the user couldn't produce themselves (owner call, 2026-07-05; sizes
+ * flattened same session). Hierarchy comes from weight + spacing alone. */
 .jz-md-h1,
 .jz-md-h2,
 .jz-md-h3 {
@@ -2149,23 +2150,16 @@ body,
   color: var(--jz-ink-900);
   font-family: var(--jz-font-ui);
   font-weight: 650;
+  font-size: var(--jz-text-body-size);
+  line-height: var(--jz-text-body-lh);
 }
 
-.jz-md-h1 {
-  font-size: var(--jz-text-title-lg-size);
-  line-height: var(--jz-text-title-lg-lh);
-}
-
-.jz-md-h2 {
-  font-size: var(--jz-text-title-size);
-  line-height: var(--jz-text-title-lh);
-}
-
-.jz-md-h3 {
-  font-size: var(--jz-text-heading-size);
-  line-height: var(--jz-text-heading-lh);
-  font-weight: 600;
-  font-family: var(--jz-font-ui);
+/* Hairline divider — a line of dashes (---) in the text renders as the same
+ * hairline the rest of the system uses. */
+.jz-md-hr {
+  border: none;
+  border-top: 1px solid var(--jz-hairline);
+  margin: var(--jz-space-4) 0;
 }
 
 .jz-md-p {
