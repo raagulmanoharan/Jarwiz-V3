@@ -2819,24 +2819,30 @@ body,
   inset: 0;
   z-index: 500;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  background: color-mix(in srgb, var(--jz-ink-900) 45%, rgba(0, 0, 0, 0.35));
+  /* Deep dim — the board should clearly recede behind the page. */
+  background: rgba(8, 9, 11, 0.78);
   pointer-events: all;
+  overflow-y: auto;
+  padding: 6vh 0 14vh;
   animation: jz-focus-fade var(--jz-dur-fast) var(--jz-ease-out);
 }
 
+/* The page grows with the writing (textarea autosizes; the backdrop
+ * scrolls) — Google-Docs-like: never an inner scrollbar, no fixed height. */
 .jz-focus-page {
   display: flex;
   flex-direction: column;
   width: min(860px, 94vw);
-  height: min(88vh, 1100px);
+  min-height: 78vh;
+  flex: none;
   background: var(--jz-card-surface);
   border: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-lg);
   box-shadow: var(--jz-e4);
   box-sizing: border-box;
-  padding: 40px 56px 48px;
+  padding: 36px 56px 56px;
   animation: jz-focus-rise var(--jz-dur-base) var(--jz-ease-glide);
 }
 
@@ -2847,6 +2853,8 @@ body,
   margin-bottom: 18px;
 }
 
+/* The header IS the primitive label — same quiet caption voice as the tag
+ * above the card, not a document headline. */
 .jz-focus-title {
   flex: 1;
   min-width: 0;
@@ -2854,9 +2862,10 @@ body,
   outline: none;
   background: transparent;
   font-family: var(--jz-font-ui);
-  font-size: 21px;
-  font-weight: 600;
-  color: var(--jz-ink-900);
+  font-size: var(--jz-text-caption-size);
+  line-height: var(--jz-text-caption-lh);
+  font-weight: 500;
+  color: var(--jz-ink-500);
   padding: 0;
 }
 
@@ -2876,8 +2885,10 @@ body,
 }
 
 .jz-focus-textarea {
-  flex: 1;
-  min-height: 0;
+  /* NOT flex:1 — a zero flex-basis would override the autosize height and
+   * pin the page at its min-height with an inner scrollbar. */
+  flex: none;
+  display: block;
   width: 100%;
   resize: none;
   border: none;
@@ -2888,6 +2899,10 @@ body,
   line-height: 1.7;
   color: var(--jz-ink-700);
   padding: 0;
+  /* Height is driven by content (autosize effect) — the page grows, the
+   * backdrop scrolls, the textarea itself never does. */
+  overflow: hidden;
+  min-height: 60vh;
 }
 
 .jz-focus-textarea::placeholder {

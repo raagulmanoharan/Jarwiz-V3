@@ -6,7 +6,7 @@
  * always current and closing needs no save step. Esc or the backdrop closes.
  */
 
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 import { stopEventPropagation, useEditor, useValue } from 'tldraw';
 import { Bold, Italic, Underline, Strikethrough, List, ListTodo, X } from 'lucide-react';
 import { toggleInline, toggleLinePrefix, shortcutMarker, type FormatResult } from '../ask/textFormat';
@@ -35,6 +35,16 @@ export function DocFocusOverlay() {
   );
   const taRef = useRef<HTMLTextAreaElement | null>(null);
 
+  // Autosize: the textarea's height follows its content, so the PAGE grows
+  // and the backdrop scrolls — never an inner scrollbar (owner call).
+  const text = shape?.type === 'doc-card' ? (shape as DocCardShape).props.text : '';
+  useLayoutEffect(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = `${ta.scrollHeight}px`;
+  }, [text, focusId]);
+
   // Esc closes from anywhere in the overlay; the card vanishing closes too.
   useEffect(() => {
     if (!focusId) return;
@@ -46,7 +56,6 @@ export function DocFocusOverlay() {
   }, [focusId]);
 
   if (!focusId || !shape || shape.type !== 'doc-card') return null;
-  const { text } = shape.props;
   const title = getShapeTitle(shape);
 
   const setText = (value: string) => {
