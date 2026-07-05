@@ -2118,14 +2118,15 @@ body,
 .jz-doc-textarea::placeholder {
   color: var(--jz-ink-400);
 }
-/* Markdown rendering within doc cards — editorial headings in the serif.
+/* Markdown rendering within doc cards.
  * gap: 0 because blank lines in source are rendered as explicit empty rows so
- * read mode matches the textarea visually — no phantom gaps, no missing ones. */
+ * read mode matches the textarea visually — no phantom gaps, no missing ones.
+ * No max-width: the card IS the measure (width growth caps it at a readable
+ * 800px) — text fills the card edge to edge (owner call, 2026-07-05). */
 .jz-markdown {
   display: flex;
   flex-direction: column;
   gap: 0;
-  max-width: 68ch;
 }
 
 .jz-md-blank {
@@ -2160,6 +2161,67 @@ body,
   border: none;
   border-top: 1px solid var(--jz-hairline);
   margin: var(--jz-space-4) 0;
+}
+
+/* A lone link line renders as a link CARD — the doc-card sibling of the
+ * canvas link card: hairline chip, label first, host as the quiet line. */
+.jz-md-linkcard {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: var(--jz-space-2) 0;
+  padding: var(--jz-space-3) var(--jz-space-4);
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-sm);
+  text-decoration: none;
+  transition: border-color var(--jz-dur-fast) var(--jz-ease-out), background var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-md-linkcard:hover {
+  border-color: var(--jz-hairline-strong);
+  background: var(--jz-surface-raised);
+}
+.jz-md-linkcard-label {
+  font-size: var(--jz-text-body-size);
+  line-height: var(--jz-text-body-lh);
+  font-weight: 600;
+  color: var(--jz-ink-900);
+}
+.jz-md-linkcard-host {
+  font-size: var(--jz-text-caption-size);
+  line-height: var(--jz-text-caption-lh);
+  color: var(--jz-ink-400);
+}
+
+/* Markdown tables inside a doc card — the table card's quiet grid language:
+ * hairline rules, bolder header band, body-size cells. */
+.jz-md-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: var(--jz-space-2) 0;
+  font-size: var(--jz-text-body-size);
+  line-height: var(--jz-text-body-lh);
+}
+.jz-md-table th,
+.jz-md-table td {
+  border: 1px solid var(--jz-hairline);
+  padding: var(--jz-space-2) var(--jz-space-3);
+  text-align: left;
+  vertical-align: top;
+}
+.jz-md-table th {
+  font-weight: 650;
+  color: var(--jz-ink-900);
+}
+.jz-md-table td {
+  color: var(--jz-ink-700);
+}
+
+/* Images in card text — bounded by the card, softly rounded. */
+.jz-md-img {
+  display: block;
+  max-width: 100%;
+  border-radius: var(--jz-radius-sm);
+  margin: var(--jz-space-2) 0;
 }
 
 .jz-md-p {

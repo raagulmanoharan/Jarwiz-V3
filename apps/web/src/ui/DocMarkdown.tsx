@@ -21,6 +21,20 @@ interface DocMarkdownProps {
 /** Matches a markdown task line, capturing the checked state and the label. */
 const TASK_RE = /^\[([ xX])\]\s+(.*)$/;
 
+/** A line that is ONLY a link (bare URL, or [label](url)) → a link chip card. */
+const LINK_LINE_RE = /^(?:\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/\S+))$/;
+
+/** A markdown table separator row: | --- | :--: | … */
+const TABLE_SEP_RE = /^\s*:?-{2,}:?\s*$/;
+
+/** Split a "| a | b |" row into trimmed cells. */
+function tableCells(line: string): string[] {
+  const cells = line.trim().split('|');
+  if (cells[0]?.trim() === '') cells.shift();
+  if (cells[cells.length - 1]?.trim() === '') cells.pop();
+  return cells.map((c) => c.trim());
+}
+
 export function DocMarkdown({ content, onCite, onToggleTask }: DocMarkdownProps) {
   const lines = content.split('\n');
   const elements: React.ReactNode[] = [];
@@ -65,6 +79,84 @@ export function DocMarkdown({ content, onCite, onToggleTask }: DocMarkdownProps)
     if (/^[-—–]{2,}$/.test(line.trim())) {
       elements.push(<hr key={`hr-${i}`} className="jz-md-hr" />);
       i++;
+      continue;
+    }
+
+    // A lone link on its own line renders as a small link CARD — bordered
+    // chip with the label and its host — not an underlined string.
+    {
+      const link = line.trim().match(LINK_LINE_RE);
+      if (link) {
+        const url = link[2] ?? link[3] ?? '';
+        let host = '';
+        try {
+          host = new URL(url).hostname.replace(/^www\./, '');
+        } catch {
+          host = '';
+        }
+        const label = link[1] ?? host ?? url;
+        elements.push(
+          <a
+            key={`linkcard-${i}`}
+            className="jz-md-linkcard"
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ pointerEvents: 'all' }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="jz-md-linkcard-label">{label}</span>
+            {host && host !== label ? <span className="jz-md-linkcard-host">{host}</span> : null}
+          </a>,
+        );
+        i++;
+        continue;
+      }
+    }
+
+    // Tables: consecutive "| a | b |" lines; the |---|---| separator row
+    // marks the row above it as the header.
+    if (line.trim().startsWith('|') && line.trim().length > 1) {
+      const rows: string[][] = [];
+      let headerRows = 0;
+      while (i < lines.length && (lines[i] ?? '').trim().startsWith('|')) {
+        const cells = tableCells(lines[i] ?? '');
+        if (cells.length > 0 && cells.every((c) => TABLE_SEP_RE.test(c))) {
+          if (rows.length > 0) headerRows = rows.length; // rows so far are the header
+        } else {
+          rows.push(cells);
+        }
+        i++;
+      }
+      if (rows.length > 0) {
+        const head = rows.slice(0, headerRows);
+        const body = rows.slice(headerRows);
+        elements.push(
+          <table key={`table-${elements.length}`} className="jz-md-table">
+            {head.length > 0 ? (
+              <thead>
+                {head.map((r, ri) => (
+                  <tr key={`thr-${ri}`}>
+                    {r.map((c, ci) => (
+                      <th key={`th-${ri}-${ci}`}>{renderInline(c, onCite)}</th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+            ) : null}
+            <tbody>
+              {body.map((r, ri) => (
+                <tr key={`tr-${ri}`}>
+                  {r.map((c, ci) => (
+                    <td key={`td-${ri}-${ci}`}>{renderInline(c, onCite)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>,
+        );
+      }
       continue;
     }
 
@@ -133,10 +225,10 @@ function renderInline(text: string, onCite?: (page: number) => void): React.Reac
   let pos = 0;
 
   // Inline patterns: **bold**, *italic*, __underline__, ~~strike~~, `code`,
-  // [p.N] page citations, [label](url) links, and bare http(s) URLs — a
-  // pasted link is clickable as-is, no markdown required. (__ is underline
+  // [p.N] page citations, [label](url) links, bare http(s) URLs (a pasted
+  // link is clickable as-is), and ![alt](url) images. (__ is underline
   // here, not md-strong — the format bar writes it and nothing else does.)
-  const pattern = /\*\*([^*]+)\*\*|\*([^*]+)\*|__([^_]+)__|~~([^~]+)~~|`([^`]+)`|\[p{1,2}\.\s*([\d\s,&–-]+)\]|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>"')\]]+)/g;
+  const pattern = /\*\*([^*]+)\*\*|\*([^*]+)\*|__([^_]+)__|~~([^~]+)~~|`([^`]+)`|\[p{1,2}\.\s*([\d\s,&–-]+)\]|!\[([^\]]*)\]\((https?:\/\/[^\s)]+|data:image\/[^\s)]+)\)|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>"')\]]+)/g;
   let match;
 
   while ((match = pattern.exec(text)) !== null) {
@@ -152,25 +244,37 @@ function renderInline(text: string, onCite?: (page: number) => void): React.Reac
       parts.push(<s key={`s-${pos}`}>{match[4]}</s>);
     } else if (match[5]) {
       parts.push(<code key={`code-${pos}`}>{match[5]}</code>);
-    } else if (match[7] && match[8]) {
+    } else if (match[8]) {
+      // ![alt](url) — the image itself, bounded to the card's width.
+      parts.push(
+        <img
+          key={`img-${pos}`}
+          className="jz-md-img"
+          src={match[8]}
+          alt={match[7] ?? ''}
+          draggable={false}
+          referrerPolicy="no-referrer"
+        />,
+      );
+    } else if (match[9] && match[10]) {
       parts.push(
         <a
           key={`link-${pos}`}
           className="jz-md-link"
-          href={match[8]}
+          href={match[10]}
           target="_blank"
           rel="noopener noreferrer"
           style={{ pointerEvents: 'all' }}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
         >
-          {match[7]}
+          {match[9]}
         </a>,
       );
-    } else if (match[9]) {
+    } else if (match[11]) {
       // Bare URL — clickable, shown without the protocol and clipped so a
       // long tracking-parameter tail can't wreck the card's measure.
-      const url = match[9];
+      const url = match[11];
       const label = url.replace(/^https?:\/\//, '');
       parts.push(
         <a
