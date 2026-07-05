@@ -15,6 +15,8 @@ import { getShapeTitle } from '../shapes/shapeTitle';
 import { useAsk } from './useAsk';
 import { useAnalyze } from '../agents/useAnalyze';
 import { gatherBoardCards } from '../agents/boardText';
+import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
+import { isAutopilotRunning, subscribeAutopilot } from '../agents/autopilotStore';
 import { cardSeedKey, ensureCardSeeds, ensureSeedPrompts, getSeedPrompts, subscribeSeed } from './seedPrompts';
 
 const clip = (s: string, n = 22) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
@@ -97,8 +99,18 @@ export function PromptBar() {
           ? str(p.code)
           : str(p.text);
     const title = getShapeTitle(s).trim();
-    return { type: s.type, seedKey: cardSeedKey(s.id, text, title), pdf: false as const, text, title };
+    return { id: s.id, type: s.type, seedKey: cardSeedKey(s.id, text, title), pdf: false as const, text, title };
   }, [editor]);
+  // While Jarwiz holds the pen on the selected card (a streaming ask/regen or
+  // an autopilot fill), the pills hide — firing another instruction mid-write
+  // would contradict the one in flight (owner call, 2026-07-05).
+  const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
+  const soleWriting = useSyncExternalStore(
+    subscribeAutopilot,
+    () => (sole && !sole.pdf ? isAutopilotRunning(sole.id) : false),
+    () => false,
+  );
+  const soleBusy = Boolean(sole && !sole.pdf && (streamingSet.has(sole.id) || soleWriting));
   useEffect(() => {
     if (!sole) return;
     if (sole.pdf) {
@@ -176,12 +188,12 @@ export function PromptBar() {
     groundIds.length === 1 && (seeds?.length ?? 0) > 0
       ? seeds!.map((s) => ({ label: s.label, prompt: s.prompt }))
       : [];
-  const showStarters = !runningMode && !value.trim() && starters.length > 0;
+  const showStarters = !runningMode && !isAsking && !soleBusy && !value.trim() && starters.length > 0;
   // The 5-20s quiet gap while tailored pills are being generated (cache still
   // undefined = fetch in flight): show shimmering placeholder pills so the
   // wait reads as "thinking", not "nothing here" (feel pass, ROADMAP §10 #4).
   const showSeedWait =
-    !runningMode && !value.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
+    !runningMode && !isAsking && !soleBusy && !value.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
 
   return (
     <div className="jz-promptbar-dock" onPointerDown={stopEventPropagation}>
