@@ -291,6 +291,12 @@ export interface AskRequest {
    * prices, reputation, red flags, alternatives. Always answers as a doc.
    */
   deep?: boolean;
+  /**
+   * Suppress the automatic deep-research upgrade. The board fan-out (compose)
+   * generates several cards in a row and must stay snappy, so each card runs on
+   * the normal budget even when its prompt sounds research-y.
+   */
+  noResearch?: boolean;
 }
 
 /* ─── Diagram (canvas pivot P2 — the AI builds primitives) ───────────────────
@@ -453,6 +459,35 @@ export interface NoticeRequest {
 export interface NoticeResult {
   comments: NoticeComment[];
 }
+
+/* ─── Compose (board fan-out — one intent → many laid-out cards) ───────────────
+ * The orchestrator: read the board (a brief, or a few dropped things) and build
+ * it out into a rich spatial working set — a comparison table, sticky-note
+ * tips, day/plan docs, a budget — instead of one monolithic card. The server
+ * plans the SET, then generates each card by reusing the Ask engine; the client
+ * lays them out masonry-style as they stream in.
+ */
+
+export interface ComposePlanCard {
+  slot: number;
+  type: AskShape;
+  title: string;
+}
+
+export interface ComposeRequest {
+  /** The board so far — the material the fan-out grounds and expands on. */
+  board: AnalyzeCard[];
+  /** Optional explicit steer ("plan my Goa weekend"); else inferred from board. */
+  intent?: string;
+}
+
+/** SSE for a compose run: the plan up front, then each card's Ask events
+ *  wrapped with the slot they belong to, then a final done. */
+export type ComposeEvent =
+  | { type: 'plan'; cards: ComposePlanCard[] }
+  | { type: 'slot'; slot: number; event: AskEvent }
+  | { type: 'done' }
+  | { type: 'error'; message: string };
 
 /* ─── Revise (Big Rocks 3.3 — conversational depth) ──────────────────────────
  * Argue with an answer card: a follow-up instruction revises the doc IN PLACE

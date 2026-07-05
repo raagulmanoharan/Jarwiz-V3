@@ -13,6 +13,8 @@ import type { AnalyzeMode, AskShape } from '@jarwiz/shared';
 import { ASKABLE, hasAskableContent } from './askable';
 import { getShapeTitle } from '../shapes/shapeTitle';
 import { useAsk } from './useAsk';
+import { useCompose } from '../agents/useCompose';
+import { looksLikeBoard } from './boardIntent';
 import { useAnalyze } from '../agents/useAnalyze';
 import { gatherBoardCards } from '../agents/boardText';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
@@ -37,22 +39,27 @@ function shapeLabel(editor: Editor, shape: TLShape): string {
 /** The "/" mode menu — every shape an answer can take. Stickies appear here
  *  deliberately: the router never chooses them (they're the user's annotation
  *  medium), but an explicit pick is user intent. */
-const MODES: Array<{ shape: AskShape; label: string; hint: string }> = [
+/** Response shapes for the "/" menu. 'board' is not a single-card AskShape —
+ *  it fans the answer out into a set of cards (compose), handled specially. */
+type ModeShape = AskShape | 'board';
+const MODES: Array<{ shape: ModeShape; label: string; hint: string }> = [
   { shape: 'doc', label: 'Text', hint: 'a written card' },
   { shape: 'list', label: 'List', hint: 'bullets or a checklist' },
   { shape: 'table', label: 'Table', hint: 'rows × columns' },
   { shape: 'diagram', label: 'Diagram', hint: 'boxes and arrows' },
   { shape: 'affinity', label: 'Stickies', hint: 'grouped sticky notes' },
+  { shape: 'board', label: 'Board', hint: 'a set of cards' },
 ];
 
 export function PromptBar() {
   const editor = useEditor();
   const { ask, isAsking } = useAsk();
+  const { run: compose, phase: composePhase } = useCompose();
   const { analyze, runningMode } = useAnalyze();
   const [value, setValue] = useState('');
   // The "/" mode selector: an explicitly chosen response shape, pinned as a
   // chip until the ask is sent (or the chip dismissed).
-  const [mode, setMode] = useState<AskShape | null>(null);
+  const [mode, setMode] = useState<ModeShape | null>(null);
   const [modeMenu, setModeMenu] = useState(false);
   const [modeIdx, setModeIdx] = useState(0);
   // Inline filtering, Claude-Code style: while the input reads "/que…", the
@@ -148,7 +155,7 @@ export function PromptBar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fill?.nonce]);
 
-  const pickMode = (shape: AskShape) => {
+  const pickMode = (shape: ModeShape) => {
     setMode(shape);
     setModeMenu(false);
     setModeIdx(0);
@@ -157,10 +164,18 @@ export function PromptBar() {
     requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input')?.focus());
   };
 
+  const composing = composePhase === 'planning' || composePhase === 'building';
   const submit = () => {
     const q = value.trim();
-    if (!q || isAsking) return;
-    void ask(q, groundIds, mode ? { forceShape: mode } : undefined);
+    if (!q || isAsking || composing) return;
+    // Board intent — either picked explicitly ("/" Board) or inferred from the
+    // request — fans out into a set of cards instead of one. Everything else is
+    // a single-card ask, its shape optionally forced by the "/" mode.
+    if (mode === 'board' || (!mode && looksLikeBoard(q))) {
+      void compose(q);
+    } else {
+      void ask(q, groundIds, mode ? { forceShape: mode as AskShape } : undefined);
+    }
     setValue('');
     setMode(null); // the mode applies to one ask, like the text it rode with
   };
@@ -340,11 +355,17 @@ export function PromptBar() {
           </div>
           <button
             className="jz-promptbar-send"
-            disabled={!value.trim() || isAsking}
+            disabled={!value.trim() || isAsking || composing}
             onClick={submit}
             title="Send (Enter)"
           >
-            {busyLabel ? <span className="jz-promptbar-busy-inline">{busyLabel}</span> : <ArrowUp size={16} strokeWidth={2.2} />}
+            {composing ? (
+              <span className="jz-promptbar-busy-inline">{composePhase === 'planning' ? 'Planning…' : 'Building…'}</span>
+            ) : busyLabel ? (
+              <span className="jz-promptbar-busy-inline">{busyLabel}</span>
+            ) : (
+              <ArrowUp size={16} strokeWidth={2.2} />
+            )}
           </button>
         </div>
       </div>

@@ -31,6 +31,7 @@ import { ingestVideo, videoTools } from './video.js';
 import { parseSheetGrid } from './sheets.js';
 import { discoverResources } from './discover.js';
 import { reviewBoard } from './notice.js';
+import { streamCompose } from './compose.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset, sniffMime } from './assets.js';
 import { proposeSeedPrompts, streamAsk } from './ask.js';
 import type { AnalyzeCard, AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ReviseRequest } from '@jarwiz/shared';
@@ -496,6 +497,37 @@ app.post('/api/notice', async (c) => {
     const message = error instanceof Error ? error.message : 'Review failed';
     return c.json({ comments: [], error: message }, 502);
   }
+});
+
+/** Compose — the board fan-out: one intent → many laid-out cards (streamed). */
+app.post('/api/compose', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected JSON: { board[] }' }, 400);
+  }
+  const raw = body as { board?: unknown; intent?: unknown };
+  const board = Array.isArray(raw.board)
+    ? raw.board.slice(0, 24).map((card) => ({
+        kind: typeof (card as AnalyzeCard)?.kind === 'string' ? (card as AnalyzeCard).kind : 'note',
+        title: typeof (card as AnalyzeCard)?.title === 'string' ? (card as AnalyzeCard).title!.slice(0, 200) : undefined,
+        text: typeof (card as AnalyzeCard)?.text === 'string' ? (card as AnalyzeCard).text.slice(0, 2000) : '',
+        assetId: typeof (card as AnalyzeCard)?.assetId === 'string' ? (card as AnalyzeCard).assetId : undefined,
+      }))
+    : [];
+  const intent = typeof raw.intent === 'string' ? raw.intent.slice(0, 400) : undefined;
+  return streamSSE(c, async (stream) => {
+    const signal = c.req.raw.signal;
+    try {
+      for await (const event of streamCompose({ board, intent }, signal)) {
+        await stream.writeSSE({ data: JSON.stringify(event) });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Compose failed';
+      await stream.writeSSE({ data: JSON.stringify({ type: 'error', message }) });
+    }
+  });
 });
 
 /** Predefined, content-aware Ask prompts for a dropped PDF (the blank-slate on-ramp). */

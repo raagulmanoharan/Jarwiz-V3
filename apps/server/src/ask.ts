@@ -621,7 +621,8 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   // routes to a table/diagram) keeps its format on the normal web budget.
   const routedShape = req.shape ?? pickShape(req.prompt, req.currentShape);
   const deep =
-    req.deep || (looksLikeResearch(req.prompt) && (routedShape === 'doc' || routedShape === 'list'));
+    !req.noResearch &&
+    (req.deep || (looksLikeResearch(req.prompt) && (routedShape === 'doc' || routedShape === 'list')));
   if (deep) {
     yield { type: 'status', message: 'researching across the web…' };
     const user = `Research request:\n${req.prompt}\n\n${context || '(No canvas sources — research the request itself.)'}`;
