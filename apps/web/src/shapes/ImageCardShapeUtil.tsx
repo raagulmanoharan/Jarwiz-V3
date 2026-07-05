@@ -58,13 +58,12 @@ export class ImageCardShapeUtil extends ShapeUtil<ImageCardShape> {
 
   override component(shape: ImageCardShape) {
     const { src, name } = shape.props;
+    // The image IS the card face — no mat, no caption (the primitive title
+    // above the card carries the name; the caption doubled it).
     return (
       <HTMLContainer>
         <div className="jz-card jz-image-card">
-          <div className="jz-image-frame">
-            {src ? <img src={src} alt={name} draggable={false} /> : null}
-          </div>
-          {name ? <div className="jz-image-caption">{name}</div> : null}
+          {src ? <img src={src} alt={name} draggable={false} /> : null}
         </div>
       </HTMLContainer>
     );

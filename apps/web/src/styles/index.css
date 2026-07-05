@@ -650,17 +650,10 @@ body,
   border: 0;
 }
 
-/* Image card */
+/* Image card — the image fills the frame edge-to-edge, like the PDF page
+ * (no mat, no caption: the primitive title above the card carries the name). */
 .jz-image-card {
-  padding: 10px;
-  gap: 8px;
-}
-
-.jz-image-card .jz-image-frame {
-  flex: 1;
-  min-height: 0;
-  border-radius: calc(var(--jz-radius) - 6px);
-  overflow: hidden;
+  padding: 0;
   background: var(--jz-paper-deep);
 }
 
@@ -669,16 +662,6 @@ body,
   height: 100%;
   object-fit: cover;
   display: block;
-}
-
-.jz-image-caption {
-  flex: none;
-  font-size: 11px;
-  color: var(--jz-ink-400);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 0 2px;
 }
 
 /* PDF card — embedded reader */
