@@ -282,12 +282,26 @@ export async function fetchYouTubeText(
       const track = tracks.find((t) => t.languageCode?.startsWith('en')) ?? tracks[0];
       if (track?.baseUrl) {
         const { html: xml } = await fetchPublicPage(track.baseUrl);
-        transcript = [...xml.matchAll(/<text[^>]*>(.*?)<\/text>/gs)]
-          .map((m) => decodeEntities((m[1] ?? '').replace(/<[^>]+>/g, ' ')))
-          .join(' ')
-          .replace(/\s+/g, ' ')
-          .trim()
-          .slice(0, maxChars);
+        // Keep coarse [m:ss] markers (one per ~20s bucket): pacing and
+        // structure — hook length, segment rhythm — are half of what a
+        // style question asks about, and they live in the timing.
+        const parts: string[] = [];
+        let lastBucket = -1;
+        for (const m of xml.matchAll(/<text([^>]*)>(.*?)<\/text>/gs)) {
+          const start = Number(/start="([\d.]+)"/.exec(m[1] ?? '')?.[1] ?? 'NaN');
+          if (Number.isFinite(start)) {
+            const bucket = Math.floor(start / 20);
+            if (bucket !== lastBucket) {
+              lastBucket = bucket;
+              const mm = Math.floor(start / 60);
+              const ss = String(Math.floor(start % 60)).padStart(2, '0');
+              parts.push(`[${mm}:${ss}]`);
+            }
+          }
+          const body = decodeEntities((m[2] ?? '').replace(/<[^>]+>/g, ' ')).trim();
+          if (body) parts.push(body);
+        }
+        transcript = parts.join(' ').replace(/\s+/g, ' ').trim().slice(0, maxChars);
       }
     }
   } catch {
