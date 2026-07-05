@@ -23,6 +23,7 @@ import { isAutopilotReady, isAutopilotRunning, subscribeAutopilot } from '../age
 import { DocMarkdown } from '../ui/DocMarkdown';
 import { getResponsePdfSource } from '../pdf/provenance';
 import { setPdfPage } from '../pdf/pdfView';
+import { deriveTitle, titleIsAuto } from './shapeTitle';
 import { useFitHeight } from './useFitHeight';
 import { MAX_CARD_H, isExpanded, subscribeExpand } from './cardExpand';
 import { ExpandToggle } from './ExpandToggle';
@@ -186,7 +187,18 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
           }}
           onChange={(e) => {
             const value = e.currentTarget.value;
-            editor.updateShape<DocCardShape>({ id: shape.id, type: 'doc-card', props: { text: value } });
+            // Typing auto-populates the primitive title from the first line —
+            // until the user (or the server) names the card explicitly.
+            if (titleIsAuto(shape)) {
+              editor.updateShape<DocCardShape>({
+                id: shape.id,
+                type: 'doc-card',
+                props: { text: value, title: deriveTitle(value) },
+                meta: { ...shape.meta, jzTitleAuto: true },
+              });
+            } else {
+              editor.updateShape<DocCardShape>({ id: shape.id, type: 'doc-card', props: { text: value } });
+            }
           }}
           onPointerDown={stopEventPropagation}
           onPointerMove={stopEventPropagation}
