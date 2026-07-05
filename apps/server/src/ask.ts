@@ -134,6 +134,7 @@ const SEED_SYSTEM = `You are given the text of a card on a user's canvas (a drop
 Match each move's phrasing to the answer's best FORMAT — the canvas picks the response card from the prompt's wording:
 - If the text holds two or more comparable things (concepts, options, approaches, parties, methods, versions), include ONE move that compares them. Its "prompt" MUST use comparison wording ("Compare X and Y side by side", "X versus Y") so the answer lands as a comparison table; make the "label" name both sides (e.g. "Compare X vs Y").
 - If the text implies obligations or actions, phrase that move as a checklist ("Turn the … requirements into a checklist").
+- If the text is ITSELF a review naming gaps, unanswered questions, or contradictions (a "what's missing" / "tensions" scan of other work), the moves must CREATE or RESOLVE — one per named gap, most consequential first, phrased as generation ("Draft the success metrics for the beta", "Write the rollback plan", "Propose a decision rule for date vs quality"). The scan found the problem; each pill offers its solution.
 - Why/how/deep-dive moves stay plain questions (prose answers).
 
 Return ONLY a JSON array of objects {"label": string, "prompt": string}: "label" is a 2–4 word button caption; "prompt" is the full question to ask. No prose, no code fences.`;
