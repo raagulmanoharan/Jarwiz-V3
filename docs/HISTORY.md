@@ -317,3 +317,27 @@ SSRF-guarded preview, guarded so async completions never stomp newer
 edits. Readability: the grid sits inset from the frame like the doc card,
 cells got roomier, generated tables scale width with column count, and
 stray ** markers (unclosed streaming bold) never reach the reader.
+
+## 2026-07-05 — The dogfood pays off: trust fixes + three interaction calls
+
+Fixed the ranked findings from yesterday's full-flow session and shipped
+three owner directives on top. Learnings:
+
+- **Vacuums get filled with confident nonsense.** An ask grounded on an
+  empty card made the model riff on its own system prompt. The fix is
+  structural, not prompt-side: toSource now returns null for contentless
+  shapes and the ask refuses with an honest pill. Every grounding path
+  should assume "no content" is a reachable state.
+- **tldraw groups ARE the "invisible frame".** Generated flowcharts group
+  on completion: click selects the diagram as one askable unit (toSource
+  walks the group's children), double-click enters it to edit — zero new
+  chrome.
+- **Stickies got a philosophy**: user annotation only. The router never
+  chooses them; the rail gained a Sticky tool; the palette went muted.
+  The ONE path to AI stickies is the explicit "/" pick — user intent.
+- **"/" is a mode selector**: typing / in an empty prompt (or the footer
+  button) opens "Answer as… Text / List / Table / Diagram / Stickies";
+  the pick pins an accent chip and forces the response shape server-side
+  (whitelisted like currentShape). One ask, then it clears.
+- Generated diagrams now clear occupied space (footprint check + one
+  re-layout below blockers) and frame themselves before drawing.

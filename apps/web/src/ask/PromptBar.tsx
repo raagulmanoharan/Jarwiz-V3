@@ -1,13 +1,15 @@
 /**
  * The canvas prompt bar — persistent query box at the bottom-centre.
  * Layout: tall rounded-rect, textarea top, footer row bottom.
- * Footer left: + (attach) · / (commands). Footer right: send arrow.
+ * Footer left: / (the response-shape MODE SELECTOR — typing "/" in an empty
+ * input or clicking the button opens a menu of shapes the answer can take;
+ * the pick pins a mode chip and forces that shape). Footer right: send.
  */
 
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue, type Editor, type TLRichText, type TLShape } from 'tldraw';
-import { Plus, Slash, ArrowUp } from 'lucide-react';
-import type { AnalyzeMode } from '@jarwiz/shared';
+import { Slash, ArrowUp } from 'lucide-react';
+import type { AnalyzeMode, AskShape } from '@jarwiz/shared';
 import { ASKABLE, hasAskableContent } from './askable';
 import { useAsk } from './useAsk';
 import { useAnalyze } from '../agents/useAnalyze';
@@ -22,17 +24,32 @@ function shapeLabel(editor: Editor, shape: TLShape): string {
   let body = typeof p.text === 'string' ? p.text : '';
   if (!body && p.richText) { try { body = renderPlaintextFromRichText(editor, p.richText as TLRichText); } catch { /* ignore */ } }
   if (body.trim()) return clip(body.trim());
-  const kind: Record<string, string> = { 'doc-card': 'Doc', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram', 'image-card': 'Image', 'link-card': 'Link', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section', arrow: 'Connector' };
+  const kind: Record<string, string> = { 'doc-card': 'Doc', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram', 'image-card': 'Image', 'link-card': 'Link', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section', arrow: 'Connector', group: 'Diagram' };
   return kind[shape.type] ?? 'Card';
 }
 
 const COACH_KEY = 'jz-coach-agents';
+
+/** The "/" mode menu — every shape an answer can take. Stickies appear here
+ *  deliberately: the router never chooses them (they're the user's annotation
+ *  medium), but an explicit pick is user intent. */
+const MODES: Array<{ shape: AskShape; label: string; hint: string }> = [
+  { shape: 'doc', label: 'Text', hint: 'a written card' },
+  { shape: 'list', label: 'List', hint: 'bullets or a checklist' },
+  { shape: 'table', label: 'Table', hint: 'rows × columns' },
+  { shape: 'diagram', label: 'Diagram', hint: 'boxes and arrows' },
+  { shape: 'affinity', label: 'Stickies', hint: 'grouped sticky notes' },
+];
 
 export function PromptBar() {
   const editor = useEditor();
   const { ask, isAsking } = useAsk();
   const { analyze, runningMode } = useAnalyze();
   const [value, setValue] = useState('');
+  // The "/" mode selector: an explicitly chosen response shape, pinned as a
+  // chip until the ask is sent (or the chip dismissed).
+  const [mode, setMode] = useState<AskShape | null>(null);
+  const [modeMenu, setModeMenu] = useState(false);
   const [coachDone, setCoachDone] = useState(() => {
     try { return localStorage.getItem(COACH_KEY) === '1'; } catch { return true; }
   });
@@ -95,11 +112,20 @@ export function PromptBar() {
   const dismissCoach = () => { setCoachDone(true); try { localStorage.setItem(COACH_KEY, '1'); } catch {} };
   useEffect(() => { if (runningMode) dismissCoach(); }, [runningMode]);
 
+  const pickMode = (shape: AskShape) => {
+    setMode(shape);
+    setModeMenu(false);
+    // If the menu was opened by typing "/", swallow that slash.
+    setValue((v) => (v.trim() === '/' ? '' : v));
+    requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input')?.focus());
+  };
+
   const submit = () => {
     const q = value.trim();
     if (!q || isAsking) return;
-    void ask(q, groundIds);
+    void ask(q, groundIds, mode ? { forceShape: mode } : undefined);
     setValue('');
+    setMode(null); // the mode applies to one ask, like the text it rode with
   };
   const runTool = (mode: AnalyzeMode) => { void analyze(mode); };
   const useStarter = (q: string) => { setValue(q); requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input')?.focus()); };
@@ -126,13 +152,9 @@ export function PromptBar() {
 
   return (
     <div className="jz-promptbar-dock" onPointerDown={stopEventPropagation}>
-      {showCoach ? (
-        <div className="jz-coach" role="dialog">
-          <span className="jz-coach-text">✦ Jarwiz can scan this whole board — find tensions, or what you're missing.</span>
-          <button className="jz-coach-dismiss" onClick={dismissCoach}>Got it</button>
-        </div>
-      ) : null}
-
+      {/* The coach bubble is gone: it described the two scan chips rendered
+          directly beneath it (redundant teaching, permanent until dismissed,
+          and part of the bottom-centre chrome pile-up — dogfood finding). */}
       {showStarters ? (
         <div className="jz-promptbar-chips">
           {starters.map((s) => (
@@ -155,8 +177,14 @@ export function PromptBar() {
       ) : null}
 
       <div className="jz-promptbar" style={{ '--pb-max': '560px' } as CSSProperties}>
-        {ground.length > 0 ? (
+        {ground.length > 0 || mode ? (
           <div className="jz-pb-grounds">
+            {mode ? (
+              <span className="jz-pb-ground jz-pb-mode" title="Answer shape — picked with /">
+                {MODES.find((m) => m.shape === mode)?.label ?? mode}
+                <button className="jz-pb-ground-x" aria-label="Clear answer shape" onClick={() => setMode(null)}>✕</button>
+              </span>
+            ) : null}
             {ground.slice(0, 3).map((g) => (
               <span key={g.id} className="jz-pb-ground" title={g.label}>
                 {g.label}
@@ -172,20 +200,46 @@ export function PromptBar() {
           value={value}
           rows={2}
           placeholder={placeholder}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setValue(next);
+            // Typing "/" in an empty input opens the mode menu (a "/" mid-
+            // sentence is just a character).
+            if (next.trim() === '/' && !modeMenu) setModeMenu(true);
+            else if (modeMenu && next.trim() !== '/') setModeMenu(false);
+          }}
           onKeyDown={(e) => {
             e.stopPropagation();
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
-            if (e.key === 'Escape') (e.target as HTMLTextAreaElement).blur();
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!modeMenu) submit(); }
+            if (e.key === 'Escape') {
+              if (modeMenu) setModeMenu(false);
+              else (e.target as HTMLTextAreaElement).blur();
+            }
           }}
         />
 
+        {modeMenu ? (
+          <div className="jz-mode-menu" role="menu" aria-label="Answer shape">
+            <span className="jz-mode-menu-title">Answer as…</span>
+            {MODES.map((m) => (
+              <button key={m.shape} className="jz-mode-item" role="menuitem" onClick={() => pickMode(m.shape)}>
+                <span className="jz-mode-item-label">{m.label}</span>
+                <span className="jz-mode-item-hint">{m.hint}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+
         <div className="jz-promptbar-footer">
           <div className="jz-promptbar-footer-left">
-            <button className="jz-promptbar-icon-btn" title="Attach" onClick={() => console.info('[jarwiz] attach coming soon')}>
-              <Plus size={16} strokeWidth={1.8} />
-            </button>
-            <button className="jz-promptbar-icon-btn" title="Commands" onClick={() => console.info('[jarwiz] commands coming soon')}>
+            {/* The / button = the mode selector (same menu as typing "/").
+                The old dead + (attach) stays gone until it does something. */}
+            <button
+              className={`jz-promptbar-icon-btn${modeMenu ? ' jz-promptbar-icon-btn--active' : ''}`}
+              title="Answer shape (/)"
+              aria-label="Choose the answer's shape"
+              onClick={() => setModeMenu((v) => !v)}
+            >
               <Slash size={16} strokeWidth={1.8} />
             </button>
           </div>

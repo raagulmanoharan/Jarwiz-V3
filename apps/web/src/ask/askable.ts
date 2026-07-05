@@ -8,7 +8,7 @@ import { renderPlaintextFromRichText, type Editor, type TLRichText, type TLShape
 
 export const ASKABLE = new Set([
   'pdf-card', 'doc-card', 'table-card', 'diagram-card', 'note-card', 'image-card',
-  'geo', 'text', 'note', 'arrow', 'frame',
+  'geo', 'text', 'note', 'arrow', 'frame', 'group',
 ]);
 
 /**
@@ -39,7 +39,10 @@ export function hasAskableContent(editor: Editor, shape: TLShape | undefined): b
     case 'link-card':
       return Boolean(str(p.url));
     case 'frame':
-      // A frame's meaning is its children — contentful if any child is.
+    case 'group':
+      // A frame's or group's meaning is its children — contentful if any is.
+      // (Generated flowcharts arrive as groups: click the group, ask about
+      // the whole diagram; double-click to edit the shapes inside.)
       return editor
         .getSortedChildIdsForParent(shape.id)
         .some((cid) => hasAskableContent(editor, editor.getShape(cid)));

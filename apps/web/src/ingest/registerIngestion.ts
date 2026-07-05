@@ -1,14 +1,15 @@
 /**
- * Drop / paste ingestion — PDF-only while we perfect the PDF journey
- * (docs/PDF-JOURNEY.md). A dropped PDF uploads to the server blob store and
- * lands as a pdf-card holding just the asset URL; other content is ignored for
- * now. Drops land at the drop point; pastes at the viewport center.
+ * Drop / paste ingestion. A dropped PDF uploads to the server blob store and
+ * lands as a pdf-card holding just the asset URL; a dropped/pasted IMAGE lands
+ * as an image-card holding a data URL (local-first — it persists with the
+ * board and needs no server). Other content is ignored for now. Drops land at
+ * the drop point; pastes at the viewport center.
  */
 
 import { createShapeId, type Editor, type TLShapeId, type VecLike } from 'tldraw';
 import { uploadAsset } from '../lib/uploadAsset';
 import { logEvent } from '../log/eventLog';
-import { PDF_CARD_SIZE, type PdfCardShape } from '../shapes';
+import { PDF_CARD_SIZE, type ImageCardShape, type PdfCardShape } from '../shapes';
 
 const MULTI_FILE_CASCADE = 28;
 
@@ -29,11 +30,45 @@ async function placeFiles(editor: Editor, files: File[], center: VecLike): Promi
   let placed = 0;
   for (const file of files) {
     const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
-    if (!isPdf) continue;
+    const isImage = /^image\/(png|jpeg|gif|webp)$/.test(file.type);
+    if (!isPdf && !isImage) continue;
     const offset = placed * MULTI_FILE_CASCADE;
-    placePdf(editor, file, { x: center.x + offset, y: center.y + offset });
+    const at = { x: center.x + offset, y: center.y + offset };
+    if (isPdf) placePdf(editor, file, at);
+    else await placeImage(editor, file, at);
     placed += 1;
   }
+}
+
+/** An image lands as an image-card: data URL in props, sized to the image's
+ *  own aspect (clamped) — the canvas finally accepts a screenshot. */
+async function placeImage(editor: Editor, file: File, center: VecLike): Promise<void> {
+  const src = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  }).catch(() => '');
+  if (!src) return;
+  const dims = await new Promise<{ w: number; h: number }>((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth || 480, h: img.naturalHeight || 320 });
+    img.onerror = () => resolve({ w: 480, h: 320 });
+    img.src = src;
+  });
+  const scale = Math.min(1, 480 / dims.w, 480 / dims.h);
+  const w = Math.max(120, Math.round(dims.w * scale));
+  const h = Math.max(90, Math.round(dims.h * scale));
+  const id = createShapeId();
+  editor.createShape<ImageCardShape>({
+    id,
+    type: 'image-card',
+    x: center.x - w / 2,
+    y: center.y - h / 2,
+    props: { w, h, src, name: file.name },
+  });
+  editor.select(id);
+  logEvent(editor, { kind: 'artefact', label: `Added ${file.name}`, detail: 'Image', shapeIds: [id] });
 }
 
 function placePdf(editor: Editor, file: File, center: VecLike): void {

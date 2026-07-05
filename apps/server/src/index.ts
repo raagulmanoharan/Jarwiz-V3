@@ -275,6 +275,9 @@ app.post('/api/ask', async (c) => {
     currentShape: SHAPES.includes(raw.currentShape as (typeof SHAPES)[number])
       ? raw.currentShape
       : undefined,
+    // Explicit response shape from the prompt bar's "/" mode selector —
+    // whitelisted like currentShape; wins over the prompt-based router.
+    shape: SHAPES.includes(raw.shape as (typeof SHAPES)[number]) ? raw.shape : undefined,
     // Set once the user answered a clarifying question — skips re-triage.
     skipClarify: raw.skipClarify === true,
   };

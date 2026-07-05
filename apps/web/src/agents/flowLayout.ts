@@ -20,11 +20,13 @@ export const NODE_H = 76;
 export const GAP_X = 56;
 export const GAP_Y = 72;
 
-/** Per node-kind tldraw styling — a calm, legible flowchart palette. */
+/** Per node-kind tldraw styling. Monochrome ink on translucent panels — the
+ *  GEOMETRY carries the meaning (process/decision/terminal); saturated fills
+ *  fought the app's muted chrome (owner call, 2026-07-05). */
 export const NODE_STYLE: Record<NonNullable<DiagramNode['shape']>, { geo: string; color: TLDefaultColorStyle }> = {
-  rectangle: { geo: 'rectangle', color: 'blue' },
-  diamond: { geo: 'diamond', color: 'orange' },
-  ellipse: { geo: 'ellipse', color: 'green' },
+  rectangle: { geo: 'rectangle', color: 'grey' },
+  diamond: { geo: 'diamond', color: 'grey' },
+  ellipse: { geo: 'ellipse', color: 'grey' },
 };
 
 /**
@@ -88,7 +90,7 @@ export function createFlowNode(editor: Editor, p: PlacedNode): TLShapeId {
   const style = NODE_STYLE[p.node.shape ?? 'rectangle'];
   editor.createShape({
     id, type: 'geo', x: p.x, y: p.y,
-    props: { geo: style.geo, w: NODE_W, h: NODE_H, color: style.color, fill: 'solid', size: 's', richText: toRichText(p.node.label) },
+    props: { geo: style.geo, w: NODE_W, h: NODE_H, color: style.color, fill: 'semi', size: 's', richText: toRichText(p.node.label) },
   } as Parameters<typeof editor.createShape>[0]);
   return id;
 }
@@ -98,13 +100,26 @@ export function createFlowEdge(editor: Editor, fromId: TLShapeId, toId: TLShapeI
   const arrowId = createShapeId();
   editor.createShape<TLArrowShape>({
     id: arrowId, type: 'arrow',
-    props: { color: 'black', size: 's', dash: 'solid', arrowheadEnd: 'triangle', ...(label ? { richText: toRichText(label) } : {}) },
+    props: { color: 'grey', size: 's', dash: 'solid', arrowheadEnd: 'triangle', ...(label ? { richText: toRichText(label) } : {}) },
   });
   editor.createBindings([
     { id: createBindingId(), type: 'arrow', fromId: arrowId, toId: fromId, props: { terminal: 'start', normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false, snap: 'none' } },
     { id: createBindingId(), type: 'arrow', fromId: arrowId, toId: toId, props: { terminal: 'end', normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false, snap: 'none' } },
   ]);
   return arrowId;
+}
+
+/**
+ * Fold a finished flowchart into ONE unit: a tldraw group. Click selects the
+ * whole diagram (so an ask grounds on all of it); double-click enters the
+ * group to move/edit individual shapes — tldraw's native "invisible frame".
+ * Returns the group id (or null if grouping wasn't possible).
+ */
+export function groupFlowchart(editor: Editor, created: TLShapeId[]): TLShapeId | null {
+  if (created.length < 2) return null;
+  editor.groupShapes(created);
+  const parent = editor.getShape(created[0]!)?.parentId;
+  return typeof parent === 'string' && parent.startsWith('shape:') ? (parent as TLShapeId) : null;
 }
 
 /** Place a whole spec at once (used by templates). Caller owns the history mark. */
@@ -118,5 +133,6 @@ export function buildFlowchart(editor: Editor, spec: DiagramSpec, origin: { x: n
     const to = nodeId.get(e.to);
     if (from && to) created.push(createFlowEdge(editor, from, to, e.label));
   }
+  groupFlowchart(editor, created);
   return created;
 }

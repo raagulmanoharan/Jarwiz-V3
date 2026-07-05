@@ -269,6 +269,13 @@ export interface AskRequest {
    * disambiguation pass so the (now-specific) request runs straight through.
    */
   skipClarify?: boolean;
+  /**
+   * Explicit response shape picked by the user (the prompt bar's "/" mode
+   * selector). Wins over the prompt-based router. This is also the only path
+   * that may produce sticky notes ('affinity') — the router never chooses
+   * stickies on its own; they're the user's annotation medium.
+   */
+  shape?: AskShape;
 }
 
 /* ─── Diagram (canvas pivot P2 — the AI builds primitives) ───────────────────

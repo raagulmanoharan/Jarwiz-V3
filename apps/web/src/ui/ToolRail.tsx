@@ -6,8 +6,8 @@
  */
 
 import { createShapeId, stopEventPropagation, useEditor, useValue } from 'tldraw';
-import { MousePointer2, Hand, Type, Shapes, ArrowUpRight, Upload, Folder, HelpCircle } from 'lucide-react';
-import { DOC_CARD_SIZE, type DocCardShape } from '../shapes';
+import { MousePointer2, Hand, Type, StickyNote, Shapes, ArrowUpRight, Upload, Folder, HelpCircle } from 'lucide-react';
+import { DOC_CARD_SIZE, NOTE_CARD_SIZE, NOTE_PAPER, type DocCardShape, type NoteCardShape } from '../shapes';
 import { toggleSidePanel } from './sidePanelStore';
 import { toggleHelp } from './help';
 import { useSyncExternalStore } from 'react';
@@ -31,15 +31,13 @@ function pickAndIngestPdfs(editor: ReturnType<typeof useEditor>) {
 const ICON_SIZE = 18;
 const ICON_PROPS = { size: ICON_SIZE, strokeWidth: 1.7 };
 
-function spawnDocCard(editor: ReturnType<typeof useEditor>) {
+/** Viewport-centred position nudged down-right until it doesn't overlap
+ *  anything (max 20 attempts) — shared by the doc and sticky spawners. */
+function findFreeSpot(editor: ReturnType<typeof useEditor>, w: number, h: number) {
   const vp = editor.getViewportPageBounds();
-  const { w, h } = DOC_CARD_SIZE;
-  const GAP = 24; // minimum gap between cards
-
-  // Try viewport center first, then nudge down-right until we find clear space.
+  const GAP = 24;
   let x = vp.midX - w / 2;
   let y = vp.midY - h / 2;
-
   const allShapes = editor.getCurrentPageShapes();
   const isOverlapping = (cx: number, cy: number) =>
     allShapes.some((s) => {
@@ -50,14 +48,27 @@ function spawnDocCard(editor: ReturnType<typeof useEditor>) {
         cy < b.maxY + GAP && cy + h > b.minY - GAP
       );
     });
-
-  // Nudge in a spiral-like cascade until we find a clear spot (max 20 attempts).
   const step = Math.max(w, h) + GAP;
   for (let i = 0; i < 20 && isOverlapping(x, y); i++) {
     x += step * 0.5;
     y += step * 0.35;
   }
+  return { x, y };
+}
 
+function focusNewShape(editor: ReturnType<typeof useEditor>, id: ReturnType<typeof createShapeId>) {
+  editor.select(id);
+  editor.setEditingShape(id);
+  editor.setCurrentTool('select');
+  const bounds = editor.getShapePageBounds(id);
+  if (bounds) {
+    editor.centerOnPoint({ x: bounds.midX, y: bounds.midY }, { animation: { duration: 200 } });
+  }
+}
+
+function spawnDocCard(editor: ReturnType<typeof useEditor>) {
+  const { w, h } = DOC_CARD_SIZE;
+  const { x, y } = findFreeSpot(editor, w, h);
   const id = createShapeId();
   editor.createShape<DocCardShape>({
     id,
@@ -66,15 +77,24 @@ function spawnDocCard(editor: ReturnType<typeof useEditor>) {
     y,
     props: { w, h, text: '', title: '', sourcePdfId: '' },
   });
-  editor.select(id);
-  editor.setEditingShape(id);
-  editor.setCurrentTool('select');
+  focusNewShape(editor, id);
+}
 
-  // Pan camera so the new card is comfortably centered in view.
-  const bounds = editor.getShapePageBounds(id);
-  if (bounds) {
-    editor.centerOnPoint({ x: bounds.midX, y: bounds.midY }, { animation: { duration: 200 } });
-  }
+/** One sticky, open for typing — stickies are the USER's annotation medium
+ *  (owner decision 2026-07-05), so they need a first-class creator; until now
+ *  they only appeared in AI-generated batches. */
+function spawnStickyNote(editor: ReturnType<typeof useEditor>) {
+  const { w, h } = NOTE_CARD_SIZE;
+  const { x, y } = findFreeSpot(editor, w, h);
+  const id = createShapeId();
+  editor.createShape<NoteCardShape>({
+    id,
+    type: 'note-card',
+    x,
+    y,
+    props: { w, h, text: '', color: NOTE_PAPER },
+  });
+  focusNewShape(editor, id);
 }
 
 export function ToolRail() {
@@ -91,6 +111,9 @@ export function ToolRail() {
       </RailTool>
       <RailTool label="New doc" active={false} onClick={() => spawnDocCard(editor)}>
         <Type {...ICON_PROPS} />
+      </RailTool>
+      <RailTool label="Sticky note" active={false} onClick={() => spawnStickyNote(editor)}>
+        <StickyNote {...ICON_PROPS} />
       </RailTool>
       <RailTool label="Shape (R)" active={toolId === 'geo'} onClick={() => editor.setCurrentTool('geo')}>
         <Shapes {...ICON_PROPS} />

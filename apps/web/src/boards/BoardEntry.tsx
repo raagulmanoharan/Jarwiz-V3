@@ -6,8 +6,6 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { stopEventPropagation, useEditor, useValue } from 'tldraw';
-import { createShapeId } from 'tldraw';
-import type { DocCardShape } from '../shapes';
 import {
   getActiveBoard,
   markBoardUsed,
@@ -53,20 +51,10 @@ export function BoardEntry() {
 
     if (selected !== 'blank') {
       applyTemplate(editor, selected, projectName);
-    } else {
-      // Drop a blank doc card at the viewport centre, open for typing.
-      const c = editor.getViewportPageBounds().center;
-      const id = createShapeId();
-      editor.createShape<DocCardShape>({
-        id,
-        type: 'doc-card',
-        x: c.x - 280,
-        y: c.y - 180,
-        props: { w: 560, h: 360, title: projectName || '', text: '', sourcePdfId: '' },
-      });
-      editor.select(id);
-      editor.setEditingShape(id);
     }
+    // "Start blank" means a truly blank canvas. The old starter doc card was
+    // permanent clutter — and, being empty, a poisoned grounding source for
+    // the first ask (docs/TEST-REPORT.md 2026-07-04, findings #1/#2).
   };
 
   return (

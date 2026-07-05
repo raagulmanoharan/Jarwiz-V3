@@ -311,3 +311,23 @@ spine of the product holds.
   `evaluate` — CLAUDE.md gotcha #3 strikes again; the board-scan surface
   still deserves a dedicated pass).
 - Link preview untestable here (sandbox blocks outbound web).
+
+## 2026-07-05 — Fixes landed (same-day)
+
+Bugs 1–2 (empty-source gating + honest refusal pill; truly-blank onboarding),
+5 (stranded shimmer), 6 (diagram camera-follow + occupancy-aware placement),
+7 (word-boundary pill labels), 3–4 via prompt rules (one-sided comparison
+column says "Not covered in this source"; doc answers may not emit code/
+mermaid fences), 9 (lane placement clears vertical spans), 10 (action bar
+clears title tags), plus: image drop/paste ingestion, dead +// buttons and
+the coach bubble removed, CLAUDE.md chat-drawer mismatch corrected, friendly
+activity labels for canned prompts. Owner directives shipped alongside:
+generated flowcharts arrive as ONE muted-grey group (click = ask about the
+whole diagram, double-click = edit inside), stickies are user-annotation
+only (router never picks them; rail gains a Sticky tool; muted palette), and
+the prompt bar's "/" is a mode selector forcing the answer's shape (Text /
+List / Table / Diagram / Stickies — the one explicit path to stickies).
+`scripts/eval-fixes.mjs` proves the set end-to-end: 9/9.
+
+Still open from the report: under-fold citations, board-level organization
+(the sprawl), affinity output volume, workspace stub, link-preview retry.

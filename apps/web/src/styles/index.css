@@ -2450,6 +2450,7 @@ body,
 
 /* Outer card — tall rounded rect, column layout */
 .jz-promptbar {
+  position: relative; /* hosts the "/" mode menu */
   pointer-events: auto;
   display: flex;
   flex-direction: column;
@@ -2580,6 +2581,74 @@ body,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* The pinned answer-shape chip (picked with "/") — accent-tinted so it reads
+ * as an instruction to Jarwiz, not another grounding card. */
+.jz-pb-mode {
+  background: color-mix(in srgb, var(--jz-accent) 14%, transparent);
+  color: color-mix(in srgb, var(--jz-accent) 70%, var(--jz-ink-900));
+  font-weight: 600;
+}
+
+/* ── "/" mode menu — the shapes an answer can take ───────────────────────── */
+.jz-mode-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 8px;
+  z-index: 350;
+  min-width: 230px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px;
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface-raised);
+  border: 1px solid var(--jz-hairline);
+  box-shadow: var(--jz-e3);
+  animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
+}
+
+.jz-mode-menu-title {
+  padding: 3px 8px 5px;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-micro-size);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--jz-ink-400);
+}
+
+.jz-mode-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 7px 8px;
+  border: none;
+  border-radius: var(--jz-radius-xs);
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--jz-font-ui);
+  text-align: left;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-mode-item:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+}
+.jz-mode-item-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--jz-ink-900);
+}
+.jz-mode-item-hint {
+  font-size: var(--jz-text-micro-size);
+  color: var(--jz-ink-400);
+}
+
+.jz-promptbar-icon-btn--active {
+  color: var(--jz-ink-900);
+  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
 }
 
 .jz-pb-ground--more {

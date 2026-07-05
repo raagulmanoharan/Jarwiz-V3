@@ -17,11 +17,11 @@ import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 const MAX_TOKENS = 1400;
 const PER_SOURCE_CHARS = 8_000;
 
-const DOC_SYSTEM = `You answer a question about the provided source document(s) on a canvas, as a clear written card. Use clean markdown: an optional short "# " title line, then tight paragraphs (and sub-headings only if it genuinely helps). Ground every claim in the provided content; if the sources don't contain the answer, say so plainly rather than inventing. Be specific and concise — no preamble, no sign-off.`;
+const DOC_SYSTEM = `You answer a question about the provided source document(s) on a canvas, as a clear written card. Use clean markdown: an optional short "# " title line, then tight paragraphs (and sub-headings only if it genuinely helps). Never include code blocks, fenced code, or Mermaid/diagram source — the card renders prose only; if a diagram would help, describe the flow in words (the canvas has a separate diagram tool). Ground every claim in the provided content; if the sources don't contain the answer, say so plainly rather than inventing. Be specific and concise — no preamble, no sign-off.`;
 
 const LIST_SYSTEM = `You answer a question about the provided source document(s) as a focused markdown list. Optionally one "# " title line, then "- " bullets (or "1." steps if the question implies order). Each item tight and specific, grounded in the content. If the sources don't support an item, omit it. No preamble.`;
 
-const TABLE_SYSTEM = `You answer a question about the provided source document(s) as a TABLE — a comparison/matrix, a plan, an itinerary, a vendor list: whatever grid fits the ask. Return ONLY a JSON object {"columns": string[], "rows": string[][]} — the first column names the items/dimensions, one row per item, short cells. Ground cells in the provided content; leave a cell empty rather than inventing. Cells may use minimal inline markdown where it genuinely helps: [label](url) for a link that appears in the sources (or a well-known official page), ![alt](url) for an image URL present in the sources, **bold** for a key value. No prose outside the JSON, no code fences.`;
+const TABLE_SYSTEM = `You answer a question about the provided source document(s) as a TABLE — a comparison/matrix, a plan, an itinerary, a vendor list: whatever grid fits the ask. Return ONLY a JSON object {"columns": string[], "rows": string[][]} — the first column names the items/dimensions, one row per item, short cells. Ground cells in the provided content; leave a cell empty rather than inventing. If an ENTIRE compared column has no grounding in the sources (the user asked to compare against something the sources don't cover), put "Not covered in this source" in that column's first cell so the gap is explicit, and leave the rest of the column empty. Cells may use minimal inline markdown where it genuinely helps: [label](url) for a link that appears in the sources (or a well-known official page), ![alt](url) for an image URL present in the sources, **bold** for a key value. No prose outside the JSON, no code fences.`;
 
 const CLAUSE_DIFF_SYSTEM = `You are comparing multiple source documents clause-by-clause to surface overlaps and CONFLICTS. Return ONLY a JSON object {"columns": string[], "rows": string[][]}. Columns MUST be: "Topic / Clause", then one column per source document (use a short version of each document's title), then a final "Conflict?" column. Each row is a topic the documents both address; fill each document's cell with its stance/wording (short, grounded), and set "Conflict?" to "Yes", "No", or "Partial" with a few words on why. Prioritise rows where the documents differ or contradict. Ground every cell in the provided text; leave a cell blank if a document is silent. No prose, no code fences.`;
 
@@ -52,13 +52,6 @@ function looksLikeDiff(prompt: string): boolean {
 /** A "draw / visualise this as a diagram" request (→ a Mermaid diagram card). */
 function looksLikeDiagram(prompt: string): boolean {
   return /\b(diagram|flow ?chart|sequence diagram|mind ?map|org chart|gantt|class diagram|er diagram|entity[- ]relationship|state diagram|user journey|journey map|process (map|flow)|visuali[sz]e|sketch|draw)\b/i.test(
-    prompt,
-  );
-}
-
-/** An affinity-mapping / brainstorm request (→ clustered sticky notes). */
-function looksLikeAffinity(prompt: string): boolean {
-  return /\b(affinity|brainstorm|sticky notes?|cluster|group (the |these )?ideas|ideate|generate ideas|mind ?dump)\b/i.test(
     prompt,
   );
 }
@@ -179,7 +172,11 @@ export async function proposeSeedPrompts(
       if (!item || typeof item !== 'object') continue;
       const label = String((item as Record<string, unknown>).label ?? '').trim();
       const prompt = String((item as Record<string, unknown>).prompt ?? '').trim();
-      if (label && prompt) out.push({ label: label.slice(0, 32), prompt: prompt.slice(0, 400) });
+      // Cap long labels at a word boundary with an ellipsis — a hard slice
+      // produced pills like "Challenge type-stability assumpt".
+      const capped =
+        label.length <= 36 ? label : `${label.slice(0, 35).replace(/\s+\S*$/, '')}…`;
+      if (label && prompt) out.push({ label: capped, prompt: prompt.slice(0, 400) });
       if (out.length >= 4) break;
     }
     return out;
@@ -190,9 +187,10 @@ export async function proposeSeedPrompts(
 
 function pickShape(prompt: string, current?: AskShape): AskShape {
   const p = prompt.toLowerCase();
-  // Affinity + diagram are explicit visual intents — check them before the
-  // text/table fallbacks so "diagram of the table" still draws a diagram.
-  if (looksLikeAffinity(prompt)) return 'affinity';
+  // NOTE: brainstorm/affinity prompts no longer route to sticky notes —
+  // stickies are the USER's annotation medium, not an AI output (owner
+  // decision 2026-07-05). Brainstorms land as lists like any idea dump.
+  // The affinity event machinery stays for possible user-driven layouts.
   if (looksLikeDiagram(prompt)) return 'diagram';
   // An explicit "as prose" request wins over the keep-current fallback, so a
   // table/diagram can be turned back into a written card on demand.
@@ -444,7 +442,9 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
     }
   }
 
-  const shape = pickShape(req.prompt, req.currentShape);
+  // An explicit "/" mode pick beats the prompt-based router — the user chose
+  // the format; don't second-guess it.
+  const shape = req.shape ?? pickShape(req.prompt, req.currentShape);
   const user = `Question:\n${req.prompt}\n\n${context}`;
 
   if (shape === 'affinity') {

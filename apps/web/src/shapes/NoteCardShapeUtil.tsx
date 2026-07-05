@@ -35,11 +35,13 @@ export type NoteCardShape = TLShape<'note-card'>;
 
 export const NOTE_CARD_SIZE = { w: 220, h: 220 };
 
-/** Tinted paper, per the design tokens. */
-export const NOTE_PAPER = '#fbf6e9';
+/** Tinted paper, per the design tokens — muted to sit inside the Flora
+ *  chrome rather than pop against it (stickies are the user's own margin
+ *  notes, not artifacts demanding attention). */
+export const NOTE_PAPER = '#f1ece0';
 
-/** Soft tints for affinity-diagram clusters; cycled by cluster index. */
-export const AFFINITY_COLORS = ['#fef0c7', '#dcefe1', '#dde7fb', '#fbe0e6', '#ece1f7', '#fbeada'] as const;
+/** Muted paper tints, cycled by index — desaturated sand/sage/mist/clay. */
+export const AFFINITY_COLORS = ['#ece5d3', '#e2e7e0', '#e0e5ec', '#eae0e0', '#e6e1ec', '#eae4da'] as const;
 
 /** Pick a stable cluster tint by index. */
 export function affinityColor(index: number): string {

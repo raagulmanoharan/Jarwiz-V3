@@ -44,7 +44,9 @@ export function CardActionBar() {
     [editor],
   );
 
-  const anchor = useCardAnchor((sel?.ids ?? null) as TLShapeId[] | null, { edge: 'top', dy: -10 });
+  // dy clears the card's OUTSIDE title tag (doc/table titles render above the
+  // card's top edge) — at -10 the bar sat on top of them.
+  const anchor = useCardAnchor((sel?.ids ?? null) as TLShapeId[] | null, { edge: 'top', dy: -34 });
 
   if (!sel) return null;
   const id = sel.id as TLShapeId;
@@ -107,7 +109,7 @@ export function CardActionBar() {
         <button
           className="jz-cardbar-btn"
           title="A one-glance profile: what this is, who wrote it, red flags, where to start"
-          onClick={() => ask(PROFILE_PROMPT, [id], { skipClarify: true })}
+          onClick={() => ask(PROFILE_PROMPT, [id], { skipClarify: true, logLabel: 'Profiled the document' })}
         >
           ✦ Profile
         </button>

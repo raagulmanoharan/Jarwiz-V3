@@ -79,9 +79,10 @@ UI is a roadmap item (docs/ROADMAP.md).
   (`presence.ts`, `useSyncExternalStore`); board scans park it on the card.
 - Live streaming caret: `streaming.ts` external store; useAsk/autopilot flip it
   on card create/done; doc/note shapes subscribe.
-- Ask paths: the bottom **PromptBar** (grounded on the selection), the
-  **CardActionBar** transforms on a selected card, and the right-edge
-  **ClaudePanel** chat drawer (rail toggle).
+- Ask paths: the bottom **PromptBar** (grounded on the selection) and the
+  **CardActionBar** on a selected card (fixed ✦ Profile on PDFs + Refine ▾
+  transforms). (The right-edge ClaudePanel chat drawer described in older
+  docs was removed in the July 2026 surgery — no chat drawer exists today.)
 - Multiplayer (`?room=`) is **parked** behind `VITE_JARWIZ_ENABLE_SYNC` /
   `JARWIZ_ENABLE_SYNC` pending security hardening — see docs/AUDIT.md P0.4.
 

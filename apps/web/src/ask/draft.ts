@@ -18,6 +18,9 @@ export interface Draft {
   status: 'streaming' | 'done' | 'error';
   error?: string;
   prompt: string;
+  /** Friendly label for the activity log — canned prompts (Profile, Refine
+   *  transforms) read badly as raw instruction text. Falls back to `prompt`. */
+  logLabel?: string;
   sourceIds: TLShapeId[];
   shape: 'doc' | 'table' | 'list' | 'diagram' | 'affinity';
   pdfSourceId: TLShapeId | null;

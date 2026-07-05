@@ -94,26 +94,40 @@ function plainText(editor: Editor, richText: unknown): string {
 }
 
 /** Build the server-side source descriptor from a shape — a rich card or a
- *  native primitive (canvas pivot P1: a selected sketch/box/label is askable). */
+ *  native primitive (canvas pivot P1: a selected sketch/box/label is askable).
+ *  A shape with no actual CONTENT returns null: grounding an ask on an empty
+ *  card gives the model nothing, and it fills the vacuum with confident
+ *  invention (dogfood 2026-07-04 finding #1 — an empty card produced thirty
+ *  sticky notes riffing on the system prompt). */
 function toSource(editor: Editor, shape: TLShape): AskSource | null {
   const p = shape.props as Record<string, unknown>;
   switch (shape.type) {
-    case 'pdf-card':
-      return { kind: 'pdf', assetId: String(p.assetId ?? ''), title: String(p.name ?? '') };
-    case 'doc-card':
-      return { kind: 'doc', title: String(p.title ?? ''), text: String(p.text ?? '') };
-    case 'note-card':
-      return { kind: 'note', text: String(p.text ?? '') };
+    case 'pdf-card': {
+      const assetId = String(p.assetId ?? '');
+      return assetId ? { kind: 'pdf', assetId, title: String(p.name ?? '') } : null;
+    }
+    case 'doc-card': {
+      const text = String(p.text ?? '');
+      // A title alone is not groundable content — it's usually just a name.
+      return text.trim() ? { kind: 'doc', title: String(p.title ?? ''), text } : null;
+    }
+    case 'note-card': {
+      const text = String(p.text ?? '');
+      return text.trim() ? { kind: 'note', text } : null;
+    }
     case 'table-card': {
       const cols = (p.columns as string[]) ?? [];
       const rows = (p.rows as string[][]) ?? [];
+      if (![...cols, ...rows.flat()].some((c) => c?.trim())) return null;
       const text = [cols, ...rows].map((r) => `| ${r.join(' | ')} |`).join('\n');
       return { kind: 'table', title: String(p.title ?? ''), text };
     }
-    case 'diagram-card':
+    case 'diagram-card': {
       // The diagram's own Mermaid source is the context a refinement builds on
       // ("add a node" works off the existing graph). Sent as a doc source.
-      return { kind: 'doc', title: String(p.title ?? ''), text: String(p.code ?? '') };
+      const code = String(p.code ?? '');
+      return code.trim() ? { kind: 'doc', title: String(p.title ?? ''), text: code } : null;
+    }
     case 'image-card': {
       // An image is a vision input — sent as its data URL (the model sees it on
       // the API path; the dev sidecar notes it but can't).
@@ -132,6 +146,18 @@ function toSource(editor: Editor, shape: TLShape): AskSource | null {
     case 'frame': {
       const name = typeof p.name === 'string' ? p.name.trim() : '';
       return name ? { kind: 'note', text: `Section: ${name}` } : null;
+    }
+    case 'group': {
+      // A generated flowchart is a group — asking about the group means
+      // asking about everything inside it (node labels, connector labels).
+      const parts: string[] = [];
+      for (const cid of editor.getSortedChildIdsForParent(shape.id)) {
+        const child = editor.getShape(cid);
+        if (!child) continue;
+        const cs = toSource(editor, child);
+        if (cs && 'text' in cs && cs.text?.trim()) parts.push(cs.text.trim());
+      }
+      return parts.length ? { kind: 'note', text: `Diagram contents:\n${parts.join('\n')}` } : null;
     }
     default:
       return null;
@@ -160,7 +186,13 @@ export function useAsk() {
     async (
       prompt: string,
       sourceIds: TLShapeId[],
-      opts?: { targetId?: TLShapeId | null; skipClarify?: boolean },
+      opts?: {
+        targetId?: TLShapeId | null;
+        skipClarify?: boolean;
+        logLabel?: string;
+        /** Explicit response shape from the "/" mode selector. */
+        forceShape?: AskShape;
+      },
     ) => {
       const trimmed = prompt.trim();
       // A sourceless ask is allowed — a free-standing query from the prompt bar
@@ -198,9 +230,22 @@ export function useAsk() {
         .map((id) => editor.getShape(id))
         .filter((s): s is TLShape => Boolean(s));
       const sources = sourceShapes.map((s) => toSource(editor, s)).filter((s): s is AskSource => Boolean(s));
-      // If a selection was given but none of it is usable as a source, don't run
-      // (a no-op selection). A deliberately sourceless ask (no ids) proceeds.
-      if (sourceIds.length > 0 && sources.length === 0) return;
+      // A selection with no usable content must not run — and must not fail
+      // silently either. Say why, at the card. (A deliberately sourceless ask
+      // — no ids at all — still proceeds as a free-standing query.)
+      if (sourceIds.length > 0 && sources.length === 0) {
+        endPresence(PRESENCE.id);
+        const emptyTaskId = `ask_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        setAgentTask({
+          id: emptyTaskId,
+          anchorId: sourceIds[0] ?? null,
+          status: 'error',
+          label: 'Ask',
+          error: "The selected card is empty — there's nothing to ground this on yet.",
+        });
+        setTimeout(() => clearAgentTask(emptyTaskId), 6000); // transient, not a dead end
+        return;
+      }
 
       // Human-readable labels for the "Based on:" header (show-your-work, 2.2).
       const sourceLabels = sourceShapes.map((s) => sourceLabel(s));
@@ -399,7 +444,7 @@ export function useAsk() {
             setProvenance(id, sourceIds, sourceLabels);
             startStreaming(id);
             const arrowIds = sourceIds.map((from) => createEdge(editor, from, id)).filter(Boolean) as TLShapeId[];
-            setDraft({ id, arrowIds, status: 'streaming', prompt: trimmed, sourceIds, shape: event.shape, pdfSourceId });
+            setDraft({ id, arrowIds, status: 'streaming', prompt: trimmed, logLabel: opts?.logLabel, sourceIds, shape: event.shape, pdfSourceId });
             frameCard(editor, [id], sourceIds);
             break;
           }
@@ -490,7 +535,7 @@ export function useAsk() {
         const res = await fetch('/api/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: trimmed, sources, currentShape, skipClarify: opts?.skipClarify }),
+          body: JSON.stringify({ prompt: trimmed, sources, currentShape, skipClarify: opts?.skipClarify, shape: opts?.forceShape }),
           signal,
         });
         if (!res.ok || !res.body) {
@@ -552,7 +597,7 @@ export function finalizeDraft(editor: Editor): TLShapeId | null {
   stopStreaming(d.id);
   logEvent(editor, {
     kind: 'artefact',
-    label: d.prompt,
+    label: d.logLabel ?? d.prompt,
     detail: ARTEFACT_LABEL[d.shape] ?? 'Doc',
     shapeIds: [d.id, ...(d.groupIds ?? []), ...d.sourceIds],
   });
@@ -638,11 +683,14 @@ export function placeInLane(
     .map((id) => bounds(id))
     .filter((b): b is NonNullable<ReturnType<typeof bounds>> => Boolean(b));
   const GAP = 48;
-  const LANE_TOL = Math.max(80, h * 0.6);
   const laneTop = srcBounds.length
     ? Math.min(...srcBounds.map((b) => b.minY))
     : Math.min(...all.map((b) => b.minY));
-  const sameLane = all.filter((b) => Math.abs(b.minY - laneTop) < LANE_TOL);
+  // Clear everything the new card's vertical band would touch — not just
+  // shapes whose TOP is near the lane. A tall card from a neighbouring lane
+  // still collides (dogfood 2026-07-04 finding #9: the profile card landed
+  // on the starter doc).
+  const sameLane = all.filter((b) => b.minY < laneTop + h && b.maxY > laneTop);
   const anchor = sameLane.length ? sameLane : srcBounds;
   const x = (anchor.length ? Math.max(...anchor.map((b) => b.maxX)) : Math.max(...all.map((b) => b.maxX))) + GAP;
   return { x, y: laneTop };

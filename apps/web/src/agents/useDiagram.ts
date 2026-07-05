@@ -8,6 +8,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import {
+  Box,
   renderPlaintextFromRichText,
   useEditor,
   type Editor,
@@ -16,7 +17,7 @@ import {
   type TLShapeId,
 } from 'tldraw';
 import { getAgent, type AskSource, type DiagramSpec } from '@jarwiz/shared';
-import { createFlowEdge, createFlowNode, layoutFlow } from './flowLayout';
+import { createFlowEdge, createFlowNode, groupFlowchart, layoutFlow } from './flowLayout';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from './presence';
 import { clearAgentTask, setAgentTask } from './agentTask';
 
@@ -80,7 +81,7 @@ export function useDiagram() {
       startPresence(AGENT.id);
       setPresenceStatus(AGENT.id, 'Drawing a flowchart…');
       setPresenceCursor(AGENT.id, origin.x, origin.y);
-      setAgentTask({ id: taskId, anchorId: null, status: 'running', label: 'Drawing a flowchart…', onCancel: () => { cancelled = true; ac.abort(); } });
+      setAgentTask({ id: taskId, anchorId: sourceIds[0] ?? null, status: 'running', label: 'Drawing a flowchart…', onCancel: () => { cancelled = true; ac.abort(); } });
       const timer = setTimeout(() => { timedOut = true; ac.abort(); }, TIMEOUT_MS);
 
       const created: TLShapeId[] = [];
@@ -95,8 +96,46 @@ export function useDiagram() {
         if (!spec?.nodes?.length) throw new Error('empty diagram');
 
         editor.markHistoryStoppingPoint('draw-flowchart'); // whole draw = one undo
-        const placed = layoutFlow(spec, origin);
+        let placed = layoutFlow(spec, origin);
+        // The origin only cleared the SOURCES — if the layout's footprint
+        // overlaps anything else (an answer card in the same lane), drop the
+        // whole diagram below the blockers and lay out again.
+        {
+          const footprint = (ps: typeof placed) =>
+            new Box(
+              Math.min(...ps.map((p) => p.x)) - 40,
+              Math.min(...ps.map((p) => p.y)) - 40,
+              Math.max(...ps.map((p) => p.x + 220)) - Math.min(...ps.map((p) => p.x)) + 80,
+              Math.max(...ps.map((p) => p.y + 120)) - Math.min(...ps.map((p) => p.y)) + 80,
+            );
+          const fp = footprint(placed);
+          const blockers = editor
+            .getCurrentPageShapes()
+            .filter((s) => s.type !== 'arrow')
+            .map((s) => editor.getShapePageBounds(s.id))
+            .filter((b): b is NonNullable<typeof b> => Boolean(b) && b!.collides(fp));
+          if (blockers.length) {
+            origin = { x: origin.x, y: Math.max(...blockers.map((b) => b.maxY)) + 100 };
+            placed = layoutFlow(spec, origin);
+          }
+        }
         const nodeId = new Map<string, TLShapeId>();
+
+        // Bring the drawing area on screen BEFORE the pen starts. The draw is
+        // deliberate choreography — happening outside the viewport it reads as
+        // "nothing happened" (dogfood 2026-07-04 finding #6).
+        {
+          const xs = placed.map((p) => p.cx);
+          const ys = placed.map((p) => p.cy);
+          const area = new Box(
+            Math.min(...xs) - 180,
+            Math.min(...ys) - 120,
+            Math.max(...xs) - Math.min(...xs) + 360,
+            Math.max(...ys) - Math.min(...ys) + 260,
+          );
+          const union = allBounds.reduce((acc, b) => acc.union(b), area);
+          editor.zoomToBounds(union, { animation: { duration: 320 }, inset: 60 });
+        }
 
         // Draw the nodes one by one — cursor hops to each, then it pops in.
         for (const p of placed) {
@@ -117,10 +156,13 @@ export function useDiagram() {
         }
 
         clearAgentTask(taskId);
-        editor.select(...created);
+        // One unit: group the finished diagram (click = select-all-of-it for
+        // asking; double-click enters the group to edit shapes) and LEAVE it
+        // selected so the ask affordances are immediately at hand.
+        const groupId = groupFlowchart(editor, created);
+        editor.select(...(groupId ? [groupId] : created));
         const b = editor.getSelectionPageBounds();
         if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 80 });
-        editor.selectNone();
       } catch (err) {
         if (cancelled) {
           if (created.length) editor.deleteShapes(created); // undo the partial draw
