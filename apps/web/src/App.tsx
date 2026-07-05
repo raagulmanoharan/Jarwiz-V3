@@ -30,6 +30,7 @@ import { cardShapeUtils } from './shapes';
 import { BoardEntry } from './boards/BoardEntry';
 import { getRestoreError, isRestoring, subscribeRestore } from './boards/backup';
 import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
+import { CardTitleTag } from './ui/CardTitleTag';
 import { EmptyState } from './ui/EmptyState';
 import { Topbar } from './ui/Topbar';
 import { HelpLayer } from './ui/HelpLayer';
@@ -56,6 +57,7 @@ function JarwizOverlay() {
       {/* Behavioural overlays — the ask/refine loop on cards. */}
       <EmptyState />
       <BoardEntry />
+      <CardTitleTag />
       <CardActionBar />
       <ClarifyLayer />
       <DraftControls />

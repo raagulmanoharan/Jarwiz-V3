@@ -43,6 +43,7 @@ import { setProvenance } from './provenance';
 import { logEvent } from '../log/eventLog';
 import { clearAgentTask, setAgentTask } from '../agents/agentTask';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from '../agents/presence';
+import { getShapeTitle } from '../shapes/shapeTitle';
 import { getAgent } from '@jarwiz/shared';
 
 /** The single Jarwiz presence identity (routing id 'writer'). Parked on the
@@ -109,7 +110,7 @@ function toSource(editor: Editor, shape: TLShape): AskSource | null {
     case 'doc-card': {
       const text = String(p.text ?? '');
       // A title alone is not groundable content — it's usually just a name.
-      return text.trim() ? { kind: 'doc', title: String(p.title ?? ''), text } : null;
+      return text.trim() ? { kind: 'doc', title: getShapeTitle(shape), text } : null;
     }
     case 'note-card': {
       const text = String(p.text ?? '');
@@ -120,13 +121,14 @@ function toSource(editor: Editor, shape: TLShape): AskSource | null {
       const rows = (p.rows as string[][]) ?? [];
       if (![...cols, ...rows.flat()].some((c) => c?.trim())) return null;
       const text = [cols, ...rows].map((r) => `| ${r.join(' | ')} |`).join('\n');
-      return { kind: 'table', title: String(p.title ?? ''), text };
+      // Tables keep their primitive title in shape.meta (no title prop).
+      return { kind: 'table', title: getShapeTitle(shape), text };
     }
     case 'diagram-card': {
       // The diagram's own Mermaid source is the context a refinement builds on
       // ("add a node" works off the existing graph). Sent as a doc source.
       const code = String(p.code ?? '');
-      return code.trim() ? { kind: 'doc', title: String(p.title ?? ''), text: code } : null;
+      return code.trim() ? { kind: 'doc', title: getShapeTitle(shape), text: code } : null;
     }
     case 'image-card': {
       // An image is a vision input — sent as its data URL (the model sees it on
@@ -164,14 +166,12 @@ function toSource(editor: Editor, shape: TLShape): AskSource | null {
   }
 }
 
-/** A short label for an Ask source — its title, else a friendly kind name. */
+/** A short label for an Ask source — its primitive title, else a friendly kind name. */
 function sourceLabel(shape: TLShape): string {
-  const p = shape.props as Record<string, unknown>;
-  const title = typeof p.title === 'string' && p.title.trim() ? p.title.trim() : '';
+  const title = getShapeTitle(shape).trim();
   if (title) return title.length > 28 ? `${title.slice(0, 27)}…` : title;
-  if (shape.type === 'pdf-card') return typeof p.name === 'string' ? String(p.name) : 'PDF';
   const fallback: Record<string, string> = {
-    'doc-card': 'Text', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram',
+    'pdf-card': 'PDF', 'doc-card': 'Text', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram',
     'image-card': 'Image', 'link-card': 'Link', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section',
   };
   return fallback[shape.type] ?? 'Card';

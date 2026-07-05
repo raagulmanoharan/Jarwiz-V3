@@ -344,3 +344,35 @@ three owner directives on top. Learnings:
   (whitelisted like currentShape). One ask, then it clears.
 - Generated diagrams now clear occupied space (footprint check + one
   re-layout below blockers) and frame themselves before drawing.
+
+## 2026-07-05 (later) — One title, one family: primitive coherence
+
+Two owner directives, landed together: names live OUTSIDE the cards, and
+every primitive reads as one visual family.
+
+- **The primitive title is now a system, not a doc-card feature.** The
+  text card lost its internal title input — it's pure text. In its place,
+  ONE overlay (`ui/CardTitleTag`) renders an editable title above the
+  top-left of whatever single shape is selected — text card, table,
+  sticky, PDF, image, diagram group. `shapes/shapeTitle.ts` is the single
+  read/write path: each type keeps its title where it always lived
+  (doc/diagram `title`, pdf/image/frame `name`), and shapes with no such
+  prop store it in `shape.meta.jzTitle` — meta needs no schema migration,
+  which is what makes "titles for ALL primitives" a 40-line change. The
+  same string is the composer's ground chip, the grounding title sent to
+  the model, and part of cross-board search.
+- **The box inside the sticky was the a11y focus ring.** Text inputs
+  always match `:focus-visible`, so the global keyboard-focus rule drew a
+  2px box around the sticky's textarea on every double-click. In-card
+  editors are now excluded — the caret is the editing indicator there.
+- **Coherence = one radius, one border weight, one stroke.** Stickies
+  dropped the skeuomorphic dog-ear/paper-stack for the doc card's radius,
+  hairline, and shadow; link/pdf/image/diagram frames went from
+  hairline-strong to hairline; tldraw geo/arrow/line strokes render at
+  1px via CSS (tldraw's thinnest is 2px — a CSS rule outweighs the SVG
+  presentation attribute). Sticky tints moved into the refine bar as a
+  7-swatch switcher (the style panel stays hidden).
+- **The refine bar now flips.** Scrolled INTO a tall card (top off-screen)
+  the bar used to squat on the content at its clamp floor. It now flips
+  below the card's bottom edge when there's no headroom above, and only
+  docks over the card when neither edge is on-screen.

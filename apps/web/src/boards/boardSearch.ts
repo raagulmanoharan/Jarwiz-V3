@@ -29,6 +29,7 @@ function recordText(record: AnyRecord): string {
   push(props.text);
   push(props.title);
   push(props.name); // pdf filename / frame name
+  push((record.meta as Record<string, unknown> | undefined)?.jzTitle); // primitive title (tables, stickies, groups)
   push(props.code); // diagram source
   push(props.description); // link card
   push(props.url); // link card

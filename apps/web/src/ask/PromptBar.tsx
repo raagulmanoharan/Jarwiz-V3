@@ -11,6 +11,7 @@ import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue,
 import { Slash, ArrowUp } from 'lucide-react';
 import type { AnalyzeMode, AskShape } from '@jarwiz/shared';
 import { ASKABLE, hasAskableContent } from './askable';
+import { getShapeTitle } from '../shapes/shapeTitle';
 import { useAsk } from './useAsk';
 import { useAnalyze } from '../agents/useAnalyze';
 import { cardSeedKey, ensureCardSeeds, ensureSeedPrompts, getSeedPrompts, subscribeSeed } from './seedPrompts';
@@ -18,13 +19,14 @@ import { cardSeedKey, ensureCardSeeds, ensureSeedPrompts, getSeedPrompts, subscr
 const clip = (s: string, n = 22) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
 function shapeLabel(editor: Editor, shape: TLShape): string {
+  // The primitive title (the tag above the selected card) IS the chip label.
+  const title = getShapeTitle(shape).trim();
+  if (title) return clip(title);
   const p = shape.props as Record<string, unknown>;
-  if (typeof p.title === 'string' && p.title.trim()) return clip(p.title.trim());
-  if (shape.type === 'pdf-card') return typeof p.name === 'string' ? clip(String(p.name)) : 'PDF';
   let body = typeof p.text === 'string' ? p.text : '';
   if (!body && p.richText) { try { body = renderPlaintextFromRichText(editor, p.richText as TLRichText); } catch { /* ignore */ } }
   if (body.trim()) return clip(body.trim());
-  const kind: Record<string, string> = { 'doc-card': 'Text', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram', 'image-card': 'Image', 'link-card': 'Link', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section', arrow: 'Connector', group: 'Diagram' };
+  const kind: Record<string, string> = { 'pdf-card': 'PDF', 'doc-card': 'Text', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram', 'image-card': 'Image', 'link-card': 'Link', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section', arrow: 'Connector', group: 'Diagram' };
   return kind[shape.type] ?? 'Card';
 }
 
@@ -96,7 +98,7 @@ export function PromptBar() {
         : s.type === 'diagram-card'
           ? str(p.code)
           : str(p.text);
-    const title = str(p.title);
+    const title = getShapeTitle(s).trim();
     return { type: s.type, seedKey: cardSeedKey(s.id, text, title), pdf: false as const, text, title };
   }, [editor]);
   useEffect(() => {

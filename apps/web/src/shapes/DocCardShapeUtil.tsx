@@ -170,36 +170,10 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
   const collapsed = overflowing && !expanded && !isStreaming;
 
   if (isEditing) {
+    // Pure text — no internal title/header. The card's name is the primitive
+    // title tag (ui/CardTitleTag), rendered outside the frame on selection.
     return (
-      <>
-        {/* Title lives OUTSIDE the card frame (Flora-style asset label) —
-            small, muted, above-left, stable while the card grows. Sibling of
-            .jz-doc because the card clips (overflow: hidden). */}
-        <input
-          value={title}
-          placeholder="Untitled"
-          className="jz-doc-tag jz-doc-tag--input"
-          style={{ pointerEvents: 'all' }}
-          onChange={(e) => {
-            editor.updateShape<DocCardShape>({
-              id: shape.id,
-              type: 'doc-card',
-              props: { title: e.currentTarget.value },
-            });
-          }}
-          onKeyDown={(e) => {
-            // Enter drops focus into the body; keep every other key on the input.
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              textareaRef.current?.focus();
-            }
-            e.stopPropagation();
-          }}
-          onPointerDown={stopEventPropagation}
-          onPointerMove={stopEventPropagation}
-          onPointerUp={stopEventPropagation}
-        />
-        <div className={`jz-doc jz-doc-editing${autopilotActive ? ' jz-doc-autopilot' : ''}`}>
+      <div className={`jz-doc jz-doc-editing${autopilotActive ? ' jz-doc-autopilot' : ''}`}>
         <textarea
           ref={textareaRef}
           value={text}
@@ -240,14 +214,11 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
             Press <kbd className="jz-autopilot-nudge-kbd">Tab</kbd> to continue
           </div>
         ) : null}
-        </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-    {title ? <div className="jz-doc-tag">{title}</div> : null}
     <div
       className={`jz-doc jz-doc-auto${collapsed ? ' jz-card-collapsed' : ''}${isSelected ? ' jz-doc--selected' : ''}`}
       ref={fitRef}
@@ -276,6 +247,5 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
       </div>
       {overflowing && !isStreaming ? <ExpandToggle shapeId={shape.id} expanded={expanded} /> : null}
     </div>
-    </>
   );
 }

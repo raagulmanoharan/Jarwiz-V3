@@ -8,8 +8,9 @@
 /** Matches --jz-radius (1rem) in styles/index.css. */
 export const CARD_RADIUS = 16;
 
-/** Matches the sticky note's tighter corner rounding (.jz-note). */
-export const NOTE_RADIUS = 4;
+/** Stickies share the standard card radius — one corner rounding across every
+ *  primitive (owner call 2026-07-05). */
+export const NOTE_RADIUS = CARD_RADIUS;
 
 /** Document card uses the standard card radius. */
 export const DOC_RADIUS = CARD_RADIUS;

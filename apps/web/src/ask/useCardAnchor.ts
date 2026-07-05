@@ -12,6 +12,10 @@ import { useEditor, useValue, type Box, type TLShapeId } from 'tldraw';
 export interface CardAnchor {
   x: number;
   y: number;
+  /** Top-edge affordances only: where the bar actually landed. 'above' the
+   *  card (normal), flipped 'below' it (no headroom — e.g. the user is
+   *  scrolled into a tall card), or 'over' it (neither edge on-screen). */
+  placement: 'above' | 'below' | 'over';
 }
 
 export function useCardAnchor(
@@ -35,19 +39,32 @@ export function useCardAnchor(
         y: edge === 'top' ? union.minY : union.maxY,
       });
       const vp = editor.getViewportScreenBounds();
-      // Clamp on-screen. Bottom-edge affordances keep clear of the prompt-bar
-      // dock plus their own downward pill stack. Top-edge ones (the card
-      // action bar) render ABOVE their anchor (translateY(-100%)), so the
-      // floor is the bar's BOTTOM: 62 keeps the ~36px bar under the browser
-      // edge while staying above the card as long as possible — the topbar's
-      // clusters sit in the corners, so the centre strip it floats in is
-      // clear. (The old floor of 118 shoved the bar INSIDE tall cards.)
+      const x = Math.max(margin, Math.min(p.x, vp.w - margin));
+      if (edge === 'top') {
+        // The card action bar renders ABOVE its anchor (translateY(-100%)).
+        // Floor 44: the topbar's clusters sit in the corners, so the centre
+        // strip is clear for the ~40px bar. When the card's top edge leaves
+        // no headroom (the user is scrolled INTO a tall card), the bar FLIPS
+        // below the card's bottom edge instead of squatting on the content;
+        // only when neither edge is on-screen does it sit over the card.
+        const FLOOR = 44;
+        const wanted = p.y + dy;
+        if (wanted >= FLOOR) {
+          return { x, y: Math.min(wanted, vp.h - 60), placement: 'above' as const };
+        }
+        const below = editor.pageToViewport({ x: union.midX, y: union.maxY }).y + 12;
+        if (below < vp.h - 240) {
+          // Clear of the prompt-bar dock (bar renders DOWNWARD from here).
+          return { x, y: below, placement: 'below' as const };
+        }
+        return { x, y: FLOOR, placement: 'over' as const };
+      }
+      // Bottom-edge affordances keep clear of the prompt-bar dock plus their
+      // own downward pill stack.
       return {
-        x: Math.max(margin, Math.min(p.x, vp.w - margin)),
-        y:
-          edge === 'top'
-            ? Math.max(62, Math.min(p.y + dy, vp.h - 60))
-            : Math.max(40, Math.min(p.y + dy, vp.h - 230)),
+        x,
+        y: Math.max(40, Math.min(p.y + dy, vp.h - 230)),
+        placement: 'below' as const,
       };
     },
     // `key` makes the array dependency stable across renders.

@@ -33,12 +33,31 @@ body,
   outline-offset: 2px;
   border-radius: var(--jz-radius-xs);
 }
+/* …but never inside a card's own text editor: text inputs always match
+   :focus-visible, so the ring drew a box INSIDE the sticky/text card on every
+   double-click-to-edit. The blinking caret is the editing indicator there. */
+.jarwiz-app .jz-note textarea:focus-visible,
+.jarwiz-app .jz-doc-textarea:focus-visible,
+.jarwiz-app .jz-title-tag:focus-visible {
+  outline: none;
+}
 
 /* ─── Calm the tldraw chrome ────────────────────────────────────────────── */
 
 .jarwiz-app .tl-container {
   --tl-font-sans: var(--jz-font-ui);
   font-family: var(--jz-font-ui);
+}
+
+/* Canvas primitives (flowchart nodes, boxes, connectors) stroke at hairline
+   weight: tldraw's thinnest stroke size ('s') is 2px, which reads heavy next
+   to the cards' 1px frames. A CSS rule outweighs the SVG presentation
+   attribute, so every geo/arrow/line lands on the same 1px line the text
+   card draws. */
+.jarwiz-app .tl-shape[data-shape-type='geo'] svg path,
+.jarwiz-app .tl-shape[data-shape-type='arrow'] svg path,
+.jarwiz-app .tl-shape[data-shape-type='line'] svg path {
+  stroke-width: 1px;
 }
 
 /* Override tldraw's selected colour to a subtle white — kills the blue
@@ -429,7 +448,8 @@ body,
   box-shadow: var(--jz-e2);
   overflow: hidden;
   font-family: var(--jz-font-ui);
-  border: 1px solid var(--jz-hairline-strong);
+  /* Hairline like the text card — one border weight across every primitive. */
+  border: 1px solid var(--jz-hairline);
   box-sizing: border-box;
 }
 
@@ -1364,16 +1384,16 @@ body,
   }
 }
 
-/* Note card — sticky-note style, tinted paper */
+/* Note card — a text card that happens to be a coloured block: same radius,
+ * hairline, and shadow as .jz-doc so every primitive reads as one family
+ * (owner call 2026-07-05 — no skeuomorphic dog-ear or paper stack). */
 .jz-note {
   position: relative;
   width: 100%;
   height: 100%;
-  border-radius: 4px 4px 14px 4px;
-  box-shadow:
-    0 1px 3px rgba(64, 50, 34, 0.08),
-    0 6px 18px rgba(64, 50, 34, 0.1),
-    0 18px 40px rgba(64, 50, 34, 0.08);
+  border-radius: var(--jz-radius-lg);
+  box-shadow: var(--jz-e2);
+  border: 1px solid var(--jz-hairline);
   padding: 14px 15px;
   box-sizing: border-box;
   font-family: var(--jz-font-ui);
@@ -1934,15 +1954,18 @@ body,
   box-sizing: border-box;
 }
 
-/* Card title — OUTSIDE the frame, Flora-style: a small muted label sitting
- * just above the card's top-left, like the PDF card's filename. Stable while
- * the card grows, never competes with the content. */
-.jz-doc-tag {
+/* The primitive title — OUTSIDE the frame, Flora-style: a small muted label
+ * sitting just above the selected shape's top-left corner (ui/CardTitleTag,
+ * overlay-rendered so every primitive gets it). Editable in place; the same
+ * string is the ground chip in the composer. Screen-fixed size: readable at
+ * any zoom. */
+.jz-title-tag {
   position: absolute;
-  bottom: 100%;
-  left: 2px;
-  margin-bottom: 6px;
-  max-width: 90%;
+  transform: translateY(-100%);
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 2px;
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-caption-size);
   line-height: var(--jz-text-caption-lh);
@@ -1951,19 +1974,10 @@ body,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  pointer-events: none;
-}
-
-.jz-doc-tag--input {
-  border: none;
-  outline: none;
-  background: transparent;
-  padding: 0;
-  width: 90%;
   pointer-events: all;
 }
 
-.jz-doc-tag--input::placeholder {
+.jz-title-tag::placeholder {
   color: var(--jz-ink-400);
 }
 
@@ -2307,7 +2321,7 @@ body,
   overflow: hidden;
   font-family: var(--jz-font-ui);
   background: var(--jz-surface);
-  border: 1px solid var(--jz-hairline-strong);
+  border: 1px solid var(--jz-hairline);
   box-sizing: border-box;
 }
 
@@ -2781,7 +2795,50 @@ body,
   to   { opacity: 1; transform: translate(-50%, -100%); }
 }
 
+/* Flipped below the card (no headroom above): same entrance, downward lift. */
+.jz-cardbar--below {
+  animation-name: jz-cardbar-in-below;
+}
+
+@keyframes jz-cardbar-in-below {
+  from { opacity: 0; transform: translate(-50%, 0) translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
 .jz-cardbar-group { position: relative; }
+
+/* Sticky colour switcher — the muted palette as small round swatches. */
+.jz-cardbar-swatches {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 7px;
+}
+
+.jz-cardbar-swatch {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: var(--jz-radius-pill);
+  border: 1px solid var(--jz-hairline-strong);
+  cursor: pointer;
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-cardbar-swatch:hover {
+  transform: scale(1.15);
+}
+
+.jz-cardbar-swatch--on {
+  outline: 2px solid var(--jz-ink-400);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jz-cardbar-swatch:hover {
+    transform: none;
+  }
+}
 
 .jz-cardbar-btn {
   display: inline-flex;
