@@ -30,3 +30,46 @@ export function noteIngestion(id: TLShapeId, kind: IngestKind): void {
 export function takeIngested(): IngestedCard | undefined {
   return queue.shift();
 }
+
+/**
+ * What Jarwiz mutters while it reads — honest work, funny delivery. Each
+ * read opens with the plain truth ('reading…'), then cycles a shuffled set
+ * themed to what landed. Kept short: the badge ellipsizes at 160px.
+ */
+const QUIPS: Record<IngestKind, string[]> = {
+  link: [
+    'clicking around…',
+    'dodging cookie banners…',
+    'judging the fonts…',
+    'skimming the headlines…',
+    'nodding thoughtfully…',
+    'scrolling with intent…',
+    'opening 14 tabs…',
+  ],
+  pdf: [
+    'flipping pages…',
+    'squinting at fine print…',
+    'highlighting furiously…',
+    'dog-earing pages…',
+    'checking the appendix…',
+    'adjusting reading glasses…',
+    'mouthing the big words…',
+  ],
+  image: [
+    'looking closely…',
+    'admiring the pixels…',
+    'tilting head…',
+    'stepping back a bit…',
+    'framing it with fingers…',
+    'saying "hmm, composition"…',
+  ],
+};
+
+/** A fresh reading script: truth first, then the quips in a new order. */
+export function readingQuips(kind: IngestKind): string[] {
+  const shuffled = QUIPS[kind]
+    .map((quip) => ({ quip, key: Math.random() }))
+    .sort((a, b) => a.key - b.key)
+    .map((x) => x.quip);
+  return ['reading…', ...shuffled];
+}

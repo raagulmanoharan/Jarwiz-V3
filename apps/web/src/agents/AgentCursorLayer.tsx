@@ -17,19 +17,21 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useEditor } from 'tldraw';
-import { Sparkle } from 'lucide-react';
 import { JARWIZ } from '@jarwiz/shared';
 import { Follower, scanWaypoints, tremor, type Vec } from './cursorMotion';
-import { takeIngested, type IngestedCard } from './jarwizLife';
+import { readingQuips, takeIngested, type IngestedCard } from './jarwizLife';
 import { getPresenceSnapshot } from './presence';
 
 /** How long a look at an already-processed card lasts (images, and the tail
- *  end of a read after processing resolves). */
-const MIN_READ_MS = 1700;
+ *  end of a read after processing resolves). Long enough that the first quip
+ *  always gets its moment, even when processing is instant. */
+const MIN_READ_MS = 2800;
 /** Give up waiting on a stuck upload/preview — presence must stay honest. */
 const MAX_READ_MS = 25_000;
 /** Idle dwell between wander hops. */
 const DWELL_MS: [number, number] = [2600, 7200];
+/** How long each reading quip stays up before the next one lands. */
+const QUIP_MS: [number, number] = [1900, 2700];
 
 type Mode = 'wander-idle' | 'wander-move' | 'read-seek' | 'read-scan' | 'run';
 
@@ -38,6 +40,10 @@ interface Reading extends IngestedCard {
   minUntil: number;
   /** Latest finish — a stuck pipeline doesn't trap the entity forever. */
   capUntil: number;
+  /** The muttering script — 'reading…' first, then shuffled quips. */
+  quips: string[];
+  quipIdx: number;
+  nextQuipAt: number;
 }
 
 interface Brain {
@@ -156,7 +162,15 @@ function JarwizEntity() {
           let next = takeIngested();
           while (next && !editor.getShape(next.id)) next = takeIngested();
           if (next) {
-            brain.reading = { ...next, minUntil: now + MIN_READ_MS, capUntil: now + MAX_READ_MS };
+            brain.reading = {
+              ...next,
+              minUntil: now + MIN_READ_MS,
+              capUntil: now + MAX_READ_MS,
+              quips: readingQuips(next.kind),
+              quipIdx: 0,
+              // First swap comes early so even an instant card gets one joke.
+              nextQuipAt: now + 1100 + Math.random() * 400,
+            };
             brain.scanQueue = [];
             brain.mode = 'read-seek';
           }
@@ -172,7 +186,11 @@ function JarwizEntity() {
           ) {
             finishReading(now);
           } else {
-            show(true, 'reading…');
+            if (now >= brain.reading.nextQuipAt) {
+              brain.reading.quipIdx = (brain.reading.quipIdx + 1) % brain.reading.quips.length;
+              brain.reading.nextQuipAt = now + QUIP_MS[0] + Math.random() * (QUIP_MS[1] - QUIP_MS[0]);
+            }
+            show(true, brain.reading.quips[brain.reading.quipIdx] ?? 'reading…');
             if (brain.mode === 'read-seek') {
               const entry = { x: bounds.minX + bounds.w * 0.2, y: bounds.minY + bounds.h * 0.18 };
               if (reduce) {
@@ -221,7 +239,8 @@ function JarwizEntity() {
       if (wrapRef.current) {
         const screen = editor.pageToViewport(follower.pos);
         const j = reduce ? { x: 0, y: 0 } : tremor(now);
-        wrapRef.current.style.transform = `translate(${screen.x - 18 + j.x}px, ${screen.y - 18 + j.y}px)`;
+        // Anchor on the arrow TIP (4,3 in the svg), like a real cursor hotspot.
+        wrapRef.current.style.transform = `translate(${screen.x - 4 + j.x}px, ${screen.y - 3 + j.y}px)`;
       }
     };
 
@@ -249,15 +268,22 @@ function JarwizAvatar({
       className={`jz-avatar jz-avatar--jarwiz${status ? '' : ' jz-avatar--idle'}${hidden ? ' jz-avatar--hidden' : ''}`}
       style={{ '--agent-color': JARWIZ.color } as CSSProperties}
     >
-      <div className="jz-avatar-circle-wrap">
-        <span className="jz-avatar-ring" aria-hidden />
-        <div className="jz-avatar-circle" aria-label={JARWIZ.name}>
-          <Sparkle size={16} strokeWidth={1.5} fill="currentColor" />
-        </div>
-      </div>
+      {/* The collaborator pointer — a classic cursor arrow in Jarwiz ink. */}
+      <svg
+        className="jz-cursor-arrow"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        role="img"
+        aria-label={JARWIZ.name}
+      >
+        <path d="M4.5 2.8 L20.4 9.6 L13.4 11.9 L10.7 18.8 Z" />
+      </svg>
+      {/* One trailing pill: name always, the quip beside it when working. */}
       <div className="jz-avatar-badge">
         <span className="jz-avatar-name">{JARWIZ.name}</span>
-        {status ? <span className="jz-avatar-status">{status}</span> : null}
+        {/* Keyed so each quip remounts and replays the swap animation. */}
+        {status ? <span key={status} className="jz-avatar-status">{status}</span> : null}
       </div>
     </div>
   );
