@@ -7,9 +7,11 @@
  */
 
 import { useState, type CSSProperties } from 'react';
-import { stopEventPropagation, useEditor, useValue, type TLShapeId } from 'tldraw';
-import { AFFINITY_COLORS, NOTE_PAPER, type NoteCardShape } from '../shapes';
+import { stopEventPropagation, useEditor, useValue, type Editor, type TLShapeId } from 'tldraw';
+import { Bold, Italic, Underline, Strikethrough, List, ListTodo } from 'lucide-react';
+import { AFFINITY_COLORS, NOTE_PAPER, type DocCardShape, type NoteCardShape } from '../shapes';
 import { ASKABLE, hasAskableContent } from './askable';
+import { toggleInline, toggleLinePrefix, type FormatResult } from './textFormat';
 import { PROFILE_PROMPT } from './profilePrompt';
 import { useAsk } from './useAsk';
 import { useDiagram } from '../agents/useDiagram';
@@ -23,6 +25,35 @@ type Transform = { label: string; run: () => void };
 /** The sticky's muted palette — the refine bar doubles as its colour switcher
  *  (the tldraw style panel is hidden for our cards). */
 const STICKY_TINTS = [NOTE_PAPER, ...AFFINITY_COLORS];
+
+const FMT_ICON = { size: 14, strokeWidth: 2 };
+
+/** The text card's format actions — markdown edits over the editing
+ *  textarea's selection, one entry per bar button. */
+const FORMATS: Array<{ key: string; label: string; icon: React.ReactNode; run: (text: string, s: number, e: number) => FormatResult }> = [
+  { key: 'bold', label: 'Bold (⌘B)', icon: <Bold {...FMT_ICON} />, run: (t, s, e) => toggleInline(t, s, e, '**') },
+  { key: 'italic', label: 'Italic (⌘I)', icon: <Italic {...FMT_ICON} />, run: (t, s, e) => toggleInline(t, s, e, '*') },
+  { key: 'underline', label: 'Underline (⌘U)', icon: <Underline {...FMT_ICON} />, run: (t, s, e) => toggleInline(t, s, e, '__') },
+  { key: 'strike', label: 'Strikethrough', icon: <Strikethrough {...FMT_ICON} />, run: (t, s, e) => toggleInline(t, s, e, '~~') },
+  { key: 'bullets', label: 'Bullet list', icon: <List {...FMT_ICON} />, run: (t, s, e) => toggleLinePrefix(t, s, e, '- ') },
+  { key: 'checklist', label: 'Checklist', icon: <ListTodo {...FMT_ICON} />, run: (t, s, e) => toggleLinePrefix(t, s, e, '- [ ] ') },
+];
+
+/** Apply a format to the text card being edited. Outside edit mode the first
+ *  press enters it (cursor at the end), so the bar is always safe to click. */
+export function applyDocFormat(editor: Editor, id: TLShapeId, run: (text: string, s: number, e: number) => FormatResult): void {
+  const ta = document.querySelector<HTMLTextAreaElement>('.jz-doc-textarea');
+  if (!ta || editor.getEditingShapeId() !== id) {
+    editor.setEditingShape(id);
+    return;
+  }
+  const { text, selStart, selEnd } = run(ta.value, ta.selectionStart, ta.selectionEnd);
+  editor.updateShape<DocCardShape>({ id, type: 'doc-card', props: { text } });
+  requestAnimationFrame(() => {
+    ta.focus();
+    ta.setSelectionRange(selStart, selEnd);
+  });
+}
 
 export function CardActionBar() {
   const editor = useEditor();
@@ -113,10 +144,13 @@ export function CardActionBar() {
   // A sticky always gets its colour switcher — even empty (colour is how the
   // user organises annotations, independent of content).
   const sticky = !sel.multi && sel.type === 'note-card';
+  // A text card always gets its format group — formatting is for WRITING, so
+  // it can't gate on already having content.
+  const formattable = !sel.multi && sel.type === 'doc-card';
 
   // Nothing meaningful to offer (e.g. a single empty card) → no bar at all.
   // Provenance itself needs no button: the drawn edges ARE the lineage.
-  if (transforms.length === 0 && !profileable && !sticky) return null;
+  if (transforms.length === 0 && !profileable && !sticky && !formattable) return null;
   if (!anchor) return null;
 
   // Flipped below the card (no headroom above), the bar renders downward from
@@ -138,6 +172,24 @@ export function CardActionBar() {
         >
           ✦ Summary
         </button>
+      ) : null}
+      {formattable ? (
+        <div className="jz-cardbar-fmt" role="group" aria-label="Text formatting">
+          {FORMATS.map((f) => (
+            <button
+              key={f.key}
+              className="jz-cardbar-iconbtn"
+              title={f.label}
+              aria-label={f.label}
+              // preventDefault keeps focus (and the selection) in the card's
+              // textarea — a normal click would blur it before we can format.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => applyDocFormat(editor, id, f.run)}
+            >
+              {f.icon}
+            </button>
+          ))}
+        </div>
       ) : null}
       {sticky ? (
         <div className="jz-cardbar-group">

@@ -2810,6 +2810,35 @@ body,
 
 .jz-cardbar-group { position: relative; }
 
+/* Text-card format group — compact icon buttons on the bar (B I U S • ☑). */
+.jz-cardbar-fmt {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 4px;
+  margin-right: 2px;
+  border-right: 1px solid var(--jz-hairline);
+}
+
+.jz-cardbar-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  cursor: pointer;
+  border-radius: var(--jz-radius-sm);
+  background: transparent;
+  color: var(--jz-ink-700);
+  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-cardbar-iconbtn:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
+  color: var(--jz-ink-900);
+}
+
 /* Sticky colour switcher — a dropdown off the bar: the button shows the
  * current tint as a dot; the menu lays the muted-primary palette out as a
  * row of swatches. */

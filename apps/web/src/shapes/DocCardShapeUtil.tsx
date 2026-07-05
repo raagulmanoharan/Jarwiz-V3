@@ -23,6 +23,7 @@ import { isAutopilotReady, isAutopilotRunning, subscribeAutopilot } from '../age
 import { DocMarkdown } from '../ui/DocMarkdown';
 import { getResponsePdfSource } from '../pdf/provenance';
 import { setPdfPage } from '../pdf/pdfView';
+import { toggleInline } from '../ask/textFormat';
 import { deriveTitle, titleIsAuto } from './shapeTitle';
 import { useFitHeight } from './useFitHeight';
 import { MAX_CARD_H, isExpanded, subscribeExpand } from './cardExpand';
@@ -182,6 +183,18 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
           className="jz-doc-textarea"
           style={{ pointerEvents: 'all' }}
           onKeyDown={(e) => {
+            // ⌘/Ctrl B·I·U — same operations as the format bar buttons.
+            if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
+              const marker = e.key === 'b' ? '**' : e.key === 'i' ? '*' : e.key === 'u' ? '__' : null;
+              if (marker) {
+                e.preventDefault();
+                const ta = e.currentTarget;
+                const { text: next, selStart, selEnd } = toggleInline(ta.value, ta.selectionStart, ta.selectionEnd, marker);
+                editor.updateShape<DocCardShape>({ id: shape.id, type: 'doc-card', props: { text: next } });
+                requestAnimationFrame(() => ta.setSelectionRange(selStart, selEnd));
+                return;
+              }
+            }
             if (e.key === 'Tab') resetPause();
             autopilot.onKeyDown(shape.id, e);
           }}
