@@ -506,7 +506,7 @@ body,
   display: flex;
   flex-direction: column;
   gap: 5px;
-  padding: 13px 14px 12px;
+  padding: var(--jz-space-5);
   min-height: 0;
   flex: 1;
 }
@@ -1376,7 +1376,7 @@ body,
   border-radius: var(--jz-radius-lg);
   box-shadow: var(--jz-e2);
   border: 1px solid var(--jz-hairline);
-  padding: 14px 15px;
+  padding: var(--jz-space-5);
   box-sizing: border-box;
   font-family: var(--jz-font-ui);
   font-size: 14px;
@@ -1440,7 +1440,7 @@ body,
   flex-direction: column;
   /* Breathing room like the doc card — the grid sits inset from the frame,
    * its hairlines stopping at the padding edge (Notion/Cove grain). */
-  padding: 10px 12px 4px;
+  padding: var(--jz-space-5);
 }
 
 /* While Autopilot fills it, the card wears a faint agent-colored ring. */
@@ -1976,7 +1976,9 @@ body,
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: var(--jz-space-5) var(--jz-space-5) var(--jz-space-6);
+  /* Uniform card inset — space-5 on every side is THE card padding; every
+   * text-bearing card matches it (owner call, 2026-07-05). */
+  padding: var(--jz-space-5);
   box-sizing: border-box;
   font-size: var(--jz-text-body-size);
   line-height: var(--jz-text-body-lh);
@@ -2363,7 +2365,7 @@ body,
      useFitHeight measures the true content height and grows the card to show
      the whole diagram — never scrolled or truncated. */
   flex: none;
-  padding: var(--jz-space-5) var(--jz-space-6);
+  padding: var(--jz-space-5);
   overflow: visible;
 }
 
