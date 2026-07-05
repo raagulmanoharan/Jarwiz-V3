@@ -7,6 +7,7 @@ import {
   subscribeSidePanel,
   toggleSidePanel,
 } from './sidePanelStore';
+import { UltraThink } from './UltraThink';
 
 /**
  * Canvas chrome — top bar (Flora-aligned).
@@ -35,6 +36,7 @@ export function Topbar() {
         <TitleBlock />
       </div>
       <div className="jz-topbar-right">
+        <UltraThink />
         <ZoomDropdown />
         <ThemeToggleButton />
       </div>
