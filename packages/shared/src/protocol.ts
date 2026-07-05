@@ -383,7 +383,15 @@ export interface AnalyzeResult {
  * URLs — so the server validates and dedupes before returning them.
  */
 
-export type ResourceKind = 'video' | 'article' | 'paper' | 'doc' | 'repo' | 'other';
+export type ResourceKind =
+  | 'video'
+  | 'news'
+  | 'article'
+  | 'paper'
+  | 'pdf'
+  | 'doc'
+  | 'repo'
+  | 'other';
 
 export interface SuggestedResource {
   title: string;

@@ -230,6 +230,9 @@ body,
 .jz-ultra {
   position: relative;
 }
+/* At rest / thinking the button is a calm solid accent. Only the "ready" state
+ * lights up with an animated gradient (and a soft glow pulse) to pull the eye
+ * back to the discoveries waiting in the drawer. */
 .jz-ultra-btn {
   display: inline-flex;
   align-items: center;
@@ -242,34 +245,35 @@ body,
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
-  background: linear-gradient(100deg, #7a5cff, #b45cff, #5c9bff, #7a5cff);
+  background: var(--jz-accent);
   background-size: 300% 100%;
-  animation: jz-ultra-shimmer 6s linear infinite;
-  box-shadow: 0 1px 8px color-mix(in srgb, var(--jz-accent) 40%, transparent);
+  box-shadow: 0 1px 8px color-mix(in srgb, var(--jz-accent) 34%, transparent);
+  transition: filter var(--jz-dur-fast, 120ms) var(--jz-ease-out, ease);
 }
 .jz-ultra-btn:hover {
   filter: brightness(1.06);
 }
-.jz-ultra-btn--busy {
-  animation-duration: 1.4s;
+.jz-ultra-btn--busy .jz-ultra-spark {
+  animation: jz-pdf-spin 1s linear infinite;
 }
 .jz-ultra-btn--ready {
-  background: var(--jz-accent);
-  animation: none;
+  background-image: linear-gradient(100deg, #7a5cff, #b45cff, #5c9bff, #7a5cff);
+  animation: jz-ultra-shimmer 6s linear infinite, jz-ultra-glow 2.4s ease-in-out infinite;
 }
 .jz-ultra-spark {
   flex: none;
-}
-.jz-ultra-btn--busy .jz-ultra-spark {
-  animation: jz-pdf-spin 1s linear infinite;
 }
 @keyframes jz-ultra-shimmer {
   to {
     background-position: 300% 0;
   }
 }
+@keyframes jz-ultra-glow {
+  0%, 100% { box-shadow: 0 1px 8px color-mix(in srgb, var(--jz-accent) 34%, transparent); }
+  50% { box-shadow: 0 2px 16px color-mix(in srgb, #b45cff 62%, transparent); }
+}
 @media (prefers-reduced-motion: reduce) {
-  .jz-ultra-btn {
+  .jz-ultra-btn--ready {
     animation: none;
   }
   .jz-ultra-btn--busy .jz-ultra-spark {
@@ -372,9 +376,6 @@ body,
   border-color: var(--jz-accent);
   color: var(--jz-accent);
 }
-.jz-ultra-row--done {
-  cursor: default;
-}
 .jz-ultra-kind {
   flex: none;
   width: 22px;
@@ -393,32 +394,15 @@ body,
   flex: 1;
   min-width: 0;
 }
-/* Title + source share the top line; the reason gets its OWN full-width line
- * below so the URL never crowds or hides it. */
-.jz-ultra-toprow {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
+/* No URL, no domain — just a title, a brief description, and a one-line reason.
+ * The title is a single clamped line; the reason is deliberately one line. */
 .jz-ultra-rtitle {
-  flex: 1;
-  min-width: 0;
   font-size: 12.5px;
   font-weight: 600;
   color: var(--jz-ink-900);
-  text-decoration: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.jz-ultra-rtitle:hover {
-  text-decoration: underline;
-}
-.jz-ultra-source {
-  flex: none;
-  font-size: 10.5px;
-  color: var(--jz-ink-400);
-  white-space: nowrap;
 }
 .jz-ultra-desc {
   font-size: 11.5px;
@@ -435,10 +419,9 @@ body,
   font-size: 11px;
   line-height: 1.4;
   color: var(--jz-accent);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 .jz-ultra-add {
   flex: none;
@@ -452,11 +435,6 @@ body,
   border-radius: var(--jz-radius-pill);
   background: transparent;
   color: var(--jz-ink-500);
-}
-.jz-ultra-add--done {
-  background: color-mix(in srgb, var(--jz-accent) 16%, transparent);
-  border-color: transparent;
-  color: var(--jz-accent);
 }
 
 /* Hamburger / logo button — fully round. The default face is the Jarwiz mark

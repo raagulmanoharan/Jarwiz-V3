@@ -26,8 +26,8 @@ export function useDiscover() {
   const editor = useEditor();
   const [phase, setPhase] = useState<DiscoverPhase>('idle');
   const [resources, setResources] = useState<SuggestedResource[]>([]);
-  const [added, setAdded] = useState<Set<string>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
+  const addCountRef = useRef(0); // fans spawned cards so they don't stack
 
   const run = useCallback(async () => {
     abortRef.current?.abort();
@@ -35,7 +35,7 @@ export function useDiscover() {
     abortRef.current = controller;
     setPhase('thinking');
     setResources([]);
-    setAdded(new Set());
+    addCountRef.current = 0;
     try {
       const cards = gatherBoardCards(editor);
       const res = await fetch('/api/discover', {
@@ -62,41 +62,47 @@ export function useDiscover() {
     abortRef.current?.abort();
     setPhase('idle');
     setResources([]);
-    setAdded(new Set());
   }, []);
 
   /** Spawn a suggestion as a real card — putExternalContent routes the URL
-   *  through the ingestion pipeline (link preview, YouTube/video, etc.). */
+   *  through the ingestion pipeline (link preview, YouTube/video, etc.). The
+   *  added resource then leaves the drawer, and the fresh card is surfaced on
+   *  top of the board (brought to front + selected) so it reads as "here it is".
+   *  When the last suggestion is added the button resets to idle. */
   const addOne = useCallback(
     (r: SuggestedResource) => {
-      if (added.has(r.url)) return;
       const before = new Set(editor.getCurrentPageShapeIds());
-      // Fan added cards down the right edge of the board so they don't stack.
+      // Fan spawned cards down the right edge of the board so they don't stack.
       const b = editor.getCurrentPageBounds();
-      const idx = added.size;
+      const idx = addCountRef.current++;
       const point = b
         ? { x: b.maxX + 80, y: b.minY + idx * 240 }
         : editor.getViewportPageBounds().center;
       void editor.putExternalContent({ type: 'url', url: r.url, point });
-      setAdded((prev) => new Set(prev).add(r.url));
-      // Title the freshly-created card with the resource's title (nicer than
-      // the raw domain while the preview loads).
+
+      const remaining = resources.filter((x) => x.url !== r.url);
+      setResources(remaining);
+      if (remaining.length === 0) setPhase('idle');
+
+      // Once the ingestion pipeline has created the card, title it, surface it
+      // on top of the z-order, and select it so the new card is unmistakable.
       requestAnimationFrame(() => {
         const fresh = [...editor.getCurrentPageShapeIds()].find((id) => !before.has(id)) as
           | TLShapeId
           | undefined;
-        if (fresh && r.title) {
-          const shape = editor.getShape(fresh);
-          if (shape && (shape.type === 'link-card' || shape.type === 'youtube-card')) {
-            editor.updateShape({ id: fresh, type: shape.type, props: { title: r.title } } as Parameters<
-              typeof editor.updateShape
-            >[0]);
-          }
+        if (!fresh) return;
+        const shape = editor.getShape(fresh);
+        if (shape && r.title && (shape.type === 'link-card' || shape.type === 'youtube-card')) {
+          editor.updateShape({ id: fresh, type: shape.type, props: { title: r.title } } as Parameters<
+            typeof editor.updateShape
+          >[0]);
         }
+        editor.bringToFront([fresh]);
+        editor.select(fresh);
       });
     },
-    [editor, added],
+    [editor, resources],
   );
 
-  return { phase, resources, added, run, dismiss, addOne };
+  return { phase, resources, run, dismiss, addOne };
 }
