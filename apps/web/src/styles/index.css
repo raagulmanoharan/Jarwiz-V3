@@ -2825,7 +2825,9 @@ body,
   background: rgba(8, 9, 11, 0.78);
   pointer-events: all;
   overflow-y: auto;
-  padding: 6vh 0 14vh;
+  /* Spacing lives on the page's margin, NOT here: the sticky header pins
+   * relative to the scrollport, and scroller padding would offset it,
+   * leaving a strip where the text scrolls by uncovered. */
   animation: jz-focus-fade var(--jz-dur-fast) var(--jz-ease-out);
 }
 
@@ -2837,6 +2839,7 @@ body,
   width: min(860px, 94vw);
   min-height: 78vh;
   flex: none;
+  margin: 6vh 0 14vh;
   background: var(--jz-card-surface);
   border: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-lg);
@@ -2846,11 +2849,20 @@ body,
   animation: jz-focus-rise var(--jz-dur-base) var(--jz-ease-glide);
 }
 
+/* Sticky: the label + controls ride along as the grown page scrolls —
+ * stretched over the page's padding so text slides under a solid shelf. */
 .jz-focus-head {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 18px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--jz-card-surface);
+  margin: -36px -56px 18px;
+  padding: 28px 56px 12px;
+  border-bottom: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-lg) var(--jz-radius-lg) 0 0;
 }
 
 /* The header IS the primitive label — same quiet caption voice as the tag
