@@ -1965,13 +1965,13 @@ body,
   outline: none;
   background: transparent;
   padding: 0 2px;
-  /* The card's name speaks in the same editorial voice as its headings —
-   * Fraunces, like .jz-md-h* — not the UI sans (owner call, 2026-07-05). */
-  font-family: var(--jz-font-display);
-  font-optical-sizing: auto;
-  font-size: 13px;
+  /* One family everywhere on cards: the UI sans, weight doing the work —
+   * the format tool can't change fonts, so nothing on a card should render
+   * in one (owner call, 2026-07-05). */
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
   line-height: var(--jz-text-caption-lh);
-  font-weight: 540;
+  font-weight: 600;
   color: var(--jz-ink-500);
   white-space: nowrap;
   overflow: hidden;
@@ -2127,14 +2127,16 @@ body,
 .jz-markdown > .jz-md-p + .jz-md-ul,
 .jz-markdown > .jz-md-ul + .jz-md-p { margin-top: var(--jz-space-3); }
 
+/* Headings are just BOLDER text, same family as the body — the format tool
+ * can't change fonts, so the card never renders one the user couldn't make
+ * (owner call, 2026-07-05). Size still steps for hierarchy. */
 .jz-md-h1,
 .jz-md-h2,
 .jz-md-h3 {
   margin: var(--jz-space-2) 0 0;
   color: var(--jz-ink-900);
-  font-family: var(--jz-font-display);
-  font-optical-sizing: auto;
-  font-weight: 560;
+  font-family: var(--jz-font-ui);
+  font-weight: 650;
 }
 
 .jz-md-h1 {
@@ -2905,12 +2907,11 @@ body,
   border: none;
   outline: none;
   background: transparent;
-  /* Same voice as the on-canvas title tag (editorial serif). */
-  font-family: var(--jz-font-display);
-  font-optical-sizing: auto;
-  font-size: 13px;
+  /* Same voice as the on-canvas title tag (UI sans, bolder). */
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
   line-height: var(--jz-text-caption-lh);
-  font-weight: 540;
+  font-weight: 600;
   color: var(--jz-ink-500);
   padding: 0;
 }
