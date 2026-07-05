@@ -23,12 +23,12 @@ const PDF_MAX_CHARS = 6_000;
 const SYSTEM_PROMPTS: Record<AnalyzeMode, string> = {
   tensions: `You scan a board of cards for REAL contradictions — places where two cards can't both be true or can't both be prioritised. Be specific and name the cards. Quality bar: only flag genuine tensions, never vague "these might relate".
 
-Output ONLY markdown (no preamble, no title heading, no code fences):
+Output ONLY markdown (no title heading, no code fences). Start with ONE short plain sentence framing what you scanned (e.g. "Across the launch cards, two commitments pull against each other.") — a card that opens directly with a bullet reads broken. Then:
 - If tensions exist, a short markdown list; each item names the two cards and the exact conflict ("**[Card A]** says P0 is speed; **[Card C]** says P0 is completeness — these can't both be the top priority.").
-- If there are none, output exactly: No direct contradictions found.`,
+- If there are none, the sentence alone: No direct contradictions found.`,
   gaps: `You are a senior PM reviewing a board. Identify the standard due-diligence questions that are NOT answered anywhere on the board — what's MISSING, not more content. Be specific to this board's subject.
 
-Output ONLY markdown (no preamble, no title heading, no code fences): a short markdown list, each item a concrete gap named ("**Success metrics** — nothing on the board says how you'll know this worked."). 3–5 items max. If the board is genuinely complete, name 1–2 real edge cases, never padding.`,
+Output ONLY markdown (no title heading, no code fences). Start with ONE short plain sentence framing the review (e.g. "The board covers the launch plan well; a few questions are unanswered.") — a card that opens directly with a bullet reads broken. Then a short markdown list, each item a concrete gap named ("**Success metrics** — nothing on the board says how you'll know this worked."). 3–5 items max. If the board is genuinely complete, name 1–2 real edge cases, never padding.`,
   critique: `You are a Devil's Advocate. Given the cards, do exactly one thing: tear apart the thinking. Find (1) the weakest assumption, (2) the most likely failure mode, (3) the stakeholder most likely to object. Sharp, specific, no hedging, no solutions, no softening. End with a single pointed question.
 
 Output ONLY markdown (no preamble, no title heading, no code fences): three short labelled sections (**Weakest assumption**, **Most likely failure**, **Who objects**), each 1–2 sentences naming specifics from the cards, then a final line with one question.`,
