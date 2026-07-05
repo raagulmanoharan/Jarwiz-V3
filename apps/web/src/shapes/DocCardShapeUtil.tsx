@@ -240,16 +240,17 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
             Writing — click (or type) to take over
           </button>
         ) : showNudge ? (
-          // A clickable offer, not a keyboard trick (owner call 2026-07-05):
-          // appears after an idle pause; click hands the pen to Jarwiz.
+          // The same "✦ Fill" pill the table's fresh column wears — one look
+          // for "let Jarwiz take it from here" everywhere. Appears after an
+          // idle pause; click hands the pen to Jarwiz.
           <button
-            className="jz-autopilot-nudge"
+            className="jz-fillnudge jz-fillnudge--float"
+            title="Let Jarwiz continue from what's here"
             style={{ pointerEvents: 'all' }}
             onPointerDown={stopEventPropagation}
             onClick={() => void continueProse(editor, shape.id)}
           >
-            <Sparkle size={12} strokeWidth={1.7} color="white" fill="white" />
-            Continue writing
+            ✦ Fill
           </button>
         ) : null}
       </div>

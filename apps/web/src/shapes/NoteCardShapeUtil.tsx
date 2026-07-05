@@ -136,12 +136,13 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
         />
         {showNudge && (
           <button
-            className="jz-autopilot-nudge"
+            className="jz-fillnudge jz-fillnudge--float"
+            title="Let Jarwiz continue from what's here"
             style={{ pointerEvents: 'all' }}
             onPointerDown={stopEventPropagation}
             onClick={() => void continueProse(editor, shape.id)}
           >
-            <span className="jz-autopilot-nudge-spark">✦</span>Continue
+            ✦ Fill
           </button>
         )}
         </>

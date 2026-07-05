@@ -331,17 +331,6 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
         {columns.map((label, col) =>
           isEditing ? (
             <div key={col} className="jz-table-headcell jz-table-headcell-edit">
-              {freshCol === col && hasEmptyCells && !isFilling ? (
-                <button
-                  className="jz-table-fillnudge"
-                  title="Let Jarwiz fill this column from the other cells"
-                  style={{ pointerEvents: 'all' }}
-                  onPointerDown={stopEventPropagation}
-                  onClick={runFill}
-                >
-                  ✦ Fill
-                </button>
-              ) : null}
               <textarea
                 className="jz-table-input"
                 value={label}
@@ -354,6 +343,17 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
                 onPointerMove={stopEventPropagation}
                 onPointerUp={stopEventPropagation}
               />
+              {freshCol === col && hasEmptyCells && !isFilling ? (
+                <button
+                  className="jz-fillnudge"
+                  title="Let Jarwiz fill this column from the other cells"
+                  style={{ pointerEvents: 'all' }}
+                  onPointerDown={stopEventPropagation}
+                  onClick={runFill}
+                >
+                  ✦ Fill
+                </button>
+              ) : null}
               {columns.length > 1 ? (
                 <button
                   className="jz-table-del jz-table-del-col"

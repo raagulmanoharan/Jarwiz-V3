@@ -1746,13 +1746,13 @@ body,
 }
 
 
-/* "✦ Fill" — the fresh column's header offers Jarwiz's help as a BUTTON
- * (the old idle Tab-to-fill hint is gone; AI never rides a navigation key). */
-.jz-table-fillnudge {
+/* "✦ Fill" — Jarwiz's help as a BUTTON, one look everywhere: beside a fresh
+ * column's header label, floating on an idle text card / sticky. */
+.jz-fillnudge {
   flex: none;
   border: none;
   cursor: pointer;
-  margin-right: 8px;
+  margin-left: 8px;
   padding: 3px 8px;
   border-radius: var(--jz-radius-pill);
   background: var(--jz-ink-900);
@@ -1764,8 +1764,18 @@ body,
   transition: opacity var(--jz-dur-fast) var(--jz-ease-out);
 }
 
-.jz-table-fillnudge:hover {
+.jz-fillnudge:hover {
   opacity: 0.85;
+}
+
+/* Floating placement on prose cards (where the old idle nudge sat). */
+.jz-fillnudge--float {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 10;
+  box-shadow: var(--jz-e2);
+  animation: jz-nudge-pop var(--jz-dur-base) var(--jz-ease-spring) both;
 }
 
 /* ── Typed columns: text / link / photo ─────────────────────────────────────
