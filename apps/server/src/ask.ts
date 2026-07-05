@@ -82,6 +82,17 @@ function wantsChecklist(prompt: string): boolean {
   return /\b(action items?|actions?|to-?dos?|task list|checklist|next steps|follow[- ]ups?)\b/i.test(prompt);
 }
 
+/** A research-intent ask (→ the deep pass, implicitly). The user shouldn't
+ *  need a mode: "find reviews", "what do people say", "research this",
+ *  "is this legit" ARE the research button. Deliberately does not match
+ *  refine-bar phrasings ("Go deeper") or the PDF profile prompt ("red flags"
+ *  as a section label) — those stay on the normal budget. */
+function looksLikeResearch(prompt: string): boolean {
+  return /\b(research|deep dive|dig (into|deeper|around)|investigate|due diligence|(find|get|check|pull|look up) (the )?(reviews?|ratings?|prices?|rates?)|reviews? (from|across|on|elsewhere)|what (do|are) (people|guests|users|reviewers|others) say(ing)?|reputation|is (it|this|that)( \w+)? (legit|safe|reliable|any good|worth it)|(any )?complaints? about|tell me everything|everything (about|you can find)|(compare|find) alternatives?|(scout|vet) (this|it|the))\b/i.test(
+    prompt,
+  );
+}
+
 /** An explicit "as written prose / in words" request (→ a doc card). Lets a
  *  refinement of a table/diagram convert back to prose ("as a short write-up"). */
 function looksLikeProse(prompt: string): boolean {
@@ -540,10 +551,14 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   const { context, citable, images, linkRefs } = await gatherContext(req);
   if (signal.aborted) return;
 
-  // Deep research: one mission, one dossier card. No triage, no shape routing —
-  // the model roams the web (fetch the URL, search reviews/prices/reputation/
-  // alternatives) and writes the findings as a cited doc.
-  if (req.deep) {
+  // Deep research is IMPLICIT: a research-sounding ask on any card upgrades
+  // itself to the dossier pass — no mode, no button (owner call, 2026-07-05).
+  // Only prose-bound asks upgrade; an explicit "/table" (or a prompt that
+  // routes to a table/diagram) keeps its format on the normal web budget.
+  const routedShape = req.shape ?? pickShape(req.prompt, req.currentShape);
+  const deep =
+    req.deep || (looksLikeResearch(req.prompt) && (routedShape === 'doc' || routedShape === 'list'));
+  if (deep) {
     yield { type: 'status', message: 'researching across the web…' };
     const user = `Research request:\n${req.prompt}\n\n${context || '(No canvas sources — research the request itself.)'}`;
     yield* streamDoc('doc', RESEARCH_SYSTEM, user, signal, images, { web: true, deep: true });
@@ -563,8 +578,8 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   }
 
   // An explicit "/" mode pick beats the prompt-based router — the user chose
-  // the format; don't second-guess it.
-  const shape = req.shape ?? pickShape(req.prompt, req.currentShape);
+  // the format; don't second-guess it. (Routed once, above the deep gate.)
+  const shape = routedShape;
   const user = `Question:\n${req.prompt}\n\n${context}`;
 
   if (shape === 'affinity') {
