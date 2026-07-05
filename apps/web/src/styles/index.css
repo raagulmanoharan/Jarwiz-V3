@@ -2831,6 +2831,22 @@ body,
   animation: jz-focus-fade var(--jz-dur-fast) var(--jz-ease-out);
 }
 
+/* The breathing gap between the screen edge and the pinned header: the
+ * header pins 14px down, and this fixed strip re-dims whatever scrolls
+ * through the gap — the page fades out above the header instead of showing
+ * raw text. */
+.jz-focus-backdrop::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 14px;
+  background: rgba(8, 9, 11, 0.78);
+  z-index: 2;
+  pointer-events: none;
+}
+
 /* The page grows with the writing (textarea autosizes; the backdrop
  * scrolls) — Google-Docs-like: never an inner scrollbar, no fixed height. */
 .jz-focus-page {
@@ -2856,11 +2872,11 @@ body,
   align-items: center;
   gap: 12px;
   position: sticky;
-  top: 0;
+  top: 14px;
   z-index: 1;
   background: var(--jz-card-surface);
   margin: -36px -56px 18px;
-  padding: 40px 56px 14px;
+  padding: 28px 56px 12px;
   border-bottom: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-lg) var(--jz-radius-lg) 0 0;
 }
