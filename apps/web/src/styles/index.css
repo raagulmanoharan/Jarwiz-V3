@@ -40,8 +40,17 @@ body,
 .jarwiz-app .jz-doc-textarea:focus-visible,
 .jarwiz-app .jz-title-tag:focus-visible,
 .jarwiz-app .jz-focus-textarea:focus-visible,
-.jarwiz-app .jz-focus-title:focus-visible {
+.jarwiz-app .jz-focus-title:focus-visible,
+.jarwiz-app .jz-table-input:focus-visible {
   outline: none;
+}
+
+/* The active table cell shows a quiet tint, not the chunky focus ring —
+ * same principle as the other in-card editors (the caret is the signal),
+ * but a grid needs SOME "you are here" while Tabbing across cells. */
+.jz-table-input:focus {
+  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+  border-radius: var(--jz-radius-xs);
 }
 
 /* ─── Calm the tldraw chrome ────────────────────────────────────────────── */
