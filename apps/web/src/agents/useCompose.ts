@@ -1,14 +1,19 @@
 /**
  * Compose (board fan-out), client side. Ask the server to plan a set of cards
- * from the board, then stream each one in — laying them out MASONRY-style: each
- * finished card drops into whichever column is currently shortest, so a tall
- * itinerary doc and a wide budget table compose cleanly instead of colliding.
- * Reuses the Ask event vocabulary (card.create / delta / table.cell /
- * affinity.*) per slot, so composed cards are identical to hand-typed ones.
+ * from the board, then stream each one in — reusing the Ask event vocabulary
+ * (card.create / delta / table.cell) per slot, so composed cards are identical
+ * to hand-typed ones.
+ *
+ * Layout is a SHELF PACKER that re-tidies on every card using measured sizes:
+ * cards flow left-to-right and wrap to a new row when the row is full, and a
+ * relayout pass runs whenever a card is created or finishes — so nothing ever
+ * overlaps, whatever each card's final height turns out to be. Tables get a
+ * width proportional to their column count so columns stay readable (not narrow
+ * and tall).
  */
 
 import { useCallback, useRef, useState } from 'react';
-import { createShapeId, useEditor, type Box, type TLShapeId } from 'tldraw';
+import { createShapeId, useEditor, type Box, type Editor, type TLShapeId } from 'tldraw';
 import type { ComposeEvent } from '@jarwiz/shared';
 import { DOC_CARD_SIZE, TABLE_CARD_SIZE, type DocCardShape, type TableCardShape } from '../shapes';
 import { setShapeTitle } from '../shapes/shapeTitle';
@@ -18,12 +23,16 @@ import { gatherBoardCards } from './boardText';
 
 export type ComposePhase = 'idle' | 'planning' | 'building' | 'done' | 'error';
 
-const COL_W = 440;
-const COL_GAP = 44;
-const COLS = 3;
+const DOC_W = 500;
+const H_GAP = 48; // between cards, laid side by side in a single row
+
+/** A readable table width: ~190px per column, clamped so it's never cramped
+ *  (the owner's "less narrow, easier to read, less tall") nor absurdly wide. */
+function tableWidth(colCount: number): number {
+  return Math.max(460, Math.min(960, colCount * 190));
+}
 
 interface Slot {
-  col: number;
   cardId?: TLShapeId;
   kind: 'doc' | 'table';
   cols?: string[];
@@ -48,48 +57,41 @@ export function useCompose() {
     const bounds = editor.getCurrentPageBounds();
     const originX = bounds ? bounds.maxX + 120 : editor.getViewportPageBounds().minX + 80;
     const originY = bounds ? bounds.minY : editor.getViewportPageBounds().minY + 80;
-    const colX = (col: number) => originX + col * (COL_W + COL_GAP);
-    const colBottom = Array.from({ length: COLS }, () => originY);
-    const shortestCol = () => {
-      let best = 0;
-      for (let i = 1; i < COLS; i++) if (colBottom[i]! < colBottom[best]!) best = i;
-      return best;
-    };
 
     const titles = new Map<number, string>();
     const slots = new Map<number, Slot>();
     const created: TLShapeId[] = [];
-    let firstCard = false;
+    let framed = false;
+
+    const relayout = () => shelfPack(editor, created, originX, originY);
 
     const applySlot = (slotIdx: number, ev: Extract<ComposeEvent, { type: 'slot' }>['event']) => {
-      let slot = slots.get(slotIdx);
+      const slot = slots.get(slotIdx);
       switch (ev.type) {
         case 'card.create': {
-          const col = shortestCol();
-          const x = colX(col);
-          const y = colBottom[col]!;
           const id = createShapeId();
           created.push(id);
           if (ev.shape === 'table') {
             const cols = (ev.columns ?? []).slice(0, 6);
             const rows = Array.from({ length: ev.rowCount ?? 0 }, () => cols.map(() => ''));
             editor.createShape<TableCardShape>({
-              id, type: 'table-card', x, y,
-              props: { w: COL_W, h: TABLE_CARD_SIZE.h, columns: cols, rows },
+              id, type: 'table-card', x: originX, y: originY,
+              props: { w: tableWidth(cols.length), h: TABLE_CARD_SIZE.h, columns: cols, rows },
             });
-            slots.set(slotIdx, { col, cardId: id, kind: 'table', cols, rows });
+            slots.set(slotIdx, { cardId: id, kind: 'table', cols, rows });
           } else {
             editor.createShape<DocCardShape>({
-              id, type: 'doc-card', x, y,
-              props: { w: COL_W, h: DOC_CARD_SIZE.h, title: titles.get(slotIdx) ?? '', text: '', sourcePdfId: '' },
+              id, type: 'doc-card', x: originX, y: originY,
+              props: { w: DOC_W, h: DOC_CARD_SIZE.h, title: titles.get(slotIdx) ?? '', text: '', sourcePdfId: '' },
             });
-            slots.set(slotIdx, { col, cardId: id, kind: 'doc' });
+            slots.set(slotIdx, { cardId: id, kind: 'doc' });
           }
           const title = titles.get(slotIdx);
           const shape = editor.getShape(id);
           if (title && shape) setShapeTitle(editor, shape, title);
           startStreaming(id);
-          if (!firstCard) { firstCard = true; frame(editor, created); }
+          relayout(); // place the newcomer after the finished cards
+          if (!framed) { framed = true; frame(editor, created); }
           break;
         }
         case 'card.title': // plan titles are authoritative — ignore the generated one
@@ -115,8 +117,19 @@ export function useCompose() {
         case 'card.done': {
           if (!slot?.cardId) break;
           stopStreaming(slot.cardId);
-          const b = editor.getShapePageBounds(slot.cardId);
-          if (b) colBottom[slot.col] = b.maxY + COL_GAP;
+          // A slot that produced no content (a rare generation miss) shouldn't
+          // leave an empty husk on the board — drop it.
+          const s = editor.getShape(slot.cardId);
+          const emptyDoc = s?.type === 'doc-card' && !String((s.props as { text?: string }).text ?? '').trim();
+          const emptyTable =
+            s?.type === 'table-card' &&
+            !((s.props as { rows?: string[][] }).rows ?? []).flat().some((c) => String(c).trim());
+          if (emptyDoc || emptyTable) {
+            editor.deleteShapes([slot.cardId]);
+            const i = created.indexOf(slot.cardId);
+            if (i >= 0) created.splice(i, 1);
+          }
+          relayout(); // snap the board tidy now this card's final height is known
           break;
         }
       }
@@ -141,7 +154,31 @@ export function useCompose() {
         }
       });
       created.forEach((id) => stopStreaming(id));
+      // Sweep any husks — a slot whose generation errored before card.done can
+      // leave a titled-but-empty card. Drop them so the board is all real cards.
+      for (const id of [...created]) {
+        const s = editor.getShape(id);
+        const emptyDoc = s?.type === 'doc-card' && !String((s.props as { text?: string }).text ?? '').trim();
+        const emptyTable =
+          s?.type === 'table-card' &&
+          !((s.props as { rows?: string[][] }).rows ?? []).flat().some((c) => String(c).trim());
+        if (!s || emptyDoc || emptyTable) {
+          if (s) editor.deleteShapes([id]);
+          const i = created.indexOf(id);
+          if (i >= 0) created.splice(i, 1);
+        }
+      }
+      // Auto-fit heights land a tick after the last delta (ResizeObserver), so
+      // re-tidy across a couple of frames + a short delay to catch late growth —
+      // this is what guarantees nothing ends up overlapping.
+      relayout();
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      relayout();
       if (created.length) frame(editor, created);
+      // Content heights keep settling for a beat after the last delta; re-tidy a
+      // couple more times so the final board never has an overlap.
+      window.setTimeout(relayout, 350);
+      window.setTimeout(() => { relayout(); if (created.length) frame(editor, created); }, 900);
       setPhase((p) => (p === 'error' ? 'error' : 'done'));
     } catch (err) {
       created.forEach((id) => stopStreaming(id));
@@ -159,8 +196,23 @@ export function useCompose() {
   return { phase, run, cancel };
 }
 
+/** Lay the created cards SIDE BY SIDE in one row using their measured widths —
+ *  each card at the same top edge, flowing left to right. Reading a board left
+ *  to right beats scrolling a tall stack; the infinite canvas has the room.
+ *  Position-independent widths mean this never overlaps, whatever the heights. */
+function shelfPack(editor: Editor, ids: TLShapeId[], originX: number, originY: number): void {
+  let x = originX;
+  for (const id of ids) {
+    const b = editor.getShapePageBounds(id);
+    const s = editor.getShape(id);
+    if (!b || !s) continue;
+    if (s.x !== x || s.y !== originY) editor.updateShape({ id, type: s.type, x, y: originY });
+    x += b.w + H_GAP;
+  }
+}
+
 /** Gently frame the whole composition so the user watches the board fill in. */
-function frame(editor: ReturnType<typeof useEditor>, ids: TLShapeId[]): void {
+function frame(editor: Editor, ids: TLShapeId[]): void {
   const boxes = ids
     .map((id) => editor.getShapePageBounds(id))
     .filter((b): b is Box => Boolean(b));

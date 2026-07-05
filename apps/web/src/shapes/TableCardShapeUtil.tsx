@@ -19,8 +19,7 @@ import { formatControlledTextarea, shortcutMarker, toggleInline } from '../ask/t
 import { uploadAsset } from '../lib/uploadAsset';
 import { useAutopilot } from '../agents/useAutopilot';
 import { useFitHeight } from './useFitHeight';
-import { MAX_CARD_H, isExpanded, subscribeExpand } from './cardExpand';
-import { ExpandToggle } from './ExpandToggle';
+import { isExpanded, subscribeExpand } from './cardExpand';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { renderRichCell } from './tableRich';
 
@@ -134,7 +133,8 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
   const overflowing = useFitHeight(shape.id, fitRef, [columns, rows, isEditing], {
     streaming: isFilling,
     expanded,
-    maxHeight: MAX_CARD_H,
+    // Tables grow to hold all their rows — no clamp, no Expand (owner call).
+    maxHeight: Infinity,
   });
   const collapsed = overflowing && !expanded && !isFilling;
 
@@ -440,7 +440,6 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
         </div>
       ) : null}
       </div>
-      {overflowing && !isFilling ? <ExpandToggle shapeId={shape.id} expanded={expanded} /> : null}
       <input
         ref={photoInputRef}
         type="file"

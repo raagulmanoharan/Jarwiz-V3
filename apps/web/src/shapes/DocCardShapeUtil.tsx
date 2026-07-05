@@ -26,8 +26,7 @@ import { setPdfPage } from '../pdf/pdfView';
 import { toggleInline } from '../ask/textFormat';
 import { deriveTitle, titleIsAuto } from './shapeTitle';
 import { useFitHeight } from './useFitHeight';
-import { MAX_CARD_H, isExpanded, subscribeExpand } from './cardExpand';
-import { ExpandToggle } from './ExpandToggle';
+import { isExpanded, subscribeExpand } from './cardExpand';
 import { DOC_RADIUS, roundedRectPath } from './cardGeometry';
 
 export interface DocCardProps {
@@ -166,10 +165,16 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
   // a research dossier lands as a page, not a skyscraper column.
   const fitRef = useRef<HTMLDivElement | null>(null);
   const overflowing = useFitHeight(shape.id, fitRef, [text, title], {
-    enabled: !isEditing && isStreaming,
+    // Keep the card at its content height whenever it isn't being edited — not
+    // only while streaming. A fan-out card can receive its whole body in one
+    // burst (the ResizeObserver never measured before streaming stopped), which
+    // left it collapsed; fitting always keeps every card as tall as it needs.
+    enabled: !isEditing,
     streaming: isStreaming,
     expanded,
-    maxHeight: MAX_CARD_H,
+    // Cards grow as tall as their content needs — no clamp, no Expand toggle
+    // (owner call). `overflowing` therefore stays false and never collapses.
+    maxHeight: Infinity,
     growWidth: { max: 800, step: 128, ratio: 1.4 },
   });
   const collapsed = overflowing && !expanded && !isStreaming;
@@ -287,7 +292,6 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
             fake skeleton blobs pretending to be content. */}
         {isStreaming && <span className="jz-stream-caret" aria-hidden />}
       </div>
-      {overflowing && !isStreaming ? <ExpandToggle shapeId={shape.id} expanded={expanded} /> : null}
     </div>
   );
 }
