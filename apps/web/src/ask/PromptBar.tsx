@@ -137,14 +137,16 @@ export function PromptBar() {
   const runTool = (mode: AnalyzeMode) => { void analyze(mode); };
   // While the sole card is being EDITED, a pill is an offer for Jarwiz to
   // take over THIS card — clicking runs the ask straight into it (in-place),
-  // no prompt-bar detour. Only refinable kinds can stream in place.
+  // no prompt-bar detour. Doc cards only: the in-place table regen path
+  // corrupts the grid (appends cells mid-row, then stalls — found in the
+  // 2026-07-05 pill dogfood); until that's fixed, table/diagram pills keep
+  // the safe new-card path.
   const editingSole = useValue(
     'promptbar-editing-sole',
     () => {
       const editing = editor.getEditingShapeId();
       if (!editing) return null;
-      const t = editor.getShape(editing)?.type;
-      return t === 'doc-card' || t === 'table-card' || t === 'diagram-card' ? editing : null;
+      return editor.getShape(editing)?.type === 'doc-card' ? editing : null;
     },
     [editor],
   );
