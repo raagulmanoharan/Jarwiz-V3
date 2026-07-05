@@ -208,7 +208,7 @@ function emptyCells(rows: string[][]): Array<{ row: number; col: number }> {
   return out;
 }
 
-const TABLE_SYSTEM_PROMPT = `You fill in the empty cells of a small table on a canvas. You are given the column headers and the current rows (some cells filled by the user, some empty). Return ONLY a JSON object of the form {"rows": string[][]} with the SAME number of rows and the SAME number of columns as the input. Keep every already-filled cell EXACTLY as given. Fill each empty cell with a concise, accurate value that fits its column header and stays consistent with the other cells in its row. Values are short — a few words, not sentences. Output only the JSON object: no prose, no markdown, no code fences.`;
+const TABLE_SYSTEM_PROMPT = `You fill in the empty cells of a small table on a canvas. You are given the column headers and the current rows (some cells filled by the user, some empty). Return ONLY a JSON object of the form {"rows": string[][]} with the SAME number of rows and the SAME number of columns as the input. Keep every already-filled cell EXACTLY as given. Fill each empty cell with a concise, accurate value that fits its column header and stays consistent with the other cells in its row. Values are short — a few words, not sentences. Never write "Not covered in this source" or any placeholder — propose a real, specific value (even if sibling cells contain such placeholders); truly unknowable personal preferences stay empty. Output only the JSON object: no prose, no markdown, no code fences.`;
 
 async function fetchFilledRows(
   request: TableAutopilotRequest,
