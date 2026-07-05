@@ -11,7 +11,7 @@
  */
 
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -56,6 +56,9 @@ export interface SidecarOptions {
   /** Video-frame image files the model should SEE: whitelists Read and tells
    *  the model to open each one — the sidecar's stand-in for vision inputs. */
   imagePaths?: string[];
+  /** Base64 images (dropped image cards) with no file on disk — the sidecar
+   *  writes each to a temp file so the model can Read it, same as frames. */
+  imageData?: Array<{ mediaType: string; data: string }>;
 }
 
 /**
@@ -71,35 +74,44 @@ export function sidecarGenerate({
   signal,
   web,
   imagePaths,
+  imageData,
 }: SidecarOptions): Promise<string> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(new Error('aborted'));
 
+    const hasVision = Boolean(imagePaths?.length || imageData?.length);
     const allow: string[] = [];
     if (web) allow.push('WebSearch', 'WebFetch');
-    if (imagePaths?.length) allow.push('Read');
+    if (hasVision) allow.push('Read');
     const toolArgs = allow.length > 0
       ? ['--allowed-tools', allow.join(',')]
       : ['--disallowed-tools', '*'];
-    const limitMs = timeoutMs ?? (web || imagePaths?.length ? WEB_TIMEOUT_MS : DEFAULT_TIMEOUT_MS);
-    // Asset files are extensionless; Read renders images by extension. Give
-    // the model .jpg views via symlinks in a throwaway dir.
+    const limitMs = timeoutMs ?? (web || hasVision ? WEB_TIMEOUT_MS : DEFAULT_TIMEOUT_MS);
+    // Read renders images by extension, but asset files are extensionless and
+    // image cards arrive as base64. Stage both as extensioned files in one
+    // throwaway dir: symlink the frame files, decode the base64 images.
     let frameDir: string | null = null;
     let frameLinks: string[] = [];
-    if (imagePaths?.length) {
+    if (hasVision) {
       try {
         frameDir = mkdtempSync(join(tmpdir(), 'jz-frames-'));
-        frameLinks = imagePaths.map((p, i) => {
+        (imagePaths ?? []).forEach((p, i) => {
           const link = join(frameDir!, `frame_${String(i + 1).padStart(2, '0')}.jpg`);
           symlinkSync(p, link);
-          return link;
+          frameLinks.push(link);
+        });
+        (imageData ?? []).forEach((im, i) => {
+          const ext = im.mediaType.split('/')[1]?.replace('jpeg', 'jpg') || 'png';
+          const file = join(frameDir!, `image_${String(i + 1).padStart(2, '0')}.${ext}`);
+          writeFileSync(file, Buffer.from(im.data, 'base64'));
+          frameLinks.push(file);
         });
       } catch {
-        frameLinks = imagePaths; // symlink denied → raw paths still work for Read
+        frameLinks = imagePaths ?? []; // staging denied → raw frame paths still Read
       }
     }
     const turn = frameLinks.length
-      ? `${user}\n\n[${frameLinks.length} sampled video frames are attached as image files, in time order. Read EACH file below to actually see the video before answering:\n${frameLinks.join('\n')}]`
+      ? `${user}\n\n[${frameLinks.length} image(s) are attached as files (video frames in time order, and/or dropped images). Read EACH file below to actually SEE it before answering:\n${frameLinks.join('\n')}]`
       : user;
     const cleanupFrames = () => {
       if (frameDir) rmSync(frameDir, { recursive: true, force: true });
@@ -145,10 +157,21 @@ export function sidecarGenerate({
   });
 }
 
+/** Leading agentic-narration the headless CLI sometimes prints before the
+ *  actual answer ("Have enough confirmed info now.", "Let me search…"). These
+ *  slip past the answer's own "no preamble" instruction because they're the
+ *  CLI's planning voice, not the model's reply — and a stray first line steals
+ *  the doc card's title slot. Strip whole leading lines that match. */
+const META_PREAMBLE =
+  /^\s*(?:have enough|let me|i'?ll |i will |i'?ve |i have |now i|okay[,.]|alright[,.]|got it|based on (?:my|the) (?:search|research|reading)|let'?s |first[,.]|great[,.]|perfect[,.]|here'?s what|now (?:i|let)|searching|looking|checking|i now have|that gives me|this (?:confirms|gives)|good[,.])[^\n]*\n+/i;
+
 /** Strip stray model artifacts that occasionally leak from the CLI stream. */
 function cleanOutput(raw: string): string {
-  return raw
+  let out = raw
     .replace(/<\/?s>/gi, '') // end-of-sequence token leaks (</s>)
     .replace(/<\|(?:eot_id|endoftext|end_of_turn)\|>/gi, '')
-    .trim();
+    .trimStart();
+  // Peel leading narration lines (a couple at most) before the real content.
+  for (let i = 0; i < 3 && META_PREAMBLE.test(out); i++) out = out.replace(META_PREAMBLE, '');
+  return out.trim();
 }

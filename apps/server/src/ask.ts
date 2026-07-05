@@ -35,8 +35,9 @@ const LIST_SYSTEM = `You answer a question about the provided source document(s)
 
 const TABLE_SYSTEM = `You answer a question as a TABLE — a comparison/matrix, a plan, an itinerary, a vendor list: whatever grid fits the ask. Return ONLY a JSON object {"columns": string[], "rows": string[][]} — the first column names the items/dimensions, one row per item, short cells.
 Two modes, chosen by what the ask IS:
-- EXTRACTIVE (summarise/compare/pull facts FROM the provided sources): ground every cell in the source content; leave a cell empty rather than inventing. If an ENTIRE compared column has no grounding in the sources, put "Not covered in this source" in that column's first cell so the gap is explicit, and leave the rest of the column empty.
-- GENERATIVE (plan/suggest/draft/brainstorm — the user wants NEW content): propose specific, sensible values in every cell; NEVER write "Not covered in this source" — sources are constraints and context (budget, dates, preferences), not the ceiling of what you may say. Cells may use minimal inline markdown where it genuinely helps: [label](url) for a link that appears in the sources (or a well-known official page), ![alt](url) for an image URL present in the sources, **bold** for a key value. No prose outside the JSON, no code fences.`;
+- EXTRACTIVE (summarise/compare/pull facts FROM the provided sources): ground FACTUAL cells (names, dates, prices, quoted specs) in the source content — leave such a cell empty rather than inventing a fact. BUT any column the user explicitly asked for that calls for JUDGEMENT rather than a quoted fact — "risk", "pros/cons", "trade-offs", "fit", "recommendation", "assessment", "watch-outs", "so what" — you MUST fill by REASONING from the source, not leave blank and never write "Not covered in this source" for it. The user named that column because they want your analysis of the material, not a lookup. Reserve "Not covered in this source" (first cell of the column, rest empty) ONLY for a purely factual column that the sources are genuinely silent on.
+- GENERATIVE (plan/suggest/draft/brainstorm — the user wants NEW content): propose specific, sensible values in every cell; NEVER write "Not covered in this source" — sources are constraints and context (budget, dates, preferences), not the ceiling of what you may say.
+Cells may use minimal inline markdown where it genuinely helps: [label](url) for a link that appears in the sources (or a well-known official page), ![alt](url) for an image URL present in the sources, **bold** for a key value. No prose outside the JSON, no code fences.`;
 
 const CLAUSE_DIFF_SYSTEM = `You are comparing multiple source documents clause-by-clause to surface overlaps and CONFLICTS. Return ONLY a JSON object {"columns": string[], "rows": string[][]}. Columns MUST be: "Topic / Clause", then one column per source document (use a short version of each document's title), then a final "Conflict?" column. Each row is a topic the documents both address; fill each document's cell with its stance/wording (short, grounded), and set "Conflict?" to "Yes", "No", or "Partial" with a few words on why. Prioritise rows where the documents differ or contradict. Ground every cell in the provided text; leave a cell blank if a document is silent. No prose, no code fences.`;
 
@@ -288,12 +289,16 @@ async function gatherContext(
   images: ImageInput[];
   linkRefs: Array<{ title: string; url: string }>;
   framePaths: string[];
+  imageData: ImageInput[];
 }> {
   const parts: string[] = [];
   const images: ImageInput[] = [];
   const linkRefs: Array<{ title: string; url: string }> = [];
   /** Server-local frame files — the CLI sidecar Reads these (it can't take base64). */
   const framePaths: string[] = [];
+  /** Image-card base64 (no file on disk) — the sidecar writes+Reads these so
+   *  a dropped image is visible in dev too, not just on the API path. */
+  const imageData: ImageInput[] = [];
   let citable = false;
   let i = 0;
   for (const s of req.sources) {
@@ -326,7 +331,8 @@ async function gatherContext(
     if (s.kind === 'image' && s.dataUrl) {
       const img = images.length < MAX_IMAGES ? parseImageDataUrl(s.dataUrl, s.title || `Image ${i}`) : null;
       if (img) {
-        images.push(img);
+        images.push(img); // API path: a vision block
+        imageData.push(img); // sidecar path: written to a temp file and Read
         parts.push(`${head}\n(Image attached — provided as a vision input.)`);
       } else {
         parts.push(`${head}\n(Image could not be read.)`);
@@ -357,7 +363,7 @@ async function gatherContext(
     if (s.text?.trim()) parts.push(`${head}\n"""\n${s.text.trim().slice(0, PER_SOURCE_CHARS)}\n"""`);
     else parts.push(head);
   }
-  return { context: parts.join('\n\n'), citable, images, linkRefs, framePaths };
+  return { context: parts.join('\n\n'), citable, images, linkRefs, framePaths, imageData };
 }
 
 const CITE_DIRECTIVE =
@@ -404,11 +410,13 @@ function withImageNote(user: string, images: ImageInput[]): string {
 
 /** `web: true` hands the model live search/fetch tools; `deep: true` upgrades
  *  to the research budget (more searches/fetches, longer output, more time);
- *  `framePaths` lets the text-only sidecar SEE video frames by Reading files. */
+ *  `framePaths` lets the text-only sidecar SEE video frames by Reading files;
+ *  `imageData` does the same for dropped image cards (base64 → temp file). */
 interface GenOpts {
   web?: boolean;
   deep?: boolean;
   framePaths?: string[];
+  imageData?: ImageInput[];
 }
 
 /** The per-mode generation budget the two generators share. */
@@ -457,15 +465,18 @@ async function generate(
     }
     return text;
   }
-  if (sidecarAvailable())
+  if (sidecarAvailable()) {
+    const canSee = Boolean(opts.framePaths?.length || opts.imageData?.length);
     return sidecarGenerate({
       system,
-      user: opts.framePaths?.length ? user : withImageNote(user, images),
+      user: canSee ? user : withImageNote(user, images),
       signal,
       web: opts.web || opts.deep,
       imagePaths: opts.framePaths,
+      imageData: opts.imageData,
       timeoutMs: sidecarTimeoutMs,
     });
+  }
   throw new Error('No model available (set ANTHROPIC_API_KEY or install the Claude CLI).');
 }
 
@@ -527,12 +538,14 @@ async function* generateStream(
     return;
   }
   if (sidecarAvailable()) {
+    const canSee = Boolean(opts.framePaths?.length || opts.imageData?.length);
     const text = await sidecarGenerate({
       system,
-      user: opts.framePaths?.length ? user : withImageNote(user, images),
+      user: canSee ? user : withImageNote(user, images),
       signal,
       web: opts.web || opts.deep,
       imagePaths: opts.framePaths,
+      imageData: opts.imageData,
       timeoutMs: sidecarTimeoutMs,
     });
     for (const piece of chunk(text)) {
@@ -591,7 +604,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   }
 
   yield { type: 'status', message: 'reading the source…' };
-  const { context, citable, images, linkRefs, framePaths } = await gatherContext(req);
+  const { context, citable, images, linkRefs, framePaths, imageData } = await gatherContext(req);
   if (signal.aborted) return;
 
   // Deep research is IMPLICIT: a research-sounding ask on any card upgrades
@@ -604,7 +617,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   if (deep) {
     yield { type: 'status', message: 'researching across the web…' };
     const user = `Research request:\n${req.prompt}\n\n${context || '(No canvas sources — research the request itself.)'}`;
-    yield* streamDoc('doc', RESEARCH_SYSTEM, user, signal, images, { web: true, deep: true, framePaths });
+    yield* streamDoc('doc', RESEARCH_SYSTEM, user, signal, images, { web: true, deep: true, framePaths, imageData });
     return;
   }
 
@@ -640,7 +653,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
     // (purely extractive across the given documents — no web there).
     const isDiff = looksLikeDiff(req.prompt) && req.sources.filter((s) => s.assetId).length >= 2;
     const tableSystem = isDiff ? CLAUSE_DIFF_SYSTEM : TABLE_SYSTEM + WEB_TABLE_DIRECTIVE;
-    const raw = await generate(tableSystem, user, signal, images, { web: !isDiff, framePaths });
+    const raw = await generate(tableSystem, user, signal, images, { web: !isDiff, framePaths, imageData });
     if (signal.aborted) return;
     let columns: string[] = [];
     let rows: string[][] = [];
@@ -676,7 +689,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
       return;
     }
     // Not clean JSON — degrade to a written answer.
-    yield* streamDoc('doc', DOC_SYSTEM + WEB_DIRECTIVE, user, signal, images, { web: true, framePaths });
+    yield* streamDoc('doc', DOC_SYSTEM + WEB_DIRECTIVE, user, signal, images, { web: true, framePaths, imageData });
     return;
   }
 
@@ -685,7 +698,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   if (linkRefs.length > 0) system += linkCiteDirective(linkRefs);
   if (wantsChecklist(req.prompt)) system += CHECKLIST_DIRECTIVE;
   system += WEB_DIRECTIVE;
-  yield* streamDoc(shape, system, user, signal, images, { web: true, framePaths });
+  yield* streamDoc(shape, system, user, signal, images, { web: true, framePaths, imageData });
 }
 
 /**

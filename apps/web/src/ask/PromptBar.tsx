@@ -179,7 +179,11 @@ export function PromptBar() {
   const placeholder = groundIds.length ? 'Ask about the selection…' : 'What would you like to change or create?';
   const busyLabel = runningMode ? (runningMode === 'tensions' ? 'Scanning…' : runningMode === 'gaps' ? 'Reviewing…' : 'Critiquing…') : null;
 
-  const showChips = !runningMode && groundIds.length === 0 && meaningfulCount >= 3;
+  // Board-scan chips need enough substance to find gaps/tensions across cards.
+  // Two contentful cards already qualify — a brief plus one generated artifact
+  // is exactly when "what am I missing" earns its place (dogfood 2026-07-05;
+  // the old ≥3 hid it right after the first table landed).
+  const showChips = !runningMode && groundIds.length === 0 && meaningfulCount >= 2;
   // Pills are ALWAYS contextual — generated from the card's own content.
   // Nothing scripted: until the tailored pills arrive (or if the card is
   // empty) we show nothing. Predictable operations live on the card's
