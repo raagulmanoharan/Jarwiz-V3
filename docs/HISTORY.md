@@ -444,3 +444,23 @@ every primitive reads as one visual family.
 - Probe gotcha for future sessions: a fresh board shows the board-entry
   dialog (`jz-boardentry-scrim`) which swallows prompt-bar clicks — press
   Escape first, or create a shape (any shape auto-dismisses it).
+
+## 2026-07-05 (late) — Videos join the board's context
+
+- **Pasted YouTube links become playable video cards that read their own
+  captions**: `/api/youtube/text` (16k budget) fills the card's `text` prop
+  at paste time; a header badge is the honesty contract — "transcript ✓"
+  vs dashed "title only". Video cards finally ground asks (toSource) and
+  board scans; caption-less videos contribute an explicit never-guess line.
+  Bug found by probing, not review: the toSource branch was dead until
+  `youtube-card` joined the ASKABLE set — the prompt bar filters selection
+  BEFORE grounding. If a new card type should ground asks, it needs BOTH.
+- Full journey + remaining phases in docs/USECASE-CREATOR.md (style scans,
+  script mode, ASR are B–D).
+- Sandbox truth: youtube.com is unreachable here (proxe refuses), so the
+  live caption fetch is verified only as the honest-failure path; the
+  grounding path was verified by seeding a transcript and asking — the
+  answer quoted it. Image CDNs are also blocked: link-card enrichment
+  stores real og:image URLs (verified with github.com) but the browser
+  can't render the pixels here — letter placeholder is the sandbox look,
+  not the product look.
