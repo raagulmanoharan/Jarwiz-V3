@@ -141,6 +141,12 @@ function toSource(editor: Editor, shape: TLShape): AskSource | null {
       if (!src.startsWith('data:image/')) return null;
       return { kind: 'image', title: String(p.name ?? ''), dataUrl: src };
     }
+    case 'machine-card': {
+      // A machine block grounds its answer on the subject typed into it; the
+      // block becomes the answer's provenance source and its placement anchor.
+      const subject = String((p as { subject?: unknown }).subject ?? '').trim();
+      return subject ? { kind: 'note', text: `Analysis subject: ${subject}` } : null;
+    }
     case 'link-card': {
       // Preview + extracted page text — the model answers from the page's
       // actual content, not just its meta tags.

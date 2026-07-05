@@ -10,6 +10,7 @@ import { MousePointer2, Hand, Type, StickyNote, Shapes, ArrowUpRight, Upload, Fo
 import { DOC_CARD_SIZE, NOTE_CARD_SIZE, NOTE_PAPER, type DocCardShape, type NoteCardShape } from '../shapes';
 import { toggleSidePanel } from './sidePanelStore';
 import { toggleHelp } from './help';
+import { MachinesRail } from './MachinesPalette';
 import { useSyncExternalStore } from 'react';
 
 /** Open a native file picker and hand the chosen PDFs to the same ingestion
@@ -121,6 +122,7 @@ export function ToolRail() {
       <RailTool label="Arrow (A)" active={toolId === 'arrow'} onClick={() => editor.setCurrentTool('arrow')}>
         <ArrowUpRight {...ICON_PROPS} />
       </RailTool>
+      <MachinesRail />
       <RailTool label="Upload a PDF" active={false} onClick={() => pickAndIngestPdfs(editor)}>
         <Upload {...ICON_PROPS} />
       </RailTool>

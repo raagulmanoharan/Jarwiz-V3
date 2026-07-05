@@ -21,6 +21,7 @@ import { CardActionBar } from './ask/CardActionBar';
 import { ProvenanceLayer } from './ask/ProvenanceLayer';
 import { ClarifyLayer } from './ask/ClarifyLayer';
 import { CommentLayer } from './ask/CommentLayer';
+import { MachineRunner } from './ui/MachineRunner';
 import { DraftControls } from './ask/DraftControls';
 import { RegenControls } from './ask/RegenControls';
 import { SelectionAsk } from './ask/SelectionAsk';
@@ -65,6 +66,7 @@ function JarwizOverlay() {
       <CardActionBar />
       <ClarifyLayer />
       <CommentLayer />
+      <MachineRunner />
       <DraftControls />
       <RegenControls />
       <SelectionAsk />

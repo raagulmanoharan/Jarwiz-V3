@@ -17,6 +17,7 @@ import { PdfCardShapeUtil } from './PdfCardShapeUtil';
 import { SheetCardShapeUtil } from './SheetCardShapeUtil';
 import { TableCardShapeUtil } from './TableCardShapeUtil';
 import { YouTubeCardShapeUtil } from './YouTubeCardShapeUtil';
+import { MachineCardShapeUtil } from './MachineCardShapeUtil';
 
 export { DiagramCardShapeUtil, DIAGRAM_CARD_SIZE, type DiagramCardShape } from './DiagramCardShapeUtil';
 export { DocCardShapeUtil, DOC_CARD_SIZE, type DocCardShape } from './DocCardShapeUtil';
@@ -40,6 +41,7 @@ export {
   type TableCardShape,
 } from './TableCardShapeUtil';
 export { YouTubeCardShapeUtil, YOUTUBE_CARD_SIZE, type YouTubeCardShape } from './YouTubeCardShapeUtil';
+export { MachineCardShapeUtil, MACHINE_CARD_SIZE, type MachineCardShape } from './MachineCardShapeUtil';
 
 export const cardShapeUtils = [
   LinkCardShapeUtil,
@@ -51,4 +53,5 @@ export const cardShapeUtils = [
   DocCardShapeUtil,
   TableCardShapeUtil,
   DiagramCardShapeUtil,
+  MachineCardShapeUtil,
 ] as const;
