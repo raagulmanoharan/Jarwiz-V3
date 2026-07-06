@@ -35,10 +35,11 @@ export function MachineRunner() {
     const options = resolveMachineOptions((shape.meta as { options?: unknown }).options, machine);
 
     editor.updateShape<MachineCardShape>({ id: req.id, type: 'machine-card', props: { status: 'running' } });
+    // The machine block is an input, not an artefact — once it has fanned out its
+    // card(s) it has served its purpose, so it removes itself (owner call: the
+    // block should disappear after the cards land), leaving just the output.
     const finish = () => {
-      if (editor.getShape(req.id)) {
-        editor.updateShape<MachineCardShape>({ id: req.id, type: 'machine-card', props: { status: 'done' } });
-      }
+      if (editor.getShape(req.id)) editor.deleteShape(req.id);
     };
 
     // The skill (system prompt + research budget) lives server-side. A 'board'

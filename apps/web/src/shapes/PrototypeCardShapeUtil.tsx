@@ -131,11 +131,11 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
     el.style.height = prompt ? `${el.scrollHeight}px` : '';
   }, [prompt]);
   useEffect(() => {
-    if (!hasDoc && !running) inputRef.current?.focus();
+    if (!hasDoc && !isStreaming) inputRef.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hasDoc, isStreaming]);
 
-  // A live/complete document → the rendered UI; running with nothing yet → a
+  // A live/complete document → the rendered UI; generating with nothing yet → a
   // spinner; otherwise (idle/error/empty) → the small prompt composer.
   if (hasDoc) {
     return (
@@ -152,7 +152,7 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
     );
   }
 
-  if (running) {
+  if (isStreaming) {
     return (
       <div className="jz-prototype jz-prototype--composer">
         <div className="jz-prototype-loading">

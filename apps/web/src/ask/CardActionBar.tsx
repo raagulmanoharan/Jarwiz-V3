@@ -9,7 +9,7 @@
 import { useRef, useState, type CSSProperties } from 'react';
 import { stopEventPropagation, useEditor, useValue, type Editor, type TLShapeId } from 'tldraw';
 import { Bold, Italic, Underline, Strikethrough, List, ListTodo, Maximize2, Table2, Image as ImageIcon } from 'lucide-react';
-import { AFFINITY_COLORS, NOTE_PAPER, type NoteCardShape } from '../shapes';
+import { AFFINITY_COLORS, NOTE_PAPER, PROTOTYPE_PROMPT_SIZE, type NoteCardShape, type PrototypeCardShape } from '../shapes';
 import { ASKABLE, hasAskableContent } from './askable';
 import { formatControlledTextarea, insertBlock, insertTableBlock, toggleInline, toggleLinePrefix, type FormatResult } from './textFormat';
 import { uploadAsset } from '../lib/uploadAsset';
@@ -72,7 +72,7 @@ export function CardActionBar() {
   const { diagram } = useDiagram();
   const { tidy } = useTidy();
   const { cluster } = useCluster();
-  const [menu, setMenu] = useState<null | 'refine' | 'tint'>(null);
+  const [menu, setMenu] = useState<null | 'refine' | 'tint' | 'more'>(null);
   // Hidden picker for "insert image" — uploads to the blob store, then drops
   // a markdown image at the caret (the doc card renders it inline).
   const imageInputRef = useRef<HTMLInputElement | null>(null);
@@ -231,9 +231,28 @@ export function CardActionBar() {
   const formattable = !sel.multi && (sel.type === 'doc-card' || sel.type === 'table-card');
   const visibleFormats = sel.type === 'table-card' ? FORMATS.filter((f) => TABLE_FORMAT_KEYS.has(f.key)) : FORMATS;
 
+  // The ⋯ overflow menu (Duplicate / Delete, plus Edit prompt for a prototype)
+  // is offered on every single selected card — so a card always has at least
+  // this menu, even when it has no refine transforms.
+  const showMore = !sel.multi;
+  const editPrototypePrompt = () => {
+    const s = editor.getShape(id);
+    if (s?.type !== 'prototype-card') return;
+    // Flip back to the small prompt composer, keeping the prompt, so it can be
+    // reworded and regenerated.
+    editor.updateShape<PrototypeCardShape>({ id, type: 'prototype-card', props: { html: '', status: 'idle', w: PROTOTYPE_PROMPT_SIZE.w, h: PROTOTYPE_PROMPT_SIZE.h } });
+    editor.select(id);
+  };
+  const moreActions: Transform[] = [];
+  if (sel.type === 'prototype-card') moreActions.push({ label: '✎ Edit prompt', run: editPrototypePrompt });
+  moreActions.push(
+    { label: '⧉ Duplicate', run: () => editor.duplicateShapes([id], { x: 32, y: 32 }) },
+    { label: '🗑 Delete', run: () => editor.deleteShapes([id]) },
+  );
+
   // Nothing meaningful to offer (e.g. a single empty card) → no bar at all.
   // Provenance itself needs no button: the drawn edges ARE the lineage.
-  if (transforms.length === 0 && !profileable && !sticky && !formattable) return null;
+  if (transforms.length === 0 && !profileable && !sticky && !formattable && !showMore) return null;
   if (!anchor) return null;
 
   // Flipped below the card (no headroom above), the bar renders downward from
@@ -364,9 +383,25 @@ export function CardActionBar() {
           ) : null}
         </div>
       ) : null}
-
-
-
+      {showMore ? (
+        <div className="jz-cardbar-group">
+          <button
+            className={`jz-cardbar-btn jz-cardbar-btn--icon${menu === 'more' ? ' jz-cardbar-btn--open' : ''}`}
+            aria-label="More actions"
+            title="More"
+            onClick={() => setMenu(menu === 'more' ? null : 'more')}
+          >
+            ⋯
+          </button>
+          {menu === 'more' ? (
+            <div className="jz-cardbar-menu jz-cardbar-menu--right" role="menu">
+              {moreActions.map((t) => (
+                <button key={t.label} className="jz-cardbar-item" onClick={() => runTransform(t)}>{t.label}</button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

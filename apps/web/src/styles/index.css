@@ -4023,6 +4023,13 @@ body,
 
 .jz-cardbar-caret { font-size: 9px; opacity: 0.6; }
 
+/* The ⋯ overflow trigger — a compact square, glyph centred. */
+.jz-cardbar-btn--icon {
+  padding: 6px 9px;
+  font-size: 15px;
+  line-height: 1;
+}
+
 .jz-cardbar-menu {
   position: absolute;
   top: calc(100% + 6px);
@@ -4039,6 +4046,10 @@ body,
   border: 1px solid var(--jz-hairline);
   animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
 }
+
+/* Right-anchored menu (the ⋯ overflow sits at the bar's right edge, so its menu
+ * opens flush-right to stay on-screen). */
+.jz-cardbar-menu--right { left: auto; right: 0; min-width: 150px; }
 
 /* Tint variant: the palette as one row of swatches (after the base rule so
  * the row direction wins the cascade). */

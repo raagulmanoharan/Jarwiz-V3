@@ -182,6 +182,10 @@ export function PromptBar() {
       void compose(q);
     } else if (mode === 'affinity') {
       void annotate(q);
+    } else if (!mode && sole && !sole.pdf && sole.type === 'prototype-card') {
+      // Selecting a prototype and typing an instruction regenerates it in place
+      // (the card IS the prototype) — not a new card beside it.
+      void ask(q, [sole.id], { targetId: sole.id, forceShape: 'prototype', skipClarify: true });
     } else {
       void ask(q, groundIds, mode ? { forceShape: mode as AskShape } : undefined);
     }
