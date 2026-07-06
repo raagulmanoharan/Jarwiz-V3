@@ -620,11 +620,11 @@ body,
 /* The machine block on the canvas — a small "device" you type into and run. */
 .jz-machine-card {
   width: 100%;
-  height: 100%;
+  height: auto;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding: 14px 15px;
+  padding: var(--jz-space-5); /* THE uniform card inset — matches every other card */
   background: var(--jz-card);
   border: 1.5px solid color-mix(in srgb, var(--jz-accent) 38%, var(--jz-hairline));
   border-radius: var(--jz-radius-lg);
@@ -676,22 +676,23 @@ body,
 /* The subject input — a defined field with a resting border. The browser focus
  * ring is suppressed; on focus the field's own border just tints accent. */
 .jz-machine-card-input {
-  flex: 1;
+  display: block;
   width: 100%;
-  min-height: 46px;
+  min-height: 44px;
   box-sizing: border-box;
   border: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-md, 10px);
   outline: none;
   box-shadow: none;
   resize: none;
+  overflow: hidden;
   -webkit-appearance: none;
   background: color-mix(in srgb, var(--jz-ink-900) 3%, transparent);
   color: var(--jz-ink-900);
   font: inherit;
   font-size: 14px;
   line-height: 1.4;
-  padding: 9px 11px;
+  padding: 10px 12px;
 }
 .jz-machine-card-input:focus,
 .jz-machine-card-input:focus-visible {
@@ -700,12 +701,13 @@ body,
   border-color: color-mix(in srgb, var(--jz-accent) 45%, var(--jz-hairline));
 }
 .jz-machine-card-input::placeholder { color: var(--jz-ink-400); }
-/* Optional-output toggles — extra cards the user opts into, stacked one per row. */
+/* Optional-output toggles — extra cards the user opts into, stacked one per row.
+ * A slightly larger top gap separates them from the input field. */
 .jz-machine-card-opts {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin: 11px 0;
+  margin: 15px 0 12px;
 }
 .jz-machine-opt {
   display: inline-flex;

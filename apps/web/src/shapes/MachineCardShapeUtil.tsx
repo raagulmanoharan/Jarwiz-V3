@@ -6,7 +6,7 @@
  * which one it is comes from `machineId`, resolved against the catalog.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import {
   HTMLContainer,
   Rectangle2d,
@@ -23,6 +23,7 @@ import { Grid2x2, Swords, Scale, ShieldAlert, CornerDownRight, UserRound, ArrowR
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { MACHINES, type Machine } from '../machines/catalog';
 import { requestMachineRun } from '../machines/runStore';
+import { useFitHeight } from './useFitHeight';
 
 export interface MachineCardProps {
   w: number;
@@ -43,7 +44,7 @@ declare module '@tldraw/tlschema' {
 
 export type MachineCardShape = TLShape<'machine-card'>;
 
-export const MACHINE_CARD_SIZE = { w: 300, h: 268 };
+export const MACHINE_CARD_SIZE = { w: 300, h: 286 };
 
 const ICONS: Record<string, React.ReactNode> = {
   Grid2x2: <Grid2x2 size={16} />,
@@ -104,12 +105,27 @@ function enabledOptions(shape: MachineCardShape, m: Machine): Set<string> {
 function MachineCardBody({ shape }: { shape: MachineCardShape }) {
   const editor = useEditor();
   const ref = useRef<HTMLTextAreaElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const m = MACHINES.find((x) => x.id === shape.props.machineId) ?? MACHINES[0]!;
   const { subject, status } = shape.props;
   const running = status === 'running';
   const done = status === 'done';
   const options = m.options ?? [];
   const enabled = enabledOptions(shape, m);
+
+  // The block grows to fit its content — laid out at its natural height, the
+  // card's measured height drives the shape height (so it grows as you type).
+  useFitHeight(shape.id, cardRef, [subject], {});
+
+  // Auto-grow the subject input with its content (Miro-style text box). When
+  // empty, clear the inline height so the CSS one-row min-height governs — the
+  // scrollHeight of a freshly-focused empty textarea can measure tall.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = subject ? `${el.scrollHeight}px` : '';
+  }, [subject]);
 
   // A freshly-dropped machine is ready for typing — focus its input.
   useEffect(() => {
@@ -131,7 +147,7 @@ function MachineCardBody({ shape }: { shape: MachineCardShape }) {
   };
 
   return (
-    <div className={`jz-machine-card${running ? ' jz-machine-card--running' : ''}`}>
+    <div ref={cardRef} className={`jz-machine-card${running ? ' jz-machine-card--running' : ''}`}>
       <div className="jz-machine-card-head">
         <span className="jz-machine-card-badge">{ICONS[m.icon]}</span>
         <span className="jz-machine-card-name">{m.name}</span>
@@ -140,6 +156,7 @@ function MachineCardBody({ shape }: { shape: MachineCardShape }) {
       <p className="jz-machine-card-desc">{m.description}</p>
       <textarea
         ref={ref}
+        rows={1}
         className="jz-machine-card-input"
         value={subject}
         placeholder="What should I analyse?"
