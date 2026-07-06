@@ -1140,30 +1140,35 @@ body,
  * spanning the viewport; a very subtle dotted hairline eases between a card and
  * its sources, shown only while one is selected. */
 .jz-prov-layer {
-  /* Drawn in page space inside tldraw's OnTheCanvas layer (behind shapes):
-     a zero-box SVG at the page origin with visible overflow, so paths use raw
-     page coordinates and the cards occlude any line passing behind them. */
+  /* Drawn in page space inside tldraw's OnTheCanvas layer (behind shapes) so
+     cards occlude any line passing behind them. A large explicit viewport
+     (with a matching viewBox on the element) centred on the page origin — a
+     zero-size SVG clips its own content to a 0×0 viewport and paints nothing,
+     regardless of overflow. */
   position: absolute;
-  left: 0;
-  top: 0;
-  width: 0;
-  height: 0;
+  left: -50000px;
+  top: -50000px;
+  width: 100000px;
+  height: 100000px;
   pointer-events: none;
   overflow: visible;
 }
 .jz-prov-line {
   fill: none;
-  stroke: var(--jz-ink-400);
-  stroke-width: 1;
-  /* Constant hairline regardless of zoom (the layer is camera-scaled). */
-  vector-effect: non-scaling-stroke;
-  stroke-dasharray: 1 4;
+  /* Light-grey in dark theme, dark-grey in light — clearly readable in the
+     gaps between cards (the cards themselves occlude any crossing segment).
+     Stroke is in page units (the layer is inside the camera transform), so it
+     scales with zoom; non-scaling-stroke can't be used here — the zero-size SVG
+     viewport would compute it to ~0 width and paint nothing. */
+  stroke: var(--jz-ink-700);
+  stroke-width: 2;
+  stroke-dasharray: 3 5;
   stroke-linecap: round;
-  opacity: 0.55;
+  opacity: 0.85;
 }
 .jz-prov-dot {
-  fill: var(--jz-ink-400);
-  opacity: 0.7;
+  fill: var(--jz-ink-700);
+  opacity: 0.9;
 }
 
 /* YouTube card */

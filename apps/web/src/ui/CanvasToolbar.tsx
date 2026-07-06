@@ -17,7 +17,7 @@ const CREATION_TOOLS = new Set(['geo', 'text', 'arrow', 'line', 'draw', 'frame',
  *  in the corner (owner call, 2026-07-05). */
 const JZ_CARDS = new Set([
   'doc-card', 'note-card', 'table-card', 'diagram-card', 'prototype-card', 'pdf-card', 'sheet-card',
-  'image-card', 'link-card', 'youtube-card',
+  'image-card', 'link-card', 'youtube-card', 'machine-card',
 ]);
 
 export function CanvasStylePanel() {

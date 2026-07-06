@@ -93,7 +93,7 @@ export function ProvenanceLayer() {
   if (links.length === 0) return null;
 
   return (
-    <svg className="jz-prov-layer" aria-hidden>
+    <svg className="jz-prov-layer" viewBox="-50000 -50000 100000 100000" aria-hidden>
       {links.map((l, i) => (
         <g key={i}>
           <path className="jz-prov-line" d={l.d} />
