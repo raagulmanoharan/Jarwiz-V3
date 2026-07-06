@@ -1161,10 +1161,13 @@ body,
      scales with zoom; non-scaling-stroke can't be used here — the zero-size SVG
      viewport would compute it to ~0 width and paint nothing. */
   stroke: var(--jz-ink-700);
-  stroke-width: 2;
-  stroke-dasharray: 3 5;
+  /* True hairline: 1px constant at any zoom (the real viewport now lets
+     non-scaling-stroke resolve correctly), kept subtle. */
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 2 4;
   stroke-linecap: round;
-  opacity: 0.85;
+  opacity: 0.5;
 }
 .jz-prov-dot {
   fill: var(--jz-ink-700);
