@@ -77,4 +77,4 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-# Redeploy trigger: retry after transient Pages publish error (Deploy step).
+# Redeploy trigger: retry after transient Pages publish error (Deploy step, retry 2).
