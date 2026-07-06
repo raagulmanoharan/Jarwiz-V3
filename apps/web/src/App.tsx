@@ -34,7 +34,7 @@ import { BoardEntry } from './boards/BoardEntry';
 import { getRestoreError, isRestoring, subscribeRestore } from './boards/backup';
 import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
 import { isDemo, isEmbed } from './boards/demo';
-import { seedDemoBoard, seedEmbedBoard } from './boards/demoSeed';
+import { seedDemoBoard } from './boards/demoSeed';
 import { EmbedComposer } from './ui/EmbedComposer';
 import { CardTitleTag } from './ui/CardTitleTag';
 import { DocFocusOverlay } from './ui/DocFocusOverlay';
@@ -161,12 +161,14 @@ const handleMount = (editor: Editor) => {
   // Embedded demo: land the visitor on content. ?embed=1 is the minified
   // live-preview (one card + composer); ?demo=1 is the full seeded board.
   if (isEmbed()) {
-    seedEmbedBoard(editor);
+    // The EmbedComposer owns the canvas here — it auto-plays the idea→board
+    // transformation on load, then hands off to the visitor — so we don't seed
+    // anything up front.
     // The preview lives in an iframe on the marketing page. Without this, the
     // canvas swallows the scroll wheel and zooms the board out of sight ("it
     // closes when I scroll on it"). Turn off wheel + drag camera moves so the
     // page scrolls normally over the preview and the board stays framed;
-    // programmatic reframing (seed + composer) still works.
+    // programmatic reframing (the composer's autoplay) still works.
     editor.setCameraOptions({ ...editor.getCameraOptions(), wheelBehavior: 'none', panSpeed: 0 });
   } else if (isDemo()) seedDemoBoard(editor);
 };

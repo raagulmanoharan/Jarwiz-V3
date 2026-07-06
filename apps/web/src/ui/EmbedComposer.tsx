@@ -3,13 +3,18 @@
  * used in the marketing site's live-preview iframe. It reuses the prompt-bar
  * styles so it looks identical.
  *
- * On a static host there's no server, so this is a friendly "cheat": the box
- * carries a fixed prompt and each suggestion maps to a hand-authored answer.
- * Sending, or tapping a suggestion, drops a polished card onto the canvas —
- * so the preview feels like the real thing without an API key.
+ * The hero's whole job is to *show the transformation*: a blank canvas becomes a
+ * board of cards. So on load this auto-plays — the idea lands, the goal types
+ * itself into the composer, and the agent fans a board of cards out across the
+ * canvas — then loops. The moment the visitor taps a suggestion, types, or
+ * sends, the demo bows out and hands them the (real) product to poke at.
+ *
+ * On a static host there's no server, so the answers are a friendly "cheat":
+ * each suggestion maps to a hand-authored card. Sending drops a polished card
+ * onto the canvas — so the preview feels like the real thing without an API key.
  */
 
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { createShapeId, stopEventPropagation, useEditor } from 'tldraw';
 
@@ -53,9 +58,20 @@ const FLAGSHIP: Canned = {
   text: "## Launch week\n\n- **Mon** — Tease it: “protect your deep work” on socials + the waitlist\n- **Tue** — Publish the story and a 60-second demo\n- **Wed** — Product Hunt launch; rally early testers\n- **Thu** — Founder AMA; reply to every comment\n- **Fri** — Recap the wins, thank the first users, open feedback\n\nLine up five testimonials and three press contacts the week before.",
 };
 
+// The card the idea starts as — what the visitor "brought" to the canvas.
+const INTRO_GOAL = {
+  title: 'The idea — Focus',
+  text: '## Focus — a calm deep-work app\n\nOne-tap focus sessions, gentle nudges, and a weekly review of where your attention actually went.',
+};
+// The cards the agent fans out during the autoplay, in order.
+const INTRO_BUILD: Canned[] = [...CANNED.slice(0, 2), FLAGSHIP];
+
 export function EmbedComposer() {
   const editor = useEditor();
   const [value, setValue] = useState(FLAGSHIP.prompt);
+  // Once the visitor interacts, the demo stops driving the canvas for good.
+  const takenOver = useRef(false);
+  const timers = useRef<number[]>([]);
 
   // Drop a card, laid out in a tidy grid beside the seed, then reframe so the
   // growing board stays in view.
@@ -72,13 +88,66 @@ export function EmbedComposer() {
       props: { w: 420, h: 200, title, text },
     });
     editor.select(id);
-    requestAnimationFrame(() => {
-      const b = editor.getCurrentPageBounds();
-      if (b) editor.zoomToBounds(b, { inset: 60, targetZoom: 1, animation: { duration: 320 } });
-    });
+    const b = editor.getCurrentPageBounds();
+    if (b) editor.zoomToBounds(b, { inset: 60, targetZoom: 1, animation: { duration: 380 } });
+  };
+
+  // The autoplay: idea → type the goal → fan out the board → hold → loop.
+  useEffect(() => {
+    const after = (ms: number, fn: () => void) => {
+      const t = window.setTimeout(fn, ms) as unknown as number;
+      timers.current.push(t);
+    };
+    const clearTimers = () => {
+      timers.current.forEach((t) => window.clearTimeout(t));
+      timers.current = [];
+    };
+
+    const run = () => {
+      if (takenOver.current) return;
+      // Wipe to a blank canvas and drop the starting idea.
+      const ids = [...editor.getCurrentPageShapeIds()];
+      if (ids.length) editor.deleteShapes(ids);
+      place(INTRO_GOAL.title, INTRO_GOAL.text);
+
+      // Type the goal into the composer, then build the board card by card.
+      const goal = FLAGSHIP.prompt;
+      setValue('');
+      let i = 0;
+      const type = () => {
+        if (takenOver.current) return;
+        i += 1;
+        setValue(goal.slice(0, i));
+        if (i < goal.length) after(30, type);
+        else after(480, build);
+      };
+      const build = () => {
+        if (takenOver.current) return;
+        INTRO_BUILD.forEach((c, k) => after(k * 820, () => !takenOver.current && place(c.title, c.text)));
+        // Hold on the finished board, then replay from a blank canvas.
+        after(INTRO_BUILD.length * 820 + 3200, run);
+      };
+      after(520, type);
+    };
+
+    after(300, run);
+    return clearTimers;
+  }, [editor]);
+
+  // Hand the canvas to the visitor: stop the loop and leave whatever's on screen.
+  const takeOver = () => {
+    takenOver.current = true;
+    timers.current.forEach((t) => window.clearTimeout(t));
+    timers.current = [];
+  };
+
+  const spawn = (title: string, text: string) => {
+    takeOver();
+    place(title, text);
   };
 
   const submit = () => {
+    takeOver();
     const q = value.trim();
     if (!q) return;
     const hit =
@@ -93,7 +162,7 @@ export function EmbedComposer() {
     <div className="jz-promptbar-dock" onPointerDown={stopEventPropagation}>
       <div className="jz-promptbar-chips">
         {CANNED.map((c) => (
-          <button key={c.label} className="jz-pb-chip" title="Spawn a card" onClick={() => place(c.title, c.text)}>
+          <button key={c.label} className="jz-pb-chip" title="Spawn a card" onClick={() => spawn(c.title, c.text)}>
             {c.label}
           </button>
         ))}
@@ -107,6 +176,7 @@ export function EmbedComposer() {
           rows={2}
           readOnly
           style={{ cursor: 'default' }}
+          onFocus={takeOver}
           onKeyDown={(e) => {
             e.stopPropagation();
             if (e.key === 'Enter' && !e.shiftKey) {

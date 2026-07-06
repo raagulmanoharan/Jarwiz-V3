@@ -59,9 +59,10 @@
   --jz-danger: #c2410c;
   --jz-focus: var(--jz-ink-700);
 
-  /* Accent — the one saturated color in the system. The Jarwiz identity mark
-   * (✦ spark), primary actions, and streaming affordances all draw from it. */
-  --jz-accent: #7a5cff;
+  /* Accent — monochrome. The Jarwiz identity mark (✦ spark), primary actions,
+   * and streaming affordances all draw from it. Light theme: near-black accent
+   * with white ink on top. */
+  --jz-accent: #0f0f0f;
   --jz-accent-ink: #ffffff;
   --jz-spark: var(--jz-accent);
 
@@ -156,8 +157,8 @@
   --jz-danger: #f97316;
   --jz-focus: var(--jz-ink-700);
 
-  --jz-accent: #8b70ff;
-  --jz-accent-ink: #ffffff;
+  --jz-accent: #ffffff;
+  --jz-accent-ink: #0a0a0a;
 
   --jz-ink-800: #d4d4d4;
   --jz-ink-200: #333333;

@@ -257,7 +257,7 @@ body,
   animation: jz-pdf-spin 1s linear infinite;
 }
 .jz-ultra-btn--ready {
-  background-image: linear-gradient(100deg, #7a5cff, #b45cff, #5c9bff, #7a5cff);
+  background-image: linear-gradient(100deg, #8a8a8a, #ffffff, #6a6a6a, #8a8a8a);
   animation: jz-ultra-shimmer 6s linear infinite, jz-ultra-glow 2.4s ease-in-out infinite;
 }
 .jz-ultra-spark {

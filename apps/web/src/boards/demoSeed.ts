@@ -84,31 +84,6 @@ export function seedDemoBoard(editor: Editor): void {
   seedAndFrame(editor, shapes);
 }
 
-/** Minified embed: one welcoming example card, centred, so the mini canvas
- *  isn't empty and the composer has something to sit beside. */
-export function seedEmbedBoard(editor: Editor): void {
-  if (editor.getCurrentPageShapeIds().size > 0) {
-    markBoardUsed(getActiveBoardId());
-    return;
-  }
-  const id = createShapeId();
-  editor.createShape({
-    id,
-    type: 'doc-card',
-    x: -210,
-    y: -150,
-    props: {
-      w: 420,
-      h: 210,
-      title: 'Focus — the idea',
-      text: '## Focus — the idea\n\nA calm app that protects deep-work time: one-tap focus sessions, gentle nudges, and a weekly review of where attention actually went.\n\nHit **send**, or tap a suggestion, to build the plan out — every answer lands as a card.',
-    },
-  });
-  markBoardUsed(getActiveBoardId());
-  const b = editor.getShapePageBounds(id);
-  if (b) editor.zoomToBounds(b, { inset: 150, targetZoom: 1, animation: { duration: 0 } });
-}
-
 function seedAndFrame(editor: Editor, shapes: TLShapePartial[]): void {
   editor.createShapes(shapes);
   markBoardUsed(getActiveBoardId());
