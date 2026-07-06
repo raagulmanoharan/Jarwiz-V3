@@ -12,6 +12,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { AskEvent, AskRequest, AskShape, AskSource } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
 import { assetPath, extractAssetPages, extractAssetText, getAsset } from './assets.js';
+import { cacheImagesInRows } from './imageCache.js';
 import { extractSheetText } from './sheets.js';
 import { getMachine, type MachineSkill } from './machines.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
@@ -729,6 +730,9 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
     // to thousands of pixels and wreck the canvas.
     columns = columns.slice(0, 6);
     rows = rows.slice(0, 14).map((r) => r.slice(0, 6));
+    // Cache any web image the model cited into our asset store so the browser
+    // loads it same-origin (no hotlink/CORS breakage).
+    rows = await cacheImagesInRows(rows, signal);
     if (columns.length > 0) {
       // Build live: header first, then fill cells one by one so the user sees
       // the table forming in real time.
@@ -794,6 +798,7 @@ async function* runMachineSkill(
     }
     columns = columns.slice(0, 7);
     rows = rows.slice(0, 12).map((r) => r.slice(0, 7));
+    rows = await cacheImagesInRows(rows, signal);
     if (columns.length > 0) {
       yield { type: 'card.create', shape: 'table', columns, rowCount: rows.length };
       for (let r = 0; r < rows.length; r++) {
