@@ -539,3 +539,46 @@ every primitive reads as one visual family.
 - Lesson for future sessions: when a PR "mentions Gemini," check its BASE —
   `main` is the stale pre-restructure app; all real work lives on the
   monorepo feature branches (PR #2 lineage).
+## 2026-07-05 (later still) — Jarwiz becomes a living entity on the board
+
+**Intent:** "Jarwiz needs to be a living entity on the board, with its own
+mind — like a user cursor on a FigJam board, moving around, looking at what
+you've added. When a card or PDF is added, the time it takes to process
+should be visible: the cursor comes, lands on it, and reads."
+
+- The avatar no longer exists only during agent runs. A rAF **brain**
+  (`agents/AgentCursorLayer.tsx`) keeps it on the canvas full-time with three
+  tiers of attention: an active run owns it outright (presence store,
+  priority unchanged); a freshly dropped link/PDF/image pulls it over into a
+  **"reading…"** pose held for the card's real processing window (link-preview
+  fetch / blob upload, with a cap so a stuck pipeline can't trap it — and a
+  floor so even an instant image gets a beat of attention); otherwise it
+  idles like a curious collaborator — roams the viewport, parks on card
+  corners (the same spot ask choreography uses), drifts faintly in place.
+- **Human motion** (`agents/cursorMotion.ts`): curved bezier arcs with
+  overshoot-and-settle, pace proportional to *screen* distance (so zoom
+  doesn't change the beat), zig-zag reading sweeps, sub-pixel tremor at
+  rest. The `.jz-avatar` CSS transform transition is gone (opacity-only
+  now) — scripted motion and a 420ms transition fight each other.
+- **Attention feed** (`agents/jarwizLife.ts`): ingestion explicitly reports
+  each *user-added* card. Presence stays honest — agent-created cards keep
+  their own run choreography, and reading ends when the shape's own
+  `loading`/`status` props resolve, not on a fake timer.
+- Reduced motion preserves the old calm exactly: no roaming, instant parks,
+  visible only while working.
+
+## 2026-07-05 (continued) — The entity gets a face and a sense of humour
+
+- **Cursor look decided** (from a four-way visual lineup: orb / pointer+pill /
+  sparkle-as-cursor / pointer+sparkle-badge — Raagul picked **pointer + pill**):
+  the classic collaborator arrow in Jarwiz ink with a paper outline, hotspot
+  on the tip, and ONE trailing pill — name always, status beside it while
+  working. Ink pill + paper text auto-invert with the theme tokens. The orb
+  avatar (disc/ring/stacked badge) is retired.
+- **Reading quips**: while a card processes, the pill cycles a shuffled,
+  kind-themed script (links: "dodging cookie banners…"; PDFs: "squinting at
+  fine print…"; images: "admiring the pixels…") — always opening with the
+  honest "reading…". First swap lands early (~1.2s) and the min-read floor
+  rose to 2.8s so even an instant card gets one joke. Each quip enters with
+  a soft rise (`jz-status-swap`, keyed remount; keyframes have no `to` block
+  so the text settles at its resting 0.72 opacity).
