@@ -15,7 +15,7 @@ import { computeRows, GAP_X, GAP_Y } from './flowLayout';
 /** Shapes worth repositioning — nodes, not the connectors between them. */
 const NODE_TYPES = new Set([
   'geo', 'text', 'note', 'frame',
-  'doc-card', 'note-card', 'table-card', 'diagram-card', 'uimockup-card', 'link-card', 'image-card',
+  'doc-card', 'note-card', 'table-card', 'diagram-card', 'prototype-card', 'link-card', 'image-card',
 ]);
 
 /** Can a tidy do anything useful with this selection? (≥2 connected nodes.) */

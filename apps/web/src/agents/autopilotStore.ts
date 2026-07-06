@@ -83,7 +83,7 @@ async function readSSE<T>(body: ReadableStream<Uint8Array>, onEvent: (e: T) => v
 
 /** Rich Jarwiz cards. */
 const CARD_TYPES = new Set([
-  'doc-card', 'note-card', 'table-card', 'diagram-card', 'uimockup-card',
+  'doc-card', 'note-card', 'table-card', 'diagram-card', 'prototype-card',
   'link-card', 'pdf-card', 'youtube-card',
 ]);
 /** Native tldraw primitives that carry text the agent should read (canvas pivot
@@ -115,7 +115,7 @@ function extractCardText(editor: Editor, shape: ReturnType<Editor['getShape']>):
       return typeof p.text === 'string' ? p.text : null;
     case 'diagram-card':
       return typeof p.code === 'string' ? p.code : null;
-    case 'uimockup-card':
+    case 'prototype-card':
       return typeof p.html === 'string' ? p.html : null;
     case 'table-card': {
       const cols = Array.isArray(p.columns) ? (p.columns as string[]) : [];

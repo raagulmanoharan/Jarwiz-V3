@@ -14,7 +14,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { createShapeId, useEditor, type Box, type Editor, type TLShape, type TLShapeId } from 'tldraw';
 import type { ComposeEvent } from '@jarwiz/shared';
-import { DIAGRAM_CARD_SIZE, DOC_CARD_SIZE, TABLE_CARD_SIZE, UIMOCKUP_CARD_SIZE, type DiagramCardShape, type DocCardShape, type TableCardShape, type UiMockupCardShape } from '../shapes';
+import { DIAGRAM_CARD_SIZE, DOC_CARD_SIZE, TABLE_CARD_SIZE, PROTOTYPE_CARD_SIZE, type DiagramCardShape, type DocCardShape, type TableCardShape, type PrototypeCardShape } from '../shapes';
 import { setShapeTitle } from '../shapes/shapeTitle';
 import { readSSE } from './sse';
 import { gatherBoardCards } from './boardText';
@@ -34,7 +34,7 @@ function tableWidth(colCount: number): number {
 
 interface Slot {
   cardId?: TLShapeId;
-  kind: 'doc' | 'table' | 'diagram' | 'uimockup';
+  kind: 'doc' | 'table' | 'diagram' | 'prototype';
   cols?: string[];
   rows?: string[][];
 }
@@ -100,12 +100,12 @@ export function useCompose() {
               props: { w: isGrid ? gridW : DIAGRAM_CARD_SIZE.w, h: DIAGRAM_CARD_SIZE.h, code: '', title: titles.get(slotIdx) ?? '' },
             });
             slots.set(slotIdx, { cardId: id, kind: 'diagram' });
-          } else if (ev.shape === 'uimockup') {
-            editor.createShape<UiMockupCardShape>({
-              id, type: 'uimockup-card', x: originX, y: originY,
-              props: { w: isGrid ? gridW : UIMOCKUP_CARD_SIZE.w, h: UIMOCKUP_CARD_SIZE.h, html: '', title: titles.get(slotIdx) ?? '' },
+          } else if (ev.shape === 'prototype') {
+            editor.createShape<PrototypeCardShape>({
+              id, type: 'prototype-card', x: originX, y: originY,
+              props: { w: isGrid ? gridW : PROTOTYPE_CARD_SIZE.w, h: PROTOTYPE_CARD_SIZE.h, html: '', title: titles.get(slotIdx) ?? '' },
             });
-            slots.set(slotIdx, { cardId: id, kind: 'uimockup' });
+            slots.set(slotIdx, { cardId: id, kind: 'prototype' });
           } else {
             editor.createShape<DocCardShape>({
               id, type: 'doc-card', x: originX, y: originY,
@@ -133,11 +133,11 @@ export function useCompose() {
               id: slot.cardId, type: 'diagram-card',
               props: { code: (s.props as { code: string }).code + ev.textDelta },
             });
-          } else if (s.type === 'uimockup-card') {
+          } else if (s.type === 'prototype-card') {
             // HTML streams into `html`; the shape renders it in a sandboxed
-            // iframe once it settles (same path as a hand-typed mockup ask).
-            editor.updateShape<UiMockupCardShape>({
-              id: slot.cardId, type: 'uimockup-card',
+            // iframe once it settles (same path as a hand-typed prototype ask).
+            editor.updateShape<PrototypeCardShape>({
+              id: slot.cardId, type: 'prototype-card',
               props: { html: (s.props as { html: string }).html + ev.textDelta },
             });
           } else if ('text' in (s.props as object)) {
@@ -240,7 +240,7 @@ function isEmptyCard(s: TLShape): boolean {
   if (s.type === 'table-card')
     return !((s.props as { rows?: string[][] }).rows ?? []).flat().some((c) => String(c).trim());
   if (s.type === 'diagram-card') return !String((s.props as { code?: string }).code ?? '').trim();
-  if (s.type === 'uimockup-card') return !String((s.props as { html?: string }).html ?? '').trim();
+  if (s.type === 'prototype-card') return !String((s.props as { html?: string }).html ?? '').trim();
   return false;
 }
 

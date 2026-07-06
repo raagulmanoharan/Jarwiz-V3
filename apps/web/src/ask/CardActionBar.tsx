@@ -153,13 +153,13 @@ export function CardActionBar() {
       );
     }
   }
-  // A UI mockup refines as a design, not as prose — offer moves that reshape
-  // the rendered interface, kept in place (the refine keeps the mockup format).
-  if (!sel.multi && hasContent && sel.type === 'uimockup-card') {
+  // A UI prototype refines as a design, not as prose — offer moves that reshape
+  // the rendered interface, kept in place (the refine keeps the prototype format).
+  if (!sel.multi && hasContent && sel.type === 'prototype-card') {
     transforms.push(
-      { label: '✦ Refine the design', run: () => ask('Refine this UI mockup — improve the visual hierarchy, spacing, and polish, keeping the same intent and content.', [id], { targetId: id, skipClarify: true, logLabel: 'Refined the mockup' }) },
+      { label: '✦ Refine the design', run: () => ask('Refine this UI prototype — improve the visual hierarchy, spacing, and polish, keeping the same intent and content.', [id], { targetId: id, skipClarify: true, logLabel: 'Refined the prototype' }) },
       { label: 'Try another layout', run: () => ask('Redesign this UI with a different layout, same content and purpose.', [id], { targetId: id, skipClarify: true }) },
-      { label: 'Regenerate', run: () => ask('Regenerate this UI mockup, same intent, fresh take.', [id], { targetId: id }) },
+      { label: 'Regenerate', run: () => ask('Regenerate this UI prototype, same intent, fresh take.', [id], { targetId: id }) },
     );
   }
   // An image is a vision input — offer moves that read the picture.

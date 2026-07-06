@@ -6,8 +6,8 @@
  */
 
 import { createShapeId, stopEventPropagation, useEditor, useValue } from 'tldraw';
-import { MousePointer2, Hand, Type, StickyNote, Shapes, ArrowUpRight, Upload, Folder, HelpCircle } from 'lucide-react';
-import { DOC_CARD_SIZE, NOTE_CARD_SIZE, NOTE_PAPER, type DocCardShape, type NoteCardShape } from '../shapes';
+import { MousePointer2, Hand, Type, StickyNote, Shapes, ArrowUpRight, AppWindow, Upload, Folder, HelpCircle } from 'lucide-react';
+import { DOC_CARD_SIZE, NOTE_CARD_SIZE, NOTE_PAPER, PROTOTYPE_PROMPT_SIZE, type DocCardShape, type NoteCardShape, type PrototypeCardShape } from '../shapes';
 import { toggleSidePanel } from './sidePanelStore';
 import { toggleHelp } from './help';
 import { MachinesRail } from './MachinesPalette';
@@ -81,6 +81,22 @@ function spawnDocCard(editor: ReturnType<typeof useEditor>) {
   focusNewShape(editor, id);
 }
 
+/** Drop a Prototype card, open for its prompt — the user types what UI to build
+ *  ("a timer app") and the card generates a live, self-contained UI in place. */
+function spawnPrototypeCard(editor: ReturnType<typeof useEditor>) {
+  const { w, h } = PROTOTYPE_PROMPT_SIZE;
+  const { x, y } = findFreeSpot(editor, w, h);
+  const id = createShapeId();
+  editor.createShape<PrototypeCardShape>({
+    id,
+    type: 'prototype-card',
+    x,
+    y,
+    props: { w, h, html: '', title: '', prompt: '', status: 'idle' },
+  });
+  focusNewShape(editor, id);
+}
+
 /** One sticky, open for typing — stickies are the USER's annotation medium
  *  (owner decision 2026-07-05), so they need a first-class creator; until now
  *  they only appeared in AI-generated batches. */
@@ -121,6 +137,9 @@ export function ToolRail() {
       </RailTool>
       <RailTool label="Arrow (A)" active={toolId === 'arrow'} onClick={() => editor.setCurrentTool('arrow')}>
         <ArrowUpRight {...ICON_PROPS} />
+      </RailTool>
+      <RailTool label="Prototype a UI" active={false} onClick={() => spawnPrototypeCard(editor)}>
+        <AppWindow {...ICON_PROPS} />
       </RailTool>
       <MachinesRail />
       <RailTool label="Upload a PDF" active={false} onClick={() => pickAndIngestPdfs(editor)}>

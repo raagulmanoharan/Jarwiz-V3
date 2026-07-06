@@ -3224,12 +3224,14 @@ body,
   color: var(--jz-ink-400);
 }
 
-/* ─── UI mockup card (generative UI, rendered in a sandboxed iframe) ───────── */
-.jz-uimockup {
+/* ─── UI prototype card (generative UI, rendered in a sandboxed iframe) ───────── */
+/* No header chrome — the card IS the screen. The frame (or the prompt composer)
+   fills it edge-to-edge; the card's name rides above it as a floating label tag
+   (CardTitleTag), like the doc/diagram cards. */
+.jz-prototype {
   width: 100%;
   height: 100%;
   display: flex;
-  flex-direction: column;
   border-radius: var(--jz-radius-lg);
   box-shadow: var(--jz-e2);
   overflow: hidden;
@@ -3239,70 +3241,96 @@ body,
   box-sizing: border-box;
 }
 
-.jz-uimockup-head {
-  flex: none;
-  min-height: 38px;
-  display: flex;
-  align-items: center;
-  gap: var(--jz-space-2);
-  padding: var(--jz-space-2) var(--jz-space-5);
-  border-bottom: 1px solid var(--jz-hairline);
+/* The rendered UI when it's live and interactive — a subtle accent ring says
+   "this is clickable" (drag the card by its edge/handles to move it). */
+.jz-prototype--interactive {
+  border-color: color-mix(in srgb, var(--jz-accent) 45%, var(--jz-hairline));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--jz-accent) 14%, transparent), var(--jz-e2);
 }
 
-.jz-uimockup-kind {
-  color: var(--jz-accent);
-  font-size: 11px;
-}
-
-.jz-uimockup-title {
-  font-family: var(--jz-font-ui);
-  font-size: var(--jz-text-heading-size);
-  line-height: var(--jz-text-heading-lh);
-  font-weight: 650;
-  color: var(--jz-ink-900);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.jz-uimockup-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  position: relative;
-  /* A neutral checker-free canvas so the mockup reads on its own; the frame
-     paints its own background over this. */
-  background: var(--jz-surface-2, var(--jz-card-surface));
-}
-
-.jz-uimockup-frame {
+/* The UI fills the card edge-to-edge — no inner padding — so the card frame is
+   the screen, exactly like the PDF card's page. */
+.jz-prototype-frame {
   width: 100%;
   height: 100%;
   border: 0;
   display: block;
-  /* Live preview, not an interactive surface — clicks fall through to the
-     canvas so the card drags/selects like every other card. */
-  pointer-events: none;
   background: #fff;
 }
 
-.jz-uimockup-code {
-  margin: 0;
-  height: 100%;
-  overflow: hidden;
+/* The small prompt card (dropped from the rail) / the generating state — the
+   composer or spinner fills the card. */
+.jz-prototype--composer {
+  flex-direction: column;
   padding: var(--jz-space-5);
-  box-sizing: border-box;
-  font-family: var(--jz-font-mono);
-  font-size: 12px;
-  line-height: 1.55;
-  color: var(--jz-ink-600);
-  white-space: pre-wrap;
-  word-break: break-word;
+  gap: var(--jz-space-3);
+  background: var(--jz-card-surface);
 }
 
-.jz-uimockup-empty {
-  padding: var(--jz-space-5);
+.jz-prototype-input {
+  display: block;
+  width: 100%;
+  min-height: 60px;
+  box-sizing: border-box;
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-md);
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  -webkit-appearance: none;
+  background: color-mix(in srgb, var(--jz-ink-900) 3%, transparent);
+  color: var(--jz-ink-900);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  padding: 10px 12px;
+}
+.jz-prototype-input:focus,
+.jz-prototype-input:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--jz-accent) 45%, var(--jz-hairline));
+}
+.jz-prototype-input::placeholder { color: var(--jz-ink-400); }
+
+.jz-prototype-error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--jz-danger, #d64545);
+}
+
+.jz-prototype-run {
+  margin-top: auto;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 650;
+  padding: 9px 12px;
+  cursor: pointer;
+  transition: filter var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-prototype-run:hover { filter: brightness(1.06); }
+.jz-prototype-run:disabled { opacity: 0.45; cursor: default; }
+
+/* While the UI is being generated (nothing to show yet). */
+.jz-prototype-loading {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--jz-space-2);
+  background: var(--jz-card-surface);
+  color: var(--jz-ink-500);
   font-size: var(--jz-text-body-size);
-  color: var(--jz-ink-400);
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-prototype-run { transition: none; }
 }
 
 /* ─── Agent task control (cancel while running, error + retry) ────────────── */

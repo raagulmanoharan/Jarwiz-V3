@@ -7,7 +7,7 @@
 import { renderPlaintextFromRichText, type Editor, type TLRichText, type TLShape } from 'tldraw';
 
 export const ASKABLE = new Set([
-  'pdf-card', 'doc-card', 'table-card', 'diagram-card', 'uimockup-card', 'note-card', 'image-card', 'link-card',
+  'pdf-card', 'doc-card', 'table-card', 'diagram-card', 'prototype-card', 'note-card', 'image-card', 'link-card',
   'youtube-card', 'sheet-card',
   'geo', 'text', 'note', 'arrow', 'frame', 'group',
 ]);
@@ -31,7 +31,7 @@ export function hasAskableContent(editor: Editor, shape: TLShape | undefined): b
       return Boolean(str(p.text));
     case 'diagram-card':
       return Boolean(str(p.code));
-    case 'uimockup-card':
+    case 'prototype-card':
       return Boolean(str(p.html));
     case 'table-card': {
       const rows = Array.isArray(p.rows) ? (p.rows as unknown[][]) : [];

@@ -1,0 +1,199 @@
+/**
+ * Prototype card — a generative-UI card ("describe a screen, see it built").
+ * Two ways in: drop it from the rail as a small prompt card (Thinking-Machine
+ * style) and type what to build, or generate one straight from the composer /
+ * "/" Prototype mode. Either way the model returns ONE self-contained HTML
+ * document that renders LIVE inside the card; the small prompt card grows to a
+ * full canvas the moment generation starts.
+ *
+ * No header chrome — the card IS the screen. Rendering & safety: the document
+ * renders in a SANDBOXED iframe with `sandbox="allow-scripts"` and NO
+ * `allow-same-origin` (an opaque origin) — its scripts run (a timer counts down,
+ * a tab switches) but it can't reach our app's DOM, cookies, or storage. The
+ * frame fills the card edge-to-edge like the PDF card's page, and the rendered
+ * UI is directly interactive; while it's still streaming the frame stays inert.
+ */
+
+import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
+import {
+  HTMLContainer,
+  Rectangle2d,
+  ShapeUtil,
+  T,
+  resizeBox,
+  stopEventPropagation,
+  useEditor,
+  type RecordProps,
+  type TLResizeInfo,
+  type TLShape,
+} from 'tldraw';
+import { ArrowRight, Loader2 } from 'lucide-react';
+import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
+import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
+import { requestPrototypeRun } from '../agents/prototypeRun';
+
+export interface PrototypeCardProps {
+  w: number;
+  h: number;
+  /** A self-contained HTML document (inline CSS/JS, no external resources). */
+  html: string;
+  title?: string;
+  /** What the user asked to prototype (kept so it can be re-generated). */
+  prompt: string;
+  /** 'idle' (awaiting a prompt) | 'running' | 'done' | 'error'. */
+  status: string;
+}
+
+declare module '@tldraw/tlschema' {
+  interface TLGlobalShapePropsMap {
+    'prototype-card': PrototypeCardProps;
+  }
+}
+
+export type PrototypeCardShape = TLShape<'prototype-card'>;
+
+/** The rendered UI canvas — a screen-sized card. */
+export const PROTOTYPE_CARD_SIZE = { w: 520, h: 400 };
+/** The small prompt card you drop from the rail (grows on generate). */
+export const PROTOTYPE_PROMPT_SIZE = { w: 300, h: 168 };
+
+/** Strip any ``` fences the model might wrap the document in. */
+function stripFences(html: string): string {
+  return html.replace(/^\s*```(?:html)?\s*/i, '').replace(/```\s*$/i, '');
+}
+
+export class PrototypeCardShapeUtil extends ShapeUtil<PrototypeCardShape> {
+  static override type = 'prototype-card' as const;
+
+  static override props: RecordProps<PrototypeCardShape> = {
+    w: T.number,
+    h: T.number,
+    html: T.string,
+    title: T.string,
+    prompt: T.string,
+    status: T.string,
+  };
+
+  override getDefaultProps(): PrototypeCardShape['props'] {
+    return { ...PROTOTYPE_CARD_SIZE, html: '', title: '', prompt: '', status: 'idle' };
+  }
+
+  override canResize() {
+    return true;
+  }
+  override onResize(shape: PrototypeCardShape, info: TLResizeInfo<PrototypeCardShape>) {
+    return resizeBox(shape, info, { minWidth: 240, minHeight: 140 });
+  }
+  override getGeometry(shape: PrototypeCardShape) {
+    return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true });
+  }
+  override getIndicatorPath(shape: PrototypeCardShape) {
+    return roundedRectPath(shape.props.w, shape.props.h, CARD_RADIUS);
+  }
+  override component(shape: PrototypeCardShape) {
+    return (
+      <HTMLContainer>
+        <PrototypeCardBody shape={shape} />
+      </HTMLContainer>
+    );
+  }
+}
+
+function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
+  const editor = useEditor();
+  const { html, title, prompt, status } = shape.props;
+  const doc = stripFences(html);
+  const hasDoc = Boolean(doc.trim());
+  const running = status === 'running';
+  const errored = status === 'error';
+
+  const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
+  const isStreaming = streamingSet.has(shape.id) || running;
+  // The rendered UI is directly interactive once it has settled; while it's
+  // still streaming the frame stays inert so a half-written UI isn't clickable.
+  const interactive = hasDoc && !isStreaming;
+
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const setPrompt = (v: string) =>
+    editor.updateShape<PrototypeCardShape>({ id: shape.id, type: 'prototype-card', props: { prompt: v } });
+  const generate = () => {
+    if (!prompt.trim() || running) return;
+    requestPrototypeRun(shape.id);
+  };
+
+  // Auto-grow the prompt input with its content, and focus a freshly-dropped
+  // (empty) card so the user can start typing straight away.
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = prompt ? `${el.scrollHeight}px` : '';
+  }, [prompt]);
+  useEffect(() => {
+    if (!hasDoc && !running) inputRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A live/complete document → the rendered UI; running with nothing yet → a
+  // spinner; otherwise (idle/error/empty) → the small prompt composer.
+  if (hasDoc) {
+    return (
+      <div className={`jz-prototype${interactive ? ' jz-prototype--interactive' : ''}`}>
+        <iframe
+          className="jz-prototype-frame"
+          title={title || 'Prototype'}
+          sandbox="allow-scripts allow-forms"
+          referrerPolicy="no-referrer"
+          srcDoc={doc}
+          style={{ pointerEvents: interactive ? 'auto' : 'none' }}
+        />
+      </div>
+    );
+  }
+
+  if (running) {
+    return (
+      <div className="jz-prototype jz-prototype--composer">
+        <div className="jz-prototype-loading">
+          <Loader2 size={16} className="jz-machine-spin" />
+          <span>Generating the UI…</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="jz-prototype jz-prototype--composer">
+      <textarea
+        ref={inputRef}
+        rows={2}
+        className="jz-prototype-input"
+        value={prompt}
+        placeholder="Describe a UI to prototype — e.g. “a timer app”"
+        style={{ pointerEvents: 'all' }}
+        onPointerDown={stopEventPropagation}
+        onPointerMove={stopEventPropagation}
+        onPointerUp={stopEventPropagation}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            e.preventDefault();
+            generate();
+          }
+        }}
+        onChange={(e) => setPrompt(e.currentTarget.value)}
+      />
+      {errored ? <p className="jz-prototype-error">Generation failed — try again.</p> : null}
+      <button
+        className="jz-prototype-run"
+        disabled={!prompt.trim() || running}
+        style={{ pointerEvents: 'all' }}
+        onPointerDown={stopEventPropagation}
+        onClick={generate}
+        title="Generate (⌘↵)"
+      >
+        Generate <ArrowRight size={14} />
+      </button>
+    </div>
+  );
+}

@@ -27,8 +27,14 @@ import {
 const MAX_TOKENS = 1400;
 /** A research dossier is a longer artifact — several cited sections. */
 const RESEARCH_MAX_TOKENS = 2800;
+/** A prototype is a whole self-contained HTML document (markup + inline CSS/JS)
+ *  — it needs real headroom or the UI truncates mid-tag. */
+const PROTOTYPE_MAX_TOKENS = 8000;
 /** Deep runs chain many searches; the CLI sidecar needs matching headroom. */
 const RESEARCH_SIDECAR_TIMEOUT_MS = 300_000;
+/** The keyless CLI can't token-stream, so it generates the whole document in one
+ *  shot before chunking it back — a long doc needs a generous ceiling. */
+const PROTOTYPE_SIDECAR_TIMEOUT_MS = 240_000;
 const PER_SOURCE_CHARS = 8_000;
 
 const DOC_SYSTEM = `You answer a question about the provided source document(s) on a canvas, as a clear written card. Use clean markdown: an optional short "# " title line, then tight paragraphs (and sub-headings only if it genuinely helps). A small markdown table (| a | b | rows) or an image (![alt](url) — only a real URL from the sources) is welcome where it genuinely clarifies; "---" on its own line draws a divider. Never include code blocks, fenced code, or Mermaid/diagram source — if a diagram would help, describe the flow in words (the canvas has a separate diagram tool). Ground every claim in the provided content; if the sources don't contain the answer, say so plainly rather than inventing. Be specific and concise — no preamble, no sign-off.`;
@@ -56,13 +62,14 @@ const DIAGRAM_SYSTEM = `You turn the user's request and the source document(s) i
 
 Output ONLY valid Mermaid source: no prose, no explanation, NO \`\`\` code fences. Put the diagram-type keyword on the very first line. Keep node labels short and ground every node in the provided content. Aim for 6–18 nodes — clear beats exhaustive. Wrap any label containing punctuation or spaces in double quotes. Never invent facts that aren't in the sources.`;
 
-const UIMOCKUP_SYSTEM = `You turn the user's request (and any source content) into ONE self-contained HTML mockup of a user interface — a screen, component, landing page, dashboard, form, card, or email — that renders live. Think "describe a UI, see it rendered": design something clean, modern, and believable, grounded in the request's actual subject and copy (real-sounding labels and content, not lorem ipsum).
+const PROTOTYPE_SYSTEM = `You turn the user's request (and any source content) into ONE self-contained HTML prototype of a user interface — a screen, component, landing page, dashboard, form, card, or email — that renders live. Think "describe a UI, see it rendered": design something clean, modern, and believable, grounded in the request's actual subject and copy (real-sounding labels and content, not lorem ipsum).
 
 HARD REQUIREMENTS — the document is rendered in a sandboxed iframe with NO network access, so it must be COMPLETELY self-contained:
 - Output a full HTML document beginning with <!doctype html>.
 - Put ALL CSS in a single inline <style> block. Any JS goes in an inline <script>. NO external resources of any kind: no <link>, no CDN URLs, no external stylesheets, no web-font imports, no remote images. Anything fetched over the network will silently fail.
 - For type, use a system font stack (e.g. -apple-system, "Segoe UI", Roboto, sans-serif). For imagery/icons, use inline SVG, CSS shapes/gradients, or emoji — never an external <img src="http…">.
-- Design for a card-sized viewport: sensible max-width, generous spacing, a clear visual hierarchy, real interactive affordances (buttons, inputs, nav) styled but not necessarily wired.
+- FILL THE FRAME. The document is the screen: set html,body{margin:0} and let the UI span the full width and height — the app's own background reaches every edge, with NO outer page margin or a small card floating in empty space. Put breathing room INSIDE the layout (padding, spacing), not as a dead border around it.
+- Make it real, not a static picture: wire up the obvious interactions with a little inline JS (a timer counts down, a button toggles, a tab switches, an input updates a value). Clean, modern, clear visual hierarchy.
 
 Output ONLY the raw HTML document — no prose, no explanation, NO \`\`\` code fences before or after.`;
 
@@ -97,9 +104,9 @@ function looksLikeDiagram(prompt: string): boolean {
   );
 }
 
-/** A "mock up / wireframe / design a UI" request (→ a live HTML mockup card). */
-function looksLikeMockup(prompt: string): boolean {
-  return /\b(mock-?up|wireframe|ui design|ux design|landing page|web ?page|design (a|the|me)? ?(screen|page|ui|interface|app|dashboard|form|website|site|component|layout)|prototype (a|the|screen|ui)|html (page|mockup|prototype))\b/i.test(
+/** A "mock up / wireframe / design a UI" request (→ a live HTML prototype card). */
+function looksLikePrototype(prompt: string): boolean {
+  return /\b(mock-?up|wireframe|ui design|ux design|landing page|web ?page|design (a|the|me)? ?(screen|page|ui|interface|app|dashboard|form|website|site|component|layout)|prototype (a|the|screen|ui)|html (page|prototype|prototype))\b/i.test(
     prompt,
   );
 }
@@ -251,7 +258,7 @@ function pickShape(prompt: string, current?: AskShape): AskShape {
   // stickies are the USER's annotation medium, not an AI output (owner
   // decision 2026-07-05). Brainstorms land as lists like any idea dump.
   // The affinity event machinery stays for possible user-driven layouts.
-  if (looksLikeMockup(prompt)) return 'uimockup';
+  if (looksLikePrototype(prompt)) return 'prototype';
   if (looksLikeDiagram(prompt)) return 'diagram';
   // An explicit "as prose" request wins over the keep-current fallback, so a
   // table/diagram can be turned back into a written card on demand.
@@ -442,6 +449,8 @@ function withImageNote(user: string, images: ImageInput[]): string {
 interface GenOpts {
   web?: boolean;
   deep?: boolean;
+  /** A prototype card — a long HTML document: bigger token + sidecar budget. */
+  prototype?: boolean;
   framePaths?: string[];
   imageData?: ImageInput[];
 }
@@ -450,9 +459,13 @@ interface GenOpts {
 function genBudget(opts: GenOpts) {
   return {
     tools: opts.deep ? researchToolset() : opts.web ? webToolset() : undefined,
-    maxTokens: opts.deep ? RESEARCH_MAX_TOKENS : MAX_TOKENS,
+    maxTokens: opts.deep ? RESEARCH_MAX_TOKENS : opts.prototype ? PROTOTYPE_MAX_TOKENS : MAX_TOKENS,
     maxTurns: opts.deep ? RESEARCH_MAX_CONTINUATIONS : WEB_MAX_CONTINUATIONS,
-    sidecarTimeoutMs: opts.deep ? RESEARCH_SIDECAR_TIMEOUT_MS : undefined,
+    sidecarTimeoutMs: opts.deep
+      ? RESEARCH_SIDECAR_TIMEOUT_MS
+      : opts.prototype
+        ? PROTOTYPE_SIDECAR_TIMEOUT_MS
+        : undefined,
   };
 }
 
@@ -684,8 +697,8 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
     return;
   }
 
-  if (shape === 'uimockup') {
-    yield* streamUiMockup(user, signal, images);
+  if (shape === 'prototype') {
+    yield* streamPrototype(user, signal, images);
     return;
   }
 
@@ -830,19 +843,19 @@ async function* streamDiagram(
 }
 
 /**
- * Stream a UI mockup. The model writes ONE self-contained HTML document token
+ * Stream a UI prototype. The model writes ONE self-contained HTML document token
  * by token (the card shows the markup forming, then renders it in a sandboxed
  * iframe on `card.done`). The server doesn't parse the HTML — the card renders
  * it as-is in an opaque-origin sandbox.
  */
-async function* streamUiMockup(
+async function* streamPrototype(
   user: string,
   signal: AbortSignal,
   images: ImageInput[] = [],
 ): AsyncGenerator<AskEvent> {
-  yield { type: 'card.create', shape: 'uimockup' };
+  yield { type: 'card.create', shape: 'prototype' };
   try {
-    for await (const ev of generateStream(UIMOCKUP_SYSTEM, user, signal, images)) {
+    for await (const ev of generateStream(PROTOTYPE_SYSTEM, user, signal, images, { prototype: true })) {
       if (signal.aborted) return;
       if (ev.type === 'status') yield { type: 'status', message: ev.message };
       else yield { type: 'card.delta', textDelta: ev.text };
