@@ -56,6 +56,24 @@ Return ONLY JSON (no prose, no code fences) in exactly this shape:
 }
 Every point must be concrete, specific and defensible, and cite [n] matching the sources list. No generic filler.`;
 
+const EFFORTIMPACT = `You are a product strategist running an EFFORT vs IMPACT prioritisation.
+The user's brief contains a set of items to prioritise (features, ideas, tasks, initiatives) plus optional context. If the brief names no concrete items, infer a sensible set of 6–9 from the subject.
+For EACH item:
+1. Score IMPACT as High or Low — value to users/the business. Be decisive; never "Medium".
+2. Score EFFORT as High or Low — cost, time and complexity to deliver. Be decisive.
+3. Place it in its quadrant: Quick win (High impact, Low effort), Big bet (High impact, High effort), Fill-in (Low impact, Low effort), Time sink (Low impact, High effort).
+Return ONLY JSON (no prose, no code fences) in exactly this shape:
+{
+  "quickWins": [{"name":"item", "note":"one crisp clause on why it's high impact + low effort"}, ...],
+  "bigBets":   [{"name":"item", "note":"..."}, ...],
+  "fillIns":   [{"name":"item", "note":"..."}, ...],
+  "timeSinks": [{"name":"item", "note":"..."}, ...],
+  "scores":    [{"item":"item", "impact":"High", "effort":"Low", "quadrant":"Quick win"}, ...],
+  "verdict":   "2–4 sentences: what to do first, what to defer, what to drop",
+  "sources":   [{"n":1,"title":"...","url":"https://..."}]
+}
+Put every item in exactly one quadrant AND in "scores". A quadrant with no items is an empty array — do not force-fill it. Only include "sources" if you actually consulted the web.`;
+
 const COMPETITIVE = `You are a competitive-intelligence analyst. RESEARCH the given subject and its real, most relevant competitors across the live web (their sites, pricing pages, reviews, recent news) before answering.
 Return ONLY JSON (no prose, no code fences): {"columns": ["Dimension", "<the subject>", "<Competitor 1>", "<Competitor 2>", ...], "rows": [["Positioning", ...], ...]}.
 The first column is the dimension; use rows like Positioning, Pricing, Key strengths, Weaknesses, Target user, Differentiator, Momentum. Name the actual leading competitors as the other columns. Every cell must be specific and grounded in what you found — never "N/A" where a judgement is possible. Max 7 columns and 8 rows.`;
@@ -82,6 +100,16 @@ export const MACHINE_SKILLS: Record<string, MachineSkill> = {
     optionalOutputs: [
       { id: 'tows', label: 'TOWS strategy' },
       { id: 'verdict', label: 'Strategic verdict' },
+    ],
+  },
+  effortimpact: {
+    id: 'effortimpact',
+    output: 'board',
+    deep: false,
+    systemPrompt: EFFORTIMPACT,
+    optionalOutputs: [
+      { id: 'verdict', label: 'Sequencing verdict' },
+      { id: 'scores', label: 'Score table' },
     ],
   },
   competitive: { id: 'competitive', output: 'table', deep: true, systemPrompt: COMPETITIVE },

@@ -19,18 +19,25 @@ import type { MachineSkill } from './machines.js';
 const MAX_TOKENS = 4000;
 const SIDECAR_TIMEOUT_MS = 300_000;
 
-/** One deep, tool-using research pass; returns the model's raw text (JSON). */
-async function research(system: string, user: string, signal: AbortSignal): Promise<string> {
+/** A structured pass returning the model's raw text (JSON). `useTools` gates the
+ *  deep web-research toolset: on for research machines (SWOT), off for a
+ *  pure-reasoning machine (Effort–Impact) so it answers in one snappy call. */
+async function research(system: string, user: string, signal: AbortSignal, useTools = true): Promise<string> {
   if (process.env.ANTHROPIC_API_KEY?.trim()) {
     const client = new Anthropic();
-    const tools = researchToolset();
+    const tools = useTools ? researchToolset() : undefined;
     const messages: Anthropic.MessageParam[] = [{ role: 'user', content: user }];
     let text = '';
-    for (let turn = 0; turn <= RESEARCH_MAX_CONTINUATIONS; turn++) {
-      const msg = await client.messages.create(
-        { model: AGENT_MODEL, max_tokens: MAX_TOKENS, system, messages, tools },
-        { signal },
-      );
+    const maxTurns = useTools ? RESEARCH_MAX_CONTINUATIONS : 0;
+    for (let turn = 0; turn <= maxTurns; turn++) {
+      const params: Anthropic.MessageCreateParamsNonStreaming = {
+        model: AGENT_MODEL,
+        max_tokens: MAX_TOKENS,
+        system,
+        messages,
+      };
+      if (tools) params.tools = tools;
+      const msg = await client.messages.create(params, { signal });
       text += msg.content
         .filter((b): b is Anthropic.TextBlock => b.type === 'text')
         .map((b) => b.text)
@@ -41,7 +48,7 @@ async function research(system: string, user: string, signal: AbortSignal): Prom
     return text;
   }
   if (sidecarAvailable()) {
-    return sidecarGenerate({ system, user, signal, web: true, timeoutMs: SIDECAR_TIMEOUT_MS });
+    return sidecarGenerate({ system, user, signal, web: useTools, timeoutMs: SIDECAR_TIMEOUT_MS });
   }
   throw new Error('No model available (set ANTHROPIC_API_KEY or install the Claude CLI).');
 }
@@ -125,9 +132,75 @@ function buildSwotCards(o: Record<string, unknown>, options: string[]): CardSpec
   return cards;
 }
 
+/** A quadrant's items as a markdown bullet list (name in bold + a short note). */
+function itemList(v: unknown): string {
+  const items = Array.isArray(v) ? (v as Array<Record<string, unknown>>) : [];
+  const md = items
+    .map((it) => {
+      const name = String(it?.name ?? '').trim();
+      const note = String(it?.note ?? '').trim();
+      if (!name) return '';
+      return note ? `- **${name}** — ${note}` : `- ${name}`;
+    })
+    .filter(Boolean)
+    .join('\n');
+  return md || '_None_'; // keep the quadrant so the 2×2 grid stays intact
+}
+
+/** Effort–Impact board: the four quadrants of the 2×2 (columns = effort, rows =
+ *  impact), then the optional score table + sequencing verdict to the right. */
+function buildEffortImpactCards(o: Record<string, unknown>, options: string[]): CardSpec[] {
+  const sources = Array.isArray(o.sources) ? (o.sources as Array<Record<string, unknown>>) : [];
+  const sourceMd = sources
+    .map((s, i) => `${s.n ?? i + 1}. ${String(s.title ?? 'source')} — ${String(s.url ?? '')}`)
+    .join('\n');
+
+  const cards: CardSpec[] = [
+    // Top row = HIGH impact, bottom = LOW; left column = LOW effort, right = HIGH.
+    { title: 'Quick wins · low effort, high impact', shape: 'list', md: itemList(o.quickWins), col: 0, row: 0 },
+    { title: 'Big bets · high effort, high impact', shape: 'list', md: itemList(o.bigBets), col: 1, row: 0 },
+    { title: 'Fill-ins · low effort, low impact', shape: 'list', md: itemList(o.fillIns), col: 0, row: 1 },
+    { title: 'Time sinks · high effort, low impact', shape: 'list', md: itemList(o.timeSinks), col: 1, row: 1 },
+  ];
+
+  let extraCol = 2;
+  if (options.includes('verdict')) {
+    const verdict = String(o.verdict ?? '').trim();
+    if (verdict) {
+      cards.push({
+        title: 'Sequencing verdict',
+        shape: 'doc',
+        col: extraCol++,
+        row: 0,
+        md: `${verdict}${sourceMd ? `\n\n## Sources\n${sourceMd}` : ''}`,
+      });
+    }
+  }
+  if (options.includes('scores')) {
+    const rows = (Array.isArray(o.scores) ? (o.scores as Array<Record<string, unknown>>) : []).map((s) => [
+      String(s.item ?? ''),
+      String(s.impact ?? ''),
+      String(s.effort ?? ''),
+      String(s.quadrant ?? ''),
+    ]);
+    if (rows.length > 0) {
+      cards.push({
+        title: 'Scores',
+        shape: 'table',
+        col: extraCol++,
+        row: 0,
+        columns: ['Item', 'Impact', 'Effort', 'Quadrant'],
+        rows,
+      });
+    }
+  }
+  return cards;
+}
+
 /** The registry of board builders, keyed by machine id. */
 const BOARD_BUILDERS: Record<string, (o: Record<string, unknown>, options: string[]) => CardSpec[]> = {
   swot: buildSwotCards,
+  effortimpact: buildEffortImpactCards,
 };
 
 /**
@@ -147,7 +220,7 @@ export async function* streamMachineBoard(
   }
   let raw: string;
   try {
-    raw = await research(machine.systemPrompt, subject.trim() || '(no subject)', signal);
+    raw = await research(machine.systemPrompt, subject.trim() || '(no subject)', signal, machine.deep);
   } catch (error) {
     yield { type: 'error', message: error instanceof Error ? error.message : 'Research failed' };
     return;

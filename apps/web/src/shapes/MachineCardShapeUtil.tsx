@@ -19,7 +19,7 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
-import { Grid2x2, Swords, Scale, ShieldAlert, CornerDownRight, UserRound, ArrowRight, Loader2, Check } from 'lucide-react';
+import { Grid2x2, LayoutGrid, Swords, Scale, ShieldAlert, CornerDownRight, UserRound, ArrowRight, Loader2, Check } from 'lucide-react';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { MACHINES, type Machine } from '../machines/catalog';
 import { requestMachineRun } from '../machines/runStore';
@@ -48,6 +48,7 @@ export const MACHINE_CARD_SIZE = { w: 300, h: 286 };
 
 const ICONS: Record<string, React.ReactNode> = {
   Grid2x2: <Grid2x2 size={16} />,
+  LayoutGrid: <LayoutGrid size={16} />,
   Swords: <Swords size={16} />,
   Scale: <Scale size={16} />,
   ShieldAlert: <ShieldAlert size={16} />,

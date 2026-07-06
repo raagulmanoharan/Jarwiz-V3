@@ -49,6 +49,18 @@ export const MACHINES: Machine[] = [
     ],
   },
   {
+    id: 'effortimpact',
+    name: 'Effort–Impact Matrix',
+    blurb: 'Sort ideas into a quick-wins 2×2',
+    description: 'Scores each idea on effort and impact, then drops it into a Quick wins / Big bets / Fill-ins / Time sinks quadrant.',
+    icon: 'LayoutGrid',
+    output: 'board',
+    options: [
+      { id: 'verdict', label: 'Sequencing verdict', default: true },
+      { id: 'scores', label: 'Score table', default: false },
+    ],
+  },
+  {
     id: 'competitive',
     name: 'Competitive Analysis',
     blurb: 'Web-researched comparison vs real competitors',

@@ -7,13 +7,14 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { createShapeId, stopEventPropagation, useEditor, type Editor } from 'tldraw';
-import { Boxes, Grid2x2, Swords, Scale, ShieldAlert, CornerDownRight, UserRound } from 'lucide-react';
+import { Boxes, Grid2x2, LayoutGrid, Swords, Scale, ShieldAlert, CornerDownRight, UserRound } from 'lucide-react';
 import { MACHINE_CARD_SIZE, type MachineCardShape } from '../shapes';
 import { MACHINES, type Machine } from '../machines/catalog';
 import { getTheme, subscribeTheme } from './theme';
 
 const ICONS: Record<string, React.ReactNode> = {
   Grid2x2: <Grid2x2 size={16} />,
+  LayoutGrid: <LayoutGrid size={16} />,
   Swords: <Swords size={16} />,
   Scale: <Scale size={16} />,
   ShieldAlert: <ShieldAlert size={16} />,
