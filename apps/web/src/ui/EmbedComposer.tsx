@@ -20,33 +20,37 @@ interface Canned {
   text: string;
 }
 
+// One cohesive use case: planning a single product — a calm focus app. Every
+// suggestion and the fixed prompt build out the SAME project, so the canvas
+// tells one story instead of a grab-bag of unrelated answers.
 const CANNED: Canned[] = [
   {
-    label: 'Plan a weekend in Goa',
-    prompt: 'Plan a weekend in Goa',
-    title: 'Weekend in Goa',
-    text: '## Weekend in Goa\n\n**Day 1 — North Goa**\n- Morning: Chapora Fort + the Vagator viewpoint\n- Lunch: Thalassa, sunset-facing\n- Evening: Anjuna flea market, drinks at Curlies\n\n**Day 2 — slow & south**\n- Breakfast at Baba au Rhum\n- Beach day at Palolem — calm and swimmable\n- Sunset dolphin trip, dinner at a beach shack\n\nBest months are Nov–Feb. Rent a scooter and book shacks ahead on weekends.',
+    label: 'Name the app',
+    prompt: 'Name the app',
+    title: 'Names for the app',
+    text: '## Names for the app\n\n- **Cadence** — steady, rhythmic focus\n- **Deepwell** — go deep, stay deep\n- **Kindle** — spark and sustain attention\n- **Lattice** — structure for your day\n- **Northlight** — a clear direction\n\nCheck the .com and trademark, then test the top two with five users.',
   },
   {
-    label: 'Name my new app',
-    prompt: 'Name my new app',
-    title: 'Names for a new app',
-    text: '## Names for a new app\n\n- **Cadence** — steady, rhythmic progress\n- **Throughline** — keeps everything connected\n- **Kindle** — spark and sustain focus\n- **Lattice** — structure that scales\n- **Northlight** — a clear direction\n\nCheck the .com and trademark before you commit, then test the top two with five users.',
+    label: "Who's it for?",
+    prompt: "Who's it for?",
+    title: 'Target user',
+    text: '## Target user\n\n**Maya, 29 — indie maker**\n\n- **Goal:** ship side projects without the day leaking away\n- **Frustration:** notifications and “quick checks” fracture her focus\n- **Wins her over:** a one-tap session that feels calm, and a weekly review she trusts\n\nSecondary: students in exam season and remote knowledge workers.',
   },
   {
-    label: 'Pros & cons of remote work',
-    prompt: 'Pros & cons of remote work',
-    title: 'Remote work — pros & cons',
-    text: '## Remote work — pros & cons\n\n**Pros**\n- Deep-focus time and no commute\n- Hire from anywhere — a wider talent pool\n- Lower office overhead\n\n**Cons**\n- Weaker spontaneous collaboration\n- Onboarding and culture take deliberate effort\n- Timezone drag on fast decisions\n\n**Verdict:** hybrid with two anchor days captures most of the upside.',
+    label: 'Competitors to watch',
+    prompt: 'Competitors to watch',
+    title: 'Competitors',
+    text: '## Competitors\n\n- **Freedom** — cross-device blocking; powerful but heavy\n- **Forest** — gamified focus; loved, but shallow\n- **Opal** — polished screen-time control; iOS-first\n- **Cold Turkey** — hardcore blocking; not gentle\n\n**The gap:** a calm, review-first app that respects the user.',
   },
 ];
 
-// The fixed prompt sitting in the box; sending it (or anything) seeds this card.
+// The fixed prompt sitting in the box; sending it (or anything) seeds this card
+// — the launch plan for the same focus app.
 const FLAGSHIP: Canned = {
-  label: 'Plan a launch week for a new app',
-  prompt: 'Plan a launch week for a new app',
-  title: 'Launch week plan',
-  text: "## Launch week plan\n\n- **Mon** — Tease on socials and the email list (“something’s coming”)\n- **Tue** — Publish the launch post and a short demo video\n- **Wed** — Product Hunt launch; rally the community\n- **Thu** — Founder AMA; reply to every comment\n- **Fri** — Recap the wins, thank early users, open a feedback loop\n\nLine up five testimonials and three press contacts the week before.",
+  label: 'Plan a launch week for the app',
+  prompt: 'Plan a launch week for the app',
+  title: 'Launch week',
+  text: "## Launch week\n\n- **Mon** — Tease it: “protect your deep work” on socials + the waitlist\n- **Tue** — Publish the story and a 60-second demo\n- **Wed** — Product Hunt launch; rally early testers\n- **Thu** — Founder AMA; reply to every comment\n- **Fri** — Recap the wins, thank the first users, open feedback\n\nLine up five testimonials and three press contacts the week before.",
 };
 
 export function EmbedComposer() {
@@ -64,7 +68,7 @@ export function EmbedComposer() {
       id,
       type: 'doc-card',
       x: -210 + col * 460,
-      y: -150 + row * 250,
+      y: -150 + row * 400, // generous so a tall card never overlaps the row below
       props: { w: 420, h: 200, title, text },
     });
     editor.select(id);
@@ -95,12 +99,14 @@ export function EmbedComposer() {
         ))}
       </div>
       <div className="jz-promptbar" style={{ '--pb-max': '560px' } as CSSProperties}>
+        {/* Read-only: the preview carries a fixed prompt — send it, or tap a
+            suggestion. Editing is reserved for the full app. */}
         <textarea
           className="jz-promptbar-input"
           value={value}
           rows={2}
-          placeholder="Ask anything — a card appears on the canvas…"
-          onChange={(e) => setValue(e.target.value)}
+          readOnly
+          style={{ cursor: 'default' }}
           onKeyDown={(e) => {
             e.stopPropagation();
             if (e.key === 'Enter' && !e.shiftKey) {

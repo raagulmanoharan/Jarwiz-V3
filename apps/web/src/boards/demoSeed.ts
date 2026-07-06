@@ -100,8 +100,8 @@ export function seedEmbedBoard(editor: Editor): void {
     props: {
       w: 420,
       h: 210,
-      title: 'Welcome to Jarwiz',
-      text: '## Welcome to Jarwiz\n\nThis is a live canvas — every answer lands as a card you can move and build on.\n\n- Hit **send** to seed a card from the prompt below\n- Or tap a suggestion\n- Drag cards around; zoom out to see the whole board',
+      title: 'Focus — the idea',
+      text: '## Focus — the idea\n\nA calm app that protects deep-work time: one-tap focus sessions, gentle nudges, and a weekly review of where attention actually went.\n\nHit **send**, or tap a suggestion, to build the plan out — every answer lands as a card.',
     },
   });
   markBoardUsed(getActiveBoardId());
