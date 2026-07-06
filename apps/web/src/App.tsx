@@ -23,6 +23,7 @@ import { ClarifyLayer } from './ask/ClarifyLayer';
 import { CommentLayer } from './ask/CommentLayer';
 import { MachineRunner } from './ui/MachineRunner';
 import { PrototypeRunner } from './ui/PrototypeRunner';
+import { DashboardRunner } from './ui/DashboardRunner';
 import { DraftControls } from './ask/DraftControls';
 import { RegenControls } from './ask/RegenControls';
 import { SelectionAsk } from './ask/SelectionAsk';
@@ -76,6 +77,7 @@ function JarwizOverlay() {
       <Safe label="CommentLayer"><CommentLayer /></Safe>
       <Safe label="MachineRunner"><MachineRunner /></Safe>
       <Safe label="PrototypeRunner"><PrototypeRunner /></Safe>
+      <Safe label="DashboardRunner"><DashboardRunner /></Safe>
       <Safe label="DraftControls"><DraftControls /></Safe>
       <Safe label="RegenControls"><RegenControls /></Safe>
       <Safe label="SelectionAsk"><SelectionAsk /></Safe>

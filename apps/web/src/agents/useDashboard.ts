@@ -1,41 +1,27 @@
 /**
  * "Turn this into an interactive dashboard." A spreadsheet or table is data, not
  * prose — so instead of a written answer we hand its rows to the generative-UI
- * engine (the Prototype card) with a dashboard brief. The result is ONE
- * self-contained, interactive HTML dashboard — KPI tiles, charts, a working
- * filter — rendered live in the prototype card's sandboxed iframe, with a
- * provenance line back to the source data.
- *
- * Reuses the prototype pipeline wholesale: we just create a prototype card whose
- * `prompt` embeds the data + the dashboard brief, then fire its run.
+ * engine with a dashboard brief. The model emits an OpenUI Lang spec; the
+ * dashboard card's offline renderer draws it live through our monochrome
+ * component library (KPIs, charts, a table) — 100% client-side, no external
+ * service — with a provenance line back to the source data.
  */
 
 import { useCallback, useRef, useState } from 'react';
 import { createShapeId, useEditor, type TLShapeId } from 'tldraw';
-import { PROTOTYPE_CARD_SIZE } from '../shapes';
+import { DASHBOARD_CARD_SIZE } from '../shapes';
 import { gridToCsv } from '../lib/dashboardable';
 import { PROV_META_KEY } from '../ask/useAsk';
-import { requestPrototypeRun } from './prototypeRun';
+import { requestDashboardRun } from './dashboardRun';
 
-/** Dashboards want room to breathe — bigger than the default prototype card. */
-const DASHBOARD_SIZE = { w: 780, h: 560 };
-
-/** The dashboard brief prepended to the data — instructs the generative-UI
- *  engine to chart the ACTUAL rows and make it interactive. */
+/** The dashboard brief prepended to the data — instructs the model to chart the
+ *  ACTUAL rows. The full OpenUI Lang grammar lives in the server prompt; here we
+ *  just frame the subject and hand over the data. */
 function dashboardPrompt(subject: string, csv: string): string {
   const named = subject.trim() ? ` for "${subject.trim()}"` : '';
   return [
-    `Build an INTERACTIVE DATA DASHBOARD${named} from the dataset below.`,
-    '',
-    'Layout — a fixed dashboard scaffold, top to bottom: HEADER (title) → KPI ROW → CHART/TABLE GRID. Fill the slots; don\'t invent unrelated chrome.',
-    '',
-    'Requirements:',
-    '- 3–5 KPI tiles for the headline figures (totals, averages, min/max) computed from the data — each with a label, a big value, and where possible a ± vs. another row/period.',
-    '- 2–3 charts that reveal the real trends in THIS data (bar / line / pie as fits). Draw them with inline SVG or <canvas> sized to their container — never an external chart library or image. Use a restrained monochrome palette (greys and white on a dark surface).',
-    '- At least one control that genuinely works via inline JS: a category filter (dropdown or segmented buttons) or a metric toggle that recomputes the KPIs and redraws the charts.',
-    '- A compact, scrollable data table beneath the charts.',
-    '- Derive every number from the provided data — never invent values. Treat non-numeric columns as categories/axes and numeric columns as measures. If the data is thin, show fewer, honest visuals rather than padding.',
-    '- Clean, modern, dark, responsive; fill the whole card.',
+    `Build an interactive data dashboard${named} from the dataset below.`,
+    'Derive every KPI and chart value from the actual rows — never invent numbers.',
     '',
     'DATA (CSV):',
     csv,
@@ -66,14 +52,13 @@ export function useDashboard() {
         editor.markHistoryStoppingPoint('build-dashboard');
         editor.createShape({
           id,
-          type: 'prototype-card',
+          type: 'dashboard-card',
           x,
           y,
           props: {
-            ...DASHBOARD_SIZE,
-            html: '',
-            title: 'Dashboard',
-            prompt: dashboardPrompt(subject, csv),
+            ...DASHBOARD_CARD_SIZE,
+            spec: '',
+            title: subject.trim() ? `${subject.trim()} dashboard` : 'Dashboard',
             status: 'running',
           },
           // Provenance: the dashboard was built FROM the source data.
@@ -82,8 +67,8 @@ export function useDashboard() {
         editor.select(id);
         const nb = editor.getShapePageBounds(id);
         if (nb) editor.zoomToBounds(nb, { inset: 90, targetZoom: 1, animation: { duration: 300 } });
-        // Fire the prototype engine — it streams the dashboard HTML into the card.
-        requestPrototypeRun(id);
+        // Fire the dashboard engine — it streams the OpenUI Lang spec into the card.
+        requestDashboardRun(id, dashboardPrompt(subject, csv));
       } finally {
         busy.current = false;
         setIsBuilding(false);

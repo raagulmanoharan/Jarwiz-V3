@@ -76,6 +76,48 @@ HARD REQUIREMENTS — the document is rendered in a sandboxed iframe with NO net
 
 Output ONLY the raw HTML document — no prose, no explanation, NO \`\`\` code fences before or after.`;
 
+/** An interactive dashboard is expressed in OpenUI Lang — a tiny declarative
+ *  grammar our client renders through a fixed monochrome component library
+ *  (no HTML/JS, no external service). The model computes the numbers from the
+ *  data and lays out KPIs, charts and a table over these components. */
+const DASHBOARD_SYSTEM = `You turn a dataset (a spreadsheet or table, given as CSV) into ONE interactive data DASHBOARD, expressed in "OpenUI Lang" — a tiny declarative layout grammar. A separate renderer draws your output through a fixed component library; you never write HTML, CSS, JS, or SVG.
+
+GRAMMAR
+- One statement per line: \`id = Component(arg1, arg2, …)\`. Each \`id\` is a lowercase name you invent (e.g. \`kpis\`, \`bar1\`).
+- Arguments are POSITIONAL, in the exact order listed for each component below. Strings use double quotes. Numbers are bare (e.g. 1204, 23.5). Lists use square brackets: ["NA","EU"] or [120, 80, 50].
+- Children are given as a list of ids that appear as their own statements: \`row = Grid([k1, k2, k3], 3)\` with \`k1 = …\` etc. on their own lines. Forward references are fine (define \`row\` before \`k1\`).
+- The entry point MUST be a single statement whose id is exactly \`root\`. Everything shown descends from \`root\`.
+- Output ONLY the OpenUI Lang statements — no prose, no explanation, NO \`\`\` code fences.
+
+COMPONENTS (name — positional args)
+- Stack(children: list, direction: "row" | "column") — a flex container. Default direction "column".
+- Grid(children: list, columns: number) — an even grid of its children across N columns.
+- Card(title: string, children: list) — a titled panel wrapping other components.
+- Text(value: string, size: "sm" | "md" | "lg") — a line of text.
+- Kpi(label: string, value: string, delta: string) — a headline metric tile. \`value\` is the formatted figure ("$284k", "1,204"); \`delta\` is an optional signed change ("+12% vs last month") — pass "" if none.
+- BarChart(title: string, labels: list of strings, values: list of numbers) — a bar per label.
+- LineChart(title: string, labels: list of strings, values: list of numbers) — a trend line over labels.
+- Table(columns: list of strings, rows: list of rows, where each row is a list of cell strings).
+
+DASHBOARD BRIEF
+- Layout top to bottom: a KPI ROW (Grid of 3–5 Kpi tiles) then a Grid of charts, then a Table — all inside one root Stack.
+- Compute every KPI and chart value from the ACTUAL data (totals, averages, min/max, counts, trends). NEVER invent numbers. Treat non-numeric columns as categories/axes (chart labels, table columns) and numeric columns as measures.
+- Choose 2–3 charts that reveal the real story in THIS data — a BarChart to compare categories, a LineChart for anything ordered/time-based. Keep labels short.
+- End with a compact Table of the most useful rows (cap at ~12 rows, ~6 columns) so the underlying figures stay visible.
+- If the data is thin, show fewer, honest visuals rather than padding. Prefer clarity over density.
+
+EXAMPLE (shape only — always derive real values from the given data):
+root = Stack([kpis, charts, tbl], "column")
+kpis = Grid([k1, k2, k3], 3)
+k1 = Kpi("Total Revenue", "$284k", "+12% vs last month")
+k2 = Kpi("Orders", "1,204", "+3%")
+k3 = Kpi("Avg Order Value", "$236", "")
+charts = Grid([bar, line], 2)
+bar = BarChart("Revenue by region", ["NA","EU","APAC","LATAM"], [120, 80, 50, 34])
+line = LineChart("Monthly revenue", ["Jan","Feb","Mar","Apr","May"], [42, 38, 51, 47, 53])
+tbl = Card("By region", [t1])
+t1 = Table(["Region","Revenue","Orders"], [["NA","$120k","540"],["EU","$80k","410"]])`;
+
 const AFFINITY_SYSTEM = `You run an affinity-mapping exercise: turn the request and the source(s) into clustered sticky notes. Return ONLY a JSON object {"clusters": [{"label": string, "notes": string[]}]}. Make 3–6 clusters; each has a short 1–4 word "label" (the theme) and 2–6 short "notes" (each one idea, a few words). Group related ideas under the same theme. Ground notes in the provided content when a source is given; otherwise brainstorm sensible ideas for the request. No prose, no code fences.`;
 
 const RESEARCH_SYSTEM = `You are running a DEEP RESEARCH pass on something the user put on their canvas — any link or card: a venue or rental listing, a product, a company, a repo or tool, an article or paper, a person, an open question. Your job: autonomously find everything a decision-maker would want to know, far beyond what the subject says about itself.
@@ -625,6 +667,33 @@ const sleep = (ms: number, signal: AbortSignal) =>
  *  full loop demoable and makes the missing-key state self-explanatory. */
 async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenerator<AskEvent> {
   yield { type: 'status', message: 'Demo mode…' };
+
+  // A dashboard ask has a concrete shape to show even without a model — stream a
+  // small canned OpenUI Lang spec so the generative-UI card is demoable keyless.
+  if (req.shape === 'dashboard') {
+    yield { type: 'card.create', shape: 'dashboard' };
+    const spec = [
+      'root = Stack([kpis, charts, tbl], "column")',
+      'kpis = Grid([k1, k2, k3], 3)',
+      'k1 = Kpi("Total", "—", "demo mode")',
+      'k2 = Kpi("Rows", "—", "")',
+      'k3 = Kpi("Average", "—", "")',
+      'charts = Grid([bar, line], 2)',
+      'bar = BarChart("By category", ["A", "B", "C", "D"], [8, 6, 4, 3])',
+      'line = LineChart("Over time", ["Q1", "Q2", "Q3", "Q4"], [4, 6, 5, 7])',
+      'tbl = Card("Set a key for a real dashboard", [t1])',
+      't1 = Table(["Column", "Value"], [["Model", "not configured"], ["Fix", "set ANTHROPIC_API_KEY"]])',
+    ].join('\n');
+    for (const piece of chunk(spec, 4)) {
+      if (signal.aborted) return;
+      yield { type: 'card.delta', textDelta: piece };
+      await sleep(20, signal);
+    }
+    yield { type: 'card.done' };
+    yield { type: 'done' };
+    return;
+  }
+
   yield { type: 'card.create', shape: 'doc', title: 'Demo mode' };
   const body =
     `You asked: *${req.prompt.slice(0, 140)}*\n\n` +
@@ -702,6 +771,11 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
 
   if (shape === 'prototype') {
     yield* streamPrototype(user, signal, images);
+    return;
+  }
+
+  if (shape === 'dashboard') {
+    yield* streamDashboard(user, signal, images);
     return;
   }
 
@@ -870,6 +944,34 @@ async function* streamPrototype(
   } catch (error) {
     // Close the opened card before the error propagates (mirrors streamDiagram)
     // so the client never keeps a streaming card open forever.
+    yield { type: 'card.done' };
+    throw error;
+  }
+  yield { type: 'card.done' };
+  yield { type: 'done' };
+}
+
+/**
+ * Stream an interactive dashboard. The model writes an OpenUI Lang spec (a small
+ * declarative layout over our fixed component library) token by token; the card
+ * accumulates it into `spec` and its offline renderer reveals the KPIs, charts
+ * and table as they resolve. Same shape as streamPrototype — the server doesn't
+ * parse the spec, the card renders it — but a much smaller budget than an HTML
+ * document (a spec is compact), so it reuses the prototype headroom safely.
+ */
+async function* streamDashboard(
+  user: string,
+  signal: AbortSignal,
+  images: ImageInput[] = [],
+): AsyncGenerator<AskEvent> {
+  yield { type: 'card.create', shape: 'dashboard' };
+  try {
+    for await (const ev of generateStream(DASHBOARD_SYSTEM, user, signal, images, { prototype: true })) {
+      if (signal.aborted) return;
+      if (ev.type === 'status') yield { type: 'status', message: ev.message };
+      else yield { type: 'card.delta', textDelta: ev.text };
+    }
+  } catch (error) {
     yield { type: 'card.done' };
     throw error;
   }
