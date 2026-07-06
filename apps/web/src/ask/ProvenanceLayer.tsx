@@ -68,10 +68,11 @@ export function ProvenanceLayer() {
         const fb = editor.getShapePageBounds(fromId as never);
         const tb = editor.getShapePageBounds(toId as never);
         if (!fb || !tb) continue;
-        const from = facingAnchor(fb, { x: tb.x + tb.w / 2, y: tb.y + tb.h / 2 });
-        const to = facingAnchor(tb, { x: fb.x + fb.w / 2, y: fb.y + fb.h / 2 });
-        const a = editor.pageToViewport(from);
-        const b = editor.pageToViewport(to);
+        // Page-space coordinates — the layer renders inside tldraw's camera
+        // transform (OnTheCanvas), *behind* the shapes, so cards occlude the
+        // lines and only the connecting segments in the gaps show.
+        const a = facingAnchor(fb, { x: tb.x + tb.w / 2, y: tb.y + tb.h / 2 });
+        const b = facingAnchor(tb, { x: fb.x + fb.w / 2, y: fb.y + fb.h / 2 });
         // A gentle S-curve: control points pulled along the dominant axis so
         // the line eases out of one card and into the other.
         const horizontal = Math.abs(b.x - a.x) >= Math.abs(b.y - a.y);

@@ -66,8 +66,8 @@ function JarwizOverlay() {
       <Safe label="AgentCursorLayer"><AgentCursorLayer /></Safe>
       <Safe label="HelpLayer"><HelpLayer /></Safe>
 
-      {/* Behavioural overlays — the ask/refine loop on cards. */}
-      <Safe label="ProvenanceLayer"><ProvenanceLayer /></Safe>
+      {/* Behavioural overlays — the ask/refine loop on cards. (Provenance
+          lineage renders in the OnTheCanvas slot below, behind the shapes.) */}
       <Safe label="EmptyState"><EmptyState /></Safe>
       <Safe label="BoardEntry"><BoardEntry /></Safe>
       <Safe label="CardTitleTag"><CardTitleTag /></Safe>
@@ -104,8 +104,15 @@ function EmbedOverlay() {
  * shapes/text/connectors are creatable and tweakable. We still drop the menus,
  * debug chrome, and helper buttons to keep the surface quiet.
  */
+/** Rendered inside tldraw's camera transform, behind the shapes — the
+ *  provenance lineage lines tuck behind cards so only gap segments show. */
+function CanvasBehind() {
+  return <Safe label="ProvenanceLayer"><ProvenanceLayer /></Safe>;
+}
+
 const components: TLComponents = {
   InFrontOfTheCanvas: JarwizOverlay,
+  OnTheCanvas: CanvasBehind,
   Toolbar: null, // replaced by our right-edge ToolRail
   StylePanel: CanvasStylePanel,
   MainMenu: null,
