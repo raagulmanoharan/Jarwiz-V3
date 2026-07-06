@@ -10,7 +10,7 @@ import { useEffect } from 'react';
 import { useEditor } from 'tldraw';
 import { useAsk } from '../ask/useAsk';
 import { useCompose } from '../agents/useCompose';
-import { MACHINES } from '../machines/catalog';
+import { MACHINES, resolveMachineOptions } from '../machines/catalog';
 import { getMachineRun, subscribeMachineRun } from '../machines/runStore';
 import { useSyncExternalStore } from 'react';
 import type { AskShape } from '@jarwiz/shared';
@@ -32,10 +32,7 @@ export function MachineRunner() {
     if (!machine || !subject) return;
 
     // Optional outputs the user ticked on the block (defaults when untouched).
-    const metaOpts = (shape.meta as { options?: unknown }).options;
-    const options = Array.isArray(metaOpts)
-      ? (metaOpts.filter((x): x is string => typeof x === 'string'))
-      : (machine.options ?? []).filter((o) => o.default).map((o) => o.id);
+    const options = resolveMachineOptions((shape.meta as { options?: unknown }).options, machine);
 
     editor.updateShape<MachineCardShape>({ id: req.id, type: 'machine-card', props: { status: 'running' } });
     const finish = () => {

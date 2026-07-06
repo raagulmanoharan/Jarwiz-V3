@@ -7,20 +7,11 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { createShapeId, stopEventPropagation, useEditor, type Editor } from 'tldraw';
-import { Boxes, Grid2x2, LayoutGrid, Swords, Scale, ShieldAlert, CornerDownRight, UserRound } from 'lucide-react';
+import { Boxes } from 'lucide-react';
 import { MACHINE_CARD_SIZE, type MachineCardShape } from '../shapes';
 import { MACHINES, type Machine } from '../machines/catalog';
+import { MACHINE_ICONS } from '../machines/icons';
 import { getTheme, subscribeTheme } from './theme';
-
-const ICONS: Record<string, React.ReactNode> = {
-  Grid2x2: <Grid2x2 size={16} />,
-  LayoutGrid: <LayoutGrid size={16} />,
-  Swords: <Swords size={16} />,
-  Scale: <Scale size={16} />,
-  ShieldAlert: <ShieldAlert size={16} />,
-  CornerDownRight: <CornerDownRight size={16} />,
-  UserRound: <UserRound size={16} />,
-};
 
 /** Drop a machine block near the viewport centre, nudged clear of other shapes,
  *  then select it and put it into edit mode so its input is ready to type. */
@@ -93,7 +84,7 @@ export function MachinesRail() {
           <div className="jz-machines-list">
             {MACHINES.map((m) => (
               <button key={m.id} className="jz-machine-row" role="menuitem" onClick={() => pick(m)} title={m.blurb}>
-                <span className="jz-machine-icon">{ICONS[m.icon]}</span>
+                <span className="jz-machine-icon">{MACHINE_ICONS[m.icon]}</span>
                 <span className="jz-machine-text">
                   <span className="jz-machine-name">{m.name}</span>
                   <span className="jz-machine-blurb">{m.blurb}</span>

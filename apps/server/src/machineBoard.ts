@@ -232,7 +232,11 @@ export async function* streamMachineBoard(
     return;
   }
 
-  const cards = builder(parsed, options).filter((c) => (c.shape === 'table' ? (c.columns?.length ?? 0) > 0 : (c.md ?? '').trim().length > 0));
+  // Honour only the optional outputs this skill actually declares — a guard so a
+  // stale/forged option id from the client can't inject an unexpected card.
+  const declared = new Set((machine.optionalOutputs ?? []).map((o) => o.id));
+  const safeOptions = options.filter((id) => declared.has(id));
+  const cards = builder(parsed, safeOptions).filter((c) => (c.shape === 'table' ? (c.columns?.length ?? 0) > 0 : (c.md ?? '').trim().length > 0));
   if (cards.length === 0) {
     yield { type: 'error', message: 'The analysis came back empty.' };
     return;

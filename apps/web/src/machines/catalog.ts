@@ -35,6 +35,14 @@ export interface Machine {
   options?: MachineOption[];
 }
 
+/** The enabled optional-output ids for a block: the ids stored in its meta once
+ *  the user has touched them, else the machine's default-on options. One source
+ *  of truth for the block checkboxes and the runner. */
+export function resolveMachineOptions(metaOptions: unknown, machine: Machine): string[] {
+  if (Array.isArray(metaOptions)) return metaOptions.filter((x): x is string => typeof x === 'string');
+  return (machine.options ?? []).filter((o) => o.default).map((o) => o.id);
+}
+
 export const MACHINES: Machine[] = [
   {
     id: 'swot',
@@ -80,7 +88,7 @@ export const MACHINES: Machine[] = [
     id: 'proscons',
     name: 'Pros & Cons',
     blurb: 'Weigh the case for and against',
-    description: 'Weighs the strongest arguments for and against — balanced and honest, laid out side by side.',
+    description: 'Researches the decision across the web, then weighs the strongest evidence-backed arguments for and against.',
     icon: 'Scale',
     output: 'table',
   },
@@ -88,7 +96,7 @@ export const MACHINES: Machine[] = [
     id: 'fivewhys',
     name: '5 Whys',
     blurb: 'Trace a problem to its root cause',
-    description: 'Traces a problem down five levels of “why” to the root cause, and what to do about it.',
+    description: 'Researches the problem, then traces it down five levels of “why” to a grounded root cause and fix.',
     icon: 'CornerDownRight',
     output: 'list',
   },
@@ -96,7 +104,7 @@ export const MACHINES: Machine[] = [
     id: 'persona',
     name: 'User Persona',
     blurb: 'Draft a representative user persona',
-    description: 'Drafts one representative user — their goals, frustrations and what would win them over.',
+    description: 'Researches the real audience, then drafts a grounded persona — goals, frustrations and what would win them over.',
     icon: 'UserRound',
     output: 'doc',
   },

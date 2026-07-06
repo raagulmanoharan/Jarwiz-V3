@@ -82,14 +82,14 @@ const RISK = `You are a risk analyst. RESEARCH the given subject/plan across the
 Return ONLY JSON (no prose, no code fences): {"columns": ["Risk", "Likelihood", "Impact", "Mitigation"], "rows": [["...", "High", "High", "..."], ...]}.
 Likelihood and Impact are each Low, Med, or High. Give 5–8 rows, most serious first, each a concrete and (where possible) evidence-backed risk; every mitigation must be actionable.`;
 
-const PROSCONS = `Weigh the given subject/decision as a balanced pros-and-cons analysis, drawing on real-world evidence where relevant.
-Return ONLY JSON (no prose, no code fences): {"columns": ["Pros", "Cons"], "rows": [["a strong pro", "a strong con"], ...]}. 4–6 rows, the strongest arguments on each side (one crisp phrase per cell), honest and balanced — not trivia.`;
+const PROSCONS = `You are a decision analyst. RESEARCH the given subject/decision across the live web first — real outcomes, data, expert takes and comparable cases — so the case is evidence-based, not opinion.
+Return ONLY JSON (no prose, no code fences): {"columns": ["Pros", "Cons"], "rows": [["a strong, evidence-grounded pro", "a strong, evidence-grounded con"], ...]}. 5–7 rows, the strongest arguments on each side, each a crisp specific claim backed by what you found (name the fact or number where you can) — honest, balanced, never trivia or filler.`;
 
-const FIVEWHYS = `Run a 5 Whys root-cause analysis on the given problem.
-Output ONLY markdown (no code fences): a numbered chain of exactly five "Why?" steps, each answer becoming the next step's subject. End with "**Root cause:** …" on its own line and "**So we should:** …" with one actionable recommendation. If the subject isn't actually a problem, say so plainly instead.`;
+const FIVEWHYS = `You are a root-cause analyst. RESEARCH the given problem across the live web first — known causes, incident write-ups and similar cases — so each step is grounded in reality, not assumption.
+Run a 5 Whys analysis. Output ONLY markdown (no code fences): a numbered chain of exactly five "Why?" steps, each answer becoming the next step's subject and grounded in what you found. End with "**Root cause:** …" on its own line, then "**So we should:** …" with one actionable recommendation, then "## Sources" listing the pages you used. If the subject isn't actually a problem, say so plainly instead.`;
 
-const PERSONA = `Draft one representative user persona for the given product/idea. Briefly research the space on the web if it sharpens the persona.
-Output ONLY markdown (no code fences). Start with "# Persona: <a realistic name>, <role/age>". Then sections: ## Snapshot (a 2–3 sentence bio), ## Goals, ## Frustrations, ## How they'd use this, ## What would win them over — each a couple of specific bullets grounded in the real audience.`;
+const PERSONA = `You are a UX researcher. RESEARCH the real audience for the given product/idea across the live web — who actually uses this kind of thing, their demographics, behaviours, the forums and reviews where they show up, and their real pain points — before writing, so the persona reflects the true market, not a guess.
+Output ONLY markdown (no code fences). Start with "# Persona: <a realistic name>, <role/age>". Then sections: ## Snapshot (a 2–3 sentence bio), ## Goals, ## Frustrations, ## How they'd use this, ## What would win them over — each a couple of specific bullets grounded in the researched audience. End with "## Sources" listing the pages you drew on.`;
 
 export const MACHINE_SKILLS: Record<string, MachineSkill> = {
   swot: {
@@ -114,9 +114,9 @@ export const MACHINE_SKILLS: Record<string, MachineSkill> = {
   },
   competitive: { id: 'competitive', output: 'table', deep: true, systemPrompt: COMPETITIVE },
   risk: { id: 'risk', output: 'table', deep: true, systemPrompt: RISK },
-  proscons: { id: 'proscons', output: 'table', deep: false, systemPrompt: PROSCONS },
-  fivewhys: { id: 'fivewhys', output: 'list', deep: false, systemPrompt: FIVEWHYS },
-  persona: { id: 'persona', output: 'doc', deep: false, systemPrompt: PERSONA },
+  proscons: { id: 'proscons', output: 'table', deep: true, systemPrompt: PROSCONS },
+  fivewhys: { id: 'fivewhys', output: 'list', deep: true, systemPrompt: FIVEWHYS },
+  persona: { id: 'persona', output: 'doc', deep: true, systemPrompt: PERSONA },
 };
 
 export function getMachine(id: string | undefined): MachineSkill | undefined {

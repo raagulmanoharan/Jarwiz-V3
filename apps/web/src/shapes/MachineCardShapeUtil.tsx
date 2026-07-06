@@ -19,9 +19,10 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
-import { Grid2x2, LayoutGrid, Swords, Scale, ShieldAlert, CornerDownRight, UserRound, ArrowRight, Loader2, Check } from 'lucide-react';
+import { ArrowRight, Loader2, Check } from 'lucide-react';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
-import { MACHINES, type Machine } from '../machines/catalog';
+import { MACHINES, resolveMachineOptions } from '../machines/catalog';
+import { MACHINE_ICONS } from '../machines/icons';
 import { requestMachineRun } from '../machines/runStore';
 import { useFitHeight } from './useFitHeight';
 
@@ -45,16 +46,6 @@ declare module '@tldraw/tlschema' {
 export type MachineCardShape = TLShape<'machine-card'>;
 
 export const MACHINE_CARD_SIZE = { w: 300, h: 286 };
-
-const ICONS: Record<string, React.ReactNode> = {
-  Grid2x2: <Grid2x2 size={16} />,
-  LayoutGrid: <LayoutGrid size={16} />,
-  Swords: <Swords size={16} />,
-  Scale: <Scale size={16} />,
-  ShieldAlert: <ShieldAlert size={16} />,
-  CornerDownRight: <CornerDownRight size={16} />,
-  UserRound: <UserRound size={16} />,
-};
 
 export class MachineCardShapeUtil extends ShapeUtil<MachineCardShape> {
   static override type = 'machine-card' as const;
@@ -95,14 +86,6 @@ export class MachineCardShapeUtil extends ShapeUtil<MachineCardShape> {
   }
 }
 
-/** Which optional outputs are ticked — from the shape's meta, defaulting to the
- *  machine's default-on options for a freshly dropped block. */
-function enabledOptions(shape: MachineCardShape, m: Machine): Set<string> {
-  const meta = (shape.meta as { options?: unknown }).options;
-  if (Array.isArray(meta)) return new Set(meta.filter((x): x is string => typeof x === 'string'));
-  return new Set((m.options ?? []).filter((o) => o.default).map((o) => o.id));
-}
-
 function MachineCardBody({ shape }: { shape: MachineCardShape }) {
   const editor = useEditor();
   const ref = useRef<HTMLTextAreaElement | null>(null);
@@ -112,7 +95,7 @@ function MachineCardBody({ shape }: { shape: MachineCardShape }) {
   const running = status === 'running';
   const done = status === 'done';
   const options = m.options ?? [];
-  const enabled = enabledOptions(shape, m);
+  const enabled = new Set(resolveMachineOptions((shape.meta as { options?: unknown }).options, m));
 
   // The block grows to fit its content — laid out at its natural height, the
   // card's measured height drives the shape height (so it grows as you type).
@@ -150,7 +133,7 @@ function MachineCardBody({ shape }: { shape: MachineCardShape }) {
   return (
     <div ref={cardRef} className={`jz-machine-card${running ? ' jz-machine-card--running' : ''}`}>
       <div className="jz-machine-card-head">
-        <span className="jz-machine-card-badge">{ICONS[m.icon]}</span>
+        <span className="jz-machine-card-badge">{MACHINE_ICONS[m.icon]}</span>
         <span className="jz-machine-card-name">{m.name}</span>
         {done ? <span className="jz-machine-card-done" title="Ran"><Check size={12} strokeWidth={3} /></span> : null}
       </div>
