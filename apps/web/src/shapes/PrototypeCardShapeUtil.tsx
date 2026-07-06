@@ -27,7 +27,7 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { AppWindow, ArrowRight, Loader2 } from 'lucide-react';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { requestPrototypeRun } from '../agents/prototypeRun';
@@ -54,8 +54,9 @@ export type PrototypeCardShape = TLShape<'prototype-card'>;
 
 /** The rendered UI canvas — a screen-sized card. */
 export const PROTOTYPE_CARD_SIZE = { w: 520, h: 400 };
-/** The small prompt card you drop from the rail (grows on generate). */
-export const PROTOTYPE_PROMPT_SIZE = { w: 300, h: 168 };
+/** The small prompt card you drop from the rail (grows on generate) — sized and
+ *  styled to match the Thinking-Machine block. */
+export const PROTOTYPE_PROMPT_SIZE = { w: 300, h: 248 };
 
 /** Strip any ``` fences the model might wrap the document in. */
 function stripFences(html: string): string {
@@ -164,12 +165,19 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
 
   return (
     <div className="jz-prototype jz-prototype--composer">
+      <div className="jz-prototype-head">
+        <span className="jz-prototype-badge" aria-hidden>
+          <AppWindow size={16} strokeWidth={1.8} />
+        </span>
+        <span className="jz-prototype-name">Prototype</span>
+      </div>
+      <p className="jz-prototype-desc">Describe a screen and I&rsquo;ll build a live, interactive UI right here.</p>
       <textarea
         ref={inputRef}
         rows={2}
         className="jz-prototype-input"
         value={prompt}
-        placeholder="Describe a UI to prototype — e.g. “a timer app”"
+        placeholder="e.g. “a timer app”"
         style={{ pointerEvents: 'all' }}
         onPointerDown={stopEventPropagation}
         onPointerMove={stopEventPropagation}

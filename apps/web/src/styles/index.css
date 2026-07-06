@@ -3170,7 +3170,7 @@ body,
 }
 
 .jz-diagram-kind {
-  color: var(--jz-accent);
+  color: var(--jz-ink-400);
   font-size: 11px;
 }
 
@@ -3241,11 +3241,11 @@ body,
   box-sizing: border-box;
 }
 
-/* The rendered UI when it's live and interactive — a subtle accent ring says
+/* The rendered UI when it's live and interactive — a soft neutral ring says
    "this is clickable" (drag the card by its edge/handles to move it). */
 .jz-prototype--interactive {
-  border-color: color-mix(in srgb, var(--jz-accent) 45%, var(--jz-hairline));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--jz-accent) 14%, transparent), var(--jz-e2);
+  border-color: var(--jz-hairline-strong);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--jz-ink-900) 8%, transparent), var(--jz-e2);
 }
 
 /* The UI fills the card edge-to-edge — no inner padding — so the card frame is
@@ -3258,19 +3258,48 @@ body,
   background: #fff;
 }
 
-/* The small prompt card (dropped from the rail) / the generating state — the
-   composer or spinner fills the card. */
+/* The small prompt card (dropped from the rail) / the generating state — styled
+   to match the Thinking-Machine block, but monochromatic (no accent). */
 .jz-prototype--composer {
   flex-direction: column;
   padding: var(--jz-space-5);
-  gap: var(--jz-space-3);
+  gap: var(--jz-space-2);
   background: var(--jz-card-surface);
+  border: 1.5px solid var(--jz-hairline-strong);
 }
 
+/* Header: an icon badge aligned with the card name — mirrors the machine head. */
+.jz-prototype-head { display: flex; align-items: center; gap: 10px; }
+.jz-prototype-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--jz-radius-sm);
+  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+  color: var(--jz-ink-700);
+  flex: none;
+}
+.jz-prototype-name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--jz-ink-900);
+  line-height: 1.15;
+}
+.jz-prototype-desc {
+  margin: 9px 0 11px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--jz-ink-500);
+}
+
+/* Same field styling as the machine input, monochromatic focus. */
 .jz-prototype-input {
   display: block;
   width: 100%;
-  min-height: 60px;
+  min-height: 44px;
   box-sizing: border-box;
   border: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-md);
@@ -3288,7 +3317,7 @@ body,
 .jz-prototype-input:focus,
 .jz-prototype-input:focus-visible {
   outline: none;
-  border-color: color-mix(in srgb, var(--jz-accent) 45%, var(--jz-hairline));
+  border-color: var(--jz-hairline-strong);
 }
 .jz-prototype-input::placeholder { color: var(--jz-ink-400); }
 
@@ -3298,6 +3327,7 @@ body,
   color: var(--jz-danger, #d64545);
 }
 
+/* Neutral (monochromatic) primary button — ink fill, inverted label. */
 .jz-prototype-run {
   margin-top: auto;
   width: 100%;
@@ -3307,16 +3337,16 @@ body,
   gap: 6px;
   border: none;
   border-radius: var(--jz-radius-md);
-  background: var(--jz-accent);
-  color: #fff;
+  background: var(--jz-ink-900);
+  color: var(--jz-card-surface);
   font-size: 13px;
   font-weight: 650;
   padding: 9px 12px;
   cursor: pointer;
   transition: filter var(--jz-dur-fast) var(--jz-ease-out);
 }
-.jz-prototype-run:hover { filter: brightness(1.06); }
-.jz-prototype-run:disabled { opacity: 0.45; cursor: default; }
+.jz-prototype-run:hover { filter: brightness(1.08); }
+.jz-prototype-run:disabled { opacity: 0.4; cursor: default; }
 
 /* While the UI is being generated (nothing to show yet). */
 .jz-prototype-loading {

@@ -505,6 +505,13 @@ export function useAsk() {
             startStreaming(id);
             setDraft({ id, arrowIds: [], status: 'streaming', prompt: trimmed, logLabel: opts?.logLabel, sourceIds, shape: event.shape, pdfSourceId });
             frameCard(editor, [id], sourceIds);
+            // A prototype built FROM a card should show its lineage the moment
+            // it lands — select it so the provenance hairline to its source(s)
+            // is drawn immediately (ProvenanceLayer reveals on selection),
+            // instead of waiting for a click.
+            if (event.shape === 'prototype' && contributingIds.length > 0) {
+              editor.setSelectedShapes([id]);
+            }
             break;
           }
           case 'card.title': {
