@@ -118,7 +118,18 @@
         margin: 28px auto 0; max-width: 620px; color: var(--ink-2);
         font-size: clamp(16px, 2vw, 19px); line-height: 1.6;
       }
-      .hero-cta { display: flex; gap: 14px; justify-content: center; margin-top: 38px; flex-wrap: wrap; }
+      .wedge {
+        margin: 22px auto 0; max-width: 640px; font-size: clamp(16px, 2vw, 19px); line-height: 1.55;
+        color: var(--ink-2);
+      }
+      .wedge strong {
+        color: var(--ink); font-weight: 700;
+        background: linear-gradient(120deg, var(--accent-2), #c9baff);
+        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+      }
+      .hero-cta { display: flex; gap: 14px; justify-content: center; margin-top: 34px; flex-wrap: wrap; }
+      .cta-note { margin: 16px auto 0; color: var(--ink-3); font-size: 13.5px; }
+      .cta-note b { color: var(--ink-2); font-weight: 600; }
 
       /* Live preview window */
       .stage {
@@ -132,6 +143,16 @@
       .stage-cap { margin: 20px auto 0; max-width: 640px; color: var(--ink-3); font-size: 14px; line-height: 1.6; }
       .stage-cap a { color: var(--accent-2); font-weight: 600; }
       .stage-cap a:hover { text-decoration: underline; }
+
+      /* Showcase — one real board */
+      .shot {
+        margin: 8px auto 0; border-radius: var(--r-lg); overflow: hidden;
+        border: 1px solid var(--hairline-2); background: #0b0b0e;
+        box-shadow: 0 40px 100px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+      }
+      .shot img { display: block; width: 100%; height: auto; }
+      .shot-cap { margin: 22px auto 0; max-width: 620px; text-align: center; color: var(--ink-3); font-size: 14px; line-height: 1.6; }
+      .shot-cap b { color: var(--ink-2); font-weight: 600; }
 
       /* Sections */
       section { padding: 100px 0; }
@@ -247,13 +268,15 @@
         <div class="wrap">
           <h1>Take an idea from zero to a <span class="grad">finished board</span>.</h1>
           <p class="sub">
-            Jarwiz is an infinite canvas where AI researches the live web, runs real frameworks, and lays
-            the answer out as cards you can move, refine, and connect. Not one answer. A whole board.
+            For founders, product managers, and strategists: an infinite canvas where AI researches the
+            live web, runs real frameworks, and builds the answer as cards you can move, refine, and connect.
           </p>
+          <p class="wedge"><strong>Not a chatbot in a sidebar.</strong> Instead of one answer buried in a wall of text, you get a whole board you can rearrange, deepen, and keep working.</p>
           <div class="hero-cta">
             <a class="btn btn-primary btn-lg" href="app/?demo=1" target="_blank" rel="noopener">Try the full app ↗</a>
             <a class="btn btn-ghost btn-lg" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">View on GitHub ↗</a>
           </div>
+          <p class="cta-note"><b>Free, and runs right in your browser.</b> No sign-up, no install.</p>
 
           <div class="stage">
             <iframe class="stage-frame" src="app/?embed=1" title="Live Jarwiz preview" loading="lazy"></iframe>
@@ -319,43 +342,57 @@
         </div>
       </section>
 
+      <!-- SHOWCASE — one real board -->
+      <section id="showcase">
+        <div class="wrap">
+          <div class="sec-head reveal">
+            <h2>See what it builds.</h2>
+            <p>One prompt — “SWOT Figma” — and this is the board Jarwiz laid down: the 2×2, a TOWS strategy table, and a verdict with priorities. Every card is live and editable.</p>
+          </div>
+          <div class="shot reveal">
+            <img src="assets/example-board.png" alt="A finished Jarwiz board: a SWOT 2×2 of Figma, a TOWS strategic-moves table, and a strategic verdict with top priorities." loading="lazy" />
+          </div>
+          <p class="shot-cap reveal"><b>Real output, not a mockup.</b> Move a card, dig deeper on any of them, or reshape a doc into a table — right on the canvas.</p>
+        </div>
+      </section>
+
       <!-- FEATURES -->
       <section id="features">
         <div class="wrap">
           <div class="sec-head reveal">
-            <h2>A collaborator, not a chatbot in a sidebar.</h2>
-            <p>Everything happens on the canvas, grounded on what you have already made, and streamed in as cards you can keep working.</p>
+            <h2>Built for how the work actually goes.</h2>
+            <p>Every step happens on the canvas — grounded on what you have already made, and streamed in as cards you can keep shaping.</p>
           </div>
           <div class="feat-grid">
             <div class="feat wide reveal">
               <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 7v6c0 5 3.5 7.5 8 9 4.5-1.5 8-4 8-9V7z"/><path d="m9 12 2 2 4-4"/></svg></div>
-              <h3>Autopilot</h3>
-              <p>Hand Jarwiz a goal in the prompt bar, like “plan my Goa weekend” or “size this market,” and it plans, researches the live web, and builds the whole board for you, card by card, while you watch.</p>
+              <h3>Skip the blank canvas</h3>
+              <p>Hand Jarwiz a goal — “plan my Goa weekend,” “size this market” — and Autopilot does the first draft for you: it plans, researches the live web, and builds the whole board, card by card, while you watch. You start from something, never nothing.</p>
             </div>
             <div class="feat reveal">
               <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
-              <h3>Ask &amp; create</h3>
-              <p>Type a prompt and the answer streams onto a card. Select a card first to ground the question on exactly what is in front of you.</p>
+              <h3>Stay in your flow</h3>
+              <p>Ask in the prompt bar and the answer streams onto a card, right where you are. Select a card first and the question grounds on exactly what is in front of you — no context to re-explain.</p>
             </div>
             <div class="feat reveal">
               <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
-              <h3>Deep research, cited</h3>
-              <p>Research-heavy work pulls live data from the web and cites its sources, grounded in what is true today rather than what the model remembers.</p>
+              <h3>Trust what it tells you</h3>
+              <p>Research-heavy asks pull live data from the web and cite their sources — grounded in what is true today, not what a model happens to remember. You can check the receipts.</p>
             </div>
             <div class="feat reveal">
               <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div>
-              <h3>Bring your material</h3>
-              <p>Drop a PDF, spreadsheet, video or link onto the canvas. Jarwiz reads it, transcripts and tables and key frames, and works from it.</p>
+              <h3>Start from what you have</h3>
+              <p>Drop a PDF, spreadsheet, video, or link onto the canvas and Jarwiz reads it — transcripts, tables, and key frames — then works from your material instead of a blank page.</p>
             </div>
             <div class="feat reveal">
               <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.5 1 6 2.5"/><path d="M21 3v6h-6"/></svg></div>
-              <h3>Reshape any card</h3>
-              <p>Make it shorter, go deeper, turn a doc into a table or a flowchart, or regenerate it. One bar, right above the card.</p>
+              <h3>Change your mind, cheaply</h3>
+              <p>Make it shorter, go deeper, turn a doc into a table or a flowchart, or regenerate — one bar, right above the card. Reworking an idea costs a click, not a restart.</p>
             </div>
             <div class="feat wide reveal">
               <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/></svg></div>
-              <h3>Cluster, summarise, and proactive comments</h3>
-              <p>Turn a wall of sticky notes into named themes in one click. Jarwiz also notices tensions or gaps between your cards and leaves comments on its own.</p>
+              <h3>Find the signal in the mess</h3>
+              <p>Collapse a wall of sticky notes into named themes in a single click. Jarwiz also watches the board on its own — flagging tensions and gaps between your cards before you would have spotted them.</p>
             </div>
           </div>
         </div>
@@ -398,11 +435,12 @@
         <div class="wrap">
           <div class="cta reveal">
             <h2>Bring your ideas to a canvas that thinks back.</h2>
-            <p>Jarwiz is open source. Clone it, add your key, and make it yours.</p>
+            <p>Open the app and run a Thinking Machine on something you actually care about. It is open source, too — clone it and add your own key.</p>
             <div class="hero-cta">
-              <a class="btn btn-primary btn-lg" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">Get it on GitHub ↗</a>
-              <a class="btn btn-ghost btn-lg" href="#machines">Browse the machines</a>
+              <a class="btn btn-primary btn-lg" href="app/?demo=1" target="_blank" rel="noopener">Try it free ↗</a>
+              <a class="btn btn-ghost btn-lg" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">View on GitHub ↗</a>
             </div>
+            <p class="cta-note"><b>Runs in your browser.</b> No sign-up, no install.</p>
           </div>
         </div>
       </section>
