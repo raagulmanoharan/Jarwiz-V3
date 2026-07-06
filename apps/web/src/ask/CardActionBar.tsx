@@ -17,6 +17,7 @@ import { openDocFocus } from '../ui/focusDoc';
 import { PROFILE_PROMPT } from './profilePrompt';
 import { useAsk } from './useAsk';
 import { useDiagram } from '../agents/useDiagram';
+import { refreshPrototype } from '../agents/prototypeRefresh';
 import { useTidy, canTidy } from '../agents/useTidy';
 import { useCluster, canCluster } from '../agents/useCluster';
 import { useCardAnchor } from './useCardAnchor';
@@ -159,6 +160,9 @@ export function CardActionBar() {
     transforms.push(
       { label: '✦ Refine the design', run: () => ask('Refine this UI prototype — improve the visual hierarchy, spacing, and polish, keeping the same intent and content.', [id], { targetId: id, skipClarify: true, logLabel: 'Refined the prototype' }) },
       { label: 'Try another layout', run: () => ask('Redesign this UI with a different layout, same content and purpose.', [id], { targetId: id, skipClarify: true }) },
+      // Reset reloads the live UI to its initial state (no model call) — undo a
+      // running timer, a filled form, a screen you navigated to.
+      { label: '↻ Reset', run: () => refreshPrototype(id) },
       { label: 'Regenerate', run: () => ask('Regenerate this UI prototype, same intent, fresh take.', [id], { targetId: id }) },
     );
   }

@@ -27,9 +27,10 @@ import {
 const MAX_TOKENS = 1400;
 /** A research dossier is a longer artifact — several cited sections. */
 const RESEARCH_MAX_TOKENS = 2800;
-/** A prototype is a whole self-contained HTML document (markup + inline CSS/JS)
- *  — it needs real headroom or the UI truncates mid-tag. */
-const PROTOTYPE_MAX_TOKENS = 8000;
+/** A prototype is a whole self-contained HTML document (markup + inline CSS/JS),
+ *  and a multi-screen one (a small website/app flow) is several screens in that
+ *  one document — it needs real headroom or the UI truncates mid-tag. */
+const PROTOTYPE_MAX_TOKENS = 12000;
 /** Deep runs chain many searches; the CLI sidecar needs matching headroom. */
 const RESEARCH_SIDECAR_TIMEOUT_MS = 300_000;
 /** The keyless CLI can't token-stream, so it generates the whole document in one
@@ -69,7 +70,8 @@ HARD REQUIREMENTS — the document is rendered in a sandboxed iframe with NO net
 - Put ALL CSS in a single inline <style> block. Any JS goes in an inline <script>. NO external resources of any kind: no <link>, no CDN URLs, no external stylesheets, no web-font imports, no remote images. Anything fetched over the network will silently fail.
 - For type, use a system font stack (e.g. -apple-system, "Segoe UI", Roboto, sans-serif). For imagery/icons, use inline SVG, CSS shapes/gradients, or emoji — never an external <img src="http…">.
 - FILL THE FRAME. The document is the screen: set html,body{margin:0} and let the UI span the full width and height — the app's own background reaches every edge, with NO outer page margin or a small card floating in empty space. Put breathing room INSIDE the layout (padding, spacing), not as a dead border around it.
-- Make it real, not a static picture: wire up the obvious interactions with a little inline JS (a timer counts down, a button toggles, a tab switches, an input updates a value). Clean, modern, clear visual hierarchy.
+- MULTI-SCREEN when the request calls for it (a website, an app with several views, a signup or checkout flow): build ALL the screens into this ONE document and wire real client-side navigation between them — nav links, tabs, or buttons that show one screen at a time (e.g. toggle an ".active" class on ".screen" sections, or a tiny hashchange router). The navigation MUST actually work when clicked, each screen fills the frame, and only one shows at a time. Include just the handful of screens that matter — don't pad.
+- Make it real, not a static picture: wire up the obvious interactions with a little inline JS (navigation between screens, a timer counting down, a button toggling, a tab switching, an input updating a value). Clean, modern, clear visual hierarchy.
 
 Output ONLY the raw HTML document — no prose, no explanation, NO \`\`\` code fences before or after.`;
 

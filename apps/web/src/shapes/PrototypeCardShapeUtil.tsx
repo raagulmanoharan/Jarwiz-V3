@@ -31,6 +31,7 @@ import { AppWindow, ArrowRight, Loader2 } from 'lucide-react';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { requestPrototypeRun } from '../agents/prototypeRun';
+import { getPrototypeRefresh, subscribePrototypeRefresh } from '../agents/prototypeRefresh';
 
 export interface PrototypeCardProps {
   w: number;
@@ -110,6 +111,13 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
 
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
   const isStreaming = streamingSet.has(shape.id) || running;
+  // Reset counter — bumping it (via the refine menu) remounts the iframe below,
+  // reloading the UI to its initial state without regenerating.
+  const refreshNonce = useSyncExternalStore(
+    subscribePrototypeRefresh,
+    () => getPrototypeRefresh(shape.id),
+    () => 0,
+  );
   // The rendered UI is directly interactive once it has settled; while it's
   // still streaming the frame stays inert so a half-written UI isn't clickable.
   const interactive = hasDoc && !isStreaming;
@@ -141,6 +149,7 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
     return (
       <div className={`jz-prototype${interactive ? ' jz-prototype--interactive' : ''}`}>
         <iframe
+          key={refreshNonce}
           className="jz-prototype-frame"
           title={title || 'Prototype'}
           sandbox="allow-scripts allow-forms"
