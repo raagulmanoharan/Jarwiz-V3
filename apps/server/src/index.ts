@@ -555,6 +555,9 @@ app.post('/api/compose', async (c) => {
     : [];
   const intent = typeof raw.intent === 'string' ? raw.intent.slice(0, 400) : undefined;
   const machine = getMachine(typeof (raw as { machineId?: unknown }).machineId === 'string' ? (raw as { machineId: string }).machineId : undefined);
+  const options = Array.isArray((raw as { options?: unknown }).options)
+    ? ((raw as { options: unknown[] }).options).filter((x): x is string => typeof x === 'string').map((x) => x.slice(0, 40)).slice(0, 12)
+    : [];
   return streamSSE(c, async (stream) => {
     const signal = c.req.raw.signal;
     try {
@@ -562,7 +565,7 @@ app.post('/api/compose', async (c) => {
       // generic planner handles a free-form "plan my …" fan-out.
       const events =
         machine && machine.output === 'board'
-          ? streamMachineBoard(machine, intent ?? '', signal)
+          ? streamMachineBoard(machine, intent ?? '', signal, options)
           : streamCompose({ board, intent }, signal);
       for await (const event of events) {
         await stream.writeSSE({ data: JSON.stringify(event) });

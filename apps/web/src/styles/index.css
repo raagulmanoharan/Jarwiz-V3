@@ -624,68 +624,130 @@ body,
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding: 12px 13px 11px;
+  padding: 14px 15px;
   background: var(--jz-card);
-  border: 1.5px solid color-mix(in srgb, var(--jz-accent) 40%, var(--jz-hairline));
+  border: 1.5px solid color-mix(in srgb, var(--jz-accent) 38%, var(--jz-hairline));
   border-radius: var(--jz-radius-lg);
   box-shadow: var(--jz-e2, 0 2px 10px rgba(8, 9, 11, 0.14));
 }
-.jz-machine-card--running { border-color: var(--jz-accent); }
-.jz-machine-card-head { display: flex; align-items: center; gap: 7px; margin-bottom: 9px; }
+.jz-machine-card--running {
+  border-color: var(--jz-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--jz-accent) 18%, transparent), var(--jz-e2, 0 2px 10px rgba(8, 9, 11, 0.14));
+}
+/* Header: a single machine icon, aligned centre with the machine name. */
+.jz-machine-card-head { display: flex; align-items: center; gap: 10px; }
 .jz-machine-card-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
-  background: var(--jz-accent);
-  color: #fff;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--jz-accent) 15%, transparent);
+  color: var(--jz-accent);
   flex: none;
 }
-.jz-machine-card-icon { display: inline-flex; color: var(--jz-accent); }
-.jz-machine-card-name { font-size: 12.5px; font-weight: 700; color: var(--jz-ink-900); }
-.jz-machine-card-done { margin-left: auto; color: var(--jz-accent); font-weight: 700; }
+.jz-machine-card-name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--jz-ink-900);
+  line-height: 1.15;
+}
+.jz-machine-card-done {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--jz-accent) 18%, transparent);
+  color: var(--jz-accent);
+  flex: none;
+}
+/* Two-line description of what the machine does. */
+.jz-machine-card-desc {
+  margin: 9px 0 10px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--jz-ink-500);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* The subject input — borderless, no focus ring (it lives inside the block). */
 .jz-machine-card-input {
   flex: 1;
   width: 100%;
+  min-height: 40px;
   border: none;
   outline: none;
+  box-shadow: none;
   resize: none;
+  -webkit-appearance: none;
   background: transparent;
   color: var(--jz-ink-900);
   font: inherit;
-  font-size: 13.5px;
+  font-size: 14px;
   line-height: 1.4;
 }
-.jz-machine-card-input::placeholder { color: var(--jz-ink-400); }
-.jz-machine-card-foot { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-.jz-machine-card-hint {
-  font-size: 11px;
-  color: var(--jz-ink-400);
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+.jz-machine-card-input:focus,
+.jz-machine-card-input:focus-visible {
+  border: none;
+  outline: none;
+  box-shadow: none;
 }
+.jz-machine-card-input::placeholder { color: var(--jz-ink-400); }
+/* Optional-output toggles — extra cards the user opts into for this run. */
+.jz-machine-card-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 14px;
+  margin: 2px 0 11px;
+}
+.jz-machine-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--jz-ink-600, var(--jz-ink-500));
+  cursor: pointer;
+  user-select: none;
+}
+.jz-machine-opt input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--jz-accent);
+  cursor: pointer;
+}
+/* Full-width run button. */
 .jz-machine-card-run {
-  margin-left: auto;
+  width: 100%;
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
+  gap: 6px;
   border: none;
-  border-radius: var(--jz-radius-pill);
+  border-radius: var(--jz-radius-md, 10px);
   background: var(--jz-accent);
   color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 650;
+  padding: 9px 12px;
   cursor: pointer;
+  transition: filter var(--jz-dur-1, 0.12s) var(--jz-ease-out, ease);
 }
 .jz-machine-card-run:hover { filter: brightness(1.06); }
 .jz-machine-card-run:disabled { opacity: 0.45; cursor: default; }
 .jz-machine-spin { animation: jz-pdf-spin 1s linear infinite; }
-@media (prefers-reduced-motion: reduce) { .jz-machine-spin { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .jz-machine-spin { animation: none; }
+  .jz-machine-card-run { transition: none; }
+}
 
 /* Hamburger / logo button — fully round. The default face is the Jarwiz mark
  * (brand); when the side panel is open the icon cross-fades to a hamburger so

@@ -19,9 +19,9 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
-import { Grid2x2, Swords, Scale, ShieldAlert, CornerDownRight, UserRound, Boxes, ArrowRight, Loader2 } from 'lucide-react';
+import { Grid2x2, Swords, Scale, ShieldAlert, CornerDownRight, UserRound, ArrowRight, Loader2, Check } from 'lucide-react';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
-import { MACHINES } from '../machines/catalog';
+import { MACHINES, type Machine } from '../machines/catalog';
 import { requestMachineRun } from '../machines/runStore';
 
 export interface MachineCardProps {
@@ -43,15 +43,15 @@ declare module '@tldraw/tlschema' {
 
 export type MachineCardShape = TLShape<'machine-card'>;
 
-export const MACHINE_CARD_SIZE = { w: 340, h: 188 };
+export const MACHINE_CARD_SIZE = { w: 296, h: 226 };
 
 const ICONS: Record<string, React.ReactNode> = {
-  Grid2x2: <Grid2x2 size={15} />,
-  Swords: <Swords size={15} />,
-  Scale: <Scale size={15} />,
-  ShieldAlert: <ShieldAlert size={15} />,
-  CornerDownRight: <CornerDownRight size={15} />,
-  UserRound: <UserRound size={15} />,
+  Grid2x2: <Grid2x2 size={16} />,
+  Swords: <Swords size={16} />,
+  Scale: <Scale size={16} />,
+  ShieldAlert: <ShieldAlert size={16} />,
+  CornerDownRight: <CornerDownRight size={16} />,
+  UserRound: <UserRound size={16} />,
 };
 
 export class MachineCardShapeUtil extends ShapeUtil<MachineCardShape> {
@@ -76,7 +76,7 @@ export class MachineCardShapeUtil extends ShapeUtil<MachineCardShape> {
     return true;
   }
   override onResize(shape: MachineCardShape, info: TLResizeInfo<MachineCardShape>) {
-    return resizeBox(shape, info, { minWidth: 280, minHeight: 172 });
+    return resizeBox(shape, info, { minWidth: 272, minHeight: 208 });
   }
   override getGeometry(shape: MachineCardShape) {
     return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true });
@@ -93,12 +93,23 @@ export class MachineCardShapeUtil extends ShapeUtil<MachineCardShape> {
   }
 }
 
+/** Which optional outputs are ticked — from the shape's meta, defaulting to the
+ *  machine's default-on options for a freshly dropped block. */
+function enabledOptions(shape: MachineCardShape, m: Machine): Set<string> {
+  const meta = (shape.meta as { options?: unknown }).options;
+  if (Array.isArray(meta)) return new Set(meta.filter((x): x is string => typeof x === 'string'));
+  return new Set((m.options ?? []).filter((o) => o.default).map((o) => o.id));
+}
+
 function MachineCardBody({ shape }: { shape: MachineCardShape }) {
   const editor = useEditor();
   const ref = useRef<HTMLTextAreaElement | null>(null);
   const m = MACHINES.find((x) => x.id === shape.props.machineId) ?? MACHINES[0]!;
   const { subject, status } = shape.props;
   const running = status === 'running';
+  const done = status === 'done';
+  const options = m.options ?? [];
+  const enabled = enabledOptions(shape, m);
 
   // A freshly-dropped machine is ready for typing — focus its input.
   useEffect(() => {
@@ -108,6 +119,12 @@ function MachineCardBody({ shape }: { shape: MachineCardShape }) {
 
   const setSubject = (v: string) =>
     editor.updateShape<MachineCardShape>({ id: shape.id, type: 'machine-card', props: { subject: v } });
+  const toggleOption = (id: string) => {
+    const next = new Set(enabled);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    editor.updateShape<MachineCardShape>({ id: shape.id, type: 'machine-card', meta: { options: [...next] } });
+  };
   const run = () => {
     if (!subject.trim() || running) return;
     requestMachineRun(shape.id);
@@ -116,16 +133,16 @@ function MachineCardBody({ shape }: { shape: MachineCardShape }) {
   return (
     <div className={`jz-machine-card${running ? ' jz-machine-card--running' : ''}`}>
       <div className="jz-machine-card-head">
-        <span className="jz-machine-card-badge"><Boxes size={11} /></span>
-        <span className="jz-machine-card-icon">{ICONS[m.icon]}</span>
+        <span className="jz-machine-card-badge">{ICONS[m.icon]}</span>
         <span className="jz-machine-card-name">{m.name}</span>
-        {status === 'done' ? <span className="jz-machine-card-done">✓</span> : null}
+        {done ? <span className="jz-machine-card-done" title="Ran"><Check size={12} strokeWidth={3} /></span> : null}
       </div>
+      <p className="jz-machine-card-desc">{m.description}</p>
       <textarea
         ref={ref}
         className="jz-machine-card-input"
         value={subject}
-        placeholder="Type what to analyse…"
+        placeholder="What should I analyse?"
         style={{ pointerEvents: 'all' }}
         onPointerDown={stopEventPropagation}
         onPointerMove={stopEventPropagation}
@@ -139,23 +156,41 @@ function MachineCardBody({ shape }: { shape: MachineCardShape }) {
         }}
         onChange={(e) => setSubject(e.currentTarget.value)}
       />
-      <div className="jz-machine-card-foot">
-        <span className="jz-machine-card-hint">{m.blurb}</span>
-        <button
-          className="jz-machine-card-run"
-          disabled={!subject.trim() || running}
-          style={{ pointerEvents: 'all' }}
-          onPointerDown={stopEventPropagation}
-          onClick={run}
-          title="Run this machine (⌘↵)"
-        >
-          {running ? (
-            <><Loader2 size={13} className="jz-machine-spin" /> Thinking…</>
-          ) : (
-            <>Run <ArrowRight size={13} /></>
-          )}
-        </button>
-      </div>
+      {options.length > 0 ? (
+        <div className="jz-machine-card-opts">
+          {options.map((o) => (
+            <label
+              key={o.id}
+              className="jz-machine-opt"
+              style={{ pointerEvents: 'all' }}
+              onPointerDown={stopEventPropagation}
+            >
+              <input
+                type="checkbox"
+                checked={enabled.has(o.id)}
+                onChange={() => toggleOption(o.id)}
+              />
+              <span>{o.label}</span>
+            </label>
+          ))}
+        </div>
+      ) : null}
+      <button
+        className="jz-machine-card-run"
+        disabled={!subject.trim() || running}
+        style={{ pointerEvents: 'all' }}
+        onPointerDown={stopEventPropagation}
+        onClick={run}
+        title="Run this machine (⌘↵)"
+      >
+        {running ? (
+          <><Loader2 size={14} className="jz-machine-spin" /> Thinking…</>
+        ) : done ? (
+          <>Run again <ArrowRight size={14} /></>
+        ) : (
+          <>Run analysis <ArrowRight size={14} /></>
+        )}
+      </button>
     </div>
   );
 }

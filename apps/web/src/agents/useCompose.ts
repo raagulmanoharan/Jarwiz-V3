@@ -44,7 +44,7 @@ export function useCompose() {
   const [phase, setPhase] = useState<ComposePhase>('idle');
   const abortRef = useRef<AbortController | null>(null);
 
-  const run = useCallback(async (intent?: string, opts?: { machineId?: string; anchorId?: TLShapeId }) => {
+  const run = useCallback(async (intent?: string, opts?: { machineId?: string; anchorId?: TLShapeId; options?: string[] }) => {
     if (phase === 'planning' || phase === 'building') return;
     const board = gatherBoardCards(editor);
     if (board.length === 0 && !intent?.trim()) return;
@@ -152,7 +152,7 @@ export function useCompose() {
       const res = await fetch('/api/compose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ board, intent, machineId: opts?.machineId }),
+        body: JSON.stringify({ board, intent, machineId: opts?.machineId, options: opts?.options }),
         signal: ac.signal,
       });
       if (!res.ok || !res.body) throw new Error(`Compose failed (${res.status})`);

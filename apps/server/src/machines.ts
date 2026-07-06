@@ -15,6 +15,15 @@
  * Adding a machine is one entry here + a light client catalog row for the tile.
  */
 
+/** An optional output the skill can fan out on top of its core result. The user
+ *  toggles these on the block; the enabled ids ride the run request and the
+ *  board builder honours them (see machineBoard.ts). Mirrored by id in the
+ *  client catalog so the block can render the checkboxes. */
+export interface MachineOptionDef {
+  id: string;
+  label: string;
+}
+
 export interface MachineSkill {
   id: string;
   /** The card shape the skill lands in; 'board' fans out into several cards. */
@@ -23,6 +32,8 @@ export interface MachineSkill {
   deep: boolean;
   /** The skill — method + strict output contract. */
   systemPrompt: string;
+  /** Optional extra outputs the user can enable (board machines). */
+  optionalOutputs?: MachineOptionDef[];
 }
 
 const SWOT = `You are a strategy analyst producing a rigorous, EVIDENCE-BASED strategic analysis of the given subject.
@@ -63,7 +74,16 @@ const PERSONA = `Draft one representative user persona for the given product/ide
 Output ONLY markdown (no code fences). Start with "# Persona: <a realistic name>, <role/age>". Then sections: ## Snapshot (a 2–3 sentence bio), ## Goals, ## Frustrations, ## How they'd use this, ## What would win them over — each a couple of specific bullets grounded in the real audience.`;
 
 export const MACHINE_SKILLS: Record<string, MachineSkill> = {
-  swot: { id: 'swot', output: 'board', deep: true, systemPrompt: SWOT },
+  swot: {
+    id: 'swot',
+    output: 'board',
+    deep: true,
+    systemPrompt: SWOT,
+    optionalOutputs: [
+      { id: 'tows', label: 'TOWS strategy' },
+      { id: 'verdict', label: 'Strategic verdict' },
+    ],
+  },
   competitive: { id: 'competitive', output: 'table', deep: true, systemPrompt: COMPETITIVE },
   risk: { id: 'risk', output: 'table', deep: true, systemPrompt: RISK },
   proscons: { id: 'proscons', output: 'table', deep: false, systemPrompt: PROSCONS },

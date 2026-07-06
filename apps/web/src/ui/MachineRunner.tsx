@@ -31,6 +31,12 @@ export function MachineRunner() {
     const subject = p.subject.trim();
     if (!machine || !subject) return;
 
+    // Optional outputs the user ticked on the block (defaults when untouched).
+    const metaOpts = (shape.meta as { options?: unknown }).options;
+    const options = Array.isArray(metaOpts)
+      ? (metaOpts.filter((x): x is string => typeof x === 'string'))
+      : (machine.options ?? []).filter((o) => o.default).map((o) => o.id);
+
     editor.updateShape<MachineCardShape>({ id: req.id, type: 'machine-card', props: { status: 'running' } });
     const finish = () => {
       if (editor.getShape(req.id)) {
@@ -42,7 +48,7 @@ export function MachineRunner() {
     // machine fans out into several cards beside the block (compose); everything
     // else lands as one card (ask). Either way the subject + machine id go up.
     if (machine.output === 'board') {
-      void compose(subject, { machineId: machine.id, anchorId: req.id }).finally(finish);
+      void compose(subject, { machineId: machine.id, anchorId: req.id, options }).finally(finish);
     } else {
       void ask(subject, [req.id], {
         machineId: machine.id,

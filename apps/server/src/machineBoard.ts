@@ -75,8 +75,10 @@ interface CardSpec {
   span?: number;
 }
 
-/** SWOT board: build the six cards from the structured research result. */
-function buildSwotCards(o: Record<string, unknown>): CardSpec[] {
+/** SWOT board: the core 2×2 quadrants, then the optional strategy cards the user
+ *  ticked (TOWS, Verdict) to the RIGHT — each taking the next free column so the
+ *  board never leaves a gap when only one extra is enabled. */
+function buildSwotCards(o: Record<string, unknown>, options: string[]): CardSpec[] {
   const tows = (o.tows ?? {}) as Record<string, unknown>;
   const towsRow = (label: string, key: string): string[] => [label, strList(tows[key]).join('\n')];
   const sources = Array.isArray(o.sources) ? (o.sources as Array<Record<string, unknown>>) : [];
@@ -85,18 +87,22 @@ function buildSwotCards(o: Record<string, unknown>): CardSpec[] {
     .join('\n');
   const priorities = strList(o.priorities).map((p, i) => `${i + 1}. ${p}`).join('\n');
 
-  return [
+  const cards: CardSpec[] = [
     // The SWOT 2×2: internal (top row) over external (bottom row).
     { title: 'Strengths', shape: 'list', md: bullets(o.strengths), col: 0, row: 0 },
     { title: 'Weaknesses', shape: 'list', md: bullets(o.weaknesses), col: 1, row: 0 },
     { title: 'Opportunities', shape: 'list', md: bullets(o.opportunities), col: 0, row: 1 },
     { title: 'Threats', shape: 'list', md: bullets(o.threats), col: 1, row: 1 },
-    // The two strategy cards sit to the RIGHT of the 2×2 matrix, side by side
-    // (their own columns), so the board grows horizontally, not downward.
-    {
+  ];
+
+  // Optional strategy cards sit to the RIGHT of the 2×2, each taking the next
+  // free column so a single enabled extra never leaves a hole in the grid.
+  let extraCol = 2;
+  if (options.includes('tows')) {
+    cards.push({
       title: 'TOWS — Strategic Moves',
       shape: 'table',
-      col: 2,
+      col: extraCol++,
       row: 0,
       columns: ['Cross-strategy', 'Moves'],
       rows: [
@@ -105,19 +111,22 @@ function buildSwotCards(o: Record<string, unknown>): CardSpec[] {
         towsRow('Weaknesses × Opportunities (WO)', 'WO'),
         towsRow('Weaknesses × Threats (WT)', 'WT'),
       ],
-    },
-    {
+    });
+  }
+  if (options.includes('verdict')) {
+    cards.push({
       title: 'Strategic Verdict',
       shape: 'doc',
-      col: 3,
+      col: extraCol++,
       row: 0,
       md: `${String(o.verdict ?? '').trim()}${priorities ? `\n\n## Top priorities\n${priorities}` : ''}${sourceMd ? `\n\n## Sources\n${sourceMd}` : ''}`,
-    },
-  ];
+    });
+  }
+  return cards;
 }
 
 /** The registry of board builders, keyed by machine id. */
-const BOARD_BUILDERS: Record<string, (o: Record<string, unknown>) => CardSpec[]> = {
+const BOARD_BUILDERS: Record<string, (o: Record<string, unknown>, options: string[]) => CardSpec[]> = {
   swot: buildSwotCards,
 };
 
@@ -129,6 +138,7 @@ export async function* streamMachineBoard(
   machine: MachineSkill,
   subject: string,
   signal: AbortSignal,
+  options: string[] = [],
 ): AsyncGenerator<ComposeEvent> {
   const builder = BOARD_BUILDERS[machine.id];
   if (!builder) {
@@ -149,7 +159,7 @@ export async function* streamMachineBoard(
     return;
   }
 
-  const cards = builder(parsed).filter((c) => (c.shape === 'table' ? (c.columns?.length ?? 0) > 0 : (c.md ?? '').trim().length > 0));
+  const cards = builder(parsed, options).filter((c) => (c.shape === 'table' ? (c.columns?.length ?? 0) > 0 : (c.md ?? '').trim().length > 0));
   if (cards.length === 0) {
     yield { type: 'error', message: 'The analysis came back empty.' };
     return;

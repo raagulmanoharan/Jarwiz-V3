@@ -518,6 +518,9 @@ export interface ComposeRequest {
   /** When set, run this Thinking Machine's BOARD skill on `intent` (the typed
    *  subject) instead of the generic board planner. See server machineBoard.ts. */
   machineId?: string;
+  /** Optional-output ids the user enabled on the block (e.g. SWOT's 'tows',
+   *  'verdict') — the board skill fans these extra cards out only when present. */
+  options?: string[];
 }
 
 /** SSE for a compose run: the plan up front, then each card's Ask events
