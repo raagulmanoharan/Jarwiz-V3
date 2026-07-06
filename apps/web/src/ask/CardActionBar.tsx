@@ -17,6 +17,8 @@ import { openDocFocus } from '../ui/focusDoc';
 import { PROFILE_PROMPT } from './profilePrompt';
 import { useAsk } from './useAsk';
 import { useDiagram } from '../agents/useDiagram';
+import { useDashboard } from '../agents/useDashboard';
+import { gridIsDashboardable } from '../lib/dashboardable';
 import { refreshPrototype } from '../agents/prototypeRefresh';
 import { useTidy, canTidy } from '../agents/useTidy';
 import { useCluster, canCluster } from '../agents/useCluster';
@@ -73,6 +75,7 @@ export function CardActionBar() {
   const { diagram } = useDiagram();
   const { tidy } = useTidy();
   const { cluster } = useCluster();
+  const { buildDashboard } = useDashboard();
   const [menu, setMenu] = useState<null | 'refine' | 'tint' | 'more'>(null);
   // Hidden picker for "insert image" — uploads to the blob store, then drops
   // a markdown image at the caret (the doc card renders it inline).
@@ -189,11 +192,39 @@ export function CardActionBar() {
   // A spreadsheet reads like data, not prose — offer analysis moves that fit
   // a grid, plus the shared table/diagram reshapes.
   if (!sel.multi && hasContent && sel.type === 'sheet-card') {
+    // Data-aware gate (not regex): the SheetCard writes meta.jzDashboardable
+    // once its grid loads — offer the interactive dashboard only when the sheet
+    // actually holds chartable data (measures × dimensions).
+    const sheet = editor.getShape(id);
+    if (sheet?.meta?.jzDashboardable) {
+      const p = sheet.props as { assetId?: string; name?: string };
+      transforms.push({
+        label: '✦ Interactive dashboard',
+        run: () =>
+          buildDashboard(id, p.name ?? '', async () => {
+            const res = await fetch(`/api/sheet/${encodeURIComponent(p.assetId ?? '')}/grid`);
+            const data = (await res.json()) as { sheets?: { rows: string[][] }[] };
+            return data.sheets?.[0]?.rows ?? [];
+          }),
+      });
+    }
     transforms.push(
       { label: 'Key insights', run: () => ask('What are the key insights in this spreadsheet? Call out notable totals, trends, and outliers.', [id], { skipClarify: true, logLabel: 'Analysed the sheet' }) },
       { label: 'Summarise the columns', run: () => ask('Summarise what each column of this spreadsheet holds and what the data is about.', [id], { skipClarify: true }) },
-      { label: '◇ Chart the trend', run: () => diagram('Turn the main trend in this spreadsheet into a diagram.', [id]) },
     );
+  }
+  // A table of numbers is dashboard-able too — same data-shape gate, read
+  // straight from the card's cells.
+  if (!sel.multi && hasContent && sel.type === 'table-card') {
+    const t = editor.getShape(id);
+    const tp = t?.props as { columns?: string[]; rows?: string[][] } | undefined;
+    const grid = tp ? [tp.columns ?? [], ...(tp.rows ?? [])] : [];
+    if (gridIsDashboardable(grid)) {
+      transforms.unshift({
+        label: '✦ Interactive dashboard',
+        run: () => buildDashboard(id, (t?.meta?.jzTitle as string) ?? '', () => grid),
+      });
+    }
   }
   // The drop-moment profile (docs/PDF-EDGE.md build 3): a dropped PDF or
   // spreadsheet lands selected, so this bar IS the drop moment — Profile

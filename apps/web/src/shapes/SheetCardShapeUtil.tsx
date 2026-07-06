@@ -21,6 +21,7 @@ import {
   type TLShape,
 } from 'tldraw';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
+import { gridIsDashboardable } from '../lib/dashboardable';
 
 export type SheetStatus = 'uploading' | 'ready' | 'error';
 
@@ -138,6 +139,19 @@ function SheetCardBody({ shape }: { shape: SheetCardShape }) {
     const cur = editor.getShape(shape.id);
     if (cur && Math.abs((cur.props as SheetCardProps).h - target) > 4) {
       editor.updateShape<SheetCardShape>({ id: shape.id, type: 'sheet-card', props: { h: target } });
+    }
+  }, [grid, editor, shape.id]);
+
+  // Data-aware gate for the "✦ Interactive dashboard" action: once the grid is
+  // in hand, flag whether it actually holds chartable data (measures ×
+  // dimensions) so the action bar can offer the dashboard only when it fits.
+  useEffect(() => {
+    if (!grid) return;
+    const cur = editor.getShape(shape.id);
+    if (!cur) return;
+    const flag = gridIsDashboardable(grid.rows);
+    if ((cur.meta as { jzDashboardable?: boolean }).jzDashboardable !== flag) {
+      editor.updateShape<SheetCardShape>({ id: shape.id, type: 'sheet-card', meta: { ...cur.meta, jzDashboardable: flag } });
     }
   }, [grid, editor, shape.id]);
 
