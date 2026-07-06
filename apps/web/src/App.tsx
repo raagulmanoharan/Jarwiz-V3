@@ -39,6 +39,7 @@ import { EmptyState } from './ui/EmptyState';
 import { Topbar } from './ui/Topbar';
 import { HelpLayer } from './ui/HelpLayer';
 import { SidePanel } from './ui/SidePanel';
+import { ErrorBoundary, Safe } from './ui/ErrorBoundary';
 import { getTheme, subscribeTheme } from './ui/theme';
 
 /**
@@ -48,32 +49,35 @@ import { getTheme, subscribeTheme } from './ui/theme';
  * so the light/dark toggle re-skins everything at once.
  */
 function JarwizOverlay() {
+  // Each overlay is guarded by its own `silent` boundary: if one throws, it
+  // disappears quietly while the canvas and every sibling overlay keep working —
+  // a single broken card or layer can't take down the whole surface.
   return (
     <>
       {/* Chrome — the Flora frame. */}
-      <Topbar />
-      <SidePanel />
-      <ToolRail />
-      <PromptBar />
-      <AgentCursorLayer />
-      <HelpLayer />
+      <Safe label="Topbar"><Topbar /></Safe>
+      <Safe label="SidePanel"><SidePanel /></Safe>
+      <Safe label="ToolRail"><ToolRail /></Safe>
+      <Safe label="PromptBar"><PromptBar /></Safe>
+      <Safe label="AgentCursorLayer"><AgentCursorLayer /></Safe>
+      <Safe label="HelpLayer"><HelpLayer /></Safe>
 
       {/* Behavioural overlays — the ask/refine loop on cards. */}
-      <ProvenanceLayer />
-      <EmptyState />
-      <BoardEntry />
-      <CardTitleTag />
-      <CardActionBar />
-      <ClarifyLayer />
-      <CommentLayer />
-      <MachineRunner />
-      <DraftControls />
-      <RegenControls />
-      <SelectionAsk />
-      <AgentTaskLayer />
-      <Timeline />
+      <Safe label="ProvenanceLayer"><ProvenanceLayer /></Safe>
+      <Safe label="EmptyState"><EmptyState /></Safe>
+      <Safe label="BoardEntry"><BoardEntry /></Safe>
+      <Safe label="CardTitleTag"><CardTitleTag /></Safe>
+      <Safe label="CardActionBar"><CardActionBar /></Safe>
+      <Safe label="ClarifyLayer"><ClarifyLayer /></Safe>
+      <Safe label="CommentLayer"><CommentLayer /></Safe>
+      <Safe label="MachineRunner"><MachineRunner /></Safe>
+      <Safe label="DraftControls"><DraftControls /></Safe>
+      <Safe label="RegenControls"><RegenControls /></Safe>
+      <Safe label="SelectionAsk"><SelectionAsk /></Safe>
+      <Safe label="AgentTaskLayer"><AgentTaskLayer /></Safe>
+      <Safe label="Timeline"><Timeline /></Safe>
       {/* Last = on top: focus mode covers the whole board when open. */}
-      <DocFocusOverlay />
+      <Safe label="DocFocusOverlay"><DocFocusOverlay /></Safe>
     </>
   );
 }
@@ -241,12 +245,14 @@ function RestoreSplash() {
 export function App() {
   const room = roomFromUrl();
   const restoring = useSyncExternalStore(subscribeRestore, isRestoring, isRestoring);
-  if (restoring) {
-    return (
-      <div className="jarwiz-app">
-        <RestoreSplash />
-      </div>
-    );
-  }
-  return <div className="jarwiz-app">{room ? <SyncedBoard room={room} /> : <LocalBoard />}</div>;
+  return (
+    <div className="jarwiz-app">
+      {/* Root backstop: anything that escapes an overlay's own guard (the canvas
+       *  itself, a shape render, restore) lands on a branded reload screen
+       *  instead of a white page. */}
+      <ErrorBoundary variant="app" label="App">
+        {restoring ? <RestoreSplash /> : room ? <SyncedBoard room={room} /> : <LocalBoard />}
+      </ErrorBoundary>
+    </div>
+  );
 }

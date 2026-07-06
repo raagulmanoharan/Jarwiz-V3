@@ -4323,6 +4323,89 @@ body,
   .jz-help-panel { animation: none; }
 }
 
+/* ─── Crash fallback (root error boundary) ───────────────────────────────── */
+.jz-crash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: var(--jz-space-6);
+  background: var(--jz-paper);
+  font-family: var(--jz-font-ui);
+}
+.jz-crash-card {
+  width: min(440px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--jz-space-4);
+  padding: var(--jz-space-8);
+  background: var(--jz-surface-raised);
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-xl);
+  box-shadow: var(--jz-e3);
+}
+.jz-crash-spark {
+  font-size: 28px;
+  line-height: 1;
+  color: var(--jz-accent);
+}
+.jz-crash-title {
+  margin: 0;
+  font-size: var(--jz-text-title-lg-size);
+  font-weight: 600;
+  color: var(--jz-ink-900);
+}
+.jz-crash-body {
+  margin: 0;
+  font-size: var(--jz-text-body-size);
+  line-height: var(--jz-text-body-lh);
+  color: var(--jz-ink-500);
+}
+.jz-crash-reload {
+  margin-top: var(--jz-space-2);
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-accent);
+  color: var(--jz-accent-ink);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-sm-size);
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-crash-reload:hover { filter: brightness(1.06); }
+.jz-crash-details {
+  width: 100%;
+  margin-top: var(--jz-space-2);
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-400);
+}
+.jz-crash-details summary {
+  cursor: pointer;
+  user-select: none;
+}
+.jz-crash-details pre {
+  margin: var(--jz-space-3) 0 0;
+  padding: var(--jz-space-3);
+  max-height: 160px;
+  overflow: auto;
+  text-align: left;
+  white-space: pre-wrap;
+  background: var(--jz-paper-deep);
+  border-radius: var(--jz-radius-sm);
+  font-family: var(--jz-font-mono);
+  font-size: var(--jz-text-micro-size);
+  line-height: var(--jz-text-micro-lh);
+  color: var(--jz-ink-700);
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-crash-reload { transition: none; }
+}
+
 /* ─── Side panel (workspace + boards) ───────────────────────────────────── */
 
 .jz-side-scrim {
