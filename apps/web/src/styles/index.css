@@ -3170,7 +3170,7 @@ body,
 }
 
 .jz-diagram-kind {
-  color: var(--jz-ink-400);
+  color: var(--jz-accent);
   font-size: 11px;
 }
 

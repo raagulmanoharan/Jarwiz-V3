@@ -14,7 +14,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { createShapeId, useEditor, type Box, type Editor, type TLShape, type TLShapeId } from 'tldraw';
 import type { ComposeEvent } from '@jarwiz/shared';
-import { DIAGRAM_CARD_SIZE, DOC_CARD_SIZE, TABLE_CARD_SIZE, PROTOTYPE_CARD_SIZE, type DiagramCardShape, type DocCardShape, type TableCardShape, type PrototypeCardShape } from '../shapes';
+import { DOC_CARD_SIZE, TABLE_CARD_SIZE, PROTOTYPE_CARD_SIZE, type DocCardShape, type TableCardShape, type PrototypeCardShape } from '../shapes';
 import { setShapeTitle } from '../shapes/shapeTitle';
 import { readSSE } from './sse';
 import { gatherBoardCards } from './boardText';
@@ -34,7 +34,7 @@ function tableWidth(colCount: number): number {
 
 interface Slot {
   cardId?: TLShapeId;
-  kind: 'doc' | 'table' | 'diagram' | 'prototype';
+  kind: 'doc' | 'table' | 'prototype';
   cols?: string[];
   rows?: string[][];
 }
@@ -94,12 +94,6 @@ export function useCompose() {
               props: { w: isGrid ? gridW : tableWidth(cols.length), h: TABLE_CARD_SIZE.h, columns: cols, rows },
             });
             slots.set(slotIdx, { cardId: id, kind: 'table', cols, rows });
-          } else if (ev.shape === 'diagram') {
-            editor.createShape<DiagramCardShape>({
-              id, type: 'diagram-card', x: originX, y: originY,
-              props: { w: isGrid ? gridW : DIAGRAM_CARD_SIZE.w, h: DIAGRAM_CARD_SIZE.h, code: '', title: titles.get(slotIdx) ?? '' },
-            });
-            slots.set(slotIdx, { cardId: id, kind: 'diagram' });
           } else if (ev.shape === 'prototype') {
             editor.createShape<PrototypeCardShape>({
               id, type: 'prototype-card', x: originX, y: originY,
@@ -126,14 +120,7 @@ export function useCompose() {
           if (!slot?.cardId) break;
           const s = editor.getShape(slot.cardId);
           if (!s) break;
-          if (s.type === 'diagram-card') {
-            // Mermaid source streams into `code`; the shape renders it to SVG
-            // once it settles (same path as a hand-typed diagram ask).
-            editor.updateShape<DiagramCardShape>({
-              id: slot.cardId, type: 'diagram-card',
-              props: { code: (s.props as { code: string }).code + ev.textDelta },
-            });
-          } else if (s.type === 'prototype-card') {
+          if (s.type === 'prototype-card') {
             // HTML streams into `html`; the shape renders it in a sandboxed
             // iframe once it settles (same path as a hand-typed prototype ask).
             editor.updateShape<PrototypeCardShape>({
@@ -234,12 +221,11 @@ export function useCompose() {
 
 /** A card that finished with no content — a rare generation miss. Husks like
  *  this get swept so the board is only ever real cards. Checks the field each
- *  card type actually carries: doc/list → text, table → cells, diagram → code. */
+ *  card type actually carries: doc/list → text, table → cells, prototype → html. */
 function isEmptyCard(s: TLShape): boolean {
   if (s.type === 'doc-card') return !String((s.props as { text?: string }).text ?? '').trim();
   if (s.type === 'table-card')
     return !((s.props as { rows?: string[][] }).rows ?? []).flat().some((c) => String(c).trim());
-  if (s.type === 'diagram-card') return !String((s.props as { code?: string }).code ?? '').trim();
   if (s.type === 'prototype-card') return !String((s.props as { html?: string }).html ?? '').trim();
   return false;
 }
