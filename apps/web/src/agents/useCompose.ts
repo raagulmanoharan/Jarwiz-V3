@@ -12,9 +12,9 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
-import { createShapeId, useEditor, type Box, type Editor, type TLShapeId } from 'tldraw';
+import { createShapeId, useEditor, type Box, type Editor, type TLShape, type TLShapeId } from 'tldraw';
 import type { ComposeEvent } from '@jarwiz/shared';
-import { DOC_CARD_SIZE, TABLE_CARD_SIZE, type DocCardShape, type TableCardShape } from '../shapes';
+import { DOC_CARD_SIZE, TABLE_CARD_SIZE, PROTOTYPE_CARD_SIZE, type DocCardShape, type TableCardShape, type PrototypeCardShape } from '../shapes';
 import { setShapeTitle } from '../shapes/shapeTitle';
 import { readSSE } from './sse';
 import { gatherBoardCards } from './boardText';
@@ -34,7 +34,7 @@ function tableWidth(colCount: number): number {
 
 interface Slot {
   cardId?: TLShapeId;
-  kind: 'doc' | 'table';
+  kind: 'doc' | 'table' | 'prototype';
   cols?: string[];
   rows?: string[][];
 }
@@ -94,6 +94,12 @@ export function useCompose() {
               props: { w: isGrid ? gridW : tableWidth(cols.length), h: TABLE_CARD_SIZE.h, columns: cols, rows },
             });
             slots.set(slotIdx, { cardId: id, kind: 'table', cols, rows });
+          } else if (ev.shape === 'prototype') {
+            editor.createShape<PrototypeCardShape>({
+              id, type: 'prototype-card', x: originX, y: originY,
+              props: { w: isGrid ? gridW : PROTOTYPE_CARD_SIZE.w, h: PROTOTYPE_CARD_SIZE.h, html: '', title: titles.get(slotIdx) ?? '' },
+            });
+            slots.set(slotIdx, { cardId: id, kind: 'prototype' });
           } else {
             editor.createShape<DocCardShape>({
               id, type: 'doc-card', x: originX, y: originY,
@@ -113,7 +119,15 @@ export function useCompose() {
         case 'card.delta': {
           if (!slot?.cardId) break;
           const s = editor.getShape(slot.cardId);
-          if (s && 'text' in (s.props as object)) {
+          if (!s) break;
+          if (s.type === 'prototype-card') {
+            // HTML streams into `html`; the shape renders it in a sandboxed
+            // iframe once it settles (same path as a hand-typed prototype ask).
+            editor.updateShape<PrototypeCardShape>({
+              id: slot.cardId, type: 'prototype-card',
+              props: { html: (s.props as { html: string }).html + ev.textDelta },
+            });
+          } else if ('text' in (s.props as object)) {
             editor.updateShape({
               id: slot.cardId, type: s.type,
               props: { text: (s.props as { text: string }).text + ev.textDelta },
@@ -133,11 +147,7 @@ export function useCompose() {
           // A slot that produced no content (a rare generation miss) shouldn't
           // leave an empty husk on the board — drop it.
           const s = editor.getShape(slot.cardId);
-          const emptyDoc = s?.type === 'doc-card' && !String((s.props as { text?: string }).text ?? '').trim();
-          const emptyTable =
-            s?.type === 'table-card' &&
-            !((s.props as { rows?: string[][] }).rows ?? []).flat().some((c) => String(c).trim());
-          if (emptyDoc || emptyTable) {
+          if (s && isEmptyCard(s)) {
             editor.deleteShapes([slot.cardId]);
             const i = created.indexOf(slot.cardId);
             if (i >= 0) created.splice(i, 1);
@@ -176,11 +186,7 @@ export function useCompose() {
       // leave a titled-but-empty card. Drop them so the board is all real cards.
       for (const id of [...created]) {
         const s = editor.getShape(id);
-        const emptyDoc = s?.type === 'doc-card' && !String((s.props as { text?: string }).text ?? '').trim();
-        const emptyTable =
-          s?.type === 'table-card' &&
-          !((s.props as { rows?: string[][] }).rows ?? []).flat().some((c) => String(c).trim());
-        if (!s || emptyDoc || emptyTable) {
+        if (!s || isEmptyCard(s)) {
           if (s) editor.deleteShapes([id]);
           const i = created.indexOf(id);
           if (i >= 0) created.splice(i, 1);
@@ -211,6 +217,17 @@ export function useCompose() {
   }, []);
 
   return { phase, run, cancel };
+}
+
+/** A card that finished with no content — a rare generation miss. Husks like
+ *  this get swept so the board is only ever real cards. Checks the field each
+ *  card type actually carries: doc/list → text, table → cells, prototype → html. */
+function isEmptyCard(s: TLShape): boolean {
+  if (s.type === 'doc-card') return !String((s.props as { text?: string }).text ?? '').trim();
+  if (s.type === 'table-card')
+    return !((s.props as { rows?: string[][] }).rows ?? []).flat().some((c) => String(c).trim());
+  if (s.type === 'prototype-card') return !String((s.props as { html?: string }).html ?? '').trim();
+  return false;
 }
 
 /** Grid layout for a machine board (e.g. SWOT). Cards sit in fixed columns.

@@ -70,6 +70,17 @@ export const cardShapeProps = {
     code: T.string,
     title: T.string,
   },
+  'prototype-card': {
+    w: T.number,
+    h: T.number,
+    /** A self-contained HTML document (inline CSS/JS, no external resources). */
+    html: T.string,
+    title: T.string,
+    /** What the user asked to prototype (kept so it can be re-generated). */
+    prompt: T.string,
+    /** 'idle' (awaiting a prompt) | 'running' | 'done' | 'error'. */
+    status: T.string,
+  },
 } as const;
 
 export type CardShapeType = keyof typeof cardShapeProps;

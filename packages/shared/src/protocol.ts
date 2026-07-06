@@ -565,7 +565,7 @@ export interface ReviseResult {
  *  - `affinity` — clustered sticky notes (an affinity diagram): not one card but
  *    a set of `note` cards grouped into labelled clusters.
  */
-export type AskShape = 'doc' | 'table' | 'list' | 'diagram' | 'affinity';
+export type AskShape = 'doc' | 'table' | 'list' | 'diagram' | 'affinity' | 'prototype';
 
 /** SSE events for a single Ask response.
  *  - Tables build live: `card.create` carries the columns + row count, then

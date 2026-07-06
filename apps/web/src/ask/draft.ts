@@ -5,6 +5,7 @@
  */
 
 import type { TLShapeId } from 'tldraw';
+import type { AskShape } from '@jarwiz/shared';
 import { createUiStore } from './uiStore';
 
 export interface Draft {
@@ -22,7 +23,7 @@ export interface Draft {
    *  transforms) read badly as raw instruction text. Falls back to `prompt`. */
   logLabel?: string;
   sourceIds: TLShapeId[];
-  shape: 'doc' | 'table' | 'list' | 'diagram' | 'affinity';
+  shape: AskShape;
   pdfSourceId: TLShapeId | null;
 }
 
