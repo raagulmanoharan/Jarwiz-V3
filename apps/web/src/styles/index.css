@@ -1167,7 +1167,7 @@ body,
   vector-effect: non-scaling-stroke;
   stroke-dasharray: 2 4;
   stroke-linecap: round;
-  opacity: 0.5;
+  opacity: 0.3;
 }
 .jz-prov-dot {
   fill: var(--jz-ink-700);
