@@ -31,9 +31,10 @@
         --ink: #f5f5f7;
         --ink-2: #b6b6c0;
         --ink-3: #7b7b86;
-        --accent: #8b70ff;
-        --accent-2: #a793ff;
-        --accent-deep: #6a4dff;
+        /* Monochrome: "accent" is white; usages resolve to white/grey on black. */
+        --accent: #ffffff;
+        --accent-2: #ededf0;
+        --accent-deep: #c2c2c8;
         --r-md: 14px;
         --r-lg: 20px;
         --r-xl: 28px;
@@ -62,8 +63,8 @@
         z-index: 0;
         pointer-events: none;
         background:
-          radial-gradient(680px 420px at 72% -6%, rgba(139, 112, 255, 0.2), transparent 60%),
-          radial-gradient(560px 380px at 8% 8%, rgba(106, 77, 255, 0.12), transparent 60%);
+          radial-gradient(640px 380px at 74% -8%, rgba(255, 255, 255, 0.06), transparent 62%),
+          radial-gradient(520px 340px at 6% 6%, rgba(255, 255, 255, 0.03), transparent 62%);
       }
       main, header, footer { position: relative; z-index: 1; }
 
@@ -82,9 +83,8 @@
       .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
       .brand .spark {
         display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px;
-        background: linear-gradient(135deg, var(--accent), var(--accent-deep));
-        box-shadow: 0 4px 16px rgba(139, 112, 255, 0.4);
-        color: #fff; font-size: 15px;
+        background: var(--ink);
+        color: var(--bg); font-size: 15px;
       }
       .nav-links { display: flex; align-items: center; gap: 30px; }
       .nav-links a.navlink { color: var(--ink-2); font-size: 14px; font-weight: 500; transition: color 0.2s var(--ease); }
@@ -96,11 +96,12 @@
         transition: transform 0.15s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
         white-space: nowrap;
       }
-      .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-deep)); color: #fff; box-shadow: 0 6px 22px rgba(122, 92, 255, 0.32); }
-      .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(122, 92, 255, 0.48); }
+      .btn-primary { background: var(--ink); color: var(--bg); box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45); }
+      .btn-primary:hover { transform: translateY(-1px); background: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); }
       .btn-ghost { background: var(--surface); color: var(--ink); border-color: var(--hairline-2); }
       .btn-ghost:hover { transform: translateY(-1px); border-color: rgba(255,255,255,0.28); background: var(--surface-2); }
       .btn-lg { padding: 14px 26px; font-size: 15px; }
+      .btn .gh { width: 1.15em; height: 1.15em; flex: none; }
       @media (prefers-reduced-motion: reduce) { .btn:hover { transform: none; } }
       .nav .menu-toggle { display: none; }
 
@@ -111,21 +112,12 @@
         font-size: clamp(40px, 6.6vw, 72px); line-height: 1.03; letter-spacing: -0.035em; font-weight: 800;
       }
       h1 .grad {
-        background: linear-gradient(120deg, var(--accent-2) 0%, var(--accent) 45%, #c9baff 100%);
+        background: linear-gradient(120deg, #ffffff 0%, #ffffff 42%, #8f8f97 100%);
         -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
       }
       .sub {
         margin: 28px auto 0; max-width: 620px; color: var(--ink-2);
         font-size: clamp(16px, 2vw, 19px); line-height: 1.6;
-      }
-      .wedge {
-        margin: 22px auto 0; max-width: 640px; font-size: clamp(16px, 2vw, 19px); line-height: 1.55;
-        color: var(--ink-2);
-      }
-      .wedge strong {
-        color: var(--ink); font-weight: 700;
-        background: linear-gradient(120deg, var(--accent-2), #c9baff);
-        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
       }
       .hero-cta { display: flex; gap: 14px; justify-content: center; margin-top: 34px; flex-wrap: wrap; }
       .cta-note { margin: 16px auto 0; color: var(--ink-3); font-size: 13.5px; }
@@ -153,6 +145,22 @@
       .shot img { display: block; width: 100%; height: auto; }
       .shot-cap { margin: 22px auto 0; max-width: 620px; text-align: center; color: var(--ink-3); font-size: 14px; line-height: 1.6; }
       .shot-cap b { color: var(--ink-2); font-weight: 600; }
+
+      /* Versus band — chatbot vs. board */
+      .versus { display: grid; grid-template-columns: 1fr auto 1fr; gap: 20px; align-items: stretch; max-width: 920px; margin: 0 auto; }
+      .vs-card { padding: 26px 28px; border-radius: var(--r-lg); border: 1px solid var(--hairline); background: var(--bg-2); }
+      .vs-card.win { border-color: color-mix(in srgb, var(--accent) 34%, var(--hairline)); background: linear-gradient(180deg, var(--surface), var(--bg-2)); }
+      .vs-card .kind { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; color: var(--ink-3); margin: 0 0 14px; }
+      .vs-card.win .kind { color: var(--accent-2); }
+      .vs-card ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 11px; }
+      .vs-card li { position: relative; padding-left: 24px; color: var(--ink-2); font-size: 14.5px; line-height: 1.5; }
+      .vs-card li::before { content: ""; position: absolute; left: 0; top: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); opacity: 0.5; }
+      .vs-card.win li::before { background: var(--accent); opacity: 1; }
+      .vs-mid { display: grid; place-items: center; color: var(--ink-3); font-size: 13px; font-weight: 600; }
+      @media (max-width: 720px) {
+        .versus { grid-template-columns: 1fr; }
+        .vs-mid { padding: 4px 0; }
+      }
 
       /* Sections */
       section { padding: 100px 0; }
@@ -205,14 +213,14 @@
       .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 22px; }
       .stat { text-align: center; padding: 32px 18px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--hairline); }
       .stat .big { font-size: 36px; font-weight: 800; letter-spacing: -0.02em;
-        background: linear-gradient(120deg, var(--accent-2), var(--accent)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        background: linear-gradient(120deg, #ffffff, #8f8f97); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
       .stat .lbl { color: var(--ink-3); font-size: 13.5px; margin-top: 8px; }
 
       /* CTA */
       .cta {
         text-align: center; padding: 80px 32px; border-radius: var(--r-xl);
         background:
-          radial-gradient(600px 300px at 50% 0%, rgba(139,112,255,0.2), transparent 70%),
+          radial-gradient(600px 300px at 50% 0%, rgba(255,255,255,0.07), transparent 70%),
           linear-gradient(180deg, var(--surface), var(--bg-2));
         border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--hairline));
       }
@@ -266,17 +274,15 @@
       <!-- HERO -->
       <section class="hero">
         <div class="wrap">
-          <h1>Take an idea from zero to a <span class="grad">finished board</span>.</h1>
+          <h1>The AI whiteboard that does the <span class="grad">thinking</span>.</h1>
           <p class="sub">
-            For founders, product managers, and strategists: an infinite canvas where AI researches the
-            live web, runs real frameworks, and builds the answer as cards you can move, refine, and connect.
+            For founders, PMs, and strategists. Hand it a goal — Jarwiz researches the live web,
+            runs real frameworks, and builds a whole board of cards. Not a chat.
           </p>
-          <p class="wedge"><strong>Not a chatbot in a sidebar.</strong> Instead of one answer buried in a wall of text, you get a whole board you can rearrange, deepen, and keep working.</p>
           <div class="hero-cta">
-            <a class="btn btn-primary btn-lg" href="app/?demo=1" target="_blank" rel="noopener">Try the full app ↗</a>
-            <a class="btn btn-ghost btn-lg" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">View on GitHub ↗</a>
+            <a class="btn btn-primary btn-lg" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener"><svg class="gh" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 012-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Star on GitHub</a>
           </div>
-          <p class="cta-note"><b>Free, and runs right in your browser.</b> No sign-up, no install.</p>
+          <p class="cta-note"><b>Open source (MIT).</b> Runs in your browser — no sign-up, no install.</p>
 
           <div class="stage">
             <iframe class="stage-frame" src="app/?embed=1" title="Live Jarwiz preview" loading="lazy"></iframe>
@@ -285,6 +291,37 @@
             A live preview of the real app. Type below the canvas or tap a suggestion to spawn a card.
             <a href="app/?demo=1" target="_blank" rel="noopener">Open the full app →</a>
           </p>
+        </div>
+      </section>
+
+      <!-- VERSUS — why not just use a chatbot -->
+      <section id="why" style="padding-top: 40px;">
+        <div class="wrap">
+          <div class="sec-head reveal">
+            <h2>Why not just ask a chatbot?</h2>
+            <p>Because the shape of the answer matters. A chat hands you one reply to scroll; Jarwiz hands you a board to think inside.</p>
+          </div>
+          <div class="versus reveal">
+            <div class="vs-card">
+              <p class="kind">A chatbot gives you</p>
+              <ul>
+                <li>One answer, in a wall of text</li>
+                <li>A single thread you scroll and lose</li>
+                <li>Prose you still have to reorganize by hand</li>
+                <li>A sidebar bolted onto someone else's app</li>
+              </ul>
+            </div>
+            <div class="vs-mid">vs</div>
+            <div class="vs-card win">
+              <p class="kind">Jarwiz gives you</p>
+              <ul>
+                <li>A whole board of cards, laid out spatially</li>
+                <li>Every angle side by side, yours to rearrange</li>
+                <li>Real frameworks, researched and cited</li>
+                <li>A canvas you keep, extend, and hand off</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -455,7 +492,7 @@
           <a href="#how">How it works</a>
           <a href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">GitHub</a>
         </div>
-        <span class="muted">Thinking, made visual.</span>
+        <span class="muted">Open source · MIT licensed</span>
       </div>
     </footer>
 
