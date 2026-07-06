@@ -666,46 +666,46 @@ body,
   color: var(--jz-accent);
   flex: none;
 }
-/* Two-line description of what the machine does. */
+/* Description of what the machine does — shown in full, never truncated. */
 .jz-machine-card-desc {
-  margin: 9px 0 10px;
+  margin: 9px 0 11px;
   font-size: 11.5px;
   line-height: 1.45;
   color: var(--jz-ink-500);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
-/* The subject input — borderless, no focus ring (it lives inside the block). */
+/* The subject input — a defined field with a resting border. The browser focus
+ * ring is suppressed; on focus the field's own border just tints accent. */
 .jz-machine-card-input {
   flex: 1;
   width: 100%;
-  min-height: 40px;
-  border: none;
+  min-height: 46px;
+  box-sizing: border-box;
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-md, 10px);
   outline: none;
   box-shadow: none;
   resize: none;
   -webkit-appearance: none;
-  background: transparent;
+  background: color-mix(in srgb, var(--jz-ink-900) 3%, transparent);
   color: var(--jz-ink-900);
   font: inherit;
   font-size: 14px;
   line-height: 1.4;
+  padding: 9px 11px;
 }
 .jz-machine-card-input:focus,
 .jz-machine-card-input:focus-visible {
-  border: none;
   outline: none;
   box-shadow: none;
+  border-color: color-mix(in srgb, var(--jz-accent) 45%, var(--jz-hairline));
 }
 .jz-machine-card-input::placeholder { color: var(--jz-ink-400); }
-/* Optional-output toggles — extra cards the user opts into for this run. */
+/* Optional-output toggles — extra cards the user opts into, stacked one per row. */
 .jz-machine-card-opts {
   display: flex;
-  flex-wrap: wrap;
-  gap: 7px 14px;
-  margin: 2px 0 11px;
+  flex-direction: column;
+  gap: 8px;
+  margin: 11px 0;
 }
 .jz-machine-opt {
   display: inline-flex;

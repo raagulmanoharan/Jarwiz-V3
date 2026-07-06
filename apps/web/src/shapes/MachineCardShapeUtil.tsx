@@ -43,7 +43,7 @@ declare module '@tldraw/tlschema' {
 
 export type MachineCardShape = TLShape<'machine-card'>;
 
-export const MACHINE_CARD_SIZE = { w: 296, h: 226 };
+export const MACHINE_CARD_SIZE = { w: 300, h: 268 };
 
 const ICONS: Record<string, React.ReactNode> = {
   Grid2x2: <Grid2x2 size={16} />,
@@ -76,7 +76,7 @@ export class MachineCardShapeUtil extends ShapeUtil<MachineCardShape> {
     return true;
   }
   override onResize(shape: MachineCardShape, info: TLResizeInfo<MachineCardShape>) {
-    return resizeBox(shape, info, { minWidth: 272, minHeight: 208 });
+    return resizeBox(shape, info, { minWidth: 276, minHeight: 248 });
   }
   override getGeometry(shape: MachineCardShape) {
     return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true });
