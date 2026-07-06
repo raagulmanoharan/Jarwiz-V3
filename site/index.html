@@ -144,10 +144,10 @@
         box-shadow: 0 40px 120px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
         overflow: hidden;
       }
-      .stage::after {
-        content: ''; position: absolute; inset: 0; pointer-events: none;
-        background: radial-gradient(600px 300px at 50% -10%, rgba(139,112,255,0.14), transparent 70%);
-      }
+      .stage-frame { width: 100%; height: 100%; border: 0; display: block; background: #0b0b0e; }
+      .stage-cap { margin: 18px auto 0; max-width: 640px; color: var(--ink-3); font-size: 13.5px; line-height: 1.6; }
+      .stage-cap a { color: var(--accent-2); font-weight: 600; }
+      .stage-cap a:hover { text-decoration: underline; }
       .card {
         position: absolute; background: var(--surface); border: 1px solid var(--hairline-2);
         border-radius: var(--r-md); box-shadow: 0 12px 34px rgba(0,0,0,0.5);
@@ -310,35 +310,19 @@
             answer out into cards you can move, refine, and connect. Not one reply — a whole board.
           </p>
           <div class="hero-cta">
-            <a class="btn btn-primary btn-lg" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">Explore on GitHub ↗</a>
-            <a class="btn btn-ghost btn-lg" href="#how">See how it works</a>
+            <a class="btn btn-primary btn-lg" href="app/?demo=1" target="_blank" rel="noopener">Try the full app ↗</a>
+            <a class="btn btn-ghost btn-lg" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">View on GitHub ↗</a>
           </div>
           <p class="hero-note">Runs a manual Anthropic tool-use loop · secrets stay server-side · your boards autosave locally</p>
 
-          <!-- Canvas mock -->
-          <div class="stage" aria-hidden="true">
-            <!-- edges from machine to quadrants -->
-            <div class="edge" style="left:260px; top:212px; width:78px; transform:rotate(-38deg);"></div>
-            <div class="edge" style="left:260px; top:236px; width:96px; transform:rotate(2deg);"></div>
-            <div class="edge" style="left:260px; top:250px; width:96px; transform:rotate(26deg);"></div>
-
-            <div class="card mcard float">
-              <div class="badge">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-              </div>
-              <div class="title">SWOT Analysis</div>
-              <div class="desc">Deep-researches the subject, then fans a full SWOT board onto the canvas.</div>
-              <div class="run">Run analysis →</div>
-            </div>
-
-            <div class="card q1 float d1"><div class="ct"><span class="tag" style="background:var(--green)"></span>Strengths</div><div class="ln l"></div><div class="ln m"></div><div class="ln s"></div></div>
-            <div class="card q2 float d2"><div class="ct"><span class="tag" style="background:var(--red)"></span>Weaknesses</div><div class="ln m"></div><div class="ln l"></div><div class="ln s"></div></div>
-            <div class="card q3 float d2"><div class="ct"><span class="tag" style="background:var(--blue)"></span>Opportunities</div><div class="ln l"></div><div class="ln s"></div><div class="ln m"></div></div>
-            <div class="card q4 float d3"><div class="ct"><span class="tag" style="background:var(--amber)"></span>Threats</div><div class="ln m"></div><div class="ln m"></div><div class="ln l"></div></div>
-            <div class="card verdict float d1"><div class="ct"><span class="tag" style="background:var(--accent)"></span>Strategic Verdict</div><div class="ln l"></div><div class="ln l"></div><div class="ln m"></div><div class="ln accent l" style="margin-top:10px"></div><div class="ln accent s"></div></div>
-
-            <div class="avatar float"><span class="a">✦</span> Jarwiz is researching…</div>
+          <!-- Live in-browser preview: the real app, minified -->
+          <div class="stage">
+            <iframe class="stage-frame" src="app/?embed=1" title="Live Jarwiz preview" loading="lazy"></iframe>
           </div>
+          <p class="stage-cap">
+            ↑ A live, in-browser preview of the real app — type below the canvas or tap a suggestion to
+            spawn a card. <a href="app/?demo=1" target="_blank" rel="noopener">Open the full app →</a>
+          </p>
         </div>
       </section>
 

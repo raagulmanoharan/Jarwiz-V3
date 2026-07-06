@@ -9,6 +9,9 @@ const apiProxy = {
 };
 
 export default defineConfig({
+  // Served at the domain root in dev/preview; the GitHub Pages build passes
+  // VITE_BASE=/<repo>/app/ so the embedded demo resolves its assets correctly.
+  base: process.env.VITE_BASE ?? '/',
   plugins: [react()],
   server: { proxy: apiProxy },
   // `vite preview` serves the production build with no HMR — used by the

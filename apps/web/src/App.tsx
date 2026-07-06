@@ -33,6 +33,9 @@ import { cardShapeUtils } from './shapes';
 import { BoardEntry } from './boards/BoardEntry';
 import { getRestoreError, isRestoring, subscribeRestore } from './boards/backup';
 import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
+import { isDemo, isEmbed } from './boards/demo';
+import { seedDemoBoard, seedEmbedBoard } from './boards/demoSeed';
+import { EmbedComposer } from './ui/EmbedComposer';
 import { CardTitleTag } from './ui/CardTitleTag';
 import { DocFocusOverlay } from './ui/DocFocusOverlay';
 import { EmptyState } from './ui/EmptyState';
@@ -82,6 +85,17 @@ function JarwizOverlay() {
   );
 }
 
+/** The minified embed overlay (?embed=1): just the card title tags and the
+ *  lightweight composer — every other capability is hidden. */
+function EmbedOverlay() {
+  return (
+    <>
+      <Safe label="CardTitleTag"><CardTitleTag /></Safe>
+      <Safe label="EmbedComposer"><EmbedComposer /></Safe>
+    </>
+  );
+}
+
 /**
  * Calm the tldraw chrome. The canvas pivot (docs/CANVAS-PIVOT.md, P0) re-enables
  * the primitive toolbar — curated to FigJam essentials — and the style panel, so
@@ -103,6 +117,14 @@ const components: TLComponents = {
   HelpMenu: null,
   SharePanel: null,
   TopPanel: null,
+};
+
+/** Embed mode swaps the overlay for the minified composer and drops the style
+ *  panel — the canvas and the composer, nothing else. */
+const embedComponents: TLComponents = {
+  ...components,
+  InFrontOfTheCanvas: EmbedOverlay,
+  StylePanel: null,
 };
 
 const handleMount = (editor: Editor) => {
@@ -135,6 +157,11 @@ const handleMount = (editor: Editor) => {
   });
   // Dev convenience + e2e hook: reach the editor from the console.
   (window as unknown as { editor: Editor }).editor = editor;
+
+  // Embedded demo: land the visitor on content. ?embed=1 is the minified
+  // live-preview (one card + composer); ?demo=1 is the full seeded board.
+  if (isEmbed()) seedEmbedBoard(editor);
+  else if (isDemo()) seedDemoBoard(editor);
 };
 
 /** Minimal asset store — our cards keep media in their own props, so tldraw's
@@ -194,7 +221,7 @@ function LocalBoard() {
       persistenceKey={persistenceKey}
       assetUrls={tldrawAssetUrls}
       shapeUtils={cardShapeUtils}
-      components={components}
+      components={isEmbed() ? embedComponents : components}
       onMount={handleMount}
     />
   );

@@ -1,8 +1,9 @@
-# Deploys the marketing site in /site to GitHub Pages.
+# Publishes the marketing site (/site) plus a live, embeddable build of the
+# real app (/app) to GitHub Pages.
 #
-# One-time setup: in the repo, Settings → Pages → Build and deployment →
-# Source: "GitHub Actions". After that, every push to main that touches /site
-# (or a manual run) publishes the site.
+# One-time setup: repo Settings → Pages → Build and deployment →
+# Source: "GitHub Actions". Then every push to main (or a manual run) rebuilds
+# and publishes. The landing page embeds the app at ./app/?embed=1.
 name: Deploy site to GitHub Pages
 
 on:
@@ -10,6 +11,8 @@ on:
     branches: [main]
     paths:
       - 'site/**'
+      - 'apps/web/**'
+      - 'packages/shared/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -18,7 +21,6 @@ permissions:
   pages: write
   id-token: write
 
-# Let a newer run supersede an in-flight one, but never cancel a live deploy.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -33,14 +35,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build shared
+        run: npm run build --workspace=packages/shared
+
+      - name: Build app (served under /<repo>/app)
+        run: npm run build --workspace=apps/web
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/app/
+
+      - name: Assemble Pages artifact (landing + app)
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          cp -r site/. _site/
+          mkdir -p _site/app
+          cp -r apps/web/dist/. _site/app/
+          touch _site/.nojekyll
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload site artifact
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./site
+          path: _site
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4

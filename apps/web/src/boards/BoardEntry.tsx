@@ -13,6 +13,7 @@ import {
   subscribeBoards,
 } from './boardStore';
 import { applyTemplate, TEMPLATES } from './templates';
+import { isDemo } from './demo';
 
 export function BoardEntry() {
   const editor = useEditor();
@@ -42,6 +43,8 @@ export function BoardEntry() {
     if (hydrated && board?.isNew && isEmpty) setTimeout(() => inputRef.current?.focus(), 80);
   }, [board?.id, board?.isNew, isEmpty, hydrated]);
 
+  // The embedded demo seeds its own board — never interrupt it with the dialog.
+  if (isDemo()) return null;
   if (!hydrated || !board?.isNew || !isEmpty) return null;
 
   const submit = () => {
