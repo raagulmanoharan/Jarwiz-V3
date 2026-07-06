@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Jarwiz — the infinite canvas that thinks with you</title>
+    <meta
+      name="description"
+      content="Jarwiz is an infinite AI canvas. Drop a Thinking Machine, ask anything, or hand it a goal — it researches the live web and fans finished, citable boards of cards onto your canvas."
+    />
+    <meta property="og:title" content="Jarwiz — the infinite canvas that thinks with you" />
+    <meta
+      property="og:description"
+      content="AI that researches the live web, runs real frameworks, and builds boards of cards you can move, refine, and connect."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #09090b;
+        --bg-2: #0e0e12;
+        --surface: #151519;
+        --surface-2: #1c1c22;
+        --hairline: rgba(255, 255, 255, 0.08);
+        --hairline-2: rgba(255, 255, 255, 0.14);
+        --ink: #f5f5f7;
+        --ink-2: #b6b6c0;
+        --ink-3: #7b7b86;
+        --accent: #8b70ff;
+        --accent-2: #a793ff;
+        --accent-deep: #6a4dff;
+        --green: #4ade80;
+        --amber: #fbbf24;
+        --red: #f87171;
+        --blue: #60a5fa;
+        --r-sm: 10px;
+        --r-md: 14px;
+        --r-lg: 20px;
+        --r-xl: 28px;
+        --maxw: 1140px;
+        --ease: cubic-bezier(0.2, 0, 0, 1);
+      }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        line-height: 1.5;
+        overflow-x: hidden;
+      }
+      a { color: inherit; text-decoration: none; }
+      .wrap { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+      /* ── Ambient glow ─────────────────────────────────────────────── */
+      .glow {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(680px 420px at 72% -6%, rgba(139, 112, 255, 0.22), transparent 60%),
+          radial-gradient(560px 380px at 8% 8%, rgba(106, 77, 255, 0.14), transparent 60%);
+      }
+      main, header, footer { position: relative; z-index: 1; }
+
+      /* ── Nav ──────────────────────────────────────────────────────── */
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        backdrop-filter: saturate(160%) blur(14px);
+        background: color-mix(in srgb, var(--bg) 72%, transparent);
+        border-bottom: 1px solid transparent;
+        transition: border-color 0.3s var(--ease), background 0.3s var(--ease);
+      }
+      header.scrolled { border-bottom-color: var(--hairline); }
+      .nav { display: flex; align-items: center; justify-content: space-between; height: 66px; }
+      .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
+      .brand .spark {
+        display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+        box-shadow: 0 4px 16px rgba(139, 112, 255, 0.4);
+        color: #fff; font-size: 15px;
+      }
+      .nav-links { display: flex; align-items: center; gap: 30px; }
+      .nav-links a.navlink { color: var(--ink-2); font-size: 14px; font-weight: 500; transition: color 0.2s var(--ease); }
+      .nav-links a.navlink:hover { color: var(--ink); }
+      .btn {
+        display: inline-flex; align-items: center; gap: 8px; justify-content: center;
+        font-family: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
+        border-radius: 999px; border: 1px solid transparent; padding: 10px 18px;
+        transition: transform 0.15s var(--ease), background 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+        white-space: nowrap;
+      }
+      .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-deep)); color: #fff; box-shadow: 0 6px 22px rgba(122, 92, 255, 0.35); }
+      .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(122, 92, 255, 0.5); }
+      .btn-ghost { background: var(--surface); color: var(--ink); border-color: var(--hairline-2); }
+      .btn-ghost:hover { transform: translateY(-1px); border-color: rgba(255,255,255,0.28); background: var(--surface-2); }
+      .btn-lg { padding: 14px 26px; font-size: 15px; }
+      @media (prefers-reduced-motion: reduce) { .btn:hover { transform: none; } }
+      .nav .menu-toggle { display: none; }
+
+      /* ── Hero ─────────────────────────────────────────────────────── */
+      .hero { padding: 92px 0 60px; text-align: center; }
+      .eyebrow {
+        display: inline-flex; align-items: center; gap: 8px; margin-bottom: 26px;
+        padding: 7px 14px 7px 8px; border-radius: 999px;
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+        color: var(--accent-2); font-size: 13px; font-weight: 600; letter-spacing: 0.01em;
+      }
+      .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+      h1 {
+        margin: 0 auto; max-width: 900px;
+        font-size: clamp(38px, 6.4vw, 68px); line-height: 1.04; letter-spacing: -0.03em; font-weight: 800;
+      }
+      h1 .grad {
+        background: linear-gradient(120deg, var(--accent-2) 0%, var(--accent) 45%, #c9baff 100%);
+        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+      }
+      .sub {
+        margin: 26px auto 0; max-width: 640px; color: var(--ink-2);
+        font-size: clamp(16px, 2vw, 19px); line-height: 1.6;
+      }
+      .hero-cta { display: flex; gap: 14px; justify-content: center; margin-top: 36px; flex-wrap: wrap; }
+      .hero-note { margin-top: 20px; color: var(--ink-3); font-size: 13px; }
+
+      /* ── Hero canvas mock ─────────────────────────────────────────── */
+      .stage {
+        position: relative; margin: 64px auto 0; max-width: 1000px; height: 470px;
+        border-radius: var(--r-xl); border: 1px solid var(--hairline);
+        background:
+          radial-gradient(1px 1px at 24px 24px, rgba(255,255,255,0.16) 1px, transparent 0) 0 0 / 26px 26px,
+          linear-gradient(180deg, #101014, #0b0b0e);
+        box-shadow: 0 40px 120px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
+        overflow: hidden;
+      }
+      .stage-frame { width: 100%; height: 100%; border: 0; display: block; background: #0b0b0e; }
+      .stage-cap { margin: 18px auto 0; max-width: 640px; color: var(--ink-3); font-size: 13.5px; line-height: 1.6; }
+      .stage-cap a { color: var(--accent-2); font-weight: 600; }
+      .stage-cap a:hover { text-decoration: underline; }
+      .card {
+        position: absolute; background: var(--surface); border: 1px solid var(--hairline-2);
+        border-radius: var(--r-md); box-shadow: 0 12px 34px rgba(0,0,0,0.5);
+        padding: 14px; text-align: left;
+      }
+      .card .ct { font-size: 12.5px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 8px; display: flex; align-items: center; gap: 7px; }
+      .card .tag { width: 8px; height: 8px; border-radius: 3px; }
+      .card .ln { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.10); margin: 6px 0; }
+      .card .ln.s { width: 62%; } .card .ln.m { width: 84%; } .card .ln.l { width: 96%; }
+      .mcard {
+        left: 40px; top: 150px; width: 220px;
+        border-color: color-mix(in srgb, var(--accent) 40%, var(--hairline-2));
+        box-shadow: 0 16px 44px rgba(106,77,255,0.28);
+      }
+      .mcard .badge { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px;
+        background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent-2); margin-bottom: 10px; }
+      .mcard .title { font-weight: 700; font-size: 14px; }
+      .mcard .desc { color: var(--ink-3); font-size: 11.5px; line-height: 1.4; margin: 6px 0 12px; }
+      .mcard .run { display: flex; align-items: center; justify-content: center; gap: 6px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-deep)); color: #fff;
+        font-size: 12px; font-weight: 600; padding: 8px; border-radius: 9px; }
+      .q1 { left: 320px; top: 66px; width: 168px; }
+      .q2 { left: 512px; top: 66px; width: 168px; }
+      .q3 { left: 320px; top: 232px; width: 168px; }
+      .q4 { left: 512px; top: 232px; width: 168px; }
+      .verdict { left: 716px; top: 66px; width: 208px; }
+      .verdict .ln.accent { background: color-mix(in srgb, var(--accent) 42%, transparent); }
+      .edge { position: absolute; height: 2px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 55%, transparent)); transform-origin: left center; opacity: 0.8; }
+      .avatar {
+        position: absolute; left: 690px; top: 250px; display: flex; align-items: center; gap: 8px;
+        padding: 6px 12px 6px 6px; border-radius: 999px;
+        background: color-mix(in srgb, var(--accent) 90%, #000); color: #fff; font-size: 12px; font-weight: 600;
+        box-shadow: 0 8px 24px rgba(106,77,255,0.5); z-index: 5;
+      }
+      .avatar .a { width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.22); display: grid; place-items: center; font-size: 11px; }
+      .float { animation: float 6s ease-in-out infinite; }
+      .float.d1 { animation-delay: -1.5s; } .float.d2 { animation-delay: -3s; } .float.d3 { animation-delay: -4.5s; }
+      @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+      @media (prefers-reduced-motion: reduce) { .float { animation: none; } }
+
+      /* ── Section scaffolding ──────────────────────────────────────── */
+      section { padding: 92px 0; }
+      .sec-head { text-align: center; max-width: 680px; margin: 0 auto 56px; }
+      .kicker { color: var(--accent-2); font-weight: 700; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+      h2 { margin: 14px 0 0; font-size: clamp(28px, 4vw, 42px); line-height: 1.1; letter-spacing: -0.025em; font-weight: 800; }
+      .sec-head p { margin: 16px 0 0; color: var(--ink-2); font-size: 17px; line-height: 1.6; }
+
+      /* ── Machines ─────────────────────────────────────────────────── */
+      .machines-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
+      .machine {
+        flex: 1 1 320px; max-width: 356px;
+        padding: 22px; border-radius: var(--r-md); background: var(--surface);
+        border: 1px solid var(--hairline); transition: transform 0.2s var(--ease), border-color 0.2s var(--ease), background 0.2s var(--ease);
+      }
+      .machine:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--accent) 40%, var(--hairline)); background: var(--surface-2); }
+      .machine .mi { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 11px;
+        background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent-2); margin-bottom: 16px; }
+      .machine h3 { margin: 0 0 6px; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+      .machine p { margin: 0; color: var(--ink-3); font-size: 13.5px; line-height: 1.5; }
+      .machine .pill { display: inline-block; margin-top: 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+        padding: 3px 9px; border-radius: 999px; color: var(--accent-2); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+      /* ── Features ─────────────────────────────────────────────────── */
+      .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+      .feat {
+        position: relative; padding: 26px; border-radius: var(--r-md);
+        background: linear-gradient(180deg, var(--surface), var(--bg-2));
+        border: 1px solid var(--hairline); overflow: hidden;
+        transition: transform 0.2s var(--ease), border-color 0.2s var(--ease);
+      }
+      .feat:hover { transform: translateY(-3px); border-color: var(--hairline-2); }
+      .feat .fi { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px;
+        background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-2); margin-bottom: 18px; }
+      .feat h3 { margin: 0 0 8px; font-size: 18px; font-weight: 700; letter-spacing: -0.015em; }
+      .feat p { margin: 0; color: var(--ink-2); font-size: 14.5px; line-height: 1.6; }
+      .feat.wide { grid-column: span 2; }
+      @media (min-width: 861px) {
+        .feat-grid { grid-auto-flow: dense; }
+      }
+
+      /* ── How it works ─────────────────────────────────────────────── */
+      .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; counter-reset: step; }
+      .step { padding: 28px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--hairline); }
+      .step .n { counter-increment: step; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%;
+        border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--hairline-2)); color: var(--accent-2);
+        font-weight: 700; font-size: 15px; margin-bottom: 18px; }
+      .step .n::before { content: counter(step); }
+      .step h3 { margin: 0 0 8px; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+      .step p { margin: 0; color: var(--ink-2); font-size: 14.5px; line-height: 1.6; }
+
+      /* ── Stat band ────────────────────────────────────────────────── */
+      .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 8px; }
+      .stat { text-align: center; padding: 30px 18px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--hairline); }
+      .stat .big { font-size: 34px; font-weight: 800; letter-spacing: -0.02em;
+        background: linear-gradient(120deg, var(--accent-2), var(--accent)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+      .stat .lbl { color: var(--ink-3); font-size: 13.5px; margin-top: 8px; }
+
+      /* ── CTA ──────────────────────────────────────────────────────── */
+      .cta {
+        text-align: center; padding: 72px 32px; border-radius: var(--r-xl);
+        background:
+          radial-gradient(600px 300px at 50% 0%, rgba(139,112,255,0.22), transparent 70%),
+          linear-gradient(180deg, var(--surface), var(--bg-2));
+        border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--hairline));
+      }
+      .cta h2 { max-width: 560px; margin: 0 auto; }
+      .cta p { max-width: 520px; margin: 16px auto 0; color: var(--ink-2); font-size: 17px; }
+      .cta .hero-cta { margin-top: 32px; }
+
+      /* ── Footer ───────────────────────────────────────────────────── */
+      footer { padding: 48px 0; border-top: 1px solid var(--hairline); margin-top: 40px; }
+      .foot { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+      .foot .muted { color: var(--ink-3); font-size: 13px; }
+      .foot-links { display: flex; gap: 22px; }
+      .foot-links a { color: var(--ink-2); font-size: 13px; transition: color 0.2s var(--ease); }
+      .foot-links a:hover { color: var(--ink); }
+
+      /* ── Reveal ───────────────────────────────────────────────────── */
+      .reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); }
+      .reveal.in { opacity: 1; transform: none; }
+      @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+
+      /* ── Responsive ───────────────────────────────────────────────── */
+      @media (max-width: 860px) {
+        .machines-grid, .feat-grid, .steps, .stats { grid-template-columns: 1fr; }
+        .feat.wide { grid-column: span 1; }
+        .nav-links { display: none; }
+        .nav .menu-toggle { display: inline-flex; }
+        .stage { display: none; }
+        .hero { padding: 64px 0 40px; }
+        section { padding: 64px 0; }
+      }
+      @media (max-width: 560px) { .hero-cta { flex-direction: column; align-items: stretch; } }
+    </style>
+  </head>
+  <body>
+    <div class="glow" aria-hidden="true"></div>
+
+    <header id="top">
+      <div class="wrap nav">
+        <a class="brand" href="#top"><span class="spark">✦</span> Jarwiz</a>
+        <nav class="nav-links">
+          <a class="navlink" href="#machines">Thinking Machines</a>
+          <a class="navlink" href="#features">Features</a>
+          <a class="navlink" href="#how">How it works</a>
+          <a class="btn btn-ghost" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+        <a class="btn btn-primary menu-toggle" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">GitHub ↗</a>
+      </div>
+    </header>
+
+    <main>
+      <!-- HERO -->
+      <section class="hero">
+        <div class="wrap">
+          <span class="eyebrow"><span class="dot"></span> Infinite AI canvas</span>
+          <h1>Take an idea from zero to a <span class="grad">finished board</span> — without leaving the canvas.</h1>
+          <p class="sub">
+            Jarwiz is an infinite canvas where AI researches the live web, runs real frameworks, and fans the
+            answer out into cards you can move, refine, and connect. Not one reply — a whole board.
+          </p>
+          <div class="hero-cta">
+            <a class="btn btn-primary btn-lg" href="app/?demo=1" target="_blank" rel="noopener">Try the full app ↗</a>
+            <a class="btn btn-ghost btn-lg" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">View on GitHub ↗</a>
+          </div>
+          <p class="hero-note">Runs a manual Anthropic tool-use loop · secrets stay server-side · your boards autosave locally</p>
+
+          <!-- Live in-browser preview: the real app, minified -->
+          <div class="stage">
+            <iframe class="stage-frame" src="app/?embed=1" title="Live Jarwiz preview" loading="lazy"></iframe>
+          </div>
+          <p class="stage-cap">
+            ↑ A live, in-browser preview of the real app — type below the canvas or tap a suggestion to
+            spawn a card. <a href="app/?demo=1" target="_blank" rel="noopener">Open the full app →</a>
+          </p>
+        </div>
+      </section>
+
+      <!-- THINKING MACHINES -->
+      <section id="machines">
+        <div class="wrap">
+          <div class="sec-head reveal">
+            <span class="kicker">Thinking Machines</span>
+            <h2>Premade minds that do the heavy thinking.</h2>
+            <p>Drop a machine on the canvas, type a subject, hit Run. It deep-researches the live web and fans a whole framework of cards onto your board — richer than an ask, and unmistakably not one.</p>
+          </div>
+          <div class="machines-grid">
+            <div class="machine reveal">
+              <div class="mi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+              <h3>SWOT Analysis</h3>
+              <p>Researches strengths, weaknesses, opportunities and threats, then fans a 2×2 board plus TOWS strategy and a verdict.</p>
+              <span class="pill">→ board</span>
+            </div>
+            <div class="machine reveal">
+              <div class="mi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg></div>
+              <h3>Effort–Impact Matrix</h3>
+              <p>Scores each idea on effort and impact, then drops it into a Quick wins / Big bets / Fill-ins / Time sinks 2×2.</p>
+              <span class="pill">→ board</span>
+            </div>
+            <div class="machine reveal">
+              <div class="mi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 6-6"/><path d="m16 16 4 4"/><path d="m19 21 2-2"/></svg></div>
+              <h3>Competitive Analysis</h3>
+              <p>Finds the real competitors and benchmarks the subject on positioning, pricing, strengths and momentum.</p>
+              <span class="pill">→ table</span>
+            </div>
+            <div class="machine reveal">
+              <div class="mi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg></div>
+              <h3>Risk Assessment</h3>
+              <p>Surfaces the likely failure modes with a read on likelihood and impact, and a concrete mitigation for each.</p>
+              <span class="pill">→ table</span>
+            </div>
+            <div class="machine reveal">
+              <div class="mi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 16 3-8 3 8c-2 1.5-4 1.5-6 0z"/><path d="m2 16 3-8 3 8c-2 1.5-4 1.5-6 0z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></div>
+              <h3>Pros &amp; Cons</h3>
+              <p>Researches the decision across the web, then weighs the strongest evidence-backed arguments for and against.</p>
+              <span class="pill">→ table</span>
+            </div>
+            <div class="machine reveal">
+              <div class="mi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg></div>
+              <h3>User Persona</h3>
+              <p>Researches the real audience, then drafts a grounded persona — goals, frustrations and what would win them over.</p>
+              <span class="pill">→ doc</span>
+            </div>
+            <div class="machine reveal">
+              <div class="mi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></svg></div>
+              <h3>5 Whys</h3>
+              <p>Traces a problem down five levels of “why” to a grounded root cause — and the one thing to do about it.</p>
+              <span class="pill">→ list</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FEATURES -->
+      <section id="features">
+        <div class="wrap">
+          <div class="sec-head reveal">
+            <span class="kicker">Capabilities</span>
+            <h2>An AI collaborator, not a chatbot in a sidebar.</h2>
+            <p>Everything happens on the canvas — grounded on what you've already made, and streamed in as cards you can keep working.</p>
+          </div>
+          <div class="feat-grid">
+            <div class="feat wide reveal">
+              <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 7v6c0 5 3.5 7.5 8 9 4.5-1.5 8-4 8-9V7z"/><path d="m9 12 2 2 4-4"/></svg></div>
+              <h3>Autopilot</h3>
+              <p>Hand Jarwiz a goal in the prompt bar — "plan my Goa weekend", "size this market" — and it plans, researches the live web, and builds the whole board for you, card by card, while you watch.</p>
+            </div>
+            <div class="feat reveal">
+              <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+              <h3>Ask &amp; create</h3>
+              <p>Type a prompt and the answer streams onto a card. Select a card first to ground the question on exactly what's in front of you.</p>
+            </div>
+            <div class="feat reveal">
+              <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+              <h3>Deep research, cited</h3>
+              <p>Research-heavy work pulls live data from the web and cites its sources — grounded in what's true today, not what the model remembers.</p>
+            </div>
+            <div class="feat reveal">
+              <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div>
+              <h3>Bring your material</h3>
+              <p>Drop a PDF, spreadsheet, video or link onto the canvas. Jarwiz reads it — transcripts, tables, key frames — and works from it.</p>
+            </div>
+            <div class="feat reveal">
+              <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.5 1 6 2.5"/><path d="M21 3v6h-6"/></svg></div>
+              <h3>Reshape any card</h3>
+              <p>Make it shorter, go deeper, turn a doc into a table or a flowchart, or regenerate — one bar, right above the card.</p>
+            </div>
+            <div class="feat wide reveal">
+              <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/></svg></div>
+              <h3>Cluster, summarise &amp; proactive comments</h3>
+              <p>Turn a wall of sticky notes into named themes in one click — and let Jarwiz notice tensions or gaps between your cards and leave FigJam-style comments, unprompted.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HOW IT WORKS -->
+      <section id="how">
+        <div class="wrap">
+          <div class="sec-head reveal">
+            <span class="kicker">How it works</span>
+            <h2>Three moves from blank to finished.</h2>
+          </div>
+          <div class="steps">
+            <div class="step reveal">
+              <div class="n"></div>
+              <h3>Drop, ask, or run</h3>
+              <p>Drop in your material, ask a question in the prompt bar, or pull a Thinking Machine off the left rail and type a subject.</p>
+            </div>
+            <div class="step reveal">
+              <div class="n"></div>
+              <h3>Jarwiz researches &amp; builds</h3>
+              <p>It searches the live web, reasons through a real framework, and lays the result out as a board of cards — right where you're working.</p>
+            </div>
+            <div class="step reveal">
+              <div class="n"></div>
+              <h3>Refine on the canvas</h3>
+              <p>Move, connect, reshape and deepen the cards. Every artifact stays live — argue with it, extend it, or hand it off.</p>
+            </div>
+          </div>
+
+          <div class="stats reveal" style="margin-top:22px">
+            <div class="stat"><div class="big">7</div><div class="lbl">Thinking Machines, out of the box</div></div>
+            <div class="stat"><div class="big">∞</div><div class="lbl">Canvas — pan, zoom, never run out of room</div></div>
+            <div class="stat"><div class="big">1</div><div class="lbl">Place your work lives — no tab-switching</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section>
+        <div class="wrap">
+          <div class="cta reveal">
+            <span class="kicker">Open source</span>
+            <h2>Bring your ideas to a canvas that thinks back.</h2>
+            <p>Jarwiz is a Vite + React + tldraw app with a thin Anthropic agent runtime. Clone it, point it at your API key, and go.</p>
+            <div class="hero-cta">
+              <a class="btn btn-primary btn-lg" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">Get it on GitHub ↗</a>
+              <a class="btn btn-ghost btn-lg" href="#machines">Browse the machines</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap foot">
+        <a class="brand" href="#top" style="font-size:15px"><span class="spark" style="width:26px;height:26px;font-size:13px">✦</span> Jarwiz</a>
+        <div class="foot-links">
+          <a href="#machines">Machines</a>
+          <a href="#features">Features</a>
+          <a href="#how">How it works</a>
+          <a href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">GitHub</a>
+        </div>
+        <span class="muted">Thinking, made visual.</span>
+      </div>
+    </footer>
+
+    <script>
+      // Nav border on scroll
+      const header = document.querySelector('header');
+      const onScroll = () => header.classList.toggle('scrolled', window.scrollY > 8);
+      onScroll();
+      window.addEventListener('scroll', onScroll, { passive: true });
+
+      // Scroll reveal
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!reduce && 'IntersectionObserver' in window) {
+        const io = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+            }
+          },
+          { threshold: 0.12 }
+        );
+        document.querySelectorAll('.reveal').forEach((el, i) => {
+          el.style.transitionDelay = (i % 3) * 70 + 'ms';
+          io.observe(el);
+        });
+      } else {
+        document.querySelectorAll('.reveal').forEach((el) => el.classList.add('in'));
+      }
+    </script>
+  </body>
+</html>

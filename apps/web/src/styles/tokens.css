@@ -1,0 +1,179 @@
+/**
+ * Jarwiz design tokens — the single source of truth for the visual language.
+ * See docs/DESIGN.md. Imported before index.css; nothing themeable should be
+ * hard-coded in component CSS — reference these custom properties instead.
+ *
+ * Legacy aliases at the bottom keep older selectors working while the codebase
+ * migrates to the new names.
+ */
+
+:root {
+  /* ─── Typography ──────────────────────────────────────────────────────── */
+  --jz-font-ui:
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Single-typeface system: the display face is collapsed onto the UI face
+   * (Inter). Kept as a token so the few display-headings stay one swap away
+   * from a distinct serif if we ever choose to reintroduce one. */
+  --jz-font-display: var(--jz-font-ui);
+  --jz-font-mono:
+    'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  /* Type scale — size / line-height / weight pairs used across the app. */
+  --jz-text-display-size: 40px;
+  --jz-text-display-lh: 44px;
+  --jz-text-title-lg-size: 24px;
+  --jz-text-title-lg-lh: 30px;
+  --jz-text-title-size: 17px;
+  --jz-text-title-lh: 24px;
+  --jz-text-heading-size: 15px;
+  --jz-text-heading-lh: 22px;
+  --jz-text-body-size: 14px;
+  --jz-text-body-lh: 22px;
+  --jz-text-body-sm-size: 13px;
+  --jz-text-body-sm-lh: 20px;
+  --jz-text-caption-size: 12px;
+  --jz-text-caption-lh: 16px;
+  --jz-text-micro-size: 11px;
+  --jz-text-micro-lh: 14px;
+
+  /* ─── Surfaces & ink (Flora cool-neutral, slightly darkened panels) ───── */
+  --jz-paper: #e8e8e8;
+  --jz-paper-deep: #dcdcdc;
+  --jz-surface: #f5f5f5;
+  --jz-surface-raised: #f0f0f0;
+  --jz-card-surface: #fafafa;
+
+  --jz-ink-900: #0a0a0a;
+  --jz-ink-700: #2a2a2a;
+  --jz-ink-500: #5a5a5a;
+  --jz-ink-400: #8a8a8a;
+  --jz-ink-300: #b8b8b8;
+
+  --jz-hairline: rgba(0, 0, 0, 0.10);
+  --jz-hairline-strong: rgba(0, 0, 0, 0.18);
+
+  /* Shadow base color, reused at varying alpha in the elevation ramp. */
+  --jz-shadow-rgb: 0, 0, 0;
+
+  /* ─── Semantic ────────────────────────────────────────────────────────── */
+  --jz-danger: #c2410c;
+  --jz-focus: var(--jz-ink-700);
+
+  /* Accent — the one saturated color in the system. The Jarwiz identity mark
+   * (✦ spark), primary actions, and streaming affordances all draw from it. */
+  --jz-accent: #7a5cff;
+  --jz-accent-ink: #ffffff;
+  --jz-spark: var(--jz-accent);
+
+  /* Extended ink stops referenced by component CSS. */
+  --jz-ink-800: #1a1a1a;
+  --jz-ink-200: #d4d4d4;
+  --jz-ink-50: #f5f5f5;
+
+  /* ─── Spacing (4px base) ──────────────────────────────────────────────── */
+  --jz-space-1: 2px;
+  --jz-space-2: 4px;
+  --jz-space-3: 8px;
+  --jz-space-4: 12px;
+  --jz-space-5: 16px;
+  --jz-space-6: 20px;
+  --jz-space-7: 24px;
+  --jz-space-8: 32px;
+  --jz-space-9: 40px;
+  --jz-space-10: 48px;
+  --jz-space-11: 64px;
+
+  /* ─── Radius ──────────────────────────────────────────────────────────── */
+  --jz-radius-xs: 6px;
+  --jz-radius-sm: 8px;
+  --jz-radius-md: 12px;
+  --jz-radius-lg: 16px;
+  --jz-radius-xl: 20px;
+  --jz-radius-pill: 999px;
+
+  /* ─── Elevation (warm-tinted) ─────────────────────────────────────────── */
+  --jz-e1:
+    0 1px 2px rgba(var(--jz-shadow-rgb), 0.05),
+    0 2px 6px rgba(var(--jz-shadow-rgb), 0.06);
+  --jz-e2:
+    0 1px 2px rgba(var(--jz-shadow-rgb), 0.05),
+    0 6px 16px rgba(var(--jz-shadow-rgb), 0.07),
+    0 16px 36px rgba(var(--jz-shadow-rgb), 0.06);
+  --jz-e3:
+    0 2px 8px rgba(var(--jz-shadow-rgb), 0.08),
+    0 12px 32px rgba(var(--jz-shadow-rgb), 0.12);
+  --jz-e4:
+    0 4px 12px rgba(var(--jz-shadow-rgb), 0.14),
+    0 18px 48px rgba(var(--jz-shadow-rgb), 0.16);
+
+  /* ─── Motion ──────────────────────────────────────────────────────────── */
+  --jz-dur-instant: 80ms;
+  --jz-dur-fast: 140ms;
+  --jz-dur-base: 220ms;
+  --jz-dur-slow: 420ms;
+  --jz-dur-glide: 600ms;
+
+  --jz-ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --jz-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --jz-ease-glide: cubic-bezier(0.22, 1, 0.36, 1);
+  --jz-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ─── Legacy aliases (pre-token names still referenced in index.css) ──── */
+  --jz-font: var(--jz-font-ui);
+  --jz-card: var(--jz-surface);
+  --jz-ink-600: var(--jz-ink-500);
+  --jz-line: var(--jz-hairline);
+  --jz-radius: var(--jz-radius-lg);
+  --jz-radius-full: var(--jz-radius-pill);
+  --jz-shadow: var(--jz-e2);
+  --jz-shadow-soft: var(--jz-e1);
+  --jz-dur-1: var(--jz-dur-fast);
+  --jz-ease: var(--jz-ease-out);
+}
+
+/**
+ * Dark theme — Flora-style. Deep cool-black canvas, near-white ink, surfaces
+ * clearly lifted off the background. No amber warmth — clean neutrals.
+ */
+:root[data-theme='dark'] {
+  --jz-paper: #0d0d0d;
+  --jz-paper-deep: #060606;
+  --jz-surface: #0e0e0e;
+  --jz-surface-raised: #111111;
+  --jz-card-surface: #1a1a1a;
+
+  --jz-ink-900: #e8e8e8;
+  --jz-ink-700: #b0b0b0;
+  --jz-ink-500: #686868;
+  --jz-ink-400: #444444;
+  --jz-ink-300: #2c2c2c;
+
+  --jz-hairline: rgba(255, 255, 255, 0.07);
+  --jz-hairline-strong: rgba(255, 255, 255, 0.11);
+
+  --jz-shadow-rgb: 0, 0, 0;
+
+  --jz-danger: #f97316;
+  --jz-focus: var(--jz-ink-700);
+
+  --jz-accent: #8b70ff;
+  --jz-accent-ink: #ffffff;
+
+  --jz-ink-800: #d4d4d4;
+  --jz-ink-200: #333333;
+  --jz-ink-50: #161616;
+
+  --jz-e1:
+    0 1px 2px rgba(var(--jz-shadow-rgb), 0.2),
+    0 2px 6px rgba(var(--jz-shadow-rgb), 0.15);
+  --jz-e2:
+    0 1px 2px rgba(var(--jz-shadow-rgb), 0.2),
+    0 6px 16px rgba(var(--jz-shadow-rgb), 0.2),
+    0 16px 36px rgba(var(--jz-shadow-rgb), 0.15);
+  --jz-e3:
+    0 2px 8px rgba(var(--jz-shadow-rgb), 0.25),
+    0 12px 32px rgba(var(--jz-shadow-rgb), 0.25);
+  --jz-e4:
+    0 4px 12px rgba(var(--jz-shadow-rgb), 0.3),
+    0 18px 48px rgba(var(--jz-shadow-rgb), 0.35);
+}

@@ -1,0 +1,70 @@
+/**
+ * The disambiguation prompt. When an Ask is genuinely unclear the server asks
+ * one short question instead of guessing; this floats it under the source(s)
+ * with a few tappable options and a free-text fallback. Answering re-runs the
+ * same Ask with the answer folded in (and skips re-asking).
+ */
+
+import { useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { stopEventPropagation } from 'tldraw';
+import { clearClarify, getClarify, subscribeClarify } from './clarify';
+import { useCardAnchor } from './useCardAnchor';
+import { useAsk } from './useAsk';
+
+export function ClarifyLayer() {
+  const { ask, isAsking } = useAsk();
+  const clarify = useSyncExternalStore(subscribeClarify, getClarify, getClarify);
+  const [custom, setCustom] = useState('');
+  // Anchor under the union of the source cards this question is about. The wide
+  // bubble needs more horizontal margin to stay on-screen.
+  const anchor = useCardAnchor(clarify?.sourceIds ?? null, { dy: 14, margin: 170 });
+
+  if (!clarify || !anchor) return null;
+  const style = { left: anchor.x, top: anchor.y } as CSSProperties;
+
+  const answer = (text: string) => {
+    const a = text.trim();
+    if (!a || isAsking) return;
+    const c = clarify;
+    clearClarify();
+    setCustom('');
+    if (c.onAnswer) {
+      c.onAnswer(a);
+      return;
+    }
+    void ask(`${c.prompt}\n\n(${a})`, c.sourceIds, { targetId: c.targetId, skipClarify: true });
+  };
+
+  return (
+    <div className="jz-clarify" style={style} onPointerDown={stopEventPropagation}>
+      <div className="jz-clarify-q">
+        <span className="jz-clarify-spark" aria-hidden>
+          ✦
+        </span>
+        {clarify.question}
+      </div>
+      <div className="jz-clarify-opts">
+        {clarify.options.map((opt) => (
+          <button key={opt} className="jz-clarify-opt" disabled={isAsking} onClick={() => answer(opt)}>
+            {opt}
+          </button>
+        ))}
+      </div>
+      <div className="jz-clarify-form">
+        <input
+          className="jz-clarify-input"
+          value={custom}
+          placeholder="Or say what you want…"
+          onChange={(e) => setCustom(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') answer(custom);
+            if (e.key === 'Escape') clearClarify();
+          }}
+        />
+        <button className="jz-clarify-dismiss" title="Dismiss" onClick={() => clearClarify()}>
+          ×
+        </button>
+      </div>
+    </div>
+  );
+}
