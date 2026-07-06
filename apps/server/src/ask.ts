@@ -56,6 +56,16 @@ const DIAGRAM_SYSTEM = `You turn the user's request and the source document(s) i
 
 Output ONLY valid Mermaid source: no prose, no explanation, NO \`\`\` code fences. Put the diagram-type keyword on the very first line. Keep node labels short and ground every node in the provided content. Aim for 6–18 nodes — clear beats exhaustive. Wrap any label containing punctuation or spaces in double quotes. Never invent facts that aren't in the sources.`;
 
+const UIMOCKUP_SYSTEM = `You turn the user's request (and any source content) into ONE self-contained HTML mockup of a user interface — a screen, component, landing page, dashboard, form, card, or email — that renders live. Think "describe a UI, see it rendered": design something clean, modern, and believable, grounded in the request's actual subject and copy (real-sounding labels and content, not lorem ipsum).
+
+HARD REQUIREMENTS — the document is rendered in a sandboxed iframe with NO network access, so it must be COMPLETELY self-contained:
+- Output a full HTML document beginning with <!doctype html>.
+- Put ALL CSS in a single inline <style> block. Any JS goes in an inline <script>. NO external resources of any kind: no <link>, no CDN URLs, no external stylesheets, no web-font imports, no remote images. Anything fetched over the network will silently fail.
+- For type, use a system font stack (e.g. -apple-system, "Segoe UI", Roboto, sans-serif). For imagery/icons, use inline SVG, CSS shapes/gradients, or emoji — never an external <img src="http…">.
+- Design for a card-sized viewport: sensible max-width, generous spacing, a clear visual hierarchy, real interactive affordances (buttons, inputs, nav) styled but not necessarily wired.
+
+Output ONLY the raw HTML document — no prose, no explanation, NO \`\`\` code fences before or after.`;
+
 const AFFINITY_SYSTEM = `You run an affinity-mapping exercise: turn the request and the source(s) into clustered sticky notes. Return ONLY a JSON object {"clusters": [{"label": string, "notes": string[]}]}. Make 3–6 clusters; each has a short 1–4 word "label" (the theme) and 2–6 short "notes" (each one idea, a few words). Group related ideas under the same theme. Ground notes in the provided content when a source is given; otherwise brainstorm sensible ideas for the request. No prose, no code fences.`;
 
 const RESEARCH_SYSTEM = `You are running a DEEP RESEARCH pass on something the user put on their canvas — any link or card: a venue or rental listing, a product, a company, a repo or tool, an article or paper, a person, an open question. Your job: autonomously find everything a decision-maker would want to know, far beyond what the subject says about itself.
@@ -83,6 +93,13 @@ function looksLikeDiff(prompt: string): boolean {
 /** A "draw / visualise this as a diagram" request (→ a Mermaid diagram card). */
 function looksLikeDiagram(prompt: string): boolean {
   return /\b(diagram|flow ?chart|sequence diagram|mind ?map|org chart|gantt|class diagram|er diagram|entity[- ]relationship|state diagram|user journey|journey map|process (map|flow)|visuali[sz]e|sketch|draw)\b/i.test(
+    prompt,
+  );
+}
+
+/** A "mock up / wireframe / design a UI" request (→ a live HTML mockup card). */
+function looksLikeMockup(prompt: string): boolean {
+  return /\b(mock-?up|wireframe|ui design|ux design|landing page|web ?page|design (a|the|me)? ?(screen|page|ui|interface|app|dashboard|form|website|site|component|layout)|prototype (a|the|screen|ui)|html (page|mockup|prototype))\b/i.test(
     prompt,
   );
 }
@@ -234,6 +251,7 @@ function pickShape(prompt: string, current?: AskShape): AskShape {
   // stickies are the USER's annotation medium, not an AI output (owner
   // decision 2026-07-05). Brainstorms land as lists like any idea dump.
   // The affinity event machinery stays for possible user-driven layouts.
+  if (looksLikeMockup(prompt)) return 'uimockup';
   if (looksLikeDiagram(prompt)) return 'diagram';
   // An explicit "as prose" request wins over the keep-current fallback, so a
   // table/diagram can be turned back into a written card on demand.
@@ -666,6 +684,11 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
     return;
   }
 
+  if (shape === 'uimockup') {
+    yield* streamUiMockup(user, signal, images);
+    return;
+  }
+
   if (shape === 'table') {
     // Cross-document conflict requests get the clause-diff table treatment
     // (purely extractive across the given documents — no web there).
@@ -799,6 +822,34 @@ async function* streamDiagram(
     // Close the opened card before the error reaches index.ts's catch (which
     // emits `error` but knows nothing about cards) — mirrors runtime.ts's
     // closeOpenCard, so the client never keeps a streaming card open forever.
+    yield { type: 'card.done' };
+    throw error;
+  }
+  yield { type: 'card.done' };
+  yield { type: 'done' };
+}
+
+/**
+ * Stream a UI mockup. The model writes ONE self-contained HTML document token
+ * by token (the card shows the markup forming, then renders it in a sandboxed
+ * iframe on `card.done`). The server doesn't parse the HTML — the card renders
+ * it as-is in an opaque-origin sandbox.
+ */
+async function* streamUiMockup(
+  user: string,
+  signal: AbortSignal,
+  images: ImageInput[] = [],
+): AsyncGenerator<AskEvent> {
+  yield { type: 'card.create', shape: 'uimockup' };
+  try {
+    for await (const ev of generateStream(UIMOCKUP_SYSTEM, user, signal, images)) {
+      if (signal.aborted) return;
+      if (ev.type === 'status') yield { type: 'status', message: ev.message };
+      else yield { type: 'card.delta', textDelta: ev.text };
+    }
+  } catch (error) {
+    // Close the opened card before the error propagates (mirrors streamDiagram)
+    // so the client never keeps a streaming card open forever.
     yield { type: 'card.done' };
     throw error;
   }

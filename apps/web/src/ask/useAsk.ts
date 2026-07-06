@@ -25,11 +25,13 @@ import {
   DIAGRAM_CARD_SIZE,
   DOC_CARD_SIZE,
   TABLE_CARD_SIZE,
+  UIMOCKUP_CARD_SIZE,
   affinityColor,
   type DiagramCardShape,
   type DocCardShape,
   type NoteCardShape,
   type TableCardShape,
+  type UiMockupCardShape,
 } from '../shapes';
 import { readSSE } from '../agents/sse';
 import { startStreaming, stopStreaming } from '../agents/streaming';
@@ -69,6 +71,7 @@ const REFINABLE: Record<string, AskShape> = {
   'doc-card': 'doc',
   'table-card': 'table',
   'diagram-card': 'diagram',
+  'uimockup-card': 'uimockup',
 };
 
 /** Does a server-chosen shape land on the SAME card kind we're refining? A
@@ -79,6 +82,7 @@ function isInPlace(cardType: string | undefined, shape: AskShape): boolean {
   if (cardType === 'doc-card') return shape === 'doc' || shape === 'list';
   if (cardType === 'table-card') return shape === 'table';
   if (cardType === 'diagram-card') return shape === 'diagram';
+  if (cardType === 'uimockup-card') return shape === 'uimockup';
   return false;
 }
 
@@ -208,6 +212,7 @@ function sourceLabel(shape: TLShape): string {
   if (title) return title.length > 28 ? `${title.slice(0, 27)}…` : title;
   const fallback: Record<string, string> = {
     'pdf-card': 'PDF', 'doc-card': 'Text', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram',
+    'uimockup-card': 'Mockup',
     'image-card': 'Image', 'link-card': 'Link', 'youtube-card': 'Video', 'sheet-card': 'Sheet', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section',
   };
   return fallback[shape.type] ?? 'Card';
@@ -410,6 +415,12 @@ export function useAsk() {
                   type: 'diagram-card',
                   props: { code: '' },
                 });
+              } else if (t.type === 'uimockup-card') {
+                editor.updateShape<UiMockupCardShape>({
+                  id: targetId,
+                  type: 'uimockup-card',
+                  props: { html: '' },
+                });
               } else if (t.type === 'table-card') {
                 cols = (event.columns ?? []).slice(0, 6);
                 rows = Array.from({ length: event.rowCount ?? 0 }, () => cols.map(() => ''));
@@ -445,6 +456,15 @@ export function useAsk() {
                 x: at.x,
                 y: at.y,
                 props: { w: DIAGRAM_CARD_SIZE.w, h: DIAGRAM_CARD_SIZE.h, code: '', title: trimmed.slice(0, 70) },
+              });
+            } else if (event.shape === 'uimockup') {
+              const at = placeInLane(editor, sourceIds, UIMOCKUP_CARD_SIZE.w, UIMOCKUP_CARD_SIZE.h);
+              editor.createShape<UiMockupCardShape>({
+                id,
+                type: 'uimockup-card',
+                x: at.x,
+                y: at.y,
+                props: { w: UIMOCKUP_CARD_SIZE.w, h: UIMOCKUP_CARD_SIZE.h, html: '', title: trimmed.slice(0, 70) },
               });
             } else if (event.shape === 'table') {
               cols = (event.columns ?? []).slice(0, 6);
@@ -502,6 +522,12 @@ export function useAsk() {
                 id: cardId,
                 type: 'diagram-card',
                 props: { code: (s.props as { code: string }).code + event.textDelta },
+              });
+            } else if (s.type === 'uimockup-card') {
+              editor.updateShape<UiMockupCardShape>({
+                id: cardId,
+                type: 'uimockup-card',
+                props: { html: (s.props as { html: string }).html + event.textDelta },
               });
             } else if ('text' in (s.props as object)) {
               editor.updateShape({

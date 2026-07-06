@@ -10,7 +10,7 @@
 
 import type { Editor, TLShape, TLShapePartial } from 'tldraw';
 
-const TITLE_PROP = new Set(['doc-card', 'diagram-card', 'link-card', 'youtube-card']);
+const TITLE_PROP = new Set(['doc-card', 'diagram-card', 'uimockup-card', 'link-card', 'youtube-card']);
 const NAME_PROP = new Set(['pdf-card', 'sheet-card', 'image-card', 'frame']);
 
 /** Shape types that carry the outside title tag. Deliberately absent:

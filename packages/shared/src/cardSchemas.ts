@@ -70,6 +70,13 @@ export const cardShapeProps = {
     code: T.string,
     title: T.string,
   },
+  'uimockup-card': {
+    w: T.number,
+    h: T.number,
+    /** A self-contained HTML document (inline CSS, no external resources). */
+    html: T.string,
+    title: T.string,
+  },
 } as const;
 
 export type CardShapeType = keyof typeof cardShapeProps;

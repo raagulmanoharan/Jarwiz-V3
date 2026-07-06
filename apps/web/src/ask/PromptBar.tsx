@@ -33,7 +33,7 @@ function shapeLabel(editor: Editor, shape: TLShape): string {
   let body = typeof p.text === 'string' ? p.text : '';
   if (!body && p.richText) { try { body = renderPlaintextFromRichText(editor, p.richText as TLRichText); } catch { /* ignore */ } }
   if (body.trim()) return clip(body.trim());
-  const kind: Record<string, string> = { 'pdf-card': 'PDF', 'doc-card': 'Text', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram', 'image-card': 'Image', 'link-card': 'Link', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section', arrow: 'Connector', group: 'Diagram' };
+  const kind: Record<string, string> = { 'pdf-card': 'PDF', 'doc-card': 'Text', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram', 'uimockup-card': 'Mockup', 'image-card': 'Image', 'link-card': 'Link', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section', arrow: 'Connector', group: 'Diagram' };
   return kind[shape.type] ?? 'Card';
 }
 
@@ -48,6 +48,7 @@ const MODES: Array<{ shape: ModeShape; label: string; hint: string }> = [
   { shape: 'list', label: 'List', hint: 'bullets or a checklist' },
   { shape: 'table', label: 'Table', hint: 'rows × columns' },
   { shape: 'diagram', label: 'Diagram', hint: 'boxes and arrows' },
+  { shape: 'uimockup', label: 'Mockup', hint: 'a live UI, rendered' },
   { shape: 'affinity', label: 'Stickies', hint: 'notes across your cards' },
   { shape: 'board', label: 'Board', hint: 'a set of cards' },
 ];
@@ -107,7 +108,9 @@ export function PromptBar() {
           ].join('\n')
         : s.type === 'diagram-card'
           ? str(p.code)
-          : str(p.text);
+          : s.type === 'uimockup-card'
+            ? str(p.html)
+            : str(p.text);
     const title = getShapeTitle(s).trim();
     return { id: s.id, type: s.type, seedKey: cardSeedKey(s.id, text, title), pdf: false as const, text, title };
   }, [editor]);

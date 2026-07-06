@@ -9,7 +9,7 @@ import { renderPlaintextFromRichText, type Editor, type TLRichText, type TLShape
 import type { AnalyzeCard } from '@jarwiz/shared';
 
 const CARD_TYPES = new Set([
-  'doc-card', 'note-card', 'table-card', 'diagram-card', 'link-card', 'pdf-card', 'youtube-card', 'sheet-card',
+  'doc-card', 'note-card', 'table-card', 'diagram-card', 'uimockup-card', 'link-card', 'pdf-card', 'youtube-card', 'sheet-card',
 ]);
 const PRIMITIVE_TYPES = new Set(['geo', 'text', 'note', 'arrow', 'frame']);
 const MAX_CARDS = 30;
@@ -34,6 +34,8 @@ function extract(editor: Editor, shape: ReturnType<Editor['getShape']>): Analyze
       return typeof p.text === 'string' && p.text.trim() ? { kind: shape.type.replace('-card', ''), title, text: p.text } : null;
     case 'diagram-card':
       return typeof p.code === 'string' && p.code.trim() ? { kind: 'diagram', title, text: p.code } : null;
+    case 'uimockup-card':
+      return typeof p.html === 'string' && p.html.trim() ? { kind: 'uimockup', title, text: p.html } : null;
     case 'table-card': {
       const cols = Array.isArray(p.columns) ? (p.columns as string[]) : [];
       const rows = Array.isArray(p.rows) ? (p.rows as string[][]) : [];

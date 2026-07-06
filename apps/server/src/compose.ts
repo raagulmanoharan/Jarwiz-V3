@@ -21,7 +21,7 @@ const MAX_CARDS = 6;
 const PLAN_TOKENS = 1200;
 const SIDECAR_TIMEOUT_MS = 90_000;
 
-const SHAPES: AskShape[] = ['doc', 'list', 'table', 'diagram'];
+const SHAPES: AskShape[] = ['doc', 'list', 'table', 'diagram', 'uimockup'];
 
 const PLAN_SYSTEM = `You are Jarwiz, turning a collaborator's board into a rich, spatial working set of cards — the way a sharp teammate builds out their thinking on a whiteboard. Read what's on the board and design ${MIN_CARDS}–${MAX_CARDS} cards that together move the work forward.
 
@@ -30,6 +30,7 @@ VARY the shapes to fit the content — this is the whole point, don't make every
 - "list" — steps, a checklist, an ordered plan, or a ranked set of picks/tips/recommendations.
 - "doc" — a written plan, brief, or explainer.
 - "diagram" — a flow, process, sequence, hierarchy, or relationship rendered as boxes-and-arrows (Mermaid). Reach for it when the content is inherently about structure or flow — a user journey, a system/architecture map, an org chart, a decision tree, a timeline — where a picture reads faster than prose. Use at most one diagram in the set; only when it genuinely fits.
+- "uimockup" — a live, rendered mockup of a user interface (a screen, landing page, dashboard, form, or component) as self-contained HTML. Reach for it ONLY when the board is genuinely about designing or specifying a product/UI and seeing it drawn would move the work forward. Use at most one, and never for content that isn't about an interface.
 
 These are Jarwiz's artefacts. Do NOT produce sticky notes — sticky notes are the USER's own annotation medium, never something you author. A set of tips, ideas, options, or review points belongs in a "list" or "table", not stickies.
 
