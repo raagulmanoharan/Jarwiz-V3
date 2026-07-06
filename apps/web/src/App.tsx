@@ -160,8 +160,15 @@ const handleMount = (editor: Editor) => {
 
   // Embedded demo: land the visitor on content. ?embed=1 is the minified
   // live-preview (one card + composer); ?demo=1 is the full seeded board.
-  if (isEmbed()) seedEmbedBoard(editor);
-  else if (isDemo()) seedDemoBoard(editor);
+  if (isEmbed()) {
+    seedEmbedBoard(editor);
+    // The preview lives in an iframe on the marketing page. Without this, the
+    // canvas swallows the scroll wheel and zooms the board out of sight ("it
+    // closes when I scroll on it"). Turn off wheel + drag camera moves so the
+    // page scrolls normally over the preview and the board stays framed;
+    // programmatic reframing (seed + composer) still works.
+    editor.setCameraOptions({ ...editor.getCameraOptions(), wheelBehavior: 'none', panSpeed: 0 });
+  } else if (isDemo()) seedDemoBoard(editor);
 };
 
 /** Minimal asset store — our cards keep media in their own props, so tldraw's
