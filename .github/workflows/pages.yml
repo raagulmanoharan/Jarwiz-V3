@@ -76,3 +76,5 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+# Redeploy trigger: Pages source switched to GitHub Actions.
