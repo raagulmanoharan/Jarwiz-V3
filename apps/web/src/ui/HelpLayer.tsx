@@ -1,85 +1,29 @@
 /**
- * Help + onboarding surface. Renders two things off the shared help store:
+ * Help surface — the **help panel**, a calm reference card (what Jarwiz can do +
+ * keyboard shortcuts) opened from the rail's "?" button. It never blocks the
+ * canvas permanently — Esc always returns you to the board.
  *
- *  1. The **help panel** — a calm reference card (what Jarwiz can do +
- *     keyboard shortcuts), opened from the topbar "?" button.
- *  2. The **guided tour** — a step-by-step walkthrough whose callout points at
- *     the relevant region of the UI (right rail, top action bar, prompt bar…).
- *     Auto-opens once for a first-time user (after the new-board dialog is
- *     done), and is replayable anytime via "Take the tour" in the panel.
- *
- * Both honor reduced-motion (animations are gated in CSS) and never block the
- * canvas permanently — Esc / Skip / Done always return you to the board.
+ * (A guided tour used to live here too; it was cut once it had gone stale and
+ * undiscoverable — the reference panel stands on its own.)
  */
 
 import { useEffect, useSyncExternalStore } from 'react';
-import {
-  closeHelp,
-  endTour,
-  getHelpState,
-  setTourStep,
-  startTour,
-  subscribeHelp,
-} from './help';
+import { closeHelp, getHelpState, subscribeHelp } from './help';
 
 const isMac =
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 const MOD = isMac ? '⌘' : 'Ctrl';
 
-/** Where a tour callout sits, and which way its caret points. */
-type Anchor = 'center' | 'rail' | 'cardbar' | 'prompt' | 'topbar';
-
-interface TourStep {
-  anchor: Anchor;
-  title: string;
-  body: string;
-}
-
-const TOUR: TourStep[] = [
-  {
-    anchor: 'center',
-    title: 'Welcome to Jarwiz',
-    body: 'An infinite canvas where AI works alongside you — reading, summarising, clustering, and drafting, all as cards you can move and connect. Here is the 60-second tour.',
-  },
-  {
-    anchor: 'rail',
-    title: 'Build anything',
-    body: 'The left rail has your tools: select, pan, docs, shapes, arrows — plus PDF upload and your boards.',
-  },
-  {
-    anchor: 'center',
-    title: 'Bring in your own material',
-    body: 'Drop a PDF straight onto the canvas. Jarwiz reads it and offers smart starting questions, so you are never staring at a blank board.',
-  },
-  {
-    anchor: 'prompt',
-    title: 'Ask anything',
-    body: 'Type in the prompt bar and the answer streams onto the board. Select a card first to ground the question on it; the chips suggest the next best prompt.',
-  },
-  {
-    anchor: 'cardbar',
-    title: 'Card actions',
-    body: 'Select a card and this action bar floats above it — under Actions you can make it shorter, go deeper, turn it into a table or flowchart, or regenerate it.',
-  },
-  {
-    anchor: 'center',
-    title: 'Turn notes into themes',
-    body: 'Select three or more sticky notes, then Actions → Cluster & summarise. Jarwiz sorts them into named themes and writes the summary for you.',
-  },
-  {
-    anchor: 'topbar',
-    title: 'Boards & this guide',
-    body: 'Rename this board inline up here, switch boards from the logo button (or the rail’s folder icon), and flip light/dark with the theme toggle. Reopen this guide anytime from the rail’s ? button.',
-  },
-];
-
+/** The reference feature list — the powerful surfaces first, so a newcomer sees
+ *  what makes Jarwiz more than a whiteboard. */
 const FEATURES: Array<{ glyph: string; title: string; body: string }> = [
-  { glyph: '◧', title: 'Build with primitives', body: 'Docs, shapes, and arrows from the left rail.' },
-  { glyph: '⬓', title: 'Drop PDFs', body: 'Jarwiz reads them and suggests starting questions.' },
-  { glyph: '✦', title: 'Ask & create', body: 'Type in the prompt bar; select a card to ground the answer on it.' },
-  { glyph: '⚖', title: 'Scan the board', body: 'Find tensions between cards, or surface what you are missing.' },
-  { glyph: '↺', title: 'Card actions', body: 'Shorten, deepen, reformat as a table or flowchart, summarise, or regenerate.' },
-  { glyph: '◳', title: 'Cluster & summarise', body: 'Turn a wall of stickies into named themes with one click.' },
+  { glyph: '◱', title: 'Thinking Machines', body: 'Premade analysis blocks — SWOT, Effort–Impact, Competitive, Risk — that deep-research the web and fan out a board of cards. Pick one from the left rail.' },
+  { glyph: '✧', title: 'Autopilot', body: 'Hand Jarwiz a goal in the prompt bar and it plans, researches, and builds the board for you.' },
+  { glyph: '✦', title: 'Ask & create', body: 'Type in the prompt bar; the answer streams onto a card. Select a card first to ground the question on it.' },
+  { glyph: '⌕', title: 'Deep research', body: 'Research-heavy asks pull live data from the web and cite their sources — not just what the model remembers.' },
+  { glyph: '⬓', title: 'Bring in your material', body: 'Drop a PDF, spreadsheet, video, or link — Jarwiz reads it and works from it, and suggests starting questions.' },
+  { glyph: '↺', title: 'Card actions', body: 'Select a card to shorten it, go deeper, reformat as a table or flowchart, summarise, or regenerate.' },
+  { glyph: '◳', title: 'Cluster & summarise', body: 'Select three or more sticky notes and turn a wall of them into named themes in one click.' },
 ];
 
 const SHORTCUTS: Array<{ keys: string[]; label: string }> = [
@@ -94,33 +38,22 @@ const SHORTCUTS: Array<{ keys: string[]; label: string }> = [
 ];
 
 export function HelpLayer() {
-  const { panelOpen, tourStep } = useSyncExternalStore(subscribeHelp, getHelpState, getHelpState);
+  const { panelOpen } = useSyncExternalStore(subscribeHelp, getHelpState, getHelpState);
 
-  // The tour never auto-launches: it barged in over users mid-edit (it raced
-  // BoardEntry's "Start writing" flow) and a daily-driver product doesn't need
-  // forced onboarding. It stays one click away — "Take the guided tour" in the
-  // help panel — for showing Jarwiz to someone new.
-
-  // Esc closes whichever surface is up.
+  // Esc closes the panel.
   useEffect(() => {
-    if (!panelOpen && tourStep === null) return;
+    if (!panelOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        if (tourStep !== null) endTour();
-        else closeHelp();
+        closeHelp();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [panelOpen, tourStep]);
+  }, [panelOpen]);
 
-  return (
-    <>
-      {panelOpen ? <HelpPanel /> : null}
-      {tourStep !== null ? <Tour step={tourStep} /> : null}
-    </>
-  );
+  return panelOpen ? <HelpPanel /> : null;
 }
 
 function HelpPanel() {
@@ -162,52 +95,6 @@ function HelpPanel() {
                 <span className="jz-help-key-label">{s.label}</span>
               </span>
             ))}
-          </div>
-        </div>
-
-        <div className="jz-help-foot">
-          <button className="jz-help-tour-btn" onClick={startTour}>✦ Take the guided tour</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Tour({ step }: { step: number }) {
-  const total = TOUR.length;
-  const current = Math.min(Math.max(step, 0), total - 1);
-  const s = TOUR[current]!;
-  const isFirst = current === 0;
-  const isLast = current === total - 1;
-
-  return (
-    <div className="jz-tour-scrim" onPointerDown={endTour}>
-      <div
-        className={`jz-tour-bubble jz-tour-bubble--${s.anchor}`}
-        role="dialog"
-        aria-label={`Tour step ${current + 1} of ${total}`}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <span className={`jz-tour-caret jz-tour-caret--${s.anchor}`} aria-hidden />
-        <div className="jz-tour-step">Step {current + 1} of {total}</div>
-        <h3 className="jz-tour-title">{s.title}</h3>
-        <p className="jz-tour-body">{s.body}</p>
-
-        <div className="jz-tour-foot">
-          <div className="jz-tour-dots" aria-hidden>
-            {TOUR.map((_, i) => (
-              <span key={i} className={`jz-tour-dot${i === current ? ' jz-tour-dot--on' : ''}`} />
-            ))}
-          </div>
-          <div className="jz-tour-actions">
-            {isFirst ? (
-              <button className="jz-tour-skip" onClick={endTour}>Skip</button>
-            ) : (
-              <button className="jz-tour-skip" onClick={() => setTourStep(current - 1)}>Back</button>
-            )}
-            <button className="jz-tour-next" onClick={() => (isLast ? endTour() : setTourStep(current + 1))}>
-              {isLast ? 'Done' : 'Next'}
-            </button>
           </div>
         </div>
       </div>

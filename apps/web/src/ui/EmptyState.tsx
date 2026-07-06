@@ -23,27 +23,27 @@ export function EmptyState() {
     <div className="jz-empty" aria-hidden>
       <h1 className="jz-empty-hero">Start a new idea.</h1>
       <p className="jz-empty-sub">
-        Drop a PDF anywhere, grab a tool from the left rail, or ask anything in the prompt bar
-        below.
+        Run a Thinking Machine from the left rail, ask anything in the prompt bar, or drop a PDF,
+        sheet or video onto the canvas.
       </p>
       <div className="jz-empty-hints">
         <span className="jz-empty-hint">
           <span className="jz-empty-glyph" aria-hidden>
-            ⬓
+            ◱
           </span>
-          Drop a PDF
-        </span>
-        <span className="jz-empty-hint">
-          <span className="jz-empty-glyph" aria-hidden>
-            ◧
-          </span>
-          Tools on the left rail
+          Run a Thinking Machine
         </span>
         <span className="jz-empty-hint">
           <span className="jz-empty-glyph" aria-hidden>
             ✦
           </span>
           Ask in the prompt bar
+        </span>
+        <span className="jz-empty-hint">
+          <span className="jz-empty-glyph" aria-hidden>
+            ⬓
+          </span>
+          Drop a PDF or video
         </span>
       </div>
     </div>
