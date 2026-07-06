@@ -292,10 +292,10 @@ body,
   background: var(--jz-card);
   border: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-lg);
-  box-shadow: 0 12px 40px rgba(8, 9, 11, 0.28);
+  box-shadow: var(--jz-e3);
   overflow: hidden;
   z-index: 60;
-  animation: jz-tl-in var(--jz-dur-med, 180ms) var(--jz-ease-out, ease);
+  animation: jz-tl-in var(--jz-dur-base) var(--jz-ease-out, ease);
 }
 .jz-ultra-drawer-head {
   flex: none;
@@ -478,9 +478,9 @@ body,
   background: var(--jz-card);
   border: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-lg);
-  box-shadow: 0 12px 40px rgba(8, 9, 11, 0.3);
+  box-shadow: var(--jz-e3);
   padding: 11px 12px 12px;
-  animation: jz-tl-in var(--jz-dur-med, 180ms) var(--jz-ease-out, ease);
+  animation: jz-tl-in var(--jz-dur-base) var(--jz-ease-out, ease);
 }
 .jz-comment-head {
   display: flex;
@@ -572,18 +572,18 @@ body,
   background: var(--jz-card);
   border: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-lg);
-  box-shadow: 0 12px 40px rgba(8, 9, 11, 0.3);
+  box-shadow: var(--jz-e3);
   padding: 6px;
   z-index: 60;
-  animation: jz-tl-in var(--jz-dur-med, 180ms) var(--jz-ease-out, ease);
+  animation: jz-tl-in var(--jz-dur-base) var(--jz-ease-out, ease);
 }
 .jz-machines-title {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-size: var(--jz-text-micro-size);
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--jz-ink-400);
   padding: 7px 8px 8px;
@@ -625,7 +625,7 @@ body,
   flex-direction: column;
   box-sizing: border-box;
   padding: var(--jz-space-5); /* THE uniform card inset — matches every other card */
-  background: var(--jz-card);
+  background: var(--jz-card-surface);
   border: 1.5px solid color-mix(in srgb, var(--jz-accent) 38%, var(--jz-hairline));
   border-radius: var(--jz-radius-lg);
   box-shadow: var(--jz-e2, 0 2px 10px rgba(8, 9, 11, 0.14));
@@ -642,7 +642,7 @@ body,
   justify-content: center;
   width: 30px;
   height: 30px;
-  border-radius: 9px;
+  border-radius: var(--jz-radius-sm);
   background: color-mix(in srgb, var(--jz-accent) 15%, transparent);
   color: var(--jz-accent);
   flex: none;
@@ -681,7 +681,7 @@ body,
   min-height: 44px;
   box-sizing: border-box;
   border: 1px solid var(--jz-hairline);
-  border-radius: var(--jz-radius-md, 10px);
+  border-radius: var(--jz-radius-md);
   outline: none;
   box-shadow: none;
   resize: none;
@@ -734,14 +734,14 @@ body,
   justify-content: center;
   gap: 6px;
   border: none;
-  border-radius: var(--jz-radius-md, 10px);
+  border-radius: var(--jz-radius-md);
   background: var(--jz-accent);
   color: #fff;
   font-size: 13px;
   font-weight: 650;
   padding: 9px 12px;
   cursor: pointer;
-  transition: filter var(--jz-dur-1, 0.12s) var(--jz-ease-out, ease);
+  transition: filter var(--jz-dur-fast) var(--jz-ease-out);
 }
 .jz-machine-card-run:hover { filter: brightness(1.06); }
 .jz-machine-card-run:disabled { opacity: 0.45; cursor: default; }
@@ -1109,8 +1109,8 @@ body,
   color: var(--jz-ink-400);
   text-decoration: none;
   transition:
-    background 120ms ease,
-    color 120ms ease;
+    background var(--jz-dur-fast) var(--jz-ease-out),
+    color var(--jz-dur-fast) var(--jz-ease-out);
 }
 
 .jz-open-link:hover {
@@ -1569,13 +1569,13 @@ body,
   justify-content: center;
   gap: 10px;
   color: var(--jz-ink-400);
-  font-size: 12.5px;
+  font-size: 12px;
 }
 .jz-sheet-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--jz-hairline);
-  border-top-color: var(--jz-ink-400);
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid var(--jz-ink-200);
+  border-top-color: var(--jz-ink-500);
   border-radius: 50%;
   animation: jz-pdf-spin 0.8s linear infinite;
 }
@@ -1923,7 +1923,7 @@ body,
 .jz-tl-revert {
   height: 24px;
   padding: 0 10px;
-  border-radius: 6px;
+  border-radius: var(--jz-radius-xs);
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -3154,7 +3154,7 @@ body,
   box-shadow: var(--jz-e2);
   overflow: hidden;
   font-family: var(--jz-font-ui);
-  background: var(--jz-surface);
+  background: var(--jz-card-surface);
   border: 1px solid var(--jz-hairline);
   box-sizing: border-box;
 }
@@ -3247,7 +3247,7 @@ body,
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #d97706;
+  background: var(--jz-accent);
   animation: jz-reading-pulse 1.4s ease-in-out infinite;
 }
 
@@ -3463,7 +3463,7 @@ body,
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-micro-size);
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--jz-ink-400);
 }
@@ -4018,7 +4018,7 @@ body,
 
 .jz-boardentry-spark {
   font-size: 20px;
-  color: #d97706;
+  color: var(--jz-accent);
   line-height: 1;
   user-select: none;
 }
@@ -4213,7 +4213,7 @@ body,
   color: var(--jz-ink-900);
 }
 .jz-help-spark {
-  color: #d97706;
+  color: var(--jz-accent);
   font-size: 14px;
 }
 .jz-help-close {
@@ -4250,8 +4250,8 @@ body,
   display: grid;
   place-items: center;
   border-radius: var(--jz-radius-sm);
-  background: color-mix(in srgb, #d97706 12%, transparent);
-  color: #b8650a;
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  color: var(--jz-accent);
   font-size: 15px;
 }
 .jz-help-feature-text {
@@ -4279,7 +4279,7 @@ body,
 .jz-help-section-label {
   display: block;
   font-family: var(--jz-font-ui);
-  font-size: 11px;
+  font-size: var(--jz-text-micro-size);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -4369,7 +4369,7 @@ body,
 
 .jz-side-section-title {
   font-family: var(--jz-font-ui);
-  font-size: 10px;
+  font-size: var(--jz-text-micro-size);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -4383,7 +4383,7 @@ body,
   height: 22px;
   padding: 0 8px 0 6px;
   border: 1px solid var(--jz-hairline);
-  border-radius: 6px;
+  border-radius: var(--jz-radius-xs);
   background: transparent;
   color: var(--jz-ink-700);
   font-family: var(--jz-font-ui);
@@ -4600,7 +4600,7 @@ body,
 .jz-side-restore-cancel {
   height: 24px;
   padding: 0 10px;
-  border-radius: 6px;
+  border-radius: var(--jz-radius-xs);
   font-family: var(--jz-font-ui);
   font-size: 11px;
   font-weight: 600;
