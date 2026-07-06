@@ -1,6 +1,19 @@
 # Jarwiz
 
-**Thinking made visual.** Jarwiz is an infinite canvas where live AI agents are your collaborators — think FigJam, but the other cursors on the board are a researcher, a summarizer, a brainstormer, and a writer. You spread ideas out as cards and primitives, and the agents work alongside you on the board itself: pulling sources, summarizing videos, fanning out sticky notes, clustering them into themes, drafting documents, building flowcharts — every artifact a card you can see, move, connect, and keep.
+**Hand it a goal. Get back a board — not a chat.**
+
+Jarwiz is an infinite canvas where AI is your collaborator, not a chatbot in a
+sidebar. Type a subject or hand it a goal and it researches the live web, runs
+real thinking frameworks (SWOT, Effort–Impact, competitive analysis, risk,
+personas, 5 Whys…), and lays the answer out as a **board of cards you can move,
+refine, and connect** — every artifact live, right where you're working.
+
+Built for founders, product managers, and strategists. Open source (MIT) and
+runs in your browser.
+
+**[▶ Try the live demo](https://raagulmanoharan.github.io/Jarwiz-V3/)** · [Marketing site](https://raagulmanoharan.github.io/Jarwiz-V3/)
+
+![A finished Jarwiz board — a SWOT of Figma with a TOWS strategy table and a strategic verdict](site/assets/example-board.png)
 
 ## Monorepo layout
 
@@ -29,21 +42,27 @@ That's it — **the whole app works out of the box with no API key** (you'll see
 "Demo mode" badge; agents reply with high-quality scripted output so every flow
 is demoable).
 
-### Turning on live AI (optional)
+### Turning on live AI
 
-For real Claude responses, pick **either**:
+For real Claude responses, **add an Anthropic API key** — that one key powers
+everything (asks, deep web research, Autopilot, the Thinking Machines,
+clustering, diagrams). Web search uses Anthropic's built-in `web_search` tool,
+so nothing else is needed.
 
-- **Claude Code CLI (no key needed).** If you have the `claude` CLI installed
-  and signed in, the server uses it as a sidecar automatically — nothing to
-  configure. The badge flips from "Demo mode" to live.
-- **An API key.** Copy the env template and drop in a key:
-  ```sh
-  cp apps/server/.env.example apps/server/.env
-  # edit apps/server/.env → ANTHROPIC_API_KEY=sk-ant-...
-  ```
+```sh
+cp apps/server/.env.example apps/server/.env
+# edit apps/server/.env → ANTHROPIC_API_KEY=sk-ant-...
+```
+
+Get a key at [console.anthropic.com](https://console.anthropic.com/). The key
+lives only on the server — the browser never sees it.
+
+> **No key handy?** If you have the Claude Code `claude` CLI installed and
+> signed in, the server uses it as a keyless "sidecar" for real output
+> automatically — a dev convenience, never required.
 
 Check which mode you're in: `curl http://localhost:3001/api/capabilities`
-→ `{"live":true,"mode":"sidecar"}` (or `"api"` / demo `{"live":false}`).
+→ `{"live":true,"mode":"api"}` (or `"sidecar"` / demo `{"live":false}`).
 
 ### Try it in 60 seconds
 
@@ -72,6 +91,27 @@ together everything below:
 - [docs/HISTORY.md](docs/HISTORY.md) — conversation / session history, milestone by milestone
 - [docs/ROADMAP.md](docs/ROADMAP.md) · [docs/BIG-ROCKS.md](docs/BIG-ROCKS.md) — the plan and the priorities
 - [CLAUDE.md](CLAUDE.md) — working notes / conventions for the codebase
+
+## Contributing
+
+Contributions are welcome. A few notes to keep the codebase coherent:
+
+- Run `npm run typecheck` (web + server) before opening a PR — the web app also
+  typechecks as part of `npm run build`.
+- After changing anything in `packages/shared/src`, rebuild it so `dist/`
+  regenerates: `npm run build --workspace=packages/shared`.
+- Match the house style: design tokens over magic values (`--jz-*`), the `jz-`
+  CSS class prefix, and agent identity colors from
+  `packages/shared/src/agents.ts` (the single source). Motion cites a token and
+  honors `prefers-reduced-motion`.
+- Conventions and architecture live in [CLAUDE.md](CLAUDE.md) and
+  [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+Open an issue to discuss anything substantial before a large PR.
+
+## License
+
+[MIT](LICENSE) © Raagul Manoharan. Use it, fork it, ship it.
 
 ## Troubleshooting
 

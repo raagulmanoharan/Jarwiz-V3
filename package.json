@@ -2,7 +2,14 @@
   "name": "jarwiz",
   "private": true,
   "version": "0.0.0",
-  "description": "Jarwiz — an infinite canvas where live AI agents are your collaborators.",
+  "description": "Jarwiz — an infinite canvas where AI is your collaborator, not a chatbot in a sidebar.",
+  "license": "MIT",
+  "author": "Raagul Manoharan",
+  "homepage": "https://raagulmanoharan.github.io/Jarwiz-V3/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/raagulmanoharan/Jarwiz-V3.git"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
