@@ -36,7 +36,7 @@ import { annotateBoard } from './annotate.js';
 import { getMachine } from './machines.js';
 import { streamMachineBoard } from './machineBoard.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset, sniffMime } from './assets.js';
-import { proposeSeedPrompts, streamAsk } from './ask.js';
+import { classifyRefineIntent, proposeSeedPrompts, streamAsk } from './ask.js';
 import type { AnalyzeCard, AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ReviseRequest } from '@jarwiz/shared';
 import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
@@ -297,7 +297,33 @@ app.post('/api/autopilot/table', async (c) => {
       await send({ type: 'error', message });
     }
   });
-});/** The Ask pipeline — a prompt against source cards → one auto-shaped answer. */
+});
+
+/** Edit-vs-new intent: with a single card selected and no "/" mode, does the
+ *  typed instruction refine THAT card in place, or make a new doc from it? The
+ *  composer calls this before dispatching. Fails safe to "new". */
+app.post('/api/intent', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ intent: 'new' });
+  }
+  const b = body as { prompt?: unknown; cardType?: unknown };
+  const prompt = typeof b.prompt === 'string' ? b.prompt : '';
+  const cardType = typeof b.cardType === 'string' ? b.cardType : '';
+  if (!prompt.trim()) return c.json({ intent: 'new' });
+  const ac = new AbortController();
+  c.req.raw.signal?.addEventListener('abort', () => ac.abort());
+  try {
+    const intent = await classifyRefineIntent(prompt, cardType, ac.signal);
+    return c.json({ intent });
+  } catch {
+    return c.json({ intent: 'new' });
+  }
+});
+
+/** The Ask pipeline — a prompt against source cards → one auto-shaped answer. */
 app.post('/api/ask', async (c) => {
   let body: unknown;
   try {

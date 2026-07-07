@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react';
-import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue, type Editor, type TLRichText, type TLShape } from 'tldraw';
+import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue, type Editor, type TLRichText, type TLShape, type TLShapeId } from 'tldraw';
 import { Slash, ArrowUp } from 'lucide-react';
 import type { AnalyzeMode, AskShape } from '@jarwiz/shared';
 import { ASKABLE, hasAskableContent } from './askable';
@@ -15,7 +15,7 @@ import { getShapeTitle } from '../shapes/shapeTitle';
 import { useAsk } from './useAsk';
 import { useCompose } from '../agents/useCompose';
 import { useAnnotate } from '../agents/useAnnotate';
-import { looksLikeBoard } from './boardIntent';
+import { classifyRefineIntent, INLINE_EDITABLE, REFINE_SHAPE } from './refineIntent';
 import { useAnalyze } from '../agents/useAnalyze';
 import { gatherBoardCards } from '../agents/boardText';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
@@ -43,8 +43,11 @@ function shapeLabel(editor: Editor, shape: TLShape): string {
 /** Response shapes for the "/" menu. 'board' is not a single-card AskShape —
  *  it fans the answer out into a set of cards (compose), handled specially. */
 type ModeShape = AskShape | 'board';
+// Doc/Text is deliberately ABSENT: it's the implicit default — typing with no
+// mode selected always answers as a doc. The selector only lists the shapes you
+// must explicitly opt into to get something OTHER than a doc (owner call
+// 2026-07-07).
 const MODES: Array<{ shape: ModeShape; label: string; hint: string }> = [
-  { shape: 'doc', label: 'Text', hint: 'a written card' },
   { shape: 'list', label: 'List', hint: 'bullets or a checklist' },
   { shape: 'table', label: 'Table', hint: 'rows × columns' },
   { shape: 'diagram', label: 'Diagram', hint: 'boxes and arrows' },
@@ -172,26 +175,37 @@ export function PromptBar() {
 
   const composing = composePhase === 'planning' || composePhase === 'building';
   const annotating = annotatePhase === 'thinking';
+  // A single artifact card is selected and the user typed with no mode. Ask the
+  // model whether the instruction EDITS that card in place or makes a NEW card
+  // from it, then dispatch: an edit regenerates the same card (keeping its
+  // shape); a new request lands a fresh doc grounded on the selection.
+  const routeSelectedAsk = async (q: string, id: TLShapeId, cardType: string) => {
+    const intent = await classifyRefineIntent(q, cardType);
+    if (intent === 'edit') {
+      void ask(q, [id], { targetId: id, forceShape: REFINE_SHAPE[cardType], skipClarify: true });
+    } else {
+      void ask(q, [id], { forceShape: 'doc' });
+    }
+  };
+
   const submit = () => {
     const q = value.trim();
     if (!q || isAsking || composing || annotating) return;
-    // Route by intent:
-    //  - Board (explicit "/" Board or inferred) → fan out into a set of cards.
-    //  - Stickies (explicit "/" Stickies) → drop a note across each relevant card.
-    //  - else → a single-card ask, shape optionally forced by the "/" mode.
-    if (mode === 'board' || (!mode && looksLikeBoard(q))) {
+    // SHAPE is explicit only — no implicit routing from the prompt text. With no
+    // mode selected the answer is always a DOC (the composer's first-class
+    // default); Board / Stickies / any other shape require picking the "/" mode
+    // (owner call 2026-07-07). Whether a typed instruction EDITS a selected card
+    // in place vs makes a new card is inferred from intent (see routeSelectedAsk).
+    if (mode === 'board') {
       void compose(q);
     } else if (mode === 'affinity') {
       void annotate(q);
-    } else if (!mode && sole && !sole.pdf && (sole.type === 'prototype-card' || sole.type === 'dashboard-card')) {
-      // Selecting a prototype or dashboard and typing an instruction regenerates
-      // it IN PLACE (the card IS the artifact) — not a new card beside it. This
-      // is the pointed-edit path: "add a margin chart", "focus on APAC". The
-      // card's own spec/html grounds the edit (toSource), so nothing is lost.
-      const forceShape: AskShape = sole.type === 'dashboard-card' ? 'dashboard' : 'prototype';
-      void ask(q, [sole.id], { targetId: sole.id, forceShape, skipClarify: true });
+    } else if (!mode && sole && !sole.pdf && INLINE_EDITABLE.has(sole.type)) {
+      // A single artifact card is selected and no mode chosen → let intent decide
+      // edit-in-place vs a new doc (async classify), then dispatch.
+      void routeSelectedAsk(q, sole.id, sole.type);
     } else {
-      void ask(q, groundIds, mode ? { forceShape: mode as AskShape } : undefined);
+      void ask(q, groundIds, { forceShape: (mode as AskShape) ?? 'doc' });
     }
     setValue('');
     setMode(null); // the mode applies to one ask, like the text it rode with

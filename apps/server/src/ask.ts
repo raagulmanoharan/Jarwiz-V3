@@ -723,6 +723,30 @@ async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenera
   yield { type: 'done' };
 }
 
+/** Edit-vs-new intent for a typed composer instruction on a selected card.
+ *  Static system prompt (cache-friendly); the card type + instruction ride the
+ *  user turn. Biased to NEW when unsure — a new card never overwrites work. */
+const INTENT_SYSTEM = `A user has a single card selected on an infinite canvas and typed an instruction into the composer. Decide whether they want to MODIFY that selected card in place, or CREATE a NEW separate card derived from it.
+
+- EDIT — they want to change the selected card itself: shorten, expand, rephrase, fix, translate, restyle, add/remove/reorder its contents, filter/refocus it, recompute, "make it …", "turn this into …", "add a column/chart", "focus on …".
+- NEW — they want a new, separate artifact: summarize it, answer a question about it, extract, compare, brainstorm, "write a …", "what are …", "give me …".
+
+When genuinely unsure, answer NEW — a new card is safe (an in-place edit overwrites their work). Reply with EXACTLY one word: EDIT or NEW.`;
+
+export async function classifyRefineIntent(
+  prompt: string,
+  cardType: string,
+  signal: AbortSignal,
+): Promise<'edit' | 'new'> {
+  let raw: string;
+  try {
+    raw = await generate(INTENT_SYSTEM, `Selected card: ${cardType || 'card'}\nInstruction: "${prompt.slice(0, 400)}"`, signal);
+  } catch {
+    return 'new'; // never block on the classifier — default to the safe path
+  }
+  return raw.trim().toUpperCase().startsWith('EDIT') ? 'edit' : 'new';
+}
+
 export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGenerator<AskEvent> {
   if (!process.env.ANTHROPIC_API_KEY?.trim() && !sidecarAvailable()) {
     yield* streamDemoAsk(req, signal);
