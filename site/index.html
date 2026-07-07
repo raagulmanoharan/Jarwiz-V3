@@ -256,11 +256,12 @@
       h2 { margin: 0; font-size: clamp(30px, 4vw, 46px); line-height: 1.06; letter-spacing: -0.032em; font-weight: 800; }
       .sec-head p { margin: 18px 0 0; color: var(--ink-2); font-size: 17px; line-height: 1.6; }
 
-      /* ===== ONE canvas of real shapes, arranged like a board (centerpiece) =====
-         Not a grid of titled tiles — a single canvas (dot-grid, like the app)
-         with the actual shapes floating on it as cards. No per-card headings. */
+      /* ===== ONE canvas of real shapes, MASONRY-packed (centerpiece) =====
+         A single canvas (dot-grid, like the app). The shapes sit on it as cards
+         at their NATURAL height, packed into columns (masonry) — no fixed rows,
+         so nothing is stretched, letterboxed, or clipped. No per-card headings. */
       .board-canvas {
-        display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 196px; gap: 16px;
+        column-count: 3; column-gap: 18px;
         padding: 26px; border-radius: var(--r-xl);
         border: 1px solid var(--hairline);
         background:
@@ -268,34 +269,31 @@
           linear-gradient(180deg, var(--bg-2), var(--bg));
         box-shadow: 0 40px 120px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04);
       }
-      /* Each shape is a real card floating on the canvas — its own surface,
-         border and shadow; no heading, no description (the shape speaks). */
+      /* Each shape is a real card on the canvas — its own surface, border and
+         shadow, its natural height. break-inside keeps a card whole in a column. */
       .bcard {
-        position: relative; overflow: hidden; display: flex;
+        break-inside: avoid; -webkit-column-break-inside: avoid;
+        display: block; width: 100%; margin: 0 0 18px; position: relative; overflow: hidden;
         border-radius: var(--r-md); border: 1px solid var(--hairline);
         background: linear-gradient(180deg, var(--surface), var(--bg-2));
         box-shadow: 0 12px 30px rgba(0,0,0,0.4);
         transition: transform 0.25s var(--ease), border-color 0.25s var(--ease);
       }
       .bcard:hover { transform: translateY(-3px); border-color: var(--hairline-2); }
-      .b-dash  { grid-column: span 2; grid-row: span 2; }
-      .b-flow  { grid-column: span 1; grid-row: span 2; }
-      .b-proto { grid-column: span 1; grid-row: span 2; }
-      .b-board, .b-table, .b-doc, .b-composer { grid-column: span 2; }
-      /* Renders shown WHOLE (contain) on a dark screen — nothing cropped. */
-      .b-dash, .b-board { background: #0b0b0e; align-items: center; justify-content: center; padding: 8px; }
-      .b-dash img, .b-board img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; }
-      /* The real diagram SVG, centered and whole, on a card screen. */
-      .b-flow { align-items: center; justify-content: center; padding: 14px; background: #0b0b0e; }
-      .b-flow .flow-svg { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; }
-      /* Live prototype iframe fills its card. */
-      .b-proto { background: #0b0b0e; }
-      .proto-frame { width: 100%; height: 100%; border: 0; display: block; background: #0b0b0e; }
+      /* Image renders: full width, natural height — shown whole, never cropped. */
+      .b-dash, .b-board { background: #0b0b0e; }
+      .b-dash img, .b-board img { display: block; width: 100%; height: auto; }
+      /* The real diagram SVG, whole, on a card screen. */
+      .b-flow { background: #0b0b0e; padding: 16px; text-align: center; }
+      .b-flow .flow-svg { display: inline-block; width: 100%; height: auto; }
+      /* Live prototype iframe — a portrait card. */
+      .b-proto { background: #0b0b0e; aspect-ratio: 5 / 7; }
+      .proto-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #0b0b0e; }
       /* Real HTML table / doc card content. */
-      .b-table, .b-doc { align-items: flex-start; padding: 16px 18px; }
+      .b-table, .b-doc { padding: 16px 18px; }
       .b-table .doccard-tbl { margin: 0; width: 100%; }
       .b-doc .doccard { padding: 0; }
-      .b-composer { align-items: center; padding: 22px; }
+      .b-composer { padding: 22px; }
 
       /* mini composer used in the composer card */
       .mini-composer { display: flex; flex-direction: column; gap: 12px; width: 100%; }
@@ -324,17 +322,8 @@
       .sug-shape { color: var(--ink); font-weight: 600; min-width: 70px; text-align: left; transition: opacity 0.22s var(--ease), transform 0.22s var(--ease); }
       .sug-shape.swap { opacity: 0; transform: translateY(-4px); }
 
-      @media (max-width: 900px) {
-        .board-canvas { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 184px; padding: 20px; }
-        .bcard { grid-column: span 1; }
-        .b-dash { grid-column: span 2; grid-row: span 2; }
-        .b-flow, .b-proto { grid-row: span 2; }
-      }
-      @media (max-width: 560px) {
-        .board-canvas { grid-template-columns: 1fr; grid-auto-rows: 190px; padding: 14px; gap: 12px; }
-        .bcard { grid-column: span 1; grid-row: span 1; }
-        .b-dash, .b-flow, .b-proto { grid-column: span 1; grid-row: span 2; }
-      }
+      @media (max-width: 900px) { .board-canvas { column-count: 2; padding: 20px; } }
+      @media (max-width: 560px) { .board-canvas { column-count: 1; padding: 14px; } }
 
       /* Showcase — real screenshots */
       .showcase-item { margin-top: 76px; }
