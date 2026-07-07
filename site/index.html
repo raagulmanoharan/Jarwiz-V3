@@ -170,6 +170,12 @@
         background: #0b0b0e;
         box-shadow: 0 60px 150px rgba(0,0,0,0.66), inset 0 1px 0 rgba(255,255,255,0.05);
         overflow: hidden;
+        /* Force the rounded clip onto its own GPU layer. Without this, some
+           browsers white-out an <iframe> clipped by border-radius + overflow
+           the moment its content repaints (e.g. the embedded canvas zooming) —
+           the "widget goes blank after the camera zooms" bug. */
+        transform: translateZ(0);
+        isolation: isolate;
       }
       .stage-bar {
         display: flex; align-items: center; gap: 10px; height: 42px; flex: none;
@@ -183,7 +189,10 @@
         display: inline-flex; align-items: center; gap: 7px;
       }
       .stage-bar .addr svg { width: 12px; height: 12px; opacity: 0.7; }
-      .stage-frame { flex: 1; width: 100%; border: 0; display: block; background: #0b0b0e; }
+      .stage-frame { flex: 1; width: 100%; border: 0; display: block; background: #0b0b0e;
+        /* Keep the iframe on its own compositing layer so it repaints in place
+           instead of white-ing out when the embedded canvas animates. */
+        transform: translateZ(0); backface-visibility: hidden; }
       .stage-cap { margin: 20px auto 0; max-width: 640px; color: var(--ink-3); font-size: 14px; line-height: 1.6; }
       .stage-cap a { color: var(--accent-2); font-weight: 600; }
       .stage-cap a:hover { text-decoration: underline; }
