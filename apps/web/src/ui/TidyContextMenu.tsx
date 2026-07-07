@@ -3,8 +3,9 @@
  *
  * Overrides tldraw's default context menu to prepend a single "Tidy up" item
  * whenever the drag-selection holds ≥2 cards. Selecting it masonry-packs just
- * that selection in place (see agents/tidyBoard.ts) — so the user can clean a
- * corner of the board without touching the rest. All of tldraw's stock actions
+ * that selection (see agents/tidyBoard.ts) — cards glide into place and the
+ * camera frames the result — so the user can clean a corner of the board
+ * without touching the rest. All of tldraw's stock actions
  * (cut/copy/duplicate/…) still render below via DefaultContextMenuContent.
  */
 
@@ -36,7 +37,7 @@ export function TidyContextMenu(props: TLUiContextMenuProps) {
             id="jz-tidy-up"
             label="Tidy up"
             readonlyOk
-            onSelect={() => tidyBoard(selectedIds, { select: true })}
+            onSelect={() => tidyBoard(selectedIds, { select: true, frame: true })}
           />
         </TldrawUiMenuGroup>
       ) : null}

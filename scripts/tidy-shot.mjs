@@ -49,9 +49,13 @@ async function main() {
   await page.screenshot({ path: `${OUT}/jz-tidy-before.png` });
   console.log('  ✓ jz-tidy-before.png');
 
-  // Click the global tidy button (frames the result via zoomToBounds).
+  // Click the global tidy button — cards glide to their packed slots (~420ms)
+  // while the camera frames the result.
   await page.locator('.jz-tidy-btn').click();
-  await sleep(1200);
+  await sleep(180);
+  await page.screenshot({ path: `${OUT}/jz-tidy-mid.png` });
+  console.log('  ✓ jz-tidy-mid.png (settling)');
+  await sleep(1100);
   await page.screenshot({ path: `${OUT}/jz-tidy-after.png` });
   console.log('  ✓ jz-tidy-after.png');
 
