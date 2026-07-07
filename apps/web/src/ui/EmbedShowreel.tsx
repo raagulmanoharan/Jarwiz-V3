@@ -142,7 +142,7 @@ const L = {
 };
 
 const PDF_URL = `${import.meta.env.BASE_URL}evidence-pricing.pdf`;
-const SKETCH_URL = `${import.meta.env.BASE_URL}sketch-flow.png`;
+const SKETCH_URL = `${import.meta.env.BASE_URL}sketch-flow.jpg`;
 
 interface Cursor {
   x: number;
