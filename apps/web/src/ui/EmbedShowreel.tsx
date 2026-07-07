@@ -163,8 +163,6 @@ export function EmbedShowreel() {
   const [comment, setComment] = useState<{ x: number; y: number; open: boolean } | null>(null);
   // A soft white glow drawn over the PDF card while Jarwiz parses it.
   const [parse, setParse] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
-  // A white highlight over the table cell while its corrected value regenerates.
-  const [cellHi, setCellHi] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   // A one-shot click ripple at a point (keyed so each click replays the animation).
   const [click, setClick] = useState<{ x: number; y: number; n: number } | null>(null);
   const clickSeq = useRef(0);
@@ -298,29 +296,33 @@ export function EmbedShowreel() {
       const br = editor.pageToViewport({ x: b.x + b.w, y: b.y + b.h });
       return { left: tl.x, top: tl.y, width: br.x - tl.x, height: br.y - tl.y };
     };
-    // The stale price cell's rectangle in viewport space, for the regen highlight.
-    const cellRect = () => {
-      const cx = L.table.x + L.table.w * 0.46;
-      const cy = L.table.y + L.table.h * 0.33;
-      const hw = L.table.w * 0.11;
-      const hh = L.table.h * 0.075;
-      const tl = editor.pageToViewport({ x: cx - hw, y: cy - hh });
-      const br = editor.pageToViewport({ x: cx + hw, y: cy + hh });
-      return { left: tl.x, top: tl.y, width: br.x - tl.x, height: br.y - tl.y };
+    // Flag/unflag the stale price cell on the REAL table shape (Pipedrive row,
+    // Price/seat column) via meta — the highlight is drawn on the actual cell, so
+    // it's always pixel-aligned; no floating overlay.
+    const flashCell = (on: boolean) => {
+      if (!ids.current) return;
+      const cur = editor.getShape(ids.current.table);
+      if (!cur) return;
+      editor.updateShape({
+        id: ids.current.table,
+        type: 'table-card',
+        meta: { ...cur.meta, jzFlashCell: on ? [1, 2] : null },
+      } as Parameters<typeof editor.updateShape>[0]);
     };
 
     // ── One pass of the film ────────────────────────────────────────────────
     // The Maker drops the PDF; Jarwiz flies in, selects the card and scans it
     // (a soft white glow, ~5s), travels to the table and flags the stale cell —
-    // the comment is pinned right where the cursor lands. "Fix it with Jarwiz"
-    // then highlights the cell and regenerates the value inline (no cursor). The
-    // PDF is removed just before the pull-back so the wide board matches the start.
+    // the comment is pinned right where the cursor lands. The Maker's cursor
+    // opens the comment and clicks "Fix it with Jarwiz"; then (no Jarwiz cursor)
+    // the real cell highlights and its value regenerates inline. The PDF is
+    // removed just before the pull-back so the wide board matches the start.
     const run = () => {
       clearPdf();
       setPrice(STALE);
+      flashCell(false);
       setComment(null);
       setParse(null);
-      setCellHi(null);
       setClick(null);
       setYou(HIDDEN);
       setJz(HIDDEN);
@@ -355,19 +357,25 @@ export function EmbedShowreel() {
       after(11700, () => { const c = priceCell(); setJz({ x: c.x, y: c.y, visible: true, status: 'flagging it…' }); });
       after(12500, () => { const c = priceCell(); commentPt = c; clickAt(c); setComment({ x: c.x, y: c.y, open: false }); });
       after(13000, () => setJz(HIDDEN));
-      after(13300, () => setComment((s) => (s ? { ...s, open: true } : s)));
 
-      // 4) "Fix it with Jarwiz" — no cursor: the cell highlights and the corrected
-      //    value regenerates inline (backspace, then stream in).
-      after(14800, () => { const b = rectCenter(fixBtnRef.current); if (b) clickAt(b); });
-      after(15200, () => { setComment(null); setCellHi(cellRect()); });
+      // 4) The Maker's cursor comes over, opens the comment, and clicks
+      //    "Fix it with Jarwiz".
+      after(13600, () => setYou({ x: commentPt.x + 6, y: commentPt.y + 10, visible: true, status: null }));
+      after(14300, () => { clickAt(commentPt); setComment((s) => (s ? { ...s, open: true } : s)); });
+      after(15400, () => { const b = rectCenter(fixBtnRef.current); const t = b ?? { x: commentPt.x + 40, y: commentPt.y + 150 }; setYou({ x: t.x, y: t.y, visible: true, status: null }); });
+      after(16200, () => { const b = rectCenter(fixBtnRef.current); if (b) clickAt(b); });
+      after(16600, () => setYou(HIDDEN));
+
+      // 5) No Jarwiz cursor: the comment closes, the real cell highlights, and the
+      //    corrected value regenerates inline (backspace, then stream in).
+      after(16600, () => { setComment(null); flashCell(true); });
       const STREAM = ['$1', '$', '', '$', '$1', TRUE];
       const STREAM_STEP = 120;
-      STREAM.forEach((v, i) => after(15500 + i * STREAM_STEP, () => setPrice(v)));
-      const streamEnd = 15500 + STREAM.length * STREAM_STEP;
-      after(streamEnd + 700, () => setCellHi(null));
+      STREAM.forEach((v, i) => after(16900 + i * STREAM_STEP, () => setPrice(v)));
+      const streamEnd = 16900 + STREAM.length * STREAM_STEP;
+      after(streamEnd + 800, () => flashCell(false));
 
-      // 5) Settle, hide the PDF BEFORE the pull-back (so the wide board matches the
+      // 6) Settle, hide the PDF BEFORE the pull-back (so the wide board matches the
       //    loop's start), then a slow pull-back and loop.
       after(streamEnd + 1600, () => clearPdf());
       after(streamEnd + 1900, () => panTo(FRAME.wide, 1500));
@@ -386,12 +394,6 @@ export function EmbedShowreel() {
         <div
           className="jz-parse-halo"
           style={{ left: parse.left, top: parse.top, width: parse.width, height: parse.height }}
-        />
-      ) : null}
-      {cellHi ? (
-        <div
-          className="jz-cell-hi"
-          style={{ left: cellHi.left, top: cellHi.top, width: cellHi.width, height: cellHi.height }}
         />
       ) : null}
       <ScriptedCursor cursor={you} label="You" you />

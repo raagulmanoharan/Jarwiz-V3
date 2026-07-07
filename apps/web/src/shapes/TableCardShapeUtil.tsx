@@ -120,6 +120,12 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
     [editor, shape.id],
   );
   const { columns, rows } = shape.props;
+  // Optional [row, col] to visually highlight (e.g. the hero showreel flags the
+  // stale cell while its value regenerates). Drawn on the real cell, so it's
+  // always pixel-aligned — no floating overlay.
+  const flashCell = Array.isArray((shape.meta as Record<string, unknown>).jzFlashCell)
+    ? ((shape.meta as Record<string, unknown>).jzFlashCell as number[])
+    : null;
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
   const isFilling = streamingSet.has(shape.id);
   const autopilot = useAutopilot();
@@ -410,7 +416,10 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
                   onPointerUp={stopEventPropagation}
                 />
               ) : (
-                <div key={col} className="jz-table-cell jz-table-cell-static">
+                <div
+                  key={col}
+                  className={`jz-table-cell jz-table-cell-static${flashCell && flashCell[0] === row && flashCell[1] === col ? ' jz-table-cell--flash' : ''}`}
+                >
                   {colType(col) === 'photo' && !cell.trim() ? (
                     <button
                       className="jz-table-cellupload"

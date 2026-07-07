@@ -2297,6 +2297,30 @@ body,
   animation: jz-cell-in var(--jz-dur-fast) var(--jz-ease-out);
 }
 
+/* A cell being regenerated (hero showreel): a soft white highlight ON the real
+   cell — always pixel-aligned. The value text stays fully legible; only the
+   border/glow breathes. */
+.jz-table-cell--flash {
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  animation: jz-cell-flash 0.85s ease-in-out infinite;
+}
+@keyframes jz-cell-flash {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.35), 0 0 14px rgba(255, 255, 255, 0.14);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.7), 0 0 24px rgba(255, 255, 255, 0.36);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-table-cell--flash {
+    animation: none;
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.5);
+  }
+}
+
 @keyframes jz-cell-in {
   from {
     opacity: 0.3;
@@ -2729,33 +2753,6 @@ body,
   .jz-parse-halo {
     animation: none;
     box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.4), 0 0 30px 6px rgba(255, 255, 255, 0.2);
-  }
-}
-
-/* The cell being regenerated: a soft white highlight over just that cell while
-   the corrected value streams in. */
-.jz-cell-hi {
-  position: absolute;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow:
-    0 0 0 1.5px rgba(255, 255, 255, 0.5),
-    0 0 24px 5px rgba(255, 255, 255, 0.28);
-  animation: jz-cell-hi-pulse 0.85s ease-in-out infinite;
-  z-index: 304;
-}
-@keyframes jz-cell-hi-pulse {
-  0%,
-  100% {
-    opacity: 0.7;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .jz-cell-hi {
-    animation: none;
   }
 }
 
