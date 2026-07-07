@@ -2854,10 +2854,15 @@ body,
     opacity var(--jz-dur-slow) var(--jz-ease-out);
 }
 .jz-avatar--you .jz-cursor-arrow {
-  fill: #2f6df6;
+  fill: var(--jz-danger);
 }
 .jz-avatar--you .jz-avatar-badge {
-  background: #2f6df6;
+  background: var(--jz-danger);
+}
+/* "You" stays fully opaque even at rest (no status) — the idle badge fade
+   applies to Jarwiz's ambient presence, not the scripted Maker cursor. */
+.jz-avatar--you.jz-avatar--idle .jz-avatar-badge {
+  opacity: 1;
 }
 
 @keyframes jz-menu-in {
