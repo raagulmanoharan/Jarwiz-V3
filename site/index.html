@@ -213,10 +213,12 @@
          card never grows, the content does (mirrors the app: streaming text and
          a live doc card). Scrollbars hidden; JS auto-scrolls to the growing tail. */
       .vs-scroll {
-        flex: none; height: 300px; overflow: hidden; position: relative;
+        flex: none; height: 300px; overflow-y: auto; position: relative;
+        scrollbar-width: none; -ms-overflow-style: none; /* scroll works; bar hidden */
         -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 26px), transparent 100%);
         mask-image: linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 26px), transparent 100%);
       }
+      .vs-scroll::-webkit-scrollbar { width: 0; height: 0; }
       /* LEFT — a chatbot's one long answer, streaming as plain prose. */
       .chat-txt {
         margin: 0; padding: 2px 2px 40px; color: var(--ink-2);
@@ -725,119 +727,6 @@
         </div>
       </section>
 
-      <!-- SHOWCASE — real screenshots, each block self-contained (one heading) -->
-      <section id="showcase">
-        <div class="wrap">
-          <div class="showcase-item reveal">
-            <div class="showcase-lead">
-              <h3>Drop a spreadsheet. Get a dashboard.</h3>
-              <p>Hand Jarwiz your rows and it builds a live dashboard — KPI tiles, charts, and a data table — then lets you filter and refocus it in place.</p>
-            </div>
-            <div class="shot">
-              <img src="assets/example-dashboard.png" alt="A live Jarwiz dashboard built from a spreadsheet: KPI tiles for total revenue, total orders, new customers and average order value; a bar chart of Q2 revenue by region, a line chart of the monthly revenue trend, another bar chart of new customers by region, and a monthly regional detail data table — every value computed from the uploaded rows." loading="lazy" />
-            </div>
-            <p class="shot-cap"><b>Every number computed from your rows.</b> Filter it, refocus it, or ask a follow-up — the whole dashboard updates in place.</p>
-          </div>
-
-          <div class="showcase-item reveal">
-            <div class="showcase-lead">
-              <h3>A board that argues back.</h3>
-              <p>One prompt — “SWOT Figma” — and Jarwiz lays down the whole board, then leaves comments on it: what’s thin, what to pressure-test, where to dig next.</p>
-            </div>
-            <div class="shot">
-              <img src="assets/example-board.png" alt="A finished Jarwiz board with a SWOT 2×2, a TOWS strategy table and a verdict — and a Jarwiz comment pin opened on one card, questioning an assumption and suggesting a next move." loading="lazy" />
-            </div>
-            <p class="shot-cap"><b>It reads its own work.</b> Jarwiz pins comments where the thinking is thin — open one to see the note, then move a card, dig deeper, or reshape it right on the canvas.</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- THINKING MACHINES -->
-      <section id="machines">
-        <div class="wrap">
-          <div class="sec-head reveal">
-            <h2>Seven machines that do the thinking.</h2>
-            <p>Drop one on the canvas, type a subject, hit Run. It researches the live web and lays a whole framework of cards onto your board.</p>
-          </div>
-          <div class="machines-grid">
-            <div class="machine reveal">
-              <div class="mi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
-              <h3>SWOT Analysis</h3>
-              <p>Researches strengths, weaknesses, opportunities and threats, then lays out a 2×2 board with TOWS strategy and a verdict.</p>
-              <span class="pill">board</span>
-            </div>
-            <div class="machine reveal">
-              <div class="mi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg></div>
-              <h3>Effort–Impact Matrix</h3>
-              <p>Scores each idea on effort and impact, then drops it into a Quick wins, Big bets, Fill-ins or Time sinks quadrant.</p>
-              <span class="pill">board</span>
-            </div>
-            <div class="machine reveal">
-              <div class="mi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 6-6"/><path d="m16 16 4 4"/><path d="m19 21 2-2"/></svg></div>
-              <h3>Competitive Analysis</h3>
-              <p>Finds the real competitors and benchmarks the subject on positioning, pricing, strengths and momentum.</p>
-              <span class="pill">table</span>
-            </div>
-            <div class="machine reveal">
-              <div class="mi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg></div>
-              <h3>Risk Assessment</h3>
-              <p>Surfaces the likely failure modes with a read on likelihood and impact, and a concrete mitigation for each.</p>
-              <span class="pill">table</span>
-            </div>
-            <div class="machine reveal">
-              <div class="mi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 16 3-8 3 8c-2 1.5-4 1.5-6 0z"/><path d="m2 16 3-8 3 8c-2 1.5-4 1.5-6 0z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></div>
-              <h3>Pros &amp; Cons</h3>
-              <p>Researches the decision across the web, then weighs the strongest evidence-backed arguments on each side.</p>
-              <span class="pill">table</span>
-            </div>
-            <div class="machine reveal">
-              <div class="mi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg></div>
-              <h3>User Persona</h3>
-              <p>Researches the real audience, then drafts a grounded persona with goals, frustrations and what would win them over.</p>
-              <span class="pill">doc</span>
-            </div>
-            <div class="machine reveal">
-              <div class="mi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></svg></div>
-              <h3>5 Whys</h3>
-              <p>Traces a problem down five levels of “why” to a grounded root cause, and the one thing to do about it.</p>
-              <span class="pill">list</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- HOW IT WORKS -->
-      <section id="how">
-        <div class="wrap">
-          <div class="sec-head reveal">
-            <h2>Three moves from blank to finished.</h2>
-          </div>
-          <div class="steps">
-            <div class="step reveal">
-              <div class="n"></div>
-              <h3>Drop, ask, or run</h3>
-              <p>Drop in your material, ask a question in the prompt bar, or pull a Thinking Machine off the left rail and type a subject.</p>
-            </div>
-            <div class="step reveal">
-              <div class="n"></div>
-              <h3>Jarwiz picks the shape and builds</h3>
-              <p>It searches the live web, reasons through a real framework, and lays the answer out in the right shape — a doc, table, dashboard, or a whole board of cards.</p>
-            </div>
-            <div class="step reveal">
-              <div class="n"></div>
-              <h3>Refine on the canvas</h3>
-              <p>Move, connect, reshape and deepen the cards. Every artifact stays live, so you can argue with it, extend it, or hand it off.</p>
-            </div>
-          </div>
-
-          <div class="stats reveal">
-            <div class="stat"><div class="big">7</div><div class="lbl">Output shapes, from doc to dashboard</div></div>
-            <div class="stat"><div class="big">∞</div><div class="lbl">Infinite canvas, never out of room</div></div>
-            <div class="stat"><div class="big">7</div><div class="lbl">Thinking Machines, ready to run</div></div>
-          </div>
-        </div>
-      </section>
-
       <!-- CTA -->
       <section>
         <div class="wrap">
@@ -858,9 +747,8 @@
       <div class="wrap foot">
         <a class="brand" href="#top" style="font-size:15px"><span class="spark" style="width:26px;height:26px;font-size:13px">✦</span> Jarwiz</a>
         <div class="foot-links">
+          <a href="#why">Why a canvas</a>
           <a href="#build">What it builds</a>
-          <a href="#machines">Machines</a>
-          <a href="#how">How it works</a>
           <a href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">GitHub</a>
         </div>
         <span class="muted">Open source · MIT licensed</span>
@@ -894,63 +782,60 @@
         document.querySelectorAll('.reveal').forEach((el) => el.classList.add('in'));
       }
 
-      // "Right shape" wedge: the LEFT card streams one long chatbot answer as a
-      // wall of prose (text keeps growing, the card doesn't — it scrolls); the
-      // RIGHT card is a real doc card with the same answer, crisper, gently
-      // scrolling. Both animate only while on screen.
+      // "Right shape" wedge: the LEFT card is a chatbot pouring out an endless
+      // wall of prose — it types ONCE (no loop, no bounce), overflowing its
+      // fixed card so you have to scroll to reach the end. The RIGHT card is the
+      // same answer as a crisp, succinct Jarwiz doc that just sits there. The
+      // contrast IS the pitch. Animates only while on screen.
       (function wedge() {
         const streamBox = document.querySelector('[data-stream]');
         const chat = streamBox && streamBox.querySelector('.chat-txt');
-        const docBox = document.querySelector('[data-doc]');
         if (!chat) return;
         const WALL =
-          "Great question — the CRM market is large and still growing. As of 2025 the global " +
-          "customer-relationship-management market reached about $101.4 billion, and analysts project " +
-          "it will keep expanding to roughly $262 billion by 2032, driven largely by AI-native tools " +
-          "entering the category. There are a few popular options depending on what you need. HubSpot is " +
-          "often recommended as an all-in-one platform; pricing runs from $0 up to about $45 per month, and " +
-          "it works well for teams that want marketing, sales and service in one place. Salesforce is the " +
-          "enterprise standard, with pricing from roughly $25 to $300 per seat per month, better suited to " +
-          "larger organizations with complex requirements. Pipedrive is a lighter, more affordable option, " +
-          "typically $14 to $99 per month, and a good fit for smaller teams focused on pipeline. For most " +
-          "small and medium businesses a reasonable approach is to start on HubSpot's free tier and only " +
-          "upgrade once your pipeline volume and revenue clearly justify the cost. (Source: Grand View Research.)";
+          "Great question — and honestly there's a lot to unpack here, so bear with me. The CRM market is " +
+          "large and still growing fast. As of 2025 the global customer-relationship-management market " +
+          "reached roughly $101.4 billion, and most analysts project it will keep expanding to around " +
+          "$262 billion by 2032, driven largely by AI-native tools entering the category and by more small " +
+          "businesses moving off spreadsheets. As for which one to pick, it really depends on your team " +
+          "size, your budget, and how much complexity you're willing to take on. HubSpot is frequently " +
+          "recommended as an all-in-one platform; its pricing runs from $0 on the free tier up to about $45 " +
+          "per month on the starter plans, and it tends to work well for teams that want marketing, sales " +
+          "and service living in one place without stitching together lots of separate tools. Salesforce, " +
+          "on the other hand, is the long-standing enterprise standard, with pricing from roughly $25 to " +
+          "$300 per seat per month depending on the edition; it's extremely powerful and endlessly " +
+          "customizable, but it's generally better suited to larger organizations with dedicated admins, " +
+          "and it can be a lot to set up. Pipedrive is a lighter, more affordable option, typically $14 to " +
+          "$99 per month, and it's a good fit for smaller teams that mostly care about a clean, visual sales " +
+          "pipeline. There are others worth a mention too — Zoho is very budget-friendly, Attio is a newer, " +
+          "flexible, data-model-first option, and Folk is popular with relationship-led teams. You'll also " +
+          "want to weigh things like open APIs and integrations, whether there's a free tier to trial, seat " +
+          "minimums on annual plans, migrating your data from whatever you use today, and how steep the " +
+          "onboarding curve is for your team. For most small and medium businesses, a reasonable approach is " +
+          "to start on HubSpot's free tier, actually use it for a few weeks with real deals, and only " +
+          "upgrade once your pipeline volume and revenue clearly justify the cost — but again, it really " +
+          "does depend on your specific situation, so I'd encourage you to trial the top two or three before " +
+          "you commit to any single one of them. (Source: Grand View Research, plus various vendor pages.)";
         if (reduce) { chat.textContent = WALL; return; }
         const cur = document.createElement('span'); cur.className = 'cur';
-        let raf = 0;
-        function typeLoop() {
+        // Type ONCE. Follow the tail as it grows; when it's done, stop — the card
+        // stays overflowing and scrollable so the reader can scroll back up.
+        function typeOnce() {
           let i = 0;
           const step = () => {
             i += 2;
             chat.textContent = WALL.slice(0, i);
             chat.appendChild(cur);
-            streamBox.scrollTop = streamBox.scrollHeight; // follow the growing tail
-            if (i < WALL.length) { raf = window.setTimeout(step, 24); }
-            else { raf = window.setTimeout(() => { streamBox.scrollTop = 0; typeLoop(); }, 2600); }
+            streamBox.scrollTop = streamBox.scrollHeight;
+            if (i < WALL.length) window.setTimeout(step, 22);
           };
           step();
         }
-        // Gently scroll the doc card down to the source line and back, on a loop.
-        function docLoop() {
-          if (!docBox) return;
-          const range = () => Math.max(0, docBox.scrollHeight - docBox.clientHeight);
-          let dir = 1, pos = 0;
-          const tick = () => {
-            const max = range();
-            pos += dir * 0.6;
-            if (pos >= max) { pos = max; dir = -1; } else if (pos <= 0) { pos = 0; dir = 1; }
-            docBox.scrollTop = pos;
-            window.setTimeout(tick, 40);
-          };
-          if (range() > 4) tick();
-        }
-        const start = () => { typeLoop(); docLoop(); };
         const host = streamBox.closest('.versus');
         if (host && 'IntersectionObserver' in window) {
           let on = false;
-          const io3 = new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting && !on) { on = true; start(); io3.disconnect(); } }, { threshold: 0.25 });
+          const io3 = new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting && !on) { on = true; typeOnce(); io3.disconnect(); } }, { threshold: 0.25 });
           io3.observe(host);
-        } else { start(); }
+        } else { typeOnce(); }
       })();
 
       // Smart-composer demo: type a series of prompts and swap the suggested
