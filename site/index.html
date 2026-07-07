@@ -308,6 +308,8 @@
          above the viewport), so you see the end of the table peeking in. */
       .b-table { align-items: flex-start; padding: 14px 20px 20px; }
       .b-table .doccard-tbl { width: 100%; margin: 0; }
+      /* Fade the very top so the divider line crowding the top border dissolves. */
+      .b-table { -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 30px); mask-image: linear-gradient(180deg, transparent 0, #000 30px); }
 
       /* A live dashboard card, built as real HTML (portrait — fills the tall slot). */
       .b-dash { background: #0b0b0e; padding: 14px; }
@@ -334,7 +336,7 @@
       /* Doc: bottom-anchor the content so the Source line always clears the
          bottom with padding; the title/top runs off the top of the card (which
          bleeds up anyway) — reads as the end of a longer doc. */
-      .b-doc { flex-direction: column; justify-content: flex-end; align-items: stretch; padding: 14px 18px 22px; }
+      .b-doc { flex-direction: column; justify-content: flex-end; align-items: stretch; padding: 18px; }
       .b-doc .doccard { padding: 0; }
       .b-doc .doccard-body p { margin-bottom: 8px; }
       .b-doc .doc-inline { margin: 4px 0 8px; }
