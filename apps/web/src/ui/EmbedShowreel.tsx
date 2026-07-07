@@ -405,10 +405,12 @@ export function EmbedShowreel() {
 }
 
 function ScriptedCursor({ cursor, label, you = false }: { cursor: Cursor; label: string; you?: boolean }) {
+  // The Maker cursor is simply "You" — the muttering quips are Jarwiz's alone.
+  const status = you ? null : cursor.status;
   return (
     <div
       className={`jz-avatar jz-avatar--scripted jz-avatar--jarwiz${you ? ' jz-avatar--you' : ''}${
-        cursor.status ? '' : ' jz-avatar--idle'
+        status ? '' : ' jz-avatar--idle'
       }${cursor.visible ? '' : ' jz-avatar--hidden'}`}
       style={{ transform: `translate(${cursor.x - 4}px, ${cursor.y - 3}px)` }}
     >
@@ -417,9 +419,9 @@ function ScriptedCursor({ cursor, label, you = false }: { cursor: Cursor; label:
       </svg>
       <div className="jz-avatar-badge">
         <span className="jz-avatar-name">{label}</span>
-        {cursor.status ? (
-          <span key={cursor.status} className="jz-avatar-status">
-            {cursor.status}
+        {status ? (
+          <span key={status} className="jz-avatar-status">
+            {status}
           </span>
         ) : null}
       </div>
