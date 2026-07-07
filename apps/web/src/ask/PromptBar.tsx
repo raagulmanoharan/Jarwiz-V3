@@ -8,8 +8,9 @@
 
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue, type Editor, type TLRichText, type TLShape } from 'tldraw';
-import { Slash, ArrowUp } from 'lucide-react';
+import { Slash, ArrowUp, Sparkles } from 'lucide-react';
 import type { AnalyzeMode, AskShape } from '@jarwiz/shared';
+import { inferMode, type ModeShape } from './inferMode';
 import { ASKABLE, hasAskableContent } from './askable';
 import { getShapeTitle } from '../shapes/shapeTitle';
 import { useAsk } from './useAsk';
@@ -41,8 +42,8 @@ function shapeLabel(editor: Editor, shape: TLShape): string {
  *  deliberately: the router never chooses them (they're the user's annotation
  *  medium), but an explicit pick is user intent. */
 /** Response shapes for the "/" menu. 'board' is not a single-card AskShape —
- *  it fans the answer out into a set of cards (compose), handled specially. */
-type ModeShape = AskShape | 'board';
+ *  it fans the answer out into a set of cards (compose), handled specially.
+ *  (`ModeShape` lives in ./inferMode so the type inferrer can share it.) */
 const MODES: Array<{ shape: ModeShape; label: string; hint: string }> = [
   { shape: 'doc', label: 'Text', hint: 'a written card' },
   { shape: 'list', label: 'List', hint: 'bullets or a checklist' },
@@ -60,9 +61,12 @@ export function PromptBar() {
   const { run: annotate, phase: annotatePhase } = useAnnotate();
   const { analyze, runningMode } = useAnalyze();
   const [value, setValue] = useState('');
-  // The "/" mode selector: an explicitly chosen response shape, pinned as a
-  // chip until the ask is sent (or the chip dismissed).
+  // The "/" mode selector: a chosen response shape, pinned as a chip until the
+  // ask is sent (or dismissed). `modeSource` tells us who pinned it — the user
+  // (via "/" or explicit dismiss) or the live type-inferrer. 'user' is sticky:
+  // once the user touches the choice we stop auto-inferring for this prompt.
   const [mode, setMode] = useState<ModeShape | null>(null);
+  const [modeSource, setModeSource] = useState<'user' | 'auto' | null>(null);
   const [modeMenu, setModeMenu] = useState(false);
   const [modeIdx, setModeIdx] = useState(0);
   // Inline filtering, Claude-Code style: while the input reads "/que…", the
@@ -152,6 +156,7 @@ export function PromptBar() {
     if (fill.groundId && editor.getShape(fill.groundId)) editor.select(fill.groundId);
     setValue(fill.text);
     setMode(null);
+    setModeSource(null);
     requestAnimationFrame(() => {
       const ta = document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input');
       ta?.focus();
@@ -160,8 +165,37 @@ export function PromptBar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fill?.nonce]);
 
+  // ── Smart type inference (spike) ────────────────────────────────────────
+  // As the user types a *create-from-scratch* prompt, guess the answer's shape
+  // and auto-pin the mode chip. Gated to when nothing is grounded (grounding =
+  // "ask about the selection", a different intent) and to when the user hasn't
+  // taken the choice into their own hands. Debounced so it settles a beat after
+  // the keystrokes, not on every one — the chip should feel considered.
+  useEffect(() => {
+    if (modeSource === 'user') return; // user owns the choice now — hands off.
+    if (groundIds.length > 0) {
+      // Selection present → this is a refinement, not a fresh create. Retract
+      // any auto guess so it can't force a shape onto the selection's answer.
+      if (modeSource === 'auto') { setMode(null); setModeSource(null); }
+      return;
+    }
+    const t = setTimeout(() => {
+      const guess = inferMode(value);
+      if (guess) {
+        setMode((m) => (m === guess.shape ? m : guess.shape));
+        setModeSource('auto');
+      } else if (modeSource === 'auto') {
+        setMode(null);
+        setModeSource(null);
+      }
+    }, 220); // ≈ --jz-dur-base: land just after the typing settles.
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, groundIds.length, modeSource]);
+
   const pickMode = (shape: ModeShape) => {
     setMode(shape);
+    setModeSource('user'); // an explicit pick — stop inferring for this prompt.
     setModeMenu(false);
     setModeIdx(0);
     // Swallow the "/query" that summoned the menu — it was a command, not prose.
@@ -191,6 +225,7 @@ export function PromptBar() {
     }
     setValue('');
     setMode(null); // the mode applies to one ask, like the text it rode with
+    setModeSource(null);
   };
   const runTool = (mode: AnalyzeMode) => { void analyze(mode); };
   // While the sole card is being EDITED, a pill is an offer for Jarwiz to
@@ -351,9 +386,18 @@ export function PromptBar() {
                 chip takes its place (dismiss to hand the choice back to the
                 model). Same menu as typing "/" in the input. */}
             {mode ? (
-              <span className="jz-pb-ground jz-pb-mode" title="Answer shape — picked with /">
+              <span
+                key={`${mode}-${modeSource}`}
+                className={`jz-pb-ground jz-pb-mode${modeSource === 'auto' ? ' jz-pb-mode--auto' : ''}`}
+                title={modeSource === 'auto' ? 'Auto-detected answer shape — dismiss to let Jarwiz decide' : 'Answer shape — picked with /'}
+              >
+                {modeSource === 'auto' ? <Sparkles className="jz-pb-mode-spark" size={11} strokeWidth={2} aria-hidden /> : null}
                 {MODES.find((m) => m.shape === mode)?.label ?? mode}
-                <button className="jz-pb-ground-x" aria-label="Clear answer shape (the model decides)" onClick={() => setMode(null)}>✕</button>
+                <button
+                  className="jz-pb-ground-x"
+                  aria-label="Clear answer shape (the model decides)"
+                  onClick={() => { setMode(null); setModeSource('user'); }}
+                >✕</button>
               </span>
             ) : (
               <button
