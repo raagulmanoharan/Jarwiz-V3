@@ -212,15 +212,21 @@ const handleMount = (editor: Editor) => {
 
   // Embedded demo: land the visitor on content. ?embed=1 is the minified
   // live-preview (one card + composer); ?demo=1 is the full seeded board.
-  if (isEmbed() || isUseCases()) {
-    // The overlay (EmbedShowreel / EmbedUseCases) owns the canvas here and seeds
-    // it — so we don't seed anything up front.
-    // The preview lives in an iframe on the marketing page. Without this, the
+  if (isEmbed()) {
+    // The hero showreel is a pure autoplay loop — the visitor never drives it.
+    // The preview lives in an iframe on the marketing page; without this the
     // canvas swallows the scroll wheel and zooms the board out of sight ("it
     // closes when I scroll on it"). Turn off wheel + drag camera moves so the
     // page scrolls normally over the preview and the board stays framed;
     // programmatic reframing (the overlay's camera control) still works.
     editor.setCameraOptions({ ...editor.getCameraOptions(), wheelBehavior: 'none', panSpeed: 0 });
+  } else if (isUseCases()) {
+    // The use-cases board IS meant to be explored: wheel-zoom is on by default,
+    // and the hand tool makes a plain drag pan the board (map-style) instead of
+    // brush-selecting. Keeping every card selected also keeps the dotted
+    // provenance drawn while you pan. The Next/Back controller flies the camera
+    // between workspaces on top of that.
+    editor.setCurrentTool('hand');
   } else if (isDemo()) seedDemoBoard(editor);
 };
 
@@ -276,13 +282,10 @@ function LocalBoard() {
     getActivePersistenceKey,
     getActivePersistenceKey,
   );
-  // The marketing embeds (?embed / ?usecases) are pure showcases: the camera is
-  // driven ONLY by the scripted loop or the Next/Back controller. Lock the canvas
-  // to visitor input so a stray hover/scroll/click/keypress can't pan-or-zoom the
-  // board into empty space (which reads as the widget "going blank"). Programmatic
-  // camera moves are JS, so they're unaffected; the controller re-enables its own
-  // pointer events in CSS.
-  const lockCanvas = isEmbed() || isUseCases();
+  // The hero showreel (?embed) is a pure autoplay loop, so we lock its canvas to
+  // visitor input (pointer-events:none + no autofocus). The use-cases board is
+  // meant to be explored, so it stays interactive (wheel-zoom + drag-pan).
+  const lockCanvas = isEmbed();
   return (
     <Tldraw
       key={board?.id ?? 'legacy'}
