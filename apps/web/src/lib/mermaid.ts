@@ -17,12 +17,39 @@ async function getMermaid(): Promise<MermaidApi> {
   if (!mermaidPromise) {
     mermaidPromise = import('mermaid').then((mod) => {
       const mermaid = mod.default as unknown as MermaidApi;
+      // Themed to the Jarwiz monochrome dark system: dark node fills, hairline
+      // borders, white text, muted edges — not Mermaid's default white boxes.
+      // The 'base' theme is the one that fully honours themeVariables; corner
+      // rounding + any fine-tuning is finished in CSS (.jz-diagram-svg).
       mermaid.initialize({
         startOnLoad: false,
         securityLevel: 'strict',
-        theme: 'neutral',
+        theme: 'base',
         fontFamily: 'inherit',
-        flowchart: { useMaxWidth: true, htmlLabels: true },
+        themeVariables: {
+          fontFamily: 'inherit',
+          fontSize: '14px',
+          background: 'transparent',
+          primaryColor: '#17171c', // node fill
+          primaryBorderColor: '#3a3a42', // node hairline
+          primaryTextColor: '#f5f5f7', // node text
+          secondaryColor: '#1c1c22',
+          secondaryBorderColor: '#3a3a42',
+          secondaryTextColor: '#f5f5f7',
+          tertiaryColor: '#1c1c22',
+          tertiaryBorderColor: '#3a3a42',
+          tertiaryTextColor: '#f5f5f7',
+          lineColor: '#8a8a94', // edges/arrows
+          textColor: '#f5f5f7',
+          noteBkgColor: '#1c1c22',
+          noteTextColor: '#f5f5f7',
+          noteBorderColor: '#3a3a42',
+          edgeLabelBackground: '#0e0e12', // edge labels ("Yes"/"No") sit on dark
+          clusterBkg: '#141418',
+          clusterBorder: '#3a3a42',
+          titleColor: '#f5f5f7',
+        },
+        flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
       });
       return mermaid;
     });

@@ -81,7 +81,7 @@ export class DiagramCardShapeUtil extends ShapeUtil<DiagramCardShape> {
 }
 
 function DiagramCardBody({ shape }: { shape: DiagramCardShape }) {
-  const { code, title } = shape.props;
+  const { code } = shape.props;
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
   const isStreaming = streamingSet.has(shape.id);
 
@@ -119,12 +119,8 @@ function DiagramCardBody({ shape }: { shape: DiagramCardShape }) {
 
   return (
     <div className="jz-diagram" ref={fitRef}>
-      <div className="jz-diagram-head">
-        <span className="jz-diagram-kind" aria-hidden>
-          ◆
-        </span>
-        <span className="jz-diagram-title">{title || 'Diagram'}</span>
-      </div>
+      {/* No in-card header: a diagram carries no title chrome (owner call) — the
+          shape IS the diagram. `title` stays in props for grounding/search. */}
       <div className="jz-diagram-body">
         {svg && !isStreaming ? (
           <div className="jz-diagram-svg" dangerouslySetInnerHTML={{ __html: svg }} />

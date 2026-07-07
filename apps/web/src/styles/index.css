@@ -3226,6 +3226,14 @@ body,
   max-width: 100%;
   height: auto;
 }
+/* Round the node corners to match the card system (Mermaid draws square rects).
+ * Colors come from the 'base' themeVariables in lib/mermaid.ts; this just
+ * softens the geometry and keeps edge labels legible on the dark surface. */
+.jz-diagram-svg .node rect,
+.jz-diagram-svg .node polygon { rx: 10px; ry: 10px; }
+.jz-diagram-svg .cluster rect { rx: 12px; ry: 12px; }
+.jz-diagram-svg .edgeLabel,
+.jz-diagram-svg .edgeLabel p { background: transparent !important; color: var(--jz-ink-500); }
 
 .jz-diagram-code {
   margin: 0;

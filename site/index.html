@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Jarwiz — the infinite canvas that thinks with you</title>
+    <title>Jarwiz — the AI whiteboard that does the thinking</title>
     <meta
       name="description"
-      content="Jarwiz is an infinite AI canvas. Drop a Thinking Machine, ask anything, or hand it a goal. It researches the live web and lays finished, citable boards of cards onto your canvas."
+      content="Jarwiz is an infinite AI canvas. Describe anything and it builds the right artifact — a doc, a table, a diagram, a live prototype, a dashboard from your data, or a whole board of cards. It even suggests the right shape as you type."
     />
-    <meta property="og:title" content="Jarwiz — the infinite canvas that thinks with you" />
+    <meta property="og:title" content="Jarwiz — the AI whiteboard that does the thinking" />
     <meta
       property="og:description"
-      content="AI that researches the live web, runs real frameworks, and builds boards of cards you can move, refine, and connect."
+      content="Describe anything and Jarwiz builds the right shape for the answer — doc, list, table, diagram, live prototype, dashboard, or a whole board of cards. Not a chat."
     />
     <meta property="og:type" content="website" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -35,11 +35,13 @@
         --accent: #ffffff;
         --accent-2: #ededf0;
         --accent-deep: #c2c2c8;
+        --r-sm: 10px;
         --r-md: 14px;
         --r-lg: 20px;
         --r-xl: 28px;
         --maxw: 1140px;
         --ease: cubic-bezier(0.2, 0, 0, 1);
+        --dur: 0.6s;
       }
       * { box-sizing: border-box; }
       html { scroll-behavior: smooth; }
@@ -63,12 +65,12 @@
         z-index: 0;
         pointer-events: none;
         background:
-          radial-gradient(640px 380px at 74% -8%, rgba(255, 255, 255, 0.06), transparent 62%),
-          radial-gradient(520px 340px at 6% 6%, rgba(255, 255, 255, 0.03), transparent 62%);
+          radial-gradient(720px 420px at 72% -6%, rgba(255, 255, 255, 0.07), transparent 60%),
+          radial-gradient(520px 340px at 4% 4%, rgba(255, 255, 255, 0.03), transparent 62%);
       }
       main, header, footer { position: relative; z-index: 1; }
 
-      /* Nav */
+      /* Nav — deliberately minimal, few exit paths */
       header {
         position: sticky;
         top: 0;
@@ -86,9 +88,7 @@
         background: var(--ink);
         color: var(--bg); font-size: 15px;
       }
-      .nav-links { display: flex; align-items: center; gap: 30px; }
-      .nav-links a.navlink { color: var(--ink-2); font-size: 14px; font-weight: 500; transition: color 0.2s var(--ease); }
-      .nav-links a.navlink:hover { color: var(--ink); }
+      .nav-actions { display: flex; align-items: center; gap: 12px; }
       .btn {
         display: inline-flex; align-items: center; gap: 8px; justify-content: center;
         font-family: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
@@ -103,48 +103,88 @@
       .btn-lg { padding: 14px 26px; font-size: 15px; }
       .btn .gh { width: 1.15em; height: 1.15em; flex: none; }
       @media (prefers-reduced-motion: reduce) { .btn:hover { transform: none; } }
-      .nav .menu-toggle { display: none; }
+      .nav-actions .ghost-sm { display: inline-flex; }
+      @media (max-width: 480px) { .nav-actions .ghost-sm { display: none; } }
+
+      /* Eyebrow label */
+      .eyebrow {
+        display: inline-flex; align-items: center; gap: 8px;
+        font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+        color: var(--ink-3);
+      }
+      .eyebrow::before { content: ""; width: 18px; height: 1px; background: var(--hairline-2); }
+      .sec-head .eyebrow::before { display: none; }
 
       /* Hero */
-      .hero { padding: 104px 0 60px; text-align: center; }
+      .hero { padding: 92px 0 40px; text-align: center; }
+      .hero-badge {
+        display: inline-flex; align-items: center; gap: 9px; margin-bottom: 26px;
+        padding: 6px 14px 6px 12px; border-radius: 999px;
+        border: 1px solid var(--hairline-2); background: color-mix(in srgb, var(--surface) 70%, transparent);
+        color: var(--ink-2); font-size: 13px; font-weight: 500; letter-spacing: -0.01em;
+      }
+      .hero-badge .dot {
+        width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+        animation: pulse 2.6s var(--ease) infinite;
+      }
+      @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.35); }
+        70% { box-shadow: 0 0 0 7px rgba(255,255,255,0); }
+        100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+      }
+      @media (prefers-reduced-motion: reduce) { .hero-badge .dot { animation: none; } }
       h1 {
-        margin: 0 auto; max-width: 900px;
-        font-size: clamp(40px, 6.6vw, 72px); line-height: 1.03; letter-spacing: -0.035em; font-weight: 800;
+        margin: 0 auto; max-width: 940px;
+        font-size: clamp(42px, 6.8vw, 76px); line-height: 1.01; letter-spacing: -0.04em; font-weight: 800;
       }
       h1 .grad {
         background: linear-gradient(120deg, #ffffff 0%, #ffffff 42%, #8f8f97 100%);
         -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
       }
       .sub {
-        margin: 28px auto 0; max-width: 620px; color: var(--ink-2);
+        margin: 26px auto 0; max-width: 660px; color: var(--ink-2);
         font-size: clamp(16px, 2vw, 19px); line-height: 1.6;
       }
-      .hero-cta { display: flex; gap: 14px; justify-content: center; margin-top: 34px; flex-wrap: wrap; }
-      .cta-note { margin: 16px auto 0; color: var(--ink-3); font-size: 13.5px; }
-      .cta-note b { color: var(--ink-2); font-weight: 600; }
+      .sub b { color: var(--ink); font-weight: 600; }
+      .hero-cta { display: flex; gap: 14px; justify-content: center; align-items: center; margin-top: 32px; flex-wrap: wrap; }
+      .link-ghost { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 14.5px; font-weight: 600; transition: color 0.2s var(--ease); }
+      .link-ghost:hover { color: var(--ink); }
+      .link-ghost .gh { width: 1.15em; height: 1.15em; }
 
-      /* Live preview window */
+      /* Trust strip */
+      .trust {
+        display: flex; flex-wrap: wrap; gap: 10px 22px; justify-content: center;
+        margin: 24px auto 0; color: var(--ink-3); font-size: 13px;
+      }
+      .trust span { display: inline-flex; align-items: center; gap: 7px; }
+      .trust svg { width: 14px; height: 14px; opacity: 0.75; flex: none; }
+
+      /* Live preview window — the hero centerpiece */
       .stage {
-        position: relative; margin: 64px auto 0; max-width: none; height: 640px;
+        position: relative; display: flex; flex-direction: column;
+        margin: 54px auto 0; height: 660px;
         border-radius: var(--r-xl); border: 1px solid var(--hairline-2);
         background: #0b0b0e;
-        box-shadow: 0 50px 130px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.05);
+        box-shadow: 0 60px 150px rgba(0,0,0,0.66), inset 0 1px 0 rgba(255,255,255,0.05);
         overflow: hidden;
       }
-      .stage-frame { width: 100%; height: 100%; border: 0; display: block; background: #0b0b0e; }
+      .stage-bar {
+        display: flex; align-items: center; gap: 10px; height: 42px; flex: none;
+        padding: 0 16px; border-bottom: 1px solid var(--hairline); background: var(--bg-2);
+      }
+      .stage-bar .dots { display: flex; gap: 7px; }
+      .stage-bar .dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--hairline-2); }
+      .stage-bar .addr {
+        margin: 0 auto; font-size: 12px; color: var(--ink-3); font-weight: 500;
+        padding: 4px 16px; border-radius: 999px; border: 1px solid var(--hairline); background: var(--bg);
+        display: inline-flex; align-items: center; gap: 7px;
+      }
+      .stage-bar .addr svg { width: 12px; height: 12px; opacity: 0.7; }
+      .stage-frame { flex: 1; width: 100%; border: 0; display: block; background: #0b0b0e; }
       .stage-cap { margin: 20px auto 0; max-width: 640px; color: var(--ink-3); font-size: 14px; line-height: 1.6; }
       .stage-cap a { color: var(--accent-2); font-weight: 600; }
       .stage-cap a:hover { text-decoration: underline; }
-
-      /* Showcase — one real board */
-      .shot {
-        margin: 8px auto 0; border-radius: var(--r-lg); overflow: hidden;
-        border: 1px solid var(--hairline-2); background: #0b0b0e;
-        box-shadow: 0 40px 100px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
-      }
-      .shot img { display: block; width: 100%; height: auto; }
-      .shot-cap { margin: 22px auto 0; max-width: 620px; text-align: center; color: var(--ink-3); font-size: 14px; line-height: 1.6; }
-      .shot-cap b { color: var(--ink-2); font-weight: 600; }
+      .stage-mobile { display: none; }
 
       /* Versus band — chatbot vs. board */
       .versus { display: grid; grid-template-columns: 1fr auto 1fr; gap: 20px; align-items: stretch; max-width: 920px; margin: 0 auto; }
@@ -164,9 +204,119 @@
 
       /* Sections */
       section { padding: 100px 0; }
-      .sec-head { text-align: center; max-width: 640px; margin: 0 auto 56px; }
-      h2 { margin: 0; font-size: clamp(30px, 4vw, 44px); line-height: 1.08; letter-spacing: -0.03em; font-weight: 800; }
+      .sec-head { text-align: center; max-width: 680px; margin: 0 auto 52px; }
+      .sec-head .eyebrow { justify-content: center; margin-bottom: 18px; }
+      h2 { margin: 0; font-size: clamp(30px, 4vw, 46px); line-height: 1.06; letter-spacing: -0.032em; font-weight: 800; }
       .sec-head p { margin: 18px 0 0; color: var(--ink-2); font-size: 17px; line-height: 1.6; }
+
+      /* ===== BENTO capability grid (the centerpiece) ===== */
+      .bento { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 224px; gap: 14px; }
+      .cell {
+        position: relative; grid-column: span 2;
+        display: flex; flex-direction: column; gap: 8px;
+        padding: 24px; border-radius: var(--r-lg); overflow: hidden;
+        background: linear-gradient(180deg, var(--surface), var(--bg-2));
+        border: 1px solid var(--hairline);
+        transition: transform 0.25s var(--ease), border-color 0.25s var(--ease), background 0.25s var(--ease);
+      }
+      .cell:hover { transform: translateY(-3px); border-color: var(--hairline-2); }
+      .cell.w2 { grid-column: span 2; }
+      .cell.w1 { grid-column: span 1; }
+      .cell.h2 { grid-row: span 2; }
+      .cell .clabel { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+      .cell h3 { margin: 2px 0 0; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+      .cell.w1 h3 { font-size: 15.5px; }
+      .cell p { margin: 0; color: var(--ink-2); font-size: 13.5px; line-height: 1.55; max-width: 46ch; }
+      .cell.w1 p { font-size: 12.5px; }
+      .cell p b { color: var(--ink); font-weight: 600; }
+      .cell-viz { flex: 1; min-height: 0; display: grid; place-items: center; margin-top: 8px; }
+      .cell-viz svg { width: auto; max-width: 100%; height: 100%; max-height: 112px; color: var(--ink-2); display: block; }
+      .cell.h2 .cell-viz svg { max-height: 230px; }
+      .cell.w1 .cell-viz svg { max-height: 90px; }
+      .cell-viz.right { place-items: end center; }
+
+      /* Real product-card screenshot, framed as an embedded artifact */
+      .card-shot {
+        position: relative; flex: 1; min-height: 0; margin-top: 12px;
+        border-radius: 12px; overflow: hidden;
+        border: 1px solid var(--hairline); background: #0b0b0e;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 16px 38px rgba(0, 0, 0, 0.42);
+      }
+      .card-shot img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
+      .card-shot.top img { object-position: top; }
+      .card-shot.bottom img { object-position: bottom; }
+      .card-shot::after {
+        content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      }
+
+      /* mini composer used in the "suggests the shape" cell */
+      .mini-composer { display: flex; flex-direction: column; gap: 12px; width: 100%; align-self: end; }
+      .mini-composer .mp {
+        display: block; padding: 12px 15px; border-radius: 12px; text-align: left;
+        border: 1px solid var(--hairline-2); background: var(--bg); color: var(--ink);
+        font-size: 13.5px; letter-spacing: -0.01em;
+      }
+      .mini-composer .mp .caret {
+        display: inline-block; width: 1.5px; height: 1em; margin-left: 1px; vertical-align: -2px;
+        background: var(--ink-2); animation: blink 1.15s steps(1) infinite;
+      }
+      @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+      @media (prefers-reduced-motion: reduce) { .mini-composer .mp .caret { animation: none; } }
+      .suggest {
+        display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
+        padding: 7px 13px; border-radius: 999px;
+        border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--hairline-2));
+        background: color-mix(in srgb, var(--accent) 10%, transparent);
+        color: var(--accent-2); font-size: 13px; font-weight: 600; white-space: nowrap;
+      }
+      .suggest .spk { font-size: 12.5px; opacity: 0.9; }
+      .suggest .lbl { color: var(--ink-3); font-weight: 500; }
+      .rotator { position: relative; display: inline-grid; min-width: 74px; text-align: left; }
+      .rotator span { grid-area: 1 / 1; opacity: 0; transform: translateY(4px); animation: rot 9s var(--ease) infinite; }
+      .rotator span:nth-child(1) { animation-delay: 0s; }
+      .rotator span:nth-child(2) { animation-delay: 3s; }
+      .rotator span:nth-child(3) { animation-delay: 6s; }
+      @keyframes rot {
+        0% { opacity: 0; transform: translateY(4px); }
+        4%, 30% { opacity: 1; transform: none; }
+        36%, 100% { opacity: 0; transform: translateY(-4px); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .rotator span { animation: none; opacity: 0; transform: none; }
+        .rotator span.rest { opacity: 1; }
+      }
+
+      @media (max-width: 900px) {
+        .bento { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 216px; }
+        .cell, .cell.w2, .cell.w1 { grid-column: span 1; }
+        .cell.wfull { grid-column: span 2; }
+        .cell.h2 { grid-row: span 2; }
+      }
+      @media (max-width: 560px) {
+        .bento { grid-template-columns: 1fr; grid-auto-rows: auto; }
+        .cell, .cell.w2, .cell.w1, .cell.wfull { grid-column: span 1; }
+        .cell.h2 { grid-row: span 1; }
+        .cell { min-height: 236px; }
+        .card-shot { min-height: 176px; }
+        .cell.h2 .card-shot { min-height: 260px; }
+      }
+
+      /* Showcase — real screenshots */
+      .showcase-item { margin-top: 76px; }
+      .showcase-item:first-of-type { margin-top: 0; }
+      .showcase-lead { text-align: center; max-width: 640px; margin: 0 auto 30px; }
+      .showcase-lead .eyebrow { justify-content: center; margin-bottom: 16px; }
+      .showcase-lead h3 { margin: 0; font-size: clamp(22px, 3vw, 32px); font-weight: 800; letter-spacing: -0.028em; line-height: 1.1; }
+      .showcase-lead p { margin: 14px 0 0; color: var(--ink-2); font-size: 16px; line-height: 1.6; }
+      .shot {
+        margin: 0 auto; border-radius: var(--r-lg); overflow: hidden;
+        border: 1px solid var(--hairline-2); background: #0b0b0e;
+        box-shadow: 0 40px 100px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+      }
+      .shot img { display: block; width: 100%; height: auto; }
+      .shot-cap { margin: 22px auto 0; max-width: 640px; text-align: center; color: var(--ink-3); font-size: 14px; line-height: 1.6; }
+      .shot-cap b { color: var(--ink-2); font-weight: 600; }
 
       /* Machines */
       .machines-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
@@ -182,22 +332,6 @@
       .machine p { margin: 0; color: var(--ink-3); font-size: 13.5px; line-height: 1.5; }
       .machine .pill { display: inline-block; margin-top: 14px; font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
         padding: 3px 9px; border-radius: 999px; color: var(--accent-2); background: color-mix(in srgb, var(--accent) 12%, transparent); }
-
-      /* Features */
-      .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-      .feat {
-        position: relative; padding: 28px; border-radius: var(--r-md);
-        background: linear-gradient(180deg, var(--surface), var(--bg-2));
-        border: 1px solid var(--hairline);
-        transition: transform 0.2s var(--ease), border-color 0.2s var(--ease);
-      }
-      .feat:hover { transform: translateY(-3px); border-color: var(--hairline-2); }
-      .feat .fi { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px;
-        background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-2); margin-bottom: 18px; }
-      .feat h3 { margin: 0 0 8px; font-size: 18px; font-weight: 700; letter-spacing: -0.015em; }
-      .feat p { margin: 0; color: var(--ink-2); font-size: 14.5px; line-height: 1.6; }
-      .feat.wide { grid-column: span 2; }
-      @media (min-width: 861px) { .feat-grid { grid-auto-flow: dense; } }
 
       /* How it works */
       .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; counter-reset: step; }
@@ -226,7 +360,9 @@
       }
       .cta h2 { max-width: 560px; margin: 0 auto; }
       .cta p { max-width: 520px; margin: 18px auto 0; color: var(--ink-2); font-size: 17px; }
-      .cta .hero-cta { margin-top: 34px; }
+      .cta .hero-cta { margin-top: 34px; justify-content: center; }
+      .cta-note { margin: 16px auto 0; color: var(--ink-3); font-size: 13.5px; }
+      .cta-note b { color: var(--ink-2); font-weight: 600; }
 
       /* Footer */
       footer { padding: 48px 0; border-top: 1px solid var(--hairline); margin-top: 40px; }
@@ -237,19 +373,23 @@
       .foot-links a:hover { color: var(--ink); }
 
       /* Reveal on scroll */
-      .reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); }
+      .reveal { opacity: 0; transform: translateY(20px); transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease); }
       .reveal.in { opacity: 1; transform: none; }
       @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
 
       /* Responsive */
       @media (max-width: 860px) {
-        .feat-grid, .steps, .stats { grid-template-columns: 1fr; }
-        .feat.wide { grid-column: span 1; }
-        .nav-links { display: none; }
-        .nav .menu-toggle { display: inline-flex; }
-        .stage { display: none; }
-        .hero { padding: 72px 0 44px; }
+        .steps, .stats { grid-template-columns: 1fr; }
+        .hero { padding: 64px 0 36px; }
         section { padding: 68px 0; }
+        .stage { display: none; }
+        .stage-mobile {
+          display: block; margin: 36px auto 0; border-radius: var(--r-lg); overflow: hidden;
+          border: 1px solid var(--hairline-2); background: #0b0b0e;
+          box-shadow: 0 30px 80px rgba(0,0,0,0.55);
+        }
+        .stage-mobile img { display: block; width: 100%; height: auto; }
+        .showcase-item { margin-top: 56px; }
       }
       @media (max-width: 560px) { .hero-cta { flex-direction: column; align-items: stretch; } }
     </style>
@@ -260,13 +400,10 @@
     <header id="top">
       <div class="wrap nav">
         <a class="brand" href="#top"><span class="spark">✦</span> Jarwiz</a>
-        <nav class="nav-links">
-          <a class="navlink" href="#machines">Thinking Machines</a>
-          <a class="navlink" href="#features">Features</a>
-          <a class="navlink" href="#how">How it works</a>
-          <a class="btn btn-ghost" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">GitHub</a>
-        </nav>
-        <a class="btn btn-primary menu-toggle" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">GitHub ↗</a>
+        <div class="nav-actions">
+          <a class="btn btn-ghost ghost-sm" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener"><svg class="gh" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 012-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
+          <a class="btn btn-primary" href="app/?demo=1" target="_blank" rel="noopener">Try it free ↗</a>
+        </div>
       </div>
     </header>
 
@@ -274,18 +411,32 @@
       <!-- HERO -->
       <section class="hero">
         <div class="wrap">
+          <span class="hero-badge"><span class="dot" aria-hidden="true"></span> Now builds live dashboards &amp; prototypes</span>
           <h1>The AI whiteboard that does the <span class="grad">thinking</span>.</h1>
           <p class="sub">
-            For founders, PMs, and strategists. Hand it a goal — Jarwiz researches the live web,
-            runs real frameworks, and builds a whole board of cards. Not a chat.
+            Describe anything and Jarwiz builds the <b>right artifact</b> for it — a doc, a table,
+            a diagram, a live prototype, a dashboard from your data, or a whole board of cards. Not a chat.
           </p>
           <div class="hero-cta">
-            <a class="btn btn-primary btn-lg" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener"><svg class="gh" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 012-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Star on GitHub</a>
+            <a class="btn btn-primary btn-lg" href="app/?demo=1" target="_blank" rel="noopener">Try it free ↗</a>
+            <a class="link-ghost" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener"><svg class="gh" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 012-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Star on GitHub</a>
           </div>
-          <p class="cta-note"><b>Open source (MIT).</b> Runs in your browser — no sign-up, no install.</p>
+          <div class="trust">
+            <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 7v6c0 5 3.5 7.5 8 9 4.5-1.5 8-4 8-9V7z"/></svg> Open source, MIT licensed</span>
+            <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18"/></svg> Runs in your browser</span>
+            <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg> No sign-up, no install</span>
+          </div>
 
-          <div class="stage">
+          <!-- The live app, shown immediately (interactive demo in the hero) -->
+          <div class="stage reveal">
+            <div class="stage-bar" aria-hidden="true">
+              <div class="dots"><i></i><i></i><i></i></div>
+              <span class="addr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> jarwiz — my workspace</span>
+            </div>
             <iframe class="stage-frame" src="app/?embed=1" title="Live Jarwiz preview" loading="lazy"></iframe>
+          </div>
+          <div class="stage-mobile">
+            <img src="assets/example-board.png" alt="A finished Jarwiz board: a SWOT 2×2, a TOWS strategy table, and a strategic verdict with priorities." loading="lazy" />
           </div>
           <p class="stage-cap">
             A live preview of the real app. Type below the canvas or tap a suggestion to spawn a card.
@@ -294,20 +445,21 @@
         </div>
       </section>
 
-      <!-- VERSUS — why not just use a chatbot -->
+      <!-- WEDGE — the right shape for every answer -->
       <section id="why" style="padding-top: 40px;">
         <div class="wrap">
           <div class="sec-head reveal">
-            <h2>Why not just ask a chatbot?</h2>
-            <p>Because the shape of the answer matters. A chat hands you one reply to scroll; Jarwiz hands you a board to think inside.</p>
+            <span class="eyebrow">The wedge</span>
+            <h2>The right shape for every answer.</h2>
+            <p>A chatbot hands you one wall of prose to scroll — no matter the question. Jarwiz picks the form the answer wants, and lays it on a canvas you keep.</p>
           </div>
           <div class="versus reveal">
             <div class="vs-card">
               <p class="kind">A chatbot gives you</p>
               <ul>
                 <li>One answer, in a wall of text</li>
+                <li>The same prose shape for every question</li>
                 <li>A single thread you scroll and lose</li>
-                <li>Prose you still have to reorganize by hand</li>
                 <li>A sidebar bolted onto someone else's app</li>
               </ul>
             </div>
@@ -315,8 +467,8 @@
             <div class="vs-card win">
               <p class="kind">Jarwiz gives you</p>
               <ul>
-                <li>A whole board of cards, laid out spatially</li>
-                <li>Every angle side by side, yours to rearrange</li>
+                <li>A table to compare, a dashboard for data, a board to think in</li>
+                <li>The right shape, suggested as you type</li>
                 <li>Real frameworks, researched and cited</li>
                 <li>A canvas you keep, extend, and hand off</li>
               </ul>
@@ -325,11 +477,136 @@
         </div>
       </section>
 
+      <!-- BENTO — the capability grid (centerpiece) -->
+      <section id="build">
+        <div class="wrap">
+          <div class="sec-head reveal">
+            <span class="eyebrow">What it builds</span>
+            <h2>One prompt. The right shape.</h2>
+            <p>Ask for anything and Jarwiz picks the form the answer wants — a doc, a table, a diagram, a live prototype, a dashboard, or a whole board — and suggests it as you type.</p>
+          </div>
+
+          <div class="bento">
+            <!-- Dominant hero card: Dashboard (real screenshot) -->
+            <div class="cell w2 h2 wfull reveal">
+              <span class="clabel">Your data → a dashboard</span>
+              <h3>Turn a spreadsheet into a live dashboard.</h3>
+              <p>Drop a table and Jarwiz builds <b>KPI tiles, bar and line charts, and a data table</b> — every number computed from your real rows. Filter or refocus it right on the canvas.</p>
+              <div class="card-shot top">
+                <img src="assets/card-dashboard.png" alt="A live Jarwiz dashboard card: KPI tiles for total revenue $890.2k, total orders 3,629, new customers 609 and average order value $245; a bar chart of Q2 revenue by region, a line chart of the monthly revenue trend, another bar chart of new customers by region, and a monthly regional detail data table." loading="lazy" />
+              </div>
+            </div>
+
+            <!-- Diagram (real screenshot, tall portrait) -->
+            <div class="cell w1 h2 reveal">
+              <span class="clabel">Map a flow</span>
+              <h3>Diagram.</h3>
+              <div class="card-shot top">
+                <img src="assets/card-diagram.png" alt="A flowchart card built by Jarwiz: an onboarding flow branching from New signup to an Email verified? decision, into Onboarding then Activated, or Send reminder." loading="lazy" />
+              </div>
+            </div>
+
+            <!-- Prototype (real screenshot, tall) -->
+            <div class="cell w1 h2 reveal">
+              <span class="clabel">Describe a UI</span>
+              <h3>Prototype.</h3>
+              <div class="card-shot">
+                <img src="assets/card-prototype.png" alt="A working prototype card rendered live by Jarwiz: a Pomodoro focus timer reading 16:12, with Focus, Short break and Long break tabs and Pause and Reset buttons." loading="lazy" />
+              </div>
+            </div>
+
+            <!-- Thinking Machines (real SWOT board) -->
+            <div class="cell w2 reveal">
+              <span class="clabel">Seven frameworks, run for you</span>
+              <h3>Run a real framework.</h3>
+              <div class="card-shot top">
+                <img src="assets/example-board.png" alt="A finished Jarwiz SWOT board: a 2×2 of strengths, weaknesses, opportunities and threats, a TOWS strategic-moves table, and a strategic verdict with top priorities." loading="lazy" />
+              </div>
+            </div>
+
+            <!-- Table (real screenshot, wide) -->
+            <div class="cell w2 reveal">
+              <span class="clabel">Compare</span>
+              <h3>Table.</h3>
+              <div class="card-shot top">
+                <img src="assets/card-table.png" alt="A comparison table card built by Jarwiz benchmarking CRMs — HubSpot, Salesforce, Pipedrive and Attio — by monthly price, who they are best for, and whether they offer a free tier." loading="lazy" />
+              </div>
+            </div>
+
+            <!-- Doc — grounded research with citations (real screenshot) -->
+            <div class="cell w2 reveal">
+              <span class="clabel">Grounded, with sources</span>
+              <h3>Researches &amp; cites.</h3>
+              <div class="card-shot bottom">
+                <img src="assets/card-doc.png" alt="A research doc card by Jarwiz on CRM market size, citing the market reaching $101.4B in 2025 and a projected $262B by 2032, with a 'Source: Grand View Research' citation link." loading="lazy" />
+              </div>
+            </div>
+
+            <!-- Smart composer — the live ✦ suggestion mock -->
+            <div class="cell w2 reveal">
+              <span class="clabel">Smart composer</span>
+              <h3>It suggests the shape as you type.</h3>
+              <div class="cell-viz" role="img" aria-label="A prompt reading 'Turn my Q2 sales into a report' with Jarwiz suggesting the Dashboard shape.">
+                <div class="mini-composer">
+                  <span class="mp">Turn my Q2 sales into a report<span class="caret" aria-hidden="true"></span></span>
+                  <span class="suggest">
+                    <span class="spk" aria-hidden="true">✦</span>
+                    <span class="lbl">Suggested</span>
+                    <span class="rotator" aria-hidden="true">
+                      <span>Table</span>
+                      <span class="rest">Dashboard</span>
+                      <span>Diagram</span>
+                    </span>
+                    <span aria-hidden="true">▾</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SHOWCASE — real screenshots -->
+      <section id="showcase">
+        <div class="wrap">
+          <div class="sec-head reveal">
+            <span class="eyebrow">Real output</span>
+            <h2>Not a mockup. Real output.</h2>
+            <p>Actual boards and dashboards Jarwiz laid down from a single prompt. Every card is live and editable.</p>
+          </div>
+
+          <div class="showcase-item reveal">
+            <div class="showcase-lead">
+              <span class="eyebrow">Dashboard · from a spreadsheet</span>
+              <h3>Drop a spreadsheet. Get a dashboard.</h3>
+              <p>Hand Jarwiz your rows and it builds a live dashboard — KPI tiles, charts, and a data table — then lets you filter and refocus it in place.</p>
+            </div>
+            <div class="shot">
+              <img src="assets/example-dashboard.png" alt="A live Jarwiz dashboard built from a spreadsheet: KPI tiles for total revenue, total orders, new customers and average order value; a bar chart of Q2 revenue by region, a line chart of the monthly revenue trend, another bar chart of new customers by region, and a monthly regional detail data table — every value computed from the uploaded rows." loading="lazy" />
+            </div>
+            <p class="shot-cap"><b>Every number computed from your rows.</b> Filter it, refocus it, or ask a follow-up — the whole dashboard updates in place.</p>
+          </div>
+
+          <div class="showcase-item reveal">
+            <div class="showcase-lead">
+              <span class="eyebrow">Board · SWOT</span>
+              <h3>A board that argues back.</h3>
+              <p>One prompt — “SWOT Figma” — and this is the board Jarwiz laid down: the 2×2, a TOWS strategy table, and a verdict with priorities.</p>
+            </div>
+            <div class="shot">
+              <img src="assets/example-board.png" alt="A finished Jarwiz board: a SWOT 2×2 of Figma, a TOWS strategic-moves table, and a strategic verdict with top priorities." loading="lazy" />
+            </div>
+            <p class="shot-cap"><b>Real output, not a mockup.</b> Move a card, dig deeper on any of them, or reshape a doc into a table — right on the canvas.</p>
+          </div>
+        </div>
+      </section>
+
       <!-- THINKING MACHINES -->
       <section id="machines">
         <div class="wrap">
           <div class="sec-head reveal">
-            <h2>Machines that do the thinking.</h2>
+            <span class="eyebrow">Depth</span>
+            <h2>Seven machines that do the thinking.</h2>
             <p>Drop one on the canvas, type a subject, hit Run. It researches the live web and lays a whole framework of cards onto your board.</p>
           </div>
           <div class="machines-grid">
@@ -379,66 +656,11 @@
         </div>
       </section>
 
-      <!-- SHOWCASE — one real board -->
-      <section id="showcase">
-        <div class="wrap">
-          <div class="sec-head reveal">
-            <h2>See what it builds.</h2>
-            <p>One prompt — “SWOT Figma” — and this is the board Jarwiz laid down: the 2×2, a TOWS strategy table, and a verdict with priorities. Every card is live and editable.</p>
-          </div>
-          <div class="shot reveal">
-            <img src="assets/example-board.png" alt="A finished Jarwiz board: a SWOT 2×2 of Figma, a TOWS strategic-moves table, and a strategic verdict with top priorities." loading="lazy" />
-          </div>
-          <p class="shot-cap reveal"><b>Real output, not a mockup.</b> Move a card, dig deeper on any of them, or reshape a doc into a table — right on the canvas.</p>
-        </div>
-      </section>
-
-      <!-- FEATURES -->
-      <section id="features">
-        <div class="wrap">
-          <div class="sec-head reveal">
-            <h2>Built for how the work actually goes.</h2>
-            <p>Every step happens on the canvas — grounded on what you have already made, and streamed in as cards you can keep shaping.</p>
-          </div>
-          <div class="feat-grid">
-            <div class="feat wide reveal">
-              <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 7v6c0 5 3.5 7.5 8 9 4.5-1.5 8-4 8-9V7z"/><path d="m9 12 2 2 4-4"/></svg></div>
-              <h3>Skip the blank canvas</h3>
-              <p>Hand Jarwiz a goal — “plan my Goa weekend,” “size this market” — and Autopilot does the first draft for you: it plans, researches the live web, and builds the whole board, card by card, while you watch. You start from something, never nothing.</p>
-            </div>
-            <div class="feat reveal">
-              <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
-              <h3>Stay in your flow</h3>
-              <p>Ask in the prompt bar and the answer streams onto a card, right where you are. Select a card first and the question grounds on exactly what is in front of you — no context to re-explain.</p>
-            </div>
-            <div class="feat reveal">
-              <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
-              <h3>Trust what it tells you</h3>
-              <p>Research-heavy asks pull live data from the web and cite their sources — grounded in what is true today, not what a model happens to remember. You can check the receipts.</p>
-            </div>
-            <div class="feat reveal">
-              <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div>
-              <h3>Start from what you have</h3>
-              <p>Drop a PDF, spreadsheet, video, or link onto the canvas and Jarwiz reads it — transcripts, tables, and key frames — then works from your material instead of a blank page.</p>
-            </div>
-            <div class="feat reveal">
-              <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.5 1 6 2.5"/><path d="M21 3v6h-6"/></svg></div>
-              <h3>Change your mind, cheaply</h3>
-              <p>Make it shorter, go deeper, turn a doc into a table or a flowchart, or regenerate — one bar, right above the card. Reworking an idea costs a click, not a restart.</p>
-            </div>
-            <div class="feat wide reveal">
-              <div class="fi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/></svg></div>
-              <h3>Find the signal in the mess</h3>
-              <p>Collapse a wall of sticky notes into named themes in a single click. Jarwiz also watches the board on its own — flagging tensions and gaps between your cards before you would have spotted them.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <!-- HOW IT WORKS -->
       <section id="how">
         <div class="wrap">
           <div class="sec-head reveal">
+            <span class="eyebrow">The loop</span>
             <h2>Three moves from blank to finished.</h2>
           </div>
           <div class="steps">
@@ -449,8 +671,8 @@
             </div>
             <div class="step reveal">
               <div class="n"></div>
-              <h3>Jarwiz researches and builds</h3>
-              <p>It searches the live web, reasons through a real framework, and lays the result out as a board of cards, right where you are working.</p>
+              <h3>Jarwiz picks the shape and builds</h3>
+              <p>It searches the live web, reasons through a real framework, and lays the answer out in the right shape — a doc, table, dashboard, or a whole board of cards.</p>
             </div>
             <div class="step reveal">
               <div class="n"></div>
@@ -460,9 +682,9 @@
           </div>
 
           <div class="stats reveal">
-            <div class="stat"><div class="big">7</div><div class="lbl">Thinking Machines, ready to run</div></div>
+            <div class="stat"><div class="big">7</div><div class="lbl">Output shapes, from doc to dashboard</div></div>
             <div class="stat"><div class="big">∞</div><div class="lbl">Infinite canvas, never out of room</div></div>
-            <div class="stat"><div class="big">1</div><div class="lbl">One place for all of your work</div></div>
+            <div class="stat"><div class="big">7</div><div class="lbl">Thinking Machines, ready to run</div></div>
           </div>
         </div>
       </section>
@@ -472,7 +694,7 @@
         <div class="wrap">
           <div class="cta reveal">
             <h2>Bring your ideas to a canvas that thinks back.</h2>
-            <p>Open the app and run a Thinking Machine on something you actually care about. It is open source, too — clone it and add your own key.</p>
+            <p>Open the app and describe something you actually care about — Jarwiz will build the right shape for it. It is open source, too — clone it and add your own key.</p>
             <div class="hero-cta">
               <a class="btn btn-primary btn-lg" href="app/?demo=1" target="_blank" rel="noopener">Try it free ↗</a>
               <a class="btn btn-ghost btn-lg" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">View on GitHub ↗</a>
@@ -487,8 +709,8 @@
       <div class="wrap foot">
         <a class="brand" href="#top" style="font-size:15px"><span class="spark" style="width:26px;height:26px;font-size:13px">✦</span> Jarwiz</a>
         <div class="foot-links">
+          <a href="#build">What it builds</a>
           <a href="#machines">Machines</a>
-          <a href="#features">Features</a>
           <a href="#how">How it works</a>
           <a href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">GitHub</a>
         </div>
@@ -512,8 +734,11 @@
           },
           { threshold: 0.12 }
         );
-        document.querySelectorAll('.reveal').forEach((el, i) => {
-          el.style.transitionDelay = (i % 3) * 70 + 'ms';
+        document.querySelectorAll('.reveal').forEach((el) => {
+          const p = el.parentElement;
+          const sibs = p ? Array.from(p.children).filter((c) => c.classList.contains('reveal')) : [el];
+          const idx = sibs.indexOf(el);
+          el.style.transitionDelay = (idx % 4) * 65 + 'ms';
           io.observe(el);
         });
       } else {
