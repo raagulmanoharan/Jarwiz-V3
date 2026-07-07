@@ -48,6 +48,11 @@ also typechecks as part of `build`.
 - Branch + commits: develop on the designated `claude/*` branch, push with
   `git push -u origin <branch>`, open a **draft** PR. Commit messages end with
   the session URL. Do **not** put the model id anywhere in committed artifacts.
+- **Cards hide tldraw's style/opacity control.** No Jarwiz card takes tldraw
+  styles (color/size/opacity) — the look is the design system's. This is gated
+  in `CanvasToolbar.tsx` on the `*-card` naming convention, so **every card,
+  present and future, hides the opacity dial automatically**; just name a new
+  card type `*-card` (owner call — applies to all new cards, 2026-07-07).
 
 ## Adding an agent (server)
 

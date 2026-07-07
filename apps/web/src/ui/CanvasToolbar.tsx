@@ -12,13 +12,14 @@ import { DefaultStylePanel, useEditor, useValue } from 'tldraw';
  *  pre-flight even before anything is selected. */
 const CREATION_TOOLS = new Set(['geo', 'text', 'arrow', 'line', 'draw', 'frame', 'highlight', 'note']);
 
-/** The Jarwiz cards — none of them take tldraw styles (color/size/opacity);
- *  their look is the design system's, and the opacity dial reads as clutter
- *  in the corner (owner call, 2026-07-05). */
-const JZ_CARDS = new Set([
-  'doc-card', 'note-card', 'table-card', 'diagram-card', 'prototype-card', 'pdf-card', 'sheet-card',
-  'image-card', 'link-card', 'youtube-card', 'machine-card',
-]);
+/** Every Jarwiz card hides the tldraw style panel — none of them take tldraw
+ *  styles (color/size/opacity); their look is the design system's, and the
+ *  opacity dial reads as clutter in the corner (owner call, 2026-07-05).
+ *  Gated on the shared `*-card` naming convention so EVERY card — present and
+ *  future — hides it automatically; no per-card edit needed when a new card
+ *  type lands. (Listed here for reference: doc/note/table/diagram/prototype/
+ *  pdf/sheet/image/link/youtube/machine/dashboard-card.) */
+const isJzCard = (type: string): boolean => type.endsWith('-card');
 
 export function CanvasStylePanel() {
   const editor = useEditor();
@@ -41,7 +42,7 @@ export function CanvasStylePanel() {
         return false;
       };
       // Jarwiz cards have no tldraw styles; generated diagrams keep their look.
-      if (selected.length > 0 && selected.every((s) => JZ_CARDS.has(s.type) || inFlowchart(s)))
+      if (selected.length > 0 && selected.every((s) => isJzCard(s.type) || inFlowchart(s)))
         return false;
       return selected.length > 0 || CREATION_TOOLS.has(editor.getCurrentToolId());
     },

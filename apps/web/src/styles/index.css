@@ -3787,7 +3787,7 @@ body,
   align-items: flex-start;
   justify-content: center;
   /* Deep dim — the board should clearly recede behind the page. */
-  background: rgba(8, 9, 11, 0.78);
+  background: rgba(6, 7, 9, 0.92);
   pointer-events: all;
   overflow-y: auto;
   /* Spacing lives on the page's margin, NOT here: the sticky header pins
@@ -3807,7 +3807,7 @@ body,
   left: 0;
   right: 0;
   height: 14px;
-  background: rgba(8, 9, 11, 0.78);
+  background: rgba(6, 7, 9, 0.92);
   z-index: 2;
   pointer-events: none;
 }
@@ -3987,15 +3987,18 @@ body,
 
 .jz-cardfocus-empty { margin: auto; color: var(--jz-ink-500); font-size: 13px; }
 
-/* A legible full-width table for table/sheet cards. */
+/* A legible full-width table for table/sheet cards — row AND column dividers,
+ * matching the on-canvas table card (border-right on every cell but the last). */
 .jz-cardfocus-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .jz-cardfocus-table th, .jz-cardfocus-table td {
   text-align: left;
   padding: 9px 14px;
   border-bottom: 1px solid var(--jz-hairline);
+  border-right: 1px solid var(--jz-hairline);
   color: var(--jz-ink-700);
   white-space: nowrap;
 }
+.jz-cardfocus-table th:last-child, .jz-cardfocus-table td:last-child { border-right: none; }
 .jz-cardfocus-table th { color: var(--jz-ink-500); font-weight: 600; position: sticky; top: 0; background: var(--jz-card-surface); }
 
 /* Link preview — a big, calm card. */
