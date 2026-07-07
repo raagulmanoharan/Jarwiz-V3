@@ -3575,6 +3575,33 @@ body,
   font-weight: 600;
 }
 
+/* Suggested variant: the shape classifier pinned this as the user typed. The
+ * spring pop-in (replayed on every re-suggest via a changing React key) reads
+ * as "Jarwiz's guess"; the spark marks it as a suggestion, not a manual pick,
+ * so dismissing reads as "no, I'll write a doc". */
+.jz-pb-mode--auto {
+  gap: 4px;
+  padding-left: 7px;
+  animation: jz-pb-mode-pop var(--jz-dur-base) var(--jz-ease-spring) both;
+}
+.jz-pb-mode-spark {
+  color: var(--jz-spark);
+  animation: jz-pb-spark-in var(--jz-dur-slow) var(--jz-ease-glide) both;
+}
+@keyframes jz-pb-mode-pop {
+  from { opacity: 0; transform: translateY(2px) scale(0.82); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes jz-pb-spark-in {
+  0%   { opacity: 0; transform: rotate(-35deg) scale(0.4); }
+  60%  { opacity: 1; transform: rotate(6deg) scale(1.12); }
+  100% { opacity: 1; transform: rotate(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-pb-mode--auto { animation: jz-fade-in var(--jz-dur-fast) var(--jz-ease-out) both; }
+  .jz-pb-mode-spark { animation: none; }
+}
+
 /* ── "/" mode menu — the shapes an answer can take ───────────────────────── */
 .jz-mode-menu {
   position: absolute;

@@ -8,8 +8,10 @@
 
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue, type Editor, type TLRichText, type TLShape, type TLShapeId } from 'tldraw';
-import { Slash, ArrowUp } from 'lucide-react';
+import { Slash, ArrowUp, Sparkles } from 'lucide-react';
 import type { AnalyzeMode, AskShape } from '@jarwiz/shared';
+import { type ModeShape } from './modeShape';
+import { suggestShape } from './suggestShape';
 import { ASKABLE, hasAskableContent } from './askable';
 import { getShapeTitle } from '../shapes/shapeTitle';
 import { useAsk } from './useAsk';
@@ -40,9 +42,6 @@ function shapeLabel(editor: Editor, shape: TLShape): string {
 /** The "/" mode menu — every shape an answer can take. Stickies appear here
  *  deliberately: the router never chooses them (they're the user's annotation
  *  medium), but an explicit pick is user intent. */
-/** Response shapes for the "/" menu. 'board' is not a single-card AskShape —
- *  it fans the answer out into a set of cards (compose), handled specially. */
-type ModeShape = AskShape | 'board';
 // Doc/Text is deliberately ABSENT: it's the implicit default — typing with no
 // mode selected always answers as a doc. The selector only lists the shapes you
 // must explicitly opt into to get something OTHER than a doc (owner call
@@ -67,6 +66,10 @@ export function PromptBar() {
   // The "/" mode selector: an explicitly chosen response shape, pinned as a
   // chip until the ask is sent (or the chip dismissed).
   const [mode, setMode] = useState<ModeShape | null>(null);
+  // Who pinned the mode chip: the user (via "/" or a manual pick/dismiss) or the
+  // live shape suggester. 'user' is sticky — once the user owns the choice we
+  // stop auto-suggesting for this prompt so we never fight their pick.
+  const [modeSource, setModeSource] = useState<'user' | 'auto' | null>(null);
   const [modeMenu, setModeMenu] = useState(false);
   const [modeIdx, setModeIdx] = useState(0);
   // Inline filtering, Claude-Code style: while the input reads "/que…", the
@@ -156,6 +159,7 @@ export function PromptBar() {
     if (fill.groundId && editor.getShape(fill.groundId)) editor.select(fill.groundId);
     setValue(fill.text);
     setMode(null);
+    setModeSource(null);
     requestAnimationFrame(() => {
       const ta = document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input');
       ta?.focus();
@@ -164,8 +168,43 @@ export function PromptBar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fill?.nonce]);
 
+  // ── Smart shape suggestion ────────────────────────────────────────────────
+  // As the user types a from-scratch prompt, ask the model which shape fits and
+  // pre-pin the "/" chip (they can change or dismiss it — the shape stays
+  // explicit). Model-inferred, not keyword-matched. Gated to UNGROUNDED prompts
+  // (a selection means "edit vs new", a different path) and backs off the moment
+  // the user owns the choice. Debounced so it settles a beat after typing and a
+  // stale in-flight guess can't overwrite a newer one (AbortController).
+  useEffect(() => {
+    if (modeSource === 'user') return; // user owns the choice — hands off.
+    if (groundIds.length > 0) {
+      if (modeSource === 'auto') { setMode(null); setModeSource(null); }
+      return;
+    }
+    if (value.trim().length < 4 || value.startsWith('/')) {
+      if (modeSource === 'auto') { setMode(null); setModeSource(null); }
+      return;
+    }
+    const ac = new AbortController();
+    const t = setTimeout(() => {
+      void suggestShape(value, ac.signal).then((guess) => {
+        if (ac.signal.aborted) return;
+        if (guess) {
+          setMode((m) => (m === guess ? m : guess));
+          setModeSource('auto');
+        } else {
+          // Model sees no clear non-doc shape → clear any prior auto guess.
+          setModeSource((src) => (src === 'auto' ? (setMode(null), null) : src));
+        }
+      });
+    }, 500); // let the typing settle before spending a model call
+    return () => { ac.abort(); clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, groundIds.length, modeSource]);
+
   const pickMode = (shape: ModeShape) => {
     setMode(shape);
+    setModeSource('user'); // an explicit pick — stop suggesting for this prompt.
     setModeMenu(false);
     setModeIdx(0);
     // Swallow the "/query" that summoned the menu — it was a command, not prose.
@@ -209,6 +248,7 @@ export function PromptBar() {
     }
     setValue('');
     setMode(null); // the mode applies to one ask, like the text it rode with
+    setModeSource(null);
   };
   const runTool = (mode: AnalyzeMode) => { void analyze(mode); };
   // While the sole card is being EDITED, a pill is an offer for Jarwiz to
@@ -369,9 +409,18 @@ export function PromptBar() {
                 chip takes its place (dismiss to hand the choice back to the
                 model). Same menu as typing "/" in the input. */}
             {mode ? (
-              <span className="jz-pb-ground jz-pb-mode" title="Answer shape — picked with /">
+              <span
+                key={`${mode}-${modeSource}`}
+                className={`jz-pb-ground jz-pb-mode${modeSource === 'auto' ? ' jz-pb-mode--auto' : ''}`}
+                title={modeSource === 'auto' ? 'Suggested answer shape — change it with / or dismiss to write a doc' : 'Answer shape — picked with /'}
+              >
+                {modeSource === 'auto' ? <Sparkles className="jz-pb-mode-spark" size={11} strokeWidth={2} aria-hidden /> : null}
                 {MODES.find((m) => m.shape === mode)?.label ?? mode}
-                <button className="jz-pb-ground-x" aria-label="Clear answer shape (the model decides)" onClick={() => setMode(null)}>✕</button>
+                <button
+                  className="jz-pb-ground-x"
+                  aria-label="Clear answer shape (write a doc)"
+                  onClick={() => { setMode(null); setModeSource('user'); }}
+                >✕</button>
               </span>
             ) : (
               <button

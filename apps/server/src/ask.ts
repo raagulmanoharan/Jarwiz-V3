@@ -726,6 +726,60 @@ export async function classifyRefineIntent(
   return ans.startsWith('EDIT') && !ans.includes('NEW') ? 'edit' : 'new';
 }
 
+/** Suggest which response SHAPE a from-scratch prompt wants, so the composer can
+ *  pre-pin the "/" mode chip as the user types (they can always change it — the
+ *  shape stays explicit). Model-inferred, not keyword-matched. Biased to DOC
+ *  (→ no chip, the default) unless a non-doc shape clearly fits — a wrong chip
+ *  is more annoying than none. */
+const SHAPE_SUGGEST_SYSTEM = `A user is typing a request into a canvas app that answers as ONE of these card shapes. Pick the single best fit for their (possibly partial) prompt:
+
+- DOC — written prose: an essay, blog post, summary, explanation, email, memo, brief. This is the DEFAULT; choose it whenever nothing else clearly fits.
+- LIST — a bullet list or checklist: steps, "top N", tips, an agenda, an itinerary, to-dos.
+- TABLE — a comparison or grid: "compare X and Y", pros and cons, a matrix, pricing, feature breakdown, rows × columns.
+- DIAGRAM — boxes and arrows: a flowchart, process flow, architecture, sequence, org chart, mind map, "how X works".
+- PROTOTYPE — a live, rendered, interactive UI: an app, screen, form, widget, game, landing page, signup, timer, calculator.
+- DASHBOARD — turning DATA into an interactive view of KPIs, charts and a table: "dashboard of…", "visualise the… data/metrics/sales/revenue", analytics/KPIs/scorecard.
+- BOARD — a whole SET of cards laid out together for a broad, multi-part goal: "plan my launch", "organise everything for my trip", a workspace, everything you need end-to-end.
+
+Examples:
+"write a blog post about remote work" → DOC
+"summarize the meeting notes" → DOC
+"explain how transformers work" → DOC
+"compare the top 3 CRMs" → TABLE
+"pros and cons of remote work" → TABLE
+"checklist for launch day" → LIST
+"top 5 productivity tips" → LIST
+"flowchart of the onboarding process" → DIAGRAM
+"architecture of our payments system" → DIAGRAM
+"build a pomodoro timer" → PROTOTYPE
+"a signup form with validation" → PROTOTYPE
+"landing page for a coffee app" → PROTOTYPE
+"dashboard of Q2 sales" → DASHBOARD
+"visualise revenue by region" → DASHBOARD
+"kpis for our SaaS metrics" → DASHBOARD
+"plan my product launch" → BOARD
+"organise everything for my Goa trip" → BOARD
+
+Reply with EXACTLY one word: DOC, LIST, TABLE, DIAGRAM, PROTOTYPE, DASHBOARD, or BOARD.`;
+
+const SUGGESTABLE = new Set(['doc', 'list', 'table', 'diagram', 'prototype', 'dashboard', 'board']);
+
+export async function suggestShape(prompt: string, signal: AbortSignal): Promise<string | null> {
+  const p = prompt.trim();
+  if (p.length < 4) return null;
+  let raw: string;
+  try {
+    raw = await generate(SHAPE_SUGGEST_SYSTEM, `Prompt: "${p.slice(0, 400)}"`, signal);
+  } catch {
+    return null; // no suggestion on error — the "/" menu still works
+  }
+  // First alpha word of the reply, lowercased. DOC → null (it's the default:
+  // no chip). Anything unrecognised → null (don't pin a wrong guess).
+  const word = (raw.trim().toLowerCase().match(/[a-z]+/)?.[0]) ?? '';
+  if (!SUGGESTABLE.has(word) || word === 'doc') return null;
+  return word;
+}
+
 export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGenerator<AskEvent> {
   if (!process.env.ANTHROPIC_API_KEY?.trim() && !sidecarAvailable()) {
     yield* streamDemoAsk(req, signal);

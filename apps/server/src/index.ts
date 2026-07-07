@@ -36,7 +36,7 @@ import { annotateBoard } from './annotate.js';
 import { getMachine } from './machines.js';
 import { streamMachineBoard } from './machineBoard.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset, sniffMime } from './assets.js';
-import { classifyRefineIntent, proposeSeedPrompts, streamAsk } from './ask.js';
+import { classifyRefineIntent, proposeSeedPrompts, streamAsk, suggestShape } from './ask.js';
 import type { AnalyzeCard, AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ReviseRequest } from '@jarwiz/shared';
 import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
@@ -320,6 +320,28 @@ app.post('/api/intent', async (c) => {
     return c.json({ intent });
   } catch {
     return c.json({ intent: 'new' });
+  }
+});
+
+/** Response-shape suggestion: as the user types a from-scratch prompt, guess the
+ *  best "/" mode so the composer can pre-pin the chip (they can still change it).
+ *  Returns { shape } as one of the mode names, or { shape: null } for doc/none. */
+app.post('/api/suggest-shape', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ shape: null });
+  }
+  const prompt = typeof (body as { prompt?: unknown }).prompt === 'string' ? (body as { prompt: string }).prompt : '';
+  if (!prompt.trim()) return c.json({ shape: null });
+  const ac = new AbortController();
+  c.req.raw.signal?.addEventListener('abort', () => ac.abort());
+  try {
+    const shape = await suggestShape(prompt, ac.signal);
+    return c.json({ shape });
+  } catch {
+    return c.json({ shape: null });
   }
 });
 
