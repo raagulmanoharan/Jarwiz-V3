@@ -25,7 +25,7 @@
  * layered rows. That one follows arrows; this one follows whitespace.
  */
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useEditor, type Box, type Editor, type TLShapeId } from 'tldraw';
 
 /** Gutters between packed cards (page px). Matches the board's calm rhythm. */
@@ -51,7 +51,7 @@ const FALLBACK_DURATION_MS = 420;
 const TIDYABLE_TYPES = new Set([
   'link-card', 'youtube-card', 'image-card', 'pdf-card', 'note-card',
   'doc-card', 'table-card', 'diagram-card', 'prototype-card',
-  'machine-card', 'sheet-card',
+  'machine-card', 'sheet-card', 'dashboard-card',
 ]);
 
 /**
@@ -175,6 +175,15 @@ export interface TidyOptions {
 export function useTidyBoard() {
   const editor = useEditor();
   const rafRef = useRef<number | null>(null);
+
+  // Stop a settle mid-flight if the button/menu unmounts, so the rAF loop can't
+  // keep repositioning cards after its host is gone.
+  useEffect(
+    () => () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    },
+    [],
+  );
 
   const tidyBoard = useCallback(
     (scope?: TLShapeId[], opts?: TidyOptions) => {
