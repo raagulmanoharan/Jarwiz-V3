@@ -305,7 +305,7 @@
         opacity: 0; transition: opacity 0.16s var(--ease);
       }
       .jz-tip.on { opacity: 1; }
-      .jz-tip-desc { color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.35; letter-spacing: -0.01em; }
+      .jz-tip-desc { color: var(--ink); font-size: 13px; font-weight: 400; line-height: 1.4; letter-spacing: -0.01em; }
       .jz-tip-utt { color: var(--ink-3); font-size: 12.5px; font-style: italic; line-height: 1.35; }
       .jz-tip-utt:empty { display: none; }
       .bcard {
@@ -641,7 +641,7 @@
           <div class="board-canvas reveal" role="img" aria-label="A Jarwiz canvas — a viewport onto a board where a dashboard, prototype, comparison table, research doc, the composer, and a flow diagram run off every edge.">
            <div class="board-inner">
             <!-- top-left: a table card, its top running off the canvas -->
-            <div class="bcard b-table" data-desc="A comparison table — Jarwiz gathers the options, fills every cell, and keeps it sortable and editable." data-utt="Compare the top CRMs in a table">
+            <div class="bcard b-table" data-desc="Turn a dozen open tabs into one clear table — every option lined up, ranked, and ready to decide." data-utt="Compare the top CRMs in a table">
               <table class="doccard-tbl">
                 <thead><tr><th>CRM</th><th>Price /mo</th><th>Best for</th></tr></thead>
                 <tbody>
@@ -655,7 +655,7 @@
             </div>
 
             <!-- left: a live dashboard card (portrait, built as real HTML) -->
-            <div class="bcard b-dash metallic" data-desc="A live dashboard — drop in your numbers and Jarwiz computes the KPIs, trends, and charts for you." data-utt="Turn my Q2 sales into a dashboard">
+            <div class="bcard b-dash metallic" data-desc="Turn your spreadsheets and raw numbers into a living dashboard that tells you what they mean." data-utt="Turn my Q2 sales into a dashboard">
               <div class="minidash">
                 <div class="md-kpis">
                   <div class="md-kpi"><span>Total revenue</span><b>$890.2k <em>+18%</em></b>
@@ -684,12 +684,12 @@
             </div>
 
             <!-- center: the prototype, running live -->
-            <div class="bcard b-proto" data-desc="A real, clickable prototype — not a mockup, working software Jarwiz builds from a single sentence." data-utt="Prototype a focus-timer app">
+            <div class="bcard b-proto" data-desc="Turn a fuzzy thought into a real, working prototype you can click, feel, and share." data-utt="Prototype a focus-timer app">
               <iframe class="proto-frame" src="assets/proto-focus.html" title="A live Focus mobile-app prototype rendered by Jarwiz" loading="lazy" scrolling="no"></iframe>
             </div>
 
             <!-- top-right: a doc card with a citation -->
-            <div class="bcard b-doc metallic" data-desc="A researched doc — written, structured, and grounded in real sources you can trace and cite." data-utt="Research the CRM market size">
+            <div class="bcard b-doc metallic" data-desc="Turn a question into a researched doc — the reading done, the sources gathered and cited for you." data-utt="Research the CRM market size">
               <div class="doccard">
                 <div class="doccard-title">CRM market size</div>
                 <div class="doccard-body">
@@ -709,7 +709,7 @@
             </div>
 
             <!-- right: the composer capturing intent — the card IS the prompt bar -->
-            <div class="bcard b-composer" data-desc="Just describe what you want — the composer reads your intent and suggests the right shape as you type.">
+            <div class="bcard b-composer" data-desc="Just say what's on your mind — Jarwiz reads your intent and shapes it into the right thing as you type.">
               <div class="pb-input"><span class="mp-text" data-typed>Turn my Q2 sales into a report</span><span class="caret" aria-hidden="true"></span></div>
               <div class="pb-foot">
                 <span class="suggest">
@@ -722,7 +722,7 @@
             </div>
 
             <!-- bottom: a complex flow diagram (the real Mermaid SVG), wide -->
-            <div class="bcard b-flow" data-desc="A flowchart that maps any process end to end — every branch, decision, and loop, laid out clearly." data-utt="Map the onboarding flow as a diagram">
+            <div class="bcard b-flow" data-desc="Turn a tangle of steps in your head into a clean flow — every branch and decision mapped end to end." data-utt="Map the onboarding flow as a diagram">
               <img class="flow-svg" src="assets/flow.svg" alt="A flowchart: Visit branches on 'New user?' into Sign up / Log in, through Verify email to the Dashboard, then 'Has data?' into Import or Insights." loading="lazy" />
             </div>
            </div>
