@@ -183,10 +183,13 @@ export function PromptBar() {
       void compose(q);
     } else if (mode === 'affinity') {
       void annotate(q);
-    } else if (!mode && sole && !sole.pdf && sole.type === 'prototype-card') {
-      // Selecting a prototype and typing an instruction regenerates it in place
-      // (the card IS the prototype) — not a new card beside it.
-      void ask(q, [sole.id], { targetId: sole.id, forceShape: 'prototype', skipClarify: true });
+    } else if (!mode && sole && !sole.pdf && (sole.type === 'prototype-card' || sole.type === 'dashboard-card')) {
+      // Selecting a prototype or dashboard and typing an instruction regenerates
+      // it IN PLACE (the card IS the artifact) — not a new card beside it. This
+      // is the pointed-edit path: "add a margin chart", "focus on APAC". The
+      // card's own spec/html grounds the edit (toSource), so nothing is lost.
+      const forceShape: AskShape = sole.type === 'dashboard-card' ? 'dashboard' : 'prototype';
+      void ask(q, [sole.id], { targetId: sole.id, forceShape, skipClarify: true });
     } else {
       void ask(q, groundIds, mode ? { forceShape: mode as AskShape } : undefined);
     }
