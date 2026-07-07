@@ -96,9 +96,11 @@ function JarwizOverlay() {
 /** The minified embed overlay (?embed=1): just the card title tags and the
  *  lightweight composer — every other capability is hidden. */
 function EmbedOverlay() {
+  // No CardTitleTag here: the title tags render at a constant screen size, so in
+  // the showreel's zoomed-out establishing shot they'd tower over the shrunken
+  // cards and collide. Cards carry their own titles in-body, which is enough.
   return (
     <>
-      <Safe label="CardTitleTag"><CardTitleTag /></Safe>
       <Safe label="EmbedShowreel"><EmbedShowreel /></Safe>
     </>
   );
