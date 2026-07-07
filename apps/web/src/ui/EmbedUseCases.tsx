@@ -32,27 +32,34 @@ interface Persona {
 
 // Staggered placement of every slot within a persona's region (region centre = 0)
 // — a big, busy workspace, offset so it reads as real work, not a grid.
+// A filled, built-out board: cards spread across the whole region in loose
+// columns like a real workspace, capped above a clear bottom band so the
+// Next/Back controller (which docks at the viewport's bottom-centre) never
+// overlaps a card.
+// A compact, densely-packed workspace — cards nearly edge-to-edge in four
+// loose columns so the whole board frames at a legible zoom, with a clear
+// centre-bottom lane where the Next/Back controller docks.
 const SLOTS: Record<string, { dx: number; dy: number; w: number; h: number }> = {
-  desc: { dx: -1420, dy: -560, w: 300, h: 200 },
-  doc: { dx: -1120, dy: -320, w: 380, h: 540 },
-  doc2: { dx: -1120, dy: 290, w: 380, h: 280 },
-  table: { dx: -700, dy: -600, w: 620, h: 300 },
-  table2: { dx: -40, dy: -600, w: 420, h: 280 },
-  table3: { dx: -700, dy: 320, w: 540, h: 270 },
-  diagram: { dx: -700, dy: -260, w: 700, h: 500 },
-  diagram2: { dx: 40, dy: 330, w: 640, h: 320 },
-  link: { dx: 460, dy: -600, w: 360, h: 150 },
-  link2: { dx: 460, dy: -432, w: 360, h: 150 },
-  link3: { dx: 840, dy: -600, w: 360, h: 150 },
-  img: { dx: 840, dy: -432, w: 320, h: 220 },
-  img2: { dx: 840, dy: -192, w: 320, h: 230 },
-  img3: { dx: 460, dy: -262, w: 360, h: 250 },
-  note1: { dx: 150, dy: -250, w: 190, h: 120 },
-  note2: { dx: -140, dy: 660, w: 210, h: 120 },
-  note3: { dx: 720, dy: 700, w: 200, h: 120 },
+  desc: { dx: -960, dy: -520, w: 340, h: 150 },
+  doc: { dx: -960, dy: -350, w: 380, h: 420 },
+  doc2: { dx: -960, dy: 90, w: 380, h: 270 },
+  note2: { dx: -940, dy: 380, w: 220, h: 100 },
+  table: { dx: -560, dy: -520, w: 580, h: 230 },
+  diagram: { dx: -560, dy: -270, w: 600, h: 420 },
+  table3: { dx: -560, dy: 170, w: 560, h: 240 },
+  table2: { dx: 60, dy: -520, w: 560, h: 220 },
+  diagram2: { dx: 60, dy: -280, w: 600, h: 270 },
+  link: { dx: 60, dy: 10, w: 280, h: 130 },
+  link2: { dx: 350, dy: 10, w: 290, h: 130 },
+  note1: { dx: 60, dy: 160, w: 190, h: 110 },
+  img3: { dx: 280, dy: 160, w: 360, h: 240 },
+  link3: { dx: 680, dy: -520, w: 380, h: 130 },
+  img: { dx: 680, dy: -380, w: 360, h: 240 },
+  img2: { dx: 680, dy: -120, w: 360, h: 250 },
+  note3: { dx: 680, dy: 150, w: 200, h: 110 },
 };
 
-const REGION_GAP = 3400;
+const REGION_GAP = 3200;
 
 const PERSONAS: Persona[] = [
   {
@@ -201,7 +208,9 @@ export function EmbedUseCases() {
           editor.updateShape({ id: tid, type, meta: { [PROV_META_KEY]: src } } as Parameters<typeof editor.updateShape>[0]);
         }
       }
-      frames.push(new Box(cx - 1480, -680, 2820, 1520));
+      // Aspect-matched to the stage so it fills without letterboxing; the
+      // controller sits in the clear centre-bottom lane.
+      frames.push(new Box(cx - 1030, -560, 2060, 1080));
     });
     framesRef.current = frames;
     editor.setSelectedShapes(allIds);
