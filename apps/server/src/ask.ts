@@ -80,7 +80,12 @@ Output ONLY the raw HTML document — no prose, no explanation, NO \`\`\` code f
  *  grammar our client renders through a fixed monochrome component library
  *  (no HTML/JS, no external service). The model computes the numbers from the
  *  data and lays out KPIs, charts and a table over these components. */
-const DASHBOARD_SYSTEM = `You turn a dataset (a spreadsheet or table, given as CSV) into ONE interactive data DASHBOARD, expressed in "OpenUI Lang" — a tiny declarative layout grammar. A separate renderer draws your output through a fixed component library; you never write HTML, CSS, JS, or SVG.
+const DASHBOARD_SYSTEM = `You produce ONE interactive data DASHBOARD, expressed in "OpenUI Lang" — a tiny declarative layout grammar. A separate renderer draws your output through a fixed component library; you never write HTML, CSS, JS, or SVG.
+
+WHERE THE DATA COMES FROM
+- If the request includes data (a CSV, a table, spreadsheet cells, or source cards), derive EVERY KPI and chart value from it — never invent numbers when real ones are given.
+- If the request names a subject with no data attached (e.g. "a dashboard of the 2024 F1 season", "our Q3 sales"), populate it with accurate figures you know, or a clearly representative dataset that fits the subject — enough to make a useful, believable dashboard.
+- If a "Current dashboard (OpenUI Lang spec)" is included, you are REFINING it: re-emit the whole spec with the requested change applied (add/remove a chart, recompute a metric, refocus it), keeping the parts the request doesn't touch.
 
 GRAMMAR
 - One statement per line: \`id = Component(arg1, arg2, …)\`. Each \`id\` is a lowercase name you invent (e.g. \`kpis\`, \`bar1\`).
@@ -147,6 +152,14 @@ function looksLikeDiagram(prompt: string): boolean {
   return /\b(diagram|flow ?chart|sequence diagram|mind ?map|org chart|gantt|class diagram|er diagram|entity[- ]relationship|state diagram|user journey|journey map|process (map|flow)|visuali[sz]e|sketch|draw)\b/i.test(
     prompt,
   );
+}
+
+/** A "make a dashboard / KPIs / chart this data" request (→ the interactive
+ *  dashboard card). Checked BEFORE the prototype gate, whose regex also catches
+ *  "dashboard" — a data dashboard is the better default now that it's a
+ *  first-class card (a UI mockup is still reachable via /prototype). */
+function looksLikeDashboard(prompt: string): boolean {
+  return /\b(dashboard|kpis?|scorecard|metrics? (overview|dashboard|view)|analytics (view|dashboard))\b/i.test(prompt);
 }
 
 /** A "mock up / wireframe / design a UI" request (→ a live HTML prototype card). */
@@ -303,6 +316,7 @@ function pickShape(prompt: string, current?: AskShape): AskShape {
   // stickies are the USER's annotation medium, not an AI output (owner
   // decision 2026-07-05). Brainstorms land as lists like any idea dump.
   // The affinity event machinery stays for possible user-driven layouts.
+  if (looksLikeDashboard(prompt)) return 'dashboard';
   if (looksLikePrototype(prompt)) return 'prototype';
   if (looksLikeDiagram(prompt)) return 'diagram';
   // An explicit "as prose" request wins over the keep-current fallback, so a

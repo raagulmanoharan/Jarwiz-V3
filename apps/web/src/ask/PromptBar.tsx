@@ -49,6 +49,7 @@ const MODES: Array<{ shape: ModeShape; label: string; hint: string }> = [
   { shape: 'table', label: 'Table', hint: 'rows × columns' },
   { shape: 'diagram', label: 'Diagram', hint: 'boxes and arrows' },
   { shape: 'prototype', label: 'Prototype', hint: 'a live UI, rendered' },
+  { shape: 'dashboard', label: 'Dashboard', hint: 'KPIs, charts, a table' },
   { shape: 'affinity', label: 'Stickies', hint: 'notes across your cards' },
   { shape: 'board', label: 'Board', hint: 'a set of cards' },
 ];

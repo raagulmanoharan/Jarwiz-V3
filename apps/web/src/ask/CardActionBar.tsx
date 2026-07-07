@@ -227,12 +227,11 @@ export function CardActionBar() {
       });
     }
   }
-  // Every card that has a full-screen view gets an explicit ⤢ Expand at the top
-  // of the Actions menu — open the card as a focused, full-screen page over a
-  // dimmed board (the doc card also keeps its ⤢ icon in the format group).
-  if (!sel.multi && hasContent && canFocusCard(sel.type)) {
-    transforms.unshift({ label: '⤢ Expand', run: () => openCardFocus(id) });
-  }
+  // Every card with a full-screen view gets a standalone ⤢ Expand icon button
+  // in the bar (a first-class affordance, not buried in the Actions menu —
+  // owner call 2026-07-07). Open the card as a focused, full-screen page over a
+  // dimmed board. The doc card also keeps its ⤢ icon in the format group.
+  const focusable = !sel.multi && hasContent && canFocusCard(sel.type);
 
   // The drop-moment profile (docs/PDF-EDGE.md build 3): a dropped PDF or
   // spreadsheet lands selected, so this bar IS the drop moment — Profile
@@ -425,6 +424,16 @@ export function CardActionBar() {
             </div>
           ) : null}
         </div>
+      ) : null}
+      {focusable && sel.type !== 'doc-card' ? (
+        <button
+          className="jz-cardbar-btn jz-cardbar-btn--icon"
+          aria-label="Expand full screen"
+          title="Expand full screen"
+          onClick={() => openCardFocus(id)}
+        >
+          <Maximize2 {...FMT_ICON} />
+        </button>
       ) : null}
       {showMore ? (
         <div className="jz-cardbar-group">
