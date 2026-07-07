@@ -170,6 +170,16 @@ export function CardActionBar() {
       { label: 'Regenerate', run: () => ask('Regenerate this UI prototype, same intent, fresh take.', [id], { targetId: id }) },
     );
   }
+  // A dashboard refines as data viz — offer moves that reshape it in place
+  // (the dashboard's own spec grounds each refinement via toSource).
+  if (!sel.multi && hasContent && sel.type === 'dashboard-card') {
+    transforms.push(
+      { label: '✦ Refine the dashboard', run: () => ask('Refine this dashboard — sharpen the KPIs, pick the clearest charts, and tighten the layout, keeping the same underlying data.', [id], { targetId: id, skipClarify: true, logLabel: 'Refined the dashboard' }) },
+      { label: 'Add a chart', run: () => ask('Add one more useful chart to this dashboard that reveals another angle in the data.', [id], { targetId: id, skipClarify: true }) },
+      { label: 'Summarise the data', run: () => ask('Summarise the story in this dashboard — the headline numbers, the trend, and any outliers.', [id], { skipClarify: true }) },
+      { label: 'Regenerate', run: () => ask('Regenerate this dashboard, same data, fresh take.', [id], { targetId: id }) },
+    );
+  }
   // An image is a vision input — offer moves that read the picture.
   if (!sel.multi && hasContent && sel.type === 'image-card') {
     transforms.push(
