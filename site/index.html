@@ -256,44 +256,71 @@
       h2 { margin: 0; font-size: clamp(30px, 4vw, 46px); line-height: 1.06; letter-spacing: -0.032em; font-weight: 800; }
       .sec-head p { margin: 18px 0 0; color: var(--ink-2); font-size: 17px; line-height: 1.6; }
 
-      /* ===== ONE canvas of real shapes, MASONRY-packed (centerpiece) =====
-         A single canvas (dot-grid, like the app). The shapes sit on it as cards
-         at their NATURAL height, packed into columns (masonry) — no fixed rows,
-         so nothing is stretched, letterboxed, or clipped. No per-card headings. */
+      /* ===== ONE canvas of real shapes, laid out as a board (centerpiece) =====
+         A single dot-grid canvas (like the app) with the shapes placed on it as
+         cards in a deliberate bento: an end-of-table peeking top-left, a tall
+         dashboard down the left, the prototype in the middle, a doc + the
+         composer on the right, and a wide flow diagram across the bottom. */
       .board-canvas {
-        column-count: 3; column-gap: 18px;
-        padding: 26px; border-radius: var(--r-xl);
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr 1fr;
+        grid-template-rows: repeat(5, 128px);
+        grid-template-areas:
+          "table proto doc"
+          "dash  proto doc"
+          "dash  proto comp"
+          "dash  flow  flow"
+          "dash  flow  flow";
+        gap: 16px; padding: 26px; border-radius: var(--r-xl);
         border: 1px solid var(--hairline);
         background:
           radial-gradient(circle at center, rgba(255,255,255,0.05) 1px, transparent 1.5px) -13px -13px / 26px 26px,
           linear-gradient(180deg, var(--bg-2), var(--bg));
         box-shadow: 0 40px 120px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04);
       }
-      /* Each shape is a real card on the canvas — its own surface, border and
-         shadow, its natural height. break-inside keeps a card whole in a column. */
       .bcard {
-        break-inside: avoid; -webkit-column-break-inside: avoid;
-        display: block; width: 100%; margin: 0 0 18px; position: relative; overflow: hidden;
+        position: relative; overflow: hidden; display: flex;
         border-radius: var(--r-md); border: 1px solid var(--hairline);
         background: linear-gradient(180deg, var(--surface), var(--bg-2));
         box-shadow: 0 12px 30px rgba(0,0,0,0.4);
         transition: transform 0.25s var(--ease), border-color 0.25s var(--ease);
       }
       .bcard:hover { transform: translateY(-3px); border-color: var(--hairline-2); }
-      /* Image renders: full width, natural height — shown whole, never cropped. */
-      .b-dash, .b-board { background: #0b0b0e; }
-      .b-dash img, .b-board img { display: block; width: 100%; height: auto; }
-      /* The real diagram SVG, whole, on a card screen. */
-      .b-flow { background: #0b0b0e; padding: 16px; text-align: center; }
-      .b-flow .flow-svg { display: inline-block; width: 100%; height: auto; }
-      /* Live prototype iframe — a portrait card. */
-      .b-proto { background: #0b0b0e; aspect-ratio: 5 / 7; }
+      .b-table { grid-area: table; } .b-dash { grid-area: dash; } .b-proto { grid-area: proto; }
+      .b-doc { grid-area: doc; } .b-composer { grid-area: comp; } .b-flow { grid-area: flow; }
+
+      /* The END of a table card, peeking in from the top: rows only, faded at
+         the top so it reads as a card continuing off the canvas edge. */
+      .b-table { align-items: flex-end; padding: 0 18px 14px; }
+      .b-table { -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 44px); mask-image: linear-gradient(180deg, transparent 0, #000 44px); }
+      .b-table .endtbl { width: 100%; margin: 0; }
+
+      /* A live dashboard card, built as real HTML (portrait — fills the tall slot). */
+      .b-dash { background: #0b0b0e; padding: 14px; }
+      .minidash { display: flex; flex-direction: column; gap: 12px; width: 100%; height: 100%; }
+      .md-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: none; }
+      .md-kpi { border: 1px solid var(--hairline); border-radius: 10px; padding: 9px 11px; background: rgba(255,255,255,0.02); display: flex; flex-direction: column; }
+      .md-kpi span { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); font-weight: 600; }
+      .md-kpi b { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; margin-top: 2px; }
+      .md-kpi i { font-size: 10px; color: var(--ink-3); font-style: normal; font-weight: 600; }
+      .md-panel { border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 12px; background: rgba(255,255,255,0.02); flex: 1; display: flex; flex-direction: column; min-height: 0; }
+      .md-ct { font-size: 10px; color: var(--ink-3); font-weight: 600; margin-bottom: 8px; flex: none; }
+      .md-bars { display: flex; align-items: flex-end; gap: 8px; flex: 1; min-height: 0; }
+      .md-bars span { flex: 1; background: linear-gradient(180deg, var(--ink-2), var(--ink-3)); border-radius: 3px 3px 0 0; }
+      .md-line { width: 100%; flex: 1; min-height: 0; color: var(--ink); display: block; }
+
+      /* Live prototype iframe fills its card. */
+      .b-proto { background: #0b0b0e; }
       .proto-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #0b0b0e; }
-      /* Real HTML table / doc card content. */
-      .b-table, .b-doc { padding: 16px 18px; }
-      .b-table .doccard-tbl { margin: 0; width: 100%; }
+
+      /* Doc + composer content. */
+      .b-doc { align-items: flex-start; padding: 16px 18px; }
       .b-doc .doccard { padding: 0; }
-      .b-composer { padding: 22px; }
+      .b-composer { align-items: center; padding: 20px; }
+
+      /* The complex flow diagram (real Mermaid SVG), wide across the bottom. */
+      .b-flow { background: #0b0b0e; align-items: center; justify-content: center; padding: 16px 20px; }
+      .b-flow .flow-svg { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; }
 
       /* mini composer used in the composer card */
       .mini-composer { display: flex; flex-direction: column; gap: 12px; width: 100%; }
@@ -322,8 +349,27 @@
       .sug-shape { color: var(--ink); font-weight: 600; min-width: 70px; text-align: left; transition: opacity 0.22s var(--ease), transform 0.22s var(--ease); }
       .sug-shape.swap { opacity: 0; transform: translateY(-4px); }
 
-      @media (max-width: 900px) { .board-canvas { column-count: 2; padding: 20px; } }
-      @media (max-width: 560px) { .board-canvas { column-count: 1; padding: 14px; } }
+      @media (max-width: 900px) {
+        .board-canvas {
+          grid-template-columns: 1fr 1fr; grid-template-rows: repeat(6, 130px); padding: 20px;
+          grid-template-areas:
+            "table doc"
+            "dash  doc"
+            "dash  proto"
+            "dash  proto"
+            "comp  proto"
+            "flow  flow";
+        }
+      }
+      @media (max-width: 560px) {
+        .board-canvas {
+          grid-template-columns: 1fr; grid-auto-rows: 150px; grid-template-rows: none; padding: 14px; gap: 12px;
+          grid-template-areas: none;
+        }
+        .bcard { grid-area: auto !important; }
+        .b-dash { grid-row: span 3; } .b-proto { grid-row: span 3; } .b-flow { grid-row: span 2; }
+        .b-table { -webkit-mask-image: none; mask-image: none; }
+      }
 
       /* Showcase — real screenshots */
       .showcase-item { margin-top: 76px; }
@@ -514,30 +560,45 @@
             <p>Ask for anything and Jarwiz picks the form the answer wants — a doc, a table, a diagram, a live prototype, a dashboard, or a whole board — and suggests it as you type.</p>
           </div>
 
-          <!-- ONE canvas holding all the real shapes, arranged like a board -->
-          <div class="board-canvas reveal" role="img" aria-label="A Jarwiz canvas laid out with a live dashboard, a flowchart, a working prototype, a SWOT board with a comment, a comparison table, a research doc, and the composer suggesting a shape.">
-            <div class="bcard b-dash">
-              <img src="assets/card-dashboard.png" alt="" loading="lazy" />
-            </div>
-            <div class="bcard b-flow">
-              <img class="flow-svg" src="assets/flow.svg" alt="" loading="lazy" />
-            </div>
-            <div class="bcard b-proto">
-              <iframe class="proto-frame" src="assets/proto-focus.html" title="A live Focus mobile-app prototype rendered by Jarwiz" loading="lazy" scrolling="no"></iframe>
-            </div>
-            <div class="bcard b-board">
-              <img src="assets/board-band.png" alt="" loading="lazy" />
-            </div>
+          <!-- ONE canvas holding the real shapes, arranged as a board -->
+          <div class="board-canvas reveal" role="img" aria-label="A Jarwiz canvas laid out with a live dashboard, a working prototype, a comparison table, a research doc, the composer suggesting a shape, and a flow diagram.">
+            <!-- top-left: the end of a table card, peeking in -->
             <div class="bcard b-table">
-              <table class="doccard-tbl">
-                <thead><tr><th>CRM</th><th>Price /mo</th><th>Best for</th><th>Free tier</th></tr></thead>
+              <table class="doccard-tbl endtbl">
                 <tbody>
-                  <tr><td>HubSpot</td><td>$0–$45</td><td>All-in-one</td><td>Yes</td></tr>
-                  <tr><td>Salesforce</td><td>$25–$300</td><td>Enterprise</td><td>No</td></tr>
-                  <tr><td>Pipedrive</td><td>$14–$99</td><td>Small teams</td><td>No</td></tr>
+                  <tr><td>Salesforce</td><td>$25–$300</td><td>Enterprise</td></tr>
+                  <tr><td>Pipedrive</td><td>$14–$99</td><td>Small teams</td></tr>
+                  <tr><td>Attio</td><td>$0–$59</td><td>Startups</td></tr>
                 </tbody>
               </table>
             </div>
+
+            <!-- left: a live dashboard card (portrait, built as real HTML) -->
+            <div class="bcard b-dash">
+              <div class="minidash">
+                <div class="md-kpis">
+                  <div class="md-kpi"><span>Total revenue</span><b>$890.2k</b><i>+18%</i></div>
+                  <div class="md-kpi"><span>Orders</span><b>3,629</b><i>+9%</i></div>
+                  <div class="md-kpi"><span>New customers</span><b>609</b><i>+14%</i></div>
+                  <div class="md-kpi"><span>Avg order</span><b>$245</b><i>+3%</i></div>
+                </div>
+                <div class="md-panel">
+                  <div class="md-ct">Revenue by region</div>
+                  <div class="md-bars"><span style="height:100%"></span><span style="height:66%"></span><span style="height:44%"></span><span style="height:30%"></span></div>
+                </div>
+                <div class="md-panel">
+                  <div class="md-ct">Monthly trend</div>
+                  <svg class="md-line" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,30 24,25 48,22 72,15 96,11 120,5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+              </div>
+            </div>
+
+            <!-- center: the prototype, running live -->
+            <div class="bcard b-proto">
+              <iframe class="proto-frame" src="assets/proto-focus.html" title="A live Focus mobile-app prototype rendered by Jarwiz" loading="lazy" scrolling="no"></iframe>
+            </div>
+
+            <!-- top-right: a doc card with a citation -->
             <div class="bcard b-doc">
               <div class="doccard">
                 <div class="doccard-title">CRM market size</div>
@@ -547,6 +608,8 @@
                 </div>
               </div>
             </div>
+
+            <!-- right: the composer capturing intent -->
             <div class="bcard b-composer">
               <div class="mini-composer">
                 <span class="mp"><span class="mp-text" data-typed>Turn my Q2 sales into a report</span><span class="caret" aria-hidden="true"></span></span>
@@ -557,6 +620,11 @@
                   <span aria-hidden="true">▾</span>
                 </span>
               </div>
+            </div>
+
+            <!-- bottom: a complex flow diagram (the real Mermaid SVG), wide -->
+            <div class="bcard b-flow">
+              <img class="flow-svg" src="assets/flow.svg" alt="A flowchart: Visit branches on 'New user?' into Sign up / Log in, through Verify email to the Dashboard, then 'Has data?' into Import or Insights." loading="lazy" />
             </div>
           </div>
         </div>
