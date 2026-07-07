@@ -2676,6 +2676,31 @@ body,
   }
 }
 
+/* Hero showreel overlay: pinned over the canvas, wholly non-interactive so the
+   marketing page scrolls over it and the loop stays deterministic. */
+.jz-showreel {
+  position: absolute;
+  inset: 0;
+  z-index: 305;
+  pointer-events: none;
+}
+
+/* Showreel cursors (hero embed only): the scripted demo drives two collaborator
+   cursors. Jarwiz keeps the default ink arrow; "You" gets a distinct blue so the
+   two reads apart at a glance. Scripted glide gets a transform transition (the
+   real presence cursor is rAF-driven and deliberately has none). */
+.jz-avatar--scripted {
+  transition:
+    transform 0.72s cubic-bezier(0.5, 0.05, 0.2, 1),
+    opacity var(--jz-dur-slow) var(--jz-ease-out);
+}
+.jz-avatar--you .jz-cursor-arrow {
+  fill: #2f6df6;
+}
+.jz-avatar--you .jz-avatar-badge {
+  background: #2f6df6;
+}
+
 @keyframes jz-menu-in {
   from {
     opacity: 0;

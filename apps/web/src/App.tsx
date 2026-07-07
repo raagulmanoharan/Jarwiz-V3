@@ -21,6 +21,7 @@ import { CardActionBar } from './ask/CardActionBar';
 import { ProvenanceLayer } from './ask/ProvenanceLayer';
 import { ClarifyLayer } from './ask/ClarifyLayer';
 import { CommentLayer } from './ask/CommentLayer';
+import { setComments, toggleComment, commentSig } from './ask/comments';
 import { MachineRunner } from './ui/MachineRunner';
 import { PrototypeRunner } from './ui/PrototypeRunner';
 import { DashboardRunner } from './ui/DashboardRunner';
@@ -37,7 +38,7 @@ import { getRestoreError, isRestoring, subscribeRestore } from './boards/backup'
 import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
 import { isDemo, isEmbed } from './boards/demo';
 import { seedDemoBoard } from './boards/demoSeed';
-import { EmbedComposer } from './ui/EmbedComposer';
+import { EmbedShowreel } from './ui/EmbedShowreel';
 import { CardTitleTag } from './ui/CardTitleTag';
 import { DocFocusOverlay } from './ui/DocFocusOverlay';
 import { CardFocusOverlay } from './ui/CardFocusOverlay';
@@ -95,10 +96,12 @@ function JarwizOverlay() {
 /** The minified embed overlay (?embed=1): just the card title tags and the
  *  lightweight composer — every other capability is hidden. */
 function EmbedOverlay() {
+  // No CardTitleTag here: the title tags render at a constant screen size, so in
+  // the showreel's zoomed-out establishing shot they'd tower over the shrunken
+  // cards and collide. Cards carry their own titles in-body, which is enough.
   return (
     <>
-      <Safe label="CardTitleTag"><CardTitleTag /></Safe>
-      <Safe label="EmbedComposer"><EmbedComposer /></Safe>
+      <Safe label="EmbedShowreel"><EmbedShowreel /></Safe>
     </>
   );
 }
@@ -174,6 +177,12 @@ const handleMount = (editor: Editor) => {
   });
   // Dev convenience + e2e hook: reach the editor from the console.
   (window as unknown as { editor: Editor }).editor = editor;
+  // e2e / marketing-capture hook: stage a proactive comment on a card and open
+  // it, without waiting on the server review pass. Inert unless called.
+  (window as unknown as { __jzSeedComment?: (c: import('@jarwiz/shared').NoticeComment) => void }).__jzSeedComment = (c) => {
+    setComments([c]);
+    toggleComment(commentSig(c));
+  };
 
   // Embedded demo: land the visitor on content. ?embed=1 is the minified
   // live-preview (one card + composer); ?demo=1 is the full seeded board.

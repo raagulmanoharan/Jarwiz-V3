@@ -4,10 +4,12 @@
  * styles so it looks identical.
  *
  * The hero's whole job is to *show the transformation*: a blank canvas becomes a
- * board of cards. So on load this auto-plays — the idea lands, the goal types
- * itself into the composer, and the agent fans a board of cards out across the
- * canvas — then loops. The moment the visitor taps a suggestion, types, or
- * sends, the demo bows out and hands them the (real) product to poke at.
+ * board of cards. So on load this auto-plays ONCE — the idea lands, the goal
+ * types itself into the composer, and the agent fans a board of cards out across
+ * the canvas — then it stops and hands the finished, live board to the visitor
+ * to poke at (move cards, tap a suggestion, send the prompt). It deliberately
+ * does NOT loop: a re-wipe would blank the canvas to black mid-view and yank the
+ * board out from under anyone who started dragging a card.
  *
  * On a static host there's no server, so the answers are a friendly "cheat":
  * each suggestion maps to a hand-authored card. Sending drops a polished card
@@ -124,8 +126,13 @@ export function EmbedComposer() {
       const build = () => {
         if (takenOver.current) return;
         INTRO_BUILD.forEach((c, k) => after(k * 820, () => !takenOver.current && place(c.title, c.text)));
-        // Hold on the finished board, then replay from a blank canvas.
-        after(INTRO_BUILD.length * 820 + 3200, run);
+        // Play runs ONCE: once the board is laid out, hand it to the visitor —
+        // stop driving the canvas so nothing re-wipes and they can move cards,
+        // tap a suggestion, or send the prompt on a real, live board.
+        after(INTRO_BUILD.length * 820 + 600, () => {
+          takenOver.current = true;
+          setValue(FLAGSHIP.prompt); // leave the fixed prompt ready to send
+        });
       };
       after(520, type);
     };

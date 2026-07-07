@@ -1,0 +1,84 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:-apple-system,'Segoe UI',Inter,sans-serif;background:radial-gradient(120% 70% at 50% 0%, #17171d 0%, #0b0b0e 55%);color:#f5f5f7;height:100%;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;overflow:hidden;padding-bottom:14px}
+.bar{display:flex;justify-content:space-between;align-items:center;padding:12px 20px 0;font-size:12px;font-weight:600}
+.bar .dots{display:flex;gap:4px}.bar .dots i{width:4px;height:4px;border-radius:50%;background:#6b6b76}
+.top{display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px 20px 6px}
+/* Ring: a fixed-height box; the decorative concentric rings are ABSOLUTE (they
+   don't push the content below) and fade out toward the bottom, so the sides
+   read full while the base dissolves. The timer text sits on top. */
+.ring{position:relative;display:grid;place-items:center;width:100%;height:150px}
+.halo{position:absolute;top:50%;left:50%;transform:translate(-50%,-52%);width:330px;height:330px;pointer-events:none;-webkit-mask:linear-gradient(180deg,#000 0,#000 38%,transparent 64%);mask:linear-gradient(180deg,#000 0,#000 38%,transparent 64%)}
+.halo circle{fill:none;stroke-width:1.2}
+.dial{position:relative;transform:rotate(-90deg)}
+.dial .track{stroke:#1c1c22}
+.dial .prog{stroke:#f5f5f7;stroke-linecap:round;transition:stroke-dashoffset .95s linear}
+.cx{position:absolute;text-align:center}
+.cx .big{font-size:36px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.cx .sm{font-size:11px;color:#8a8a94;margin-top:2px;font-weight:600}
+.ctrls{display:flex;align-items:center;gap:12px}
+.btn{height:46px;border-radius:14px;font-weight:700;font-size:14px;display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;white-space:nowrap}
+.btn.pause{background:#f5f5f7;color:#0b0b0e;padding:0 30px}
+.btn.ghost{width:46px;background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1);color:#c2c2c8;font-size:17px}
+.sheet{margin:12px 16px 0;background:#121216;border:1px solid rgba(255,255,255,.07);border-radius:18px 18px 0 0;flex:1;padding:14px 18px 18px;display:flex;flex-direction:column;gap:12px;min-height:0}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.stat{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:11px 12px;display:flex;flex-direction:column;justify-content:center;min-height:60px}
+.stat .n{font-size:16px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;line-height:1.1}
+.stat .l{font-size:10px;color:#8a8a94;font-weight:600;margin-top:3px;text-transform:uppercase;letter-spacing:.05em}
+.wk{flex:1;display:flex;flex-direction:column;min-height:0}
+.wk .h{font-size:11px;color:#8a8a94;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.wk .bars{flex:1;display:flex;align-items:flex-end;gap:9px;min-height:34px}
+.wk .bars .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.wk .bars .col b{width:100%;border-radius:5px 5px 0 0;background:linear-gradient(180deg,#e7e7ea,#8a8a94);display:block}
+.wk .bars .col.today b{background:#f5f5f7}
+.wk .bars .col span{font-size:9px;color:#6b6b76;font-weight:600}
+</style></head><body>
+<div class="bar"><span>9:41</span><span class="dots"><i></i><i></i><i></i></span></div>
+<div class="top">
+  <div class="ring">
+    <svg class="halo" viewBox="0 0 330 330" aria-hidden="true">
+      <circle cx="165" cy="165" r="162" stroke="rgba(255,255,255,0.03)"/>
+      <circle cx="165" cy="165" r="146" stroke="rgba(255,255,255,0.055)"/>
+      <circle cx="165" cy="165" r="130" stroke="rgba(255,255,255,0.09)"/>
+      <circle cx="165" cy="165" r="114" stroke="rgba(255,255,255,0.13)"/>
+      <circle cx="165" cy="165" r="98" stroke="rgba(255,255,255,0.18)"/>
+    </svg>
+    <svg class="dial" width="150" height="150" viewBox="0 0 150 150">
+      <circle class="track" cx="75" cy="75" r="64" fill="none" stroke-width="10"/>
+      <circle class="prog" id="prog" cx="75" cy="75" r="64" fill="none" stroke-width="10"/>
+    </svg>
+    <div class="cx"><div class="big" id="time">24:05</div><div class="sm">remaining</div></div>
+  </div>
+  <div class="ctrls">
+    <button class="btn ghost" tabindex="-1" aria-hidden="true">⏻</button>
+    <button class="btn pause" tabindex="-1" aria-hidden="true">Pause</button>
+  </div>
+</div>
+<div class="sheet">
+  <div class="stats">
+    <div class="stat"><div class="n">2h 40m</div><div class="l">Focused</div></div>
+    <div class="stat"><div class="n">6</div><div class="l">Sessions</div></div>
+    <div class="stat"><div class="n">12d</div><div class="l">Streak</div></div>
+  </div>
+  <div class="wk">
+    <div class="h">This week</div>
+    <div class="bars">
+      <div class="col"><b style="height:42%"></b><span>M</span></div>
+      <div class="col"><b style="height:66%"></b><span>T</span></div>
+      <div class="col"><b style="height:54%"></b><span>W</span></div>
+      <div class="col"><b style="height:80%"></b><span>T</span></div>
+      <div class="col"><b style="height:60%"></b><span>F</span></div>
+      <div class="col"><b style="height:34%"></b><span>S</span></div>
+      <div class="col today"><b style="height:92%"></b><span>S</span></div>
+    </div>
+  </div>
+</div>
+<script>
+  var TOTAL=25*60, r=64, C=2*Math.PI*r, remaining=24*60+5;
+  var prog=document.getElementById('prog'), time=document.getElementById('time');
+  prog.style.strokeDasharray=C;
+  function render(){var m=Math.floor(remaining/60),s=remaining%60;time.textContent=m+':'+(s<10?'0':'')+s;prog.style.strokeDashoffset=C*(1-remaining/TOTAL);}
+  render(); setInterval(function(){remaining--;if(remaining<0)remaining=TOTAL-1;render();},1000);
+</script>
+</body></html>
