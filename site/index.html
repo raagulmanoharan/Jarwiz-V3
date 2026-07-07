@@ -256,58 +256,49 @@
       h2 { margin: 0; font-size: clamp(30px, 4vw, 46px); line-height: 1.06; letter-spacing: -0.032em; font-weight: 800; }
       .sec-head p { margin: 18px 0 0; color: var(--ink-2); font-size: 17px; line-height: 1.6; }
 
-      /* ===== BENTO capability grid (the centerpiece) ===== */
-      .bento { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 224px; gap: 14px; }
-      .cell {
-        position: relative; grid-column: span 2;
-        display: flex; flex-direction: column; gap: 8px;
-        padding: 24px; border-radius: var(--r-lg); overflow: hidden;
-        background: linear-gradient(180deg, var(--surface), var(--bg-2));
+      /* ===== ONE canvas of real shapes, arranged like a board (centerpiece) =====
+         Not a grid of titled tiles — a single canvas (dot-grid, like the app)
+         with the actual shapes floating on it as cards. No per-card headings. */
+      .board-canvas {
+        display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 196px; gap: 16px;
+        padding: 26px; border-radius: var(--r-xl);
         border: 1px solid var(--hairline);
-        transition: transform 0.25s var(--ease), border-color 0.25s var(--ease), background 0.25s var(--ease);
+        background:
+          radial-gradient(circle at center, rgba(255,255,255,0.05) 1px, transparent 1.5px) -13px -13px / 26px 26px,
+          linear-gradient(180deg, var(--bg-2), var(--bg));
+        box-shadow: 0 40px 120px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04);
       }
-      .cell:hover { transform: translateY(-3px); border-color: var(--hairline-2); }
-      .cell.w2 { grid-column: span 2; }
-      .cell.w1 { grid-column: span 1; }
-      .cell.h2 { grid-row: span 2; }
-      .cell .clabel { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
-      .cell h3 { margin: 2px 0 0; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
-      .cell.w1 h3 { font-size: 15.5px; }
-      .cell p { margin: 0; color: var(--ink-2); font-size: 13.5px; line-height: 1.55; max-width: 46ch; }
-      .cell.w1 p { font-size: 12.5px; }
-      .cell p b { color: var(--ink); font-weight: 600; }
-      .cell-viz { flex: 1; min-height: 0; display: grid; place-items: center; margin-top: 8px; }
-      .cell-viz svg { width: auto; max-width: 100%; height: 100%; max-height: 112px; color: var(--ink-2); display: block; }
-      .cell.h2 .cell-viz svg { max-height: 230px; }
-      .cell.w1 .cell-viz svg { max-height: 90px; }
-      .cell-viz.right { place-items: end center; }
-
-      /* Each capability card mounts a REAL shape (not a screenshot) on its own
-         card-screen background — one subtle surface, no heavy border/shadow (so
-         it reads as a card without stacking boxes-within-boxes). */
-      .cell-canvas {
-        flex: 1; min-height: 0; margin-top: 14px; position: relative;
-        border-radius: var(--r-sm); overflow: hidden; display: flex;
-        background: #0b0b0e;
+      /* Each shape is a real card floating on the canvas — its own surface,
+         border and shadow; no heading, no description (the shape speaks). */
+      .bcard {
+        position: relative; overflow: hidden; display: flex;
+        border-radius: var(--r-md); border: 1px solid var(--hairline);
+        background: linear-gradient(180deg, var(--surface), var(--bg-2));
+        box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+        transition: transform 0.25s var(--ease), border-color 0.25s var(--ease);
       }
-      /* Full render, shown whole; dark-bg images blend into the screen. */
-      .cell-canvas.fit { align-items: center; justify-content: center; }
-      .cell-canvas.fit img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; }
-      /* Cover-fill (dashboard): fills the screen, only the tail of a long table
-         trails off the bottom — no letterbox padding. */
-      .cell-canvas.cover img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
-      /* The real diagram SVG, centered and whole. */
-      .cell-canvas.flow { align-items: center; justify-content: center; padding: 6px; }
-      .cell-canvas.flow .flow-svg { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; }
-      /* Live prototype iframe fills the space. */
+      .bcard:hover { transform: translateY(-3px); border-color: var(--hairline-2); }
+      .b-dash  { grid-column: span 2; grid-row: span 2; }
+      .b-flow  { grid-column: span 1; grid-row: span 2; }
+      .b-proto { grid-column: span 1; grid-row: span 2; }
+      .b-board, .b-table, .b-doc, .b-composer { grid-column: span 2; }
+      /* Renders shown WHOLE (contain) on a dark screen — nothing cropped. */
+      .b-dash, .b-board { background: #0b0b0e; align-items: center; justify-content: center; padding: 8px; }
+      .b-dash img, .b-board img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; }
+      /* The real diagram SVG, centered and whole, on a card screen. */
+      .b-flow { align-items: center; justify-content: center; padding: 14px; background: #0b0b0e; }
+      .b-flow .flow-svg { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; }
+      /* Live prototype iframe fills its card. */
+      .b-proto { background: #0b0b0e; }
       .proto-frame { width: 100%; height: 100%; border: 0; display: block; background: #0b0b0e; }
-      /* Real HTML table / doc card content on the card screen. */
-      .cell-canvas.data { align-items: flex-start; padding: 16px 18px; }
-      .cell-canvas.data .doccard { padding: 0; }
-      .cell-canvas.data .doccard-tbl { margin: 0; }
+      /* Real HTML table / doc card content. */
+      .b-table, .b-doc { align-items: flex-start; padding: 16px 18px; }
+      .b-table .doccard-tbl { margin: 0; width: 100%; }
+      .b-doc .doccard { padding: 0; }
+      .b-composer { align-items: center; padding: 22px; }
 
-      /* mini composer used in the "suggests the shape" cell */
-      .mini-composer { display: flex; flex-direction: column; gap: 12px; width: 100%; align-self: end; }
+      /* mini composer used in the composer card */
+      .mini-composer { display: flex; flex-direction: column; gap: 12px; width: 100%; }
       .mini-composer .mp {
         display: block; padding: 12px 15px; border-radius: 12px; text-align: left;
         border: 1px solid var(--hairline-2); background: var(--bg); color: var(--ink);
@@ -334,18 +325,15 @@
       .sug-shape.swap { opacity: 0; transform: translateY(-4px); }
 
       @media (max-width: 900px) {
-        .bento { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 216px; }
-        .cell, .cell.w2, .cell.w1 { grid-column: span 1; }
-        .cell.wfull { grid-column: span 2; }
-        .cell.h2 { grid-row: span 2; }
+        .board-canvas { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 184px; padding: 20px; }
+        .bcard { grid-column: span 1; }
+        .b-dash { grid-column: span 2; grid-row: span 2; }
+        .b-flow, .b-proto { grid-row: span 2; }
       }
       @media (max-width: 560px) {
-        .bento { grid-template-columns: 1fr; grid-auto-rows: auto; }
-        .cell, .cell.w2, .cell.w1, .cell.wfull { grid-column: span 1; }
-        .cell.h2 { grid-row: span 1; }
-        .cell { min-height: 236px; }
-        .cell-canvas { min-height: 176px; }
-        .cell.h2 .cell-canvas { min-height: 280px; }
+        .board-canvas { grid-template-columns: 1fr; grid-auto-rows: 190px; padding: 14px; gap: 12px; }
+        .bcard { grid-column: span 1; grid-row: span 1; }
+        .b-dash, .b-flow, .b-proto { grid-column: span 1; grid-row: span 2; }
       }
 
       /* Showcase — real screenshots */
@@ -537,82 +525,48 @@
             <p>Ask for anything and Jarwiz picks the form the answer wants — a doc, a table, a diagram, a live prototype, a dashboard, or a whole board — and suggests it as you type.</p>
           </div>
 
-          <div class="bento">
-            <!-- Dominant hero card: Dashboard (full render, un-cropped) -->
-            <div class="cell w2 h2 wfull reveal">
-              <h3>Turn a spreadsheet into a live dashboard.</h3>
-              <p>Drop a table and Jarwiz builds <b>KPI tiles, charts, and a data table</b> — every number computed from your real rows.</p>
-              <div class="cell-canvas cover">
-                <img src="assets/card-dashboard.png" alt="A live Jarwiz dashboard: KPI tiles for total revenue $890.2k, total orders 3,629, new customers 609 and average order value $245; a bar chart of Q2 revenue by region, a line chart of the monthly revenue trend, another bar chart of new customers by region, and a monthly regional detail data table." loading="lazy" />
-              </div>
+          <!-- ONE canvas holding all the real shapes, arranged like a board -->
+          <div class="board-canvas reveal" role="img" aria-label="A Jarwiz canvas laid out with a live dashboard, a flowchart, a working prototype, a SWOT board with a comment, a comparison table, a research doc, and the composer suggesting a shape.">
+            <div class="bcard b-dash">
+              <img src="assets/card-dashboard.png" alt="" loading="lazy" />
             </div>
-
-            <!-- Diagram — the real Mermaid SVG the diagram card renders -->
-            <div class="cell w1 h2 reveal">
-              <h3>Map a flow.</h3>
-              <div class="cell-canvas flow">
-                <img class="flow-svg" src="assets/flow.svg" alt="A flowchart: New signup branches on 'Email verified?' — Yes goes to Onboarding then Activated, No goes to Send reminder." loading="lazy" />
-              </div>
+            <div class="bcard b-flow">
+              <img class="flow-svg" src="assets/flow.svg" alt="" loading="lazy" />
             </div>
-
-            <!-- Prototype — the actual generated UI, running live in an iframe -->
-            <div class="cell w1 h2 reveal">
-              <h3>Describe a UI.</h3>
-              <div class="cell-canvas">
-                <iframe class="proto-frame" src="assets/proto-focus.html" title="A live Focus mobile-app prototype rendered by Jarwiz" loading="lazy" scrolling="no"></iframe>
-              </div>
+            <div class="bcard b-proto">
+              <iframe class="proto-frame" src="assets/proto-focus.html" title="A live Focus mobile-app prototype rendered by Jarwiz" loading="lazy" scrolling="no"></iframe>
             </div>
-
-            <!-- Thinking Machines (full SWOT board render, un-cropped) -->
-            <div class="cell w2 reveal">
-              <h3>Run a real framework.</h3>
-              <div class="cell-canvas fit">
-                <img src="assets/board-band.png" alt="A Jarwiz SWOT board: Strengths and Weaknesses cards beside a TOWS strategy table — with a Jarwiz comment opened on the Weaknesses card." loading="lazy" />
-              </div>
+            <div class="bcard b-board">
+              <img src="assets/board-band.png" alt="" loading="lazy" />
             </div>
-
-            <!-- Table — a real HTML comparison table (the table card) -->
-            <div class="cell w2 reveal">
-              <h3>Compare in a table.</h3>
-              <div class="cell-canvas data">
-                <table class="doccard-tbl">
-                  <thead><tr><th>CRM</th><th>Price /mo</th><th>Best for</th><th>Free tier</th></tr></thead>
-                  <tbody>
-                    <tr><td>HubSpot</td><td>$0–$45</td><td>All-in-one</td><td>Yes</td></tr>
-                    <tr><td>Salesforce</td><td>$25–$300</td><td>Enterprise</td><td>No</td></tr>
-                    <tr><td>Pipedrive</td><td>$14–$99</td><td>Small teams</td><td>No</td></tr>
-                  </tbody>
-                </table>
-              </div>
+            <div class="bcard b-table">
+              <table class="doccard-tbl">
+                <thead><tr><th>CRM</th><th>Price /mo</th><th>Best for</th><th>Free tier</th></tr></thead>
+                <tbody>
+                  <tr><td>HubSpot</td><td>$0–$45</td><td>All-in-one</td><td>Yes</td></tr>
+                  <tr><td>Salesforce</td><td>$25–$300</td><td>Enterprise</td><td>No</td></tr>
+                  <tr><td>Pipedrive</td><td>$14–$99</td><td>Small teams</td><td>No</td></tr>
+                </tbody>
+              </table>
             </div>
-
-            <!-- Doc — a real doc card with a grounded citation -->
-            <div class="cell w2 reveal">
-              <h3>Research, with sources.</h3>
-              <div class="cell-canvas data">
-                <div class="doccard">
-                  <div class="doccard-title">CRM market size</div>
-                  <div class="doccard-body">
-                    <p>The global CRM market hit <b>$101.4B in 2025</b>, up ~13% YoY, and is projected to reach <b>$262B by 2032</b>.</p>
-                    <p class="doccard-src">Source: Grand View Research</p>
-                  </div>
+            <div class="bcard b-doc">
+              <div class="doccard">
+                <div class="doccard-title">CRM market size</div>
+                <div class="doccard-body">
+                  <p>The global CRM market hit <b>$101.4B in 2025</b>, up ~13% YoY, and is projected to reach <b>$262B by 2032</b>.</p>
+                  <p class="doccard-src">Source: Grand View Research</p>
                 </div>
               </div>
             </div>
-
-            <!-- Smart composer — the live ✦ suggestion mock (JS-animated) -->
-            <div class="cell w2 reveal">
-              <h3>It suggests the shape as you type.</h3>
-              <div class="cell-viz" role="img" aria-label="Jarwiz suggesting the right shape as different prompts are typed into the composer.">
-                <div class="mini-composer">
-                  <span class="mp"><span class="mp-text" data-typed>Turn my Q2 sales into a report</span><span class="caret" aria-hidden="true"></span></span>
-                  <span class="suggest">
-                    <span class="spk" aria-hidden="true">✦</span>
-                    <span class="lbl">Suggested</span>
-                    <span class="sug-shape" data-shape>Dashboard</span>
-                    <span aria-hidden="true">▾</span>
-                  </span>
-                </div>
+            <div class="bcard b-composer">
+              <div class="mini-composer">
+                <span class="mp"><span class="mp-text" data-typed>Turn my Q2 sales into a report</span><span class="caret" aria-hidden="true"></span></span>
+                <span class="suggest">
+                  <span class="spk" aria-hidden="true">✦</span>
+                  <span class="lbl">Suggested</span>
+                  <span class="sug-shape" data-shape>Dashboard</span>
+                  <span aria-hidden="true">▾</span>
+                </span>
               </div>
             </div>
           </div>
@@ -881,7 +835,7 @@
           }
         }
         // Only animate while the card is on screen (saves cycles + battery).
-        const card = typed.closest('.cell');
+        const card = typed.closest('.bcard') || typed.closest('.board-canvas');
         if (card && 'IntersectionObserver' in window) {
           let started = false;
           const io2 = new IntersectionObserver((es) => {
