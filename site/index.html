@@ -328,16 +328,20 @@
       .proto-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #0b0b0e; }
 
       /* Doc + composer content. */
-      .b-doc { align-items: flex-start; padding: 16px 18px 24px; }
+      .b-doc { align-items: flex-start; padding: 14px 18px 26px; }
       .b-doc .doccard { padding: 0; }
+      .b-doc .doccard-body p { margin-bottom: 8px; }
+      .b-doc .doc-inline { margin: 4px 0 8px; }
       /* Composer — the card itself is the prompt bar: prompt forming up top, a
          footer with the ✦ suggestion chip and the send button (which runs off
          the right edge). */
       .b-composer { flex-direction: column; justify-content: space-between; align-items: stretch; padding: 16px 18px; gap: 12px; }
 
-      /* The complex flow diagram (real Mermaid SVG), wide across the bottom. */
-      .b-flow { background: #0b0b0e; align-items: center; justify-content: center; padding: 16px 20px; }
-      .b-flow .flow-svg { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; }
+      /* The complex flow diagram (real Mermaid SVG). Fill the card HEIGHT so the
+         boxes read at a proportional size; the wide flow runs off the right edge
+         (clipped by the canvas), consistent with the peeking-board look. */
+      .b-flow { background: #0b0b0e; align-items: center; justify-content: flex-start; padding: 16px 0 16px 20px; overflow: hidden; }
+      .b-flow .flow-svg { height: 100%; width: auto; max-width: none; max-height: 100%; display: block; }
 
       /* Prompt-bar internals. */
       .pb-input { color: var(--ink); font-size: 15.5px; line-height: 1.4; letter-spacing: -0.01em; }
@@ -369,11 +373,11 @@
       .sug-shape { color: var(--ink); font-weight: 700; min-width: 66px; text-align: left; transition: opacity 0.22s var(--ease), transform 0.22s var(--ease); }
       .sug-shape.swap { opacity: 0; transform: translateY(-4px); }
 
-      /* Subtle brushed-metal variety on a couple of cards. */
+      /* Very subtle brushed-metal sheen for variety (dashboard + doc). */
       .bcard.metallic {
         background:
-          linear-gradient(135deg, rgba(255,255,255,0.07), rgba(255,255,255,0) 42%),
-          linear-gradient(160deg, #292930 0%, #17171b 55%, #201f26 100%);
+          linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0) 46%),
+          linear-gradient(160deg, #1a1a20 0%, #101014 58%, #17171c 100%);
         border-color: var(--hairline-2);
       }
 
@@ -597,7 +601,7 @@
           <div class="board-canvas reveal" role="img" aria-label="A Jarwiz canvas — a viewport onto a board where a dashboard, prototype, comparison table, research doc, the composer, and a flow diagram run off every edge.">
            <div class="board-inner">
             <!-- top-left: a table card, its top running off the canvas -->
-            <div class="bcard b-table metallic">
+            <div class="bcard b-table">
               <table class="doccard-tbl">
                 <thead><tr><th>CRM</th><th>Price /mo</th><th>Best for</th></tr></thead>
                 <tbody>
@@ -611,7 +615,7 @@
             </div>
 
             <!-- left: a live dashboard card (portrait, built as real HTML) -->
-            <div class="bcard b-dash">
+            <div class="bcard b-dash metallic">
               <div class="minidash">
                 <div class="md-kpis">
                   <div class="md-kpi"><span>Total revenue</span><b>$890.2k</b><i>+18%</i></div>
