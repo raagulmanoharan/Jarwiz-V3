@@ -8,6 +8,10 @@ body,
 #root {
   margin: 0;
   height: 100%;
+  /* The app is a fixed, full-viewport canvas — nothing should ever scroll the
+     document (any scrollable surface owns its own overflow). This also keeps a
+     stray scrollbar out of the embedded marketing iframes. */
+  overflow: hidden;
   font-family: var(--jz-font-ui);
   color: var(--jz-ink-900);
   -webkit-font-smoothing: antialiased;
@@ -2293,6 +2297,30 @@ body,
   animation: jz-cell-in var(--jz-dur-fast) var(--jz-ease-out);
 }
 
+/* A cell being regenerated (hero showreel): a soft white highlight ON the real
+   cell — always pixel-aligned. The value text stays fully legible; only the
+   border/glow breathes. */
+.jz-table-cell--flash {
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  animation: jz-cell-flash 0.85s ease-in-out infinite;
+}
+@keyframes jz-cell-flash {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.35), 0 0 14px rgba(255, 255, 255, 0.14);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.7), 0 0 24px rgba(255, 255, 255, 0.36);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-table-cell--flash {
+    animation: none;
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.5);
+  }
+}
+
 @keyframes jz-cell-in {
   from {
     opacity: 0.3;
@@ -2701,6 +2729,62 @@ body,
   pointer-events: none;
 }
 
+/* A soft white glow around the PDF card while Jarwiz parses it — gently breathes
+   to read as "processing". Anchored in viewport space over the card. */
+.jz-parse-halo {
+  position: absolute;
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, 0.45),
+    0 0 34px 8px rgba(255, 255, 255, 0.22);
+  animation: jz-parse-glow 1.7s ease-in-out infinite;
+  z-index: 304;
+}
+@keyframes jz-parse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.3), 0 0 24px 5px rgba(255, 255, 255, 0.14);
+  }
+  50% {
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.62), 0 0 46px 12px rgba(255, 255, 255, 0.34);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-parse-halo {
+    animation: none;
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.4), 0 0 30px 6px rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* A quick click ripple where the scripted cursor "clicks" — a ring that expands
+   and fades once. The point is the ring's centre. */
+.jz-click-ring {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  border: 2px solid var(--jz-ink-900);
+  opacity: 0;
+  animation: jz-click-pulse 0.5s var(--jz-ease-out) forwards;
+  z-index: 311;
+}
+@keyframes jz-click-pulse {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(3.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-click-ring {
+    animation: none;
+  }
+}
+
 /* Use-cases overlay: the board scrolls under a non-interactive layer; only the
    Next/Back controller in the corner takes pointer events. */
 .jz-uc {
@@ -2770,10 +2854,15 @@ body,
     opacity var(--jz-dur-slow) var(--jz-ease-out);
 }
 .jz-avatar--you .jz-cursor-arrow {
-  fill: #2f6df6;
+  fill: var(--jz-danger);
 }
 .jz-avatar--you .jz-avatar-badge {
-  background: #2f6df6;
+  background: var(--jz-danger);
+}
+/* "You" stays fully opaque even at rest (no status) — the idle badge fade
+   applies to Jarwiz's ambient presence, not the scripted Maker cursor. */
+.jz-avatar--you.jz-avatar--idle .jz-avatar-badge {
+  opacity: 1;
 }
 
 @keyframes jz-menu-in {

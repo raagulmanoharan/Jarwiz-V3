@@ -25,7 +25,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Box, createShapeId, useEditor, type TLShapeId } from 'tldraw';
 import { Sparkles, Wand2, Scale } from 'lucide-react';
-import { readingQuips } from '../agents/jarwizLife';
 import { setShapeTitle } from '../shapes/shapeTitle';
 import { PROV_META_KEY } from '../ask/useAsk';
 
@@ -162,6 +161,11 @@ export function EmbedShowreel() {
   const [you, setYou] = useState<Cursor>(HIDDEN);
   const [jz, setJz] = useState<Cursor>(HIDDEN);
   const [comment, setComment] = useState<{ x: number; y: number; open: boolean } | null>(null);
+  // A soft white glow drawn over the PDF card while Jarwiz parses it.
+  const [parse, setParse] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  // A one-shot click ripple at a point (keyed so each click replays the animation).
+  const [click, setClick] = useState<{ x: number; y: number; n: number } | null>(null);
+  const clickSeq = useRef(0);
   const reduce =
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -278,122 +282,135 @@ export function EmbedShowreel() {
       editor.updateShape({ id: ids.current.table, type: 'table-card', props: { rows: rowsWith(price) } });
     };
 
+    // Fire a click ripple at a viewport point.
+    const clickAt = (p: { x: number; y: number }) => {
+      clickSeq.current += 1;
+      setClick({ x: p.x, y: p.y, n: clickSeq.current });
+    };
+    // The PDF card's rectangle in viewport space, for the soft parse glow.
+    const pdfHaloRect = () => {
+      if (!ids.current) return null;
+      const b = editor.getShapePageBounds(ids.current.pdf);
+      if (!b) return null;
+      const tl = editor.pageToViewport({ x: b.x, y: b.y });
+      const br = editor.pageToViewport({ x: b.x + b.w, y: b.y + b.h });
+      return { left: tl.x, top: tl.y, width: br.x - tl.x, height: br.y - tl.y };
+    };
+    // Flag/unflag the stale price cell on the REAL table shape (Pipedrive row,
+    // Price/seat column) via meta — the highlight is drawn on the actual cell, so
+    // it's always pixel-aligned; no floating overlay.
+    const flashCell = (on: boolean) => {
+      if (!ids.current) return;
+      const cur = editor.getShape(ids.current.table);
+      if (!cur) return;
+      editor.updateShape({
+        id: ids.current.table,
+        type: 'table-card',
+        meta: { ...cur.meta, jzFlashCell: on ? [1, 2] : null },
+      } as Parameters<typeof editor.updateShape>[0]);
+    };
+
     // ── One pass of the film ────────────────────────────────────────────────
+    // The Maker drops the PDF; Jarwiz flies in, selects the card and scans it
+    // (a soft white glow, ~5s), travels to the table and flags the stale cell —
+    // the comment is pinned right where the cursor lands. The Maker's cursor
+    // opens the comment and clicks "Fix it with Jarwiz"; then (no Jarwiz cursor)
+    // the real cell highlights and its value regenerates inline. The PDF is
+    // removed just before the pull-back so the wide board matches the start.
     const run = () => {
       clearPdf();
       setPrice(STALE);
+      flashCell(false);
       setComment(null);
+      setParse(null);
+      setClick(null);
       setYou(HIDDEN);
       setJz(HIDDEN);
       // Keep the table AND the flow diagram selected for the WHOLE loop so both
-      // dotted provenance webs are always drawn — table←sources and
-      // diagram←sketch — in the wide establishing shot and the zoomed-in views
-      // alike. (Selection chrome is transparent in this build, so only the
-      // lineage shows.)
+      // dotted provenance webs stay drawn (selection chrome is transparent).
       if (ids.current) editor.select(ids.current.table, ids.current.diagram);
       panTo(FRAME.wide, 0);
 
-      const pdfC = () => vp(L.pdf.x + L.pdf.w * 0.24, L.pdf.y + L.pdf.h * 0.42);
-      const tableCorner = () => vp(L.table.x + L.table.w, L.table.y);
-      const priceCell = () => vp(L.table.x + L.table.w * 0.46, L.table.y + L.table.h * 0.35);
+      const pdfC = () => vp(L.pdf.x + L.pdf.w * 0.3, L.pdf.y + L.pdf.h * 0.42);
+      const priceCell = () => vp(L.table.x + L.table.w * 0.46, L.table.y + L.table.h * 0.33);
+      // Where the comment gets pinned — captured when Jarwiz flags the cell.
+      let commentPt = { x: 0, y: 0 };
 
-      // 1) WIDE: let the busy board breathe (the lineage is already drawn — the
-      //    table stays selected the whole loop).
+      // 1) A brief wide beat, then push in on the drop zone; the Maker drops the PDF.
+      after(900, () => panTo(FRAME.drop, 1300));
+      after(2500, () => { const p = pdfC(); setYou({ x: p.x, y: p.y + 170, visible: true, status: 'dropping evidence…' }); });
+      after(3200, () => { const p = pdfC(); setYou({ x: p.x, y: p.y + 44, visible: true, status: 'dropping evidence…' }); });
+      after(3700, () => { dropPdf(); const p = pdfC(); clickAt(p); setYou({ x: p.x + 26, y: p.y + 18, visible: true, status: null }); });
+      after(4300, () => setYou(HIDDEN));
 
-      // 2) Push in on the drop zone; the Maker drops the PDF.
-      after(3400, () => panTo(FRAME.drop, 1100));
-      after(4500, () => {
-        const p = pdfC();
-        setYou({ x: p.x, y: p.y + 150, visible: true, status: null });
-      });
-      after(5100, () => {
-        const p = pdfC();
-        setYou({ x: p.x, y: p.y, visible: true, status: 'dropping a file…' });
-      });
-      after(5700, () => {
-        dropPdf();
-        const p = pdfC();
-        setYou({ x: p.x + 30, y: p.y + 20, visible: true, status: null });
-      });
-      after(6300, () => setYou((c) => ({ ...c, visible: false })));
+      // 2) Jarwiz flies in, selects the card, and scans it (~5s soft glow) while
+      //    it parses the evidence.
+      after(4500, () => { const p = pdfC(); setJz({ x: p.x, y: p.y, visible: true, status: 'reading the evidence…' }); });
+      after(5000, () => setParse(pdfHaloRect()));
+      after(6800, () => setJz((c) => ({ ...c, status: 'cross-checking the prices…' })));
+      after(8600, () => setJz((c) => ({ ...c, status: 'found a mismatch…' })));
+      after(10000, () => setParse(null));
 
-      // 3) Jarwiz flies over and reads the evidence.
-      const quips = readingQuips('pdf');
-      after(6400, () => {
-        const p = pdfC();
-        setJz({ x: p.x, y: p.y, visible: true, status: quips[0] ?? 'reading…' });
-      });
-      [1, 2, 3].forEach((k) =>
-        after(6400 + k * 900, () => {
-          const p = pdfC();
-          setJz({ x: p.x + (k % 2 ? 26 : -26), y: p.y + (k % 2 ? 30 : -22), visible: true, status: quips[k % quips.length] ?? 'reading…' });
-        }),
-      );
+      // 3) Camera follows Jarwiz to the table; it flags the stale cell — the
+      //    comment is pinned right where the cursor lands, then opens.
+      after(10100, () => { panTo(FRAME.table, 1400); setJz((c) => ({ ...c, status: 'following the trail…' })); });
+      after(11700, () => { const c = priceCell(); setJz({ x: c.x, y: c.y, visible: true, status: 'flagging it…' }); });
+      after(12500, () => { const c = priceCell(); commentPt = c; clickAt(c); setComment({ x: c.x, y: c.y, open: false }); });
+      after(13000, () => setJz(HIDDEN));
 
-      // 4) Camera FOLLOWS Jarwiz to the table; it pins the discrepancy.
-      after(9400, () => {
-        panTo(FRAME.table, 1250); // the hero follow — a deliberate lateral glide
-        setJz((c) => ({ ...c, status: 'following the trail…' }));
-      });
-      after(10800, () => {
-        const c = tableCorner(); // pan has settled — anchor is stable
-        setJz({ x: c.x - 14, y: c.y + 16, visible: true, status: 'spotting a discrepancy…' });
-        setComment({ x: c.x, y: c.y, open: false });
-      });
-      after(11400, () => {
-        setComment((s) => (s ? { ...s, open: true } : s));
-        setJz(HIDDEN);
-      });
+      // 4) The Maker's cursor comes over, opens the comment, and clicks
+      //    "Fix it with Jarwiz".
+      after(13600, () => setYou({ x: commentPt.x + 6, y: commentPt.y + 10, visible: true, status: null }));
+      after(14300, () => { clickAt(commentPt); setComment((s) => (s ? { ...s, open: true } : s)); });
+      after(15400, () => { const b = rectCenter(fixBtnRef.current); const t = b ?? { x: commentPt.x + 40, y: commentPt.y + 150 }; setYou({ x: t.x, y: t.y, visible: true, status: null }); });
+      after(16200, () => { const b = rectCenter(fixBtnRef.current); if (b) clickAt(b); });
+      after(16600, () => setYou(HIDDEN));
 
-      // 5) You click the fix; the cell backspaces then STREAMS the correction.
-      after(12150, () => {
-        const b = rectCenter(fixBtnRef.current);
-        const c = tableCorner();
-        const target = b ?? { x: c.x + 40, y: c.y + 120 };
-        setYou({ x: target.x, y: target.y, visible: true, status: null });
-      });
-      after(13200, () => {
-        const p = priceCell();
-        setJz({ x: p.x, y: p.y, visible: true, status: 'fixing…' });
-      });
-      after(13600, () => setComment(null));
+      // 5) No Jarwiz cursor: the comment closes, the real cell highlights, and the
+      //    corrected value regenerates inline (backspace, then stream in).
+      after(16600, () => { setComment(null); flashCell(true); });
       const STREAM = ['$1', '$', '', '$', '$1', TRUE];
-      const STREAM_STEP = 95;
-      STREAM.forEach((v, i) => after(13800 + i * STREAM_STEP, () => setPrice(v)));
-      const streamEnd = 13800 + STREAM.length * STREAM_STEP;
-      after(streamEnd + 150, () => {
-        const p = priceCell();
-        setJz({ x: p.x, y: p.y, visible: true, status: 'fixed ✓' });
-        setYou((c) => ({ ...c, visible: false }));
-      });
+      const STREAM_STEP = 120;
+      STREAM.forEach((v, i) => after(16900 + i * STREAM_STEP, () => setPrice(v)));
+      const streamEnd = 16900 + STREAM.length * STREAM_STEP;
+      after(streamEnd + 800, () => flashCell(false));
 
-      // 6) Settle on the fixed result, then a slow, graceful pull-back to the
-      //    whole board — "here's everything you built" — and loop.
-      after(16400, () => setJz((c) => ({ ...c, visible: false })));
-      after(16900, () => panTo(FRAME.wide, 1400));
-      after(19000, run);
+      // 6) Settle, hide the PDF BEFORE the pull-back (so the wide board matches the
+      //    loop's start), then a slow pull-back and loop.
+      after(streamEnd + 1600, () => clearPdf());
+      after(streamEnd + 1900, () => panTo(FRAME.wide, 1500));
+      after(streamEnd + 4200, run);
     };
 
     seed();
-    after(500, run);
+    after(300, run);
     return clearTimers;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
 
   return (
     <div ref={rootRef} className="jz-showreel" aria-hidden="true">
+      {parse ? (
+        <div
+          className="jz-parse-halo"
+          style={{ left: parse.left, top: parse.top, width: parse.width, height: parse.height }}
+        />
+      ) : null}
       <ScriptedCursor cursor={you} label="You" you />
       <ScriptedCursor cursor={jz} label="Jarwiz" />
       {comment ? <ShowreelComment pos={comment} open={comment.open} fixRef={fixBtnRef} /> : null}
+      {click ? <span key={click.n} className="jz-click-ring" style={{ left: click.x, top: click.y }} /> : null}
     </div>
   );
 }
 
 function ScriptedCursor({ cursor, label, you = false }: { cursor: Cursor; label: string; you?: boolean }) {
+  // The Maker cursor is simply "You" — the muttering quips are Jarwiz's alone.
+  const status = you ? null : cursor.status;
   return (
     <div
       className={`jz-avatar jz-avatar--scripted jz-avatar--jarwiz${you ? ' jz-avatar--you' : ''}${
-        cursor.status ? '' : ' jz-avatar--idle'
+        status ? '' : ' jz-avatar--idle'
       }${cursor.visible ? '' : ' jz-avatar--hidden'}`}
       style={{ transform: `translate(${cursor.x - 4}px, ${cursor.y - 3}px)` }}
     >
@@ -402,9 +419,9 @@ function ScriptedCursor({ cursor, label, you = false }: { cursor: Cursor; label:
       </svg>
       <div className="jz-avatar-badge">
         <span className="jz-avatar-name">{label}</span>
-        {cursor.status ? (
-          <span key={cursor.status} className="jz-avatar-status">
-            {cursor.status}
+        {status ? (
+          <span key={status} className="jz-avatar-status">
+            {status}
           </span>
         ) : null}
       </div>
@@ -444,7 +461,7 @@ function ShowreelComment({
           <div className="jz-comment-body">{COMMENT_BODY}</div>
           <div className="jz-comment-actions">
             <button ref={fixRef} className="jz-comment-fix">
-              <Wand2 size={13} /> Let Jarwiz fix it
+              <Wand2 size={13} /> Fix it with Jarwiz
             </button>
             <button className="jz-comment-dismiss">Dismiss</button>
           </div>
