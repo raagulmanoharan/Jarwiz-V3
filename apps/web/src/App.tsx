@@ -15,6 +15,14 @@ import { ToolRail } from './ui/ToolRail';
 // re-enabled toolbar / style panel render without reaching cdn.tldraw.com — which
 // a self-hosted product (and restricted networks) can't depend on.
 const tldrawAssetUrls = getAssetUrlsByImport();
+// tldraw license key. This is a PUBLIC, domain-locked, signature-verified key —
+// tldraw ships it in the client bundle by design, so it's safe to commit. With a
+// valid (evaluation) license tldraw runs fully "licensed": no watermark, and off
+// the unlicensed-production code path. An env override lets us swap it at build
+// time without a code change.
+const TLDRAW_LICENSE_KEY =
+  import.meta.env.VITE_TLDRAW_LICENSE_KEY ??
+  'tldraw-2026-10-15/WyJxSWVWdzRkOCIsWyIqIl0sMTYsIjIwMjYtMTAtMTUiXQ.kbXeMnnbA7b3yl5tzrPUQFUMHCIAXwux32h1OB1m53DMcWkX5L3g0RRdvbg6cnfDP+ucDho9QfIy/4d3YkDrnA';
 import { useSync } from '@tldraw/sync';
 import { PromptBar } from './ask/PromptBar';
 import { CardActionBar } from './ask/CardActionBar';
@@ -250,6 +258,7 @@ function SyncedBoard({ room }: { room: string }) {
   return (
     <Tldraw
       store={store}
+      licenseKey={TLDRAW_LICENSE_KEY}
       assetUrls={tldrawAssetUrls}
       shapeUtils={cardShapeUtils}
       components={components}
@@ -277,6 +286,7 @@ function LocalBoard() {
   return (
     <Tldraw
       key={board?.id ?? 'legacy'}
+      licenseKey={TLDRAW_LICENSE_KEY}
       persistenceKey={persistenceKey}
       assetUrls={tldrawAssetUrls}
       shapeUtils={cardShapeUtils}
