@@ -274,18 +274,19 @@ export function EmbedShowreel() {
       setComment(null);
       setYou(HIDDEN);
       setJz(HIDDEN);
-      editor.selectNone();
+      // Keep the comparison table selected for the WHOLE loop so its dotted
+      // provenance lineage is always drawn — in the wide establishing shot and
+      // in the zoomed-in views alike. (Selection chrome is transparent in this
+      // build, so nothing but the lineage shows.)
+      if (ids.current) editor.select(ids.current.table);
       panTo(FRAME.wide, 0);
 
       const pdfC = () => vp(L.pdf.x + L.pdf.w * 0.24, L.pdf.y + L.pdf.h * 0.42);
       const tableCorner = () => vp(L.table.x + L.table.w, L.table.y);
       const priceCell = () => vp(L.table.x + L.table.w * 0.46, L.table.y + L.table.h * 0.35);
 
-      // 1) WIDE: let the busy board breathe, then flash the provenance lineage.
-      after(900, () => {
-        if (ids.current) editor.select(ids.current.table);
-      });
-      after(3000, () => editor.selectNone());
+      // 1) WIDE: let the busy board breathe (the lineage is already drawn — the
+      //    table stays selected the whole loop).
 
       // 2) Push in on the drop zone; the Maker drops the PDF.
       after(3400, () => panTo(FRAME.drop, 950));
