@@ -27,7 +27,6 @@ import { Box, createShapeId, useEditor, type TLShapeId } from 'tldraw';
 import { Sparkles, Wand2, Scale } from 'lucide-react';
 import { readingQuips } from '../agents/jarwizLife';
 import { setShapeTitle } from '../shapes/shapeTitle';
-import { createFlowEdge } from '../agents/flowLayout';
 import { PROV_META_KEY } from '../ask/useAsk';
 
 // ── The canned research board ──────────────────────────────────────────────
@@ -37,10 +36,10 @@ const STALE = '$14';
 const TRUE = '$19';
 
 const LINKS = [
-  { url: 'https://www.g2.com/categories/crm', siteName: 'G2', title: 'Best CRM Software in 2026', description: '1,400+ verified reviews across 180 products, scored on satisfaction.' },
-  { url: 'https://saasledger.com/crm-pricing-2026', siteName: 'SaaS Ledger', title: 'The 2026 CRM Pricing Teardown', description: 'Per-seat list prices — what changed this year across the majors.' },
-  { url: 'https://kalungi.com/pipedrive-vs-attio', siteName: 'Kalungi', title: 'Pipedrive vs. Attio vs. HubSpot', description: 'A hands-on comparison for small B2B sales teams.' },
-  { url: 'https://nutshell.com/crm-buyers-guide', siteName: 'Nutshell', title: 'CRM Buyer’s Guide (2026)', description: 'How to choose your first real CRM without overpaying.' },
+  { url: 'https://www.g2.com/categories/crm', siteName: 'G2', title: 'Best CRM Software in 2026', description: 'Ranked across 180 products.' },
+  { url: 'https://saasledger.com/crm-pricing-2026', siteName: 'SaaS Ledger', title: 'The 2026 CRM Pricing Teardown', description: 'Per-seat list prices for 2026.' },
+  { url: 'https://kalungi.com/pipedrive-vs-attio', siteName: 'Kalungi', title: 'Pipedrive vs. Attio vs. HubSpot', description: 'A comparison for small teams.' },
+  { url: 'https://nutshell.com/crm-buyers-guide', siteName: 'Nutshell', title: 'CRM Buyer’s Guide (2026)', description: 'How to choose without overpaying.' },
 ];
 
 const TABLE = {
@@ -74,10 +73,19 @@ const DOC_TEXT =
 
 const NOTES_DOC =
   '## Research notes\n\n' +
-  '- Shortlisted 5 vendors from G2 + the pricing teardown.\n' +
-  '- Team is 4 seats today, planning ~12 by Q4.\n' +
-  '- Must-have: clean pipeline view and an open API.\n' +
-  '- Budget ceiling: **$25 / seat**.';
+  '**Sources reviewed**\n' +
+  '- G2 — *Best CRM Software 2026*, 1,400+ reviews [1]\n' +
+  '- SaaS Ledger — *2026 Pricing Teardown* [2]\n' +
+  '- Kalungi — *Pipedrive vs. Attio vs. HubSpot* [3]\n' +
+  '- Nutshell — *CRM Buyer’s Guide* [4]\n\n' +
+  '**Requirements**\n' +
+  '- Team: 4 seats today → ~12 by Q4.\n' +
+  '- Must-have: clean pipeline view + open API.\n' +
+  '- Budget ceiling: **$25 / seat / mo**.\n\n' +
+  '**Open questions**\n' +
+  '- Pipedrive 2026 list price — confirm vs. teardown [2].\n' +
+  '- Seat floors on annual plans — ask sales.\n\n' +
+  '_Last updated 4 Jan 2026 · 6 sources cited_';
 
 const DIAGRAM = `flowchart TD
   A[Shortlist CRMs] --> B{Free tier?}
@@ -85,9 +93,18 @@ const DIAGRAM = `flowchart TD
   B -->|No| D[Trial Pipedrive]
   C --> E[Compare pricing]
   D --> E
-  E --> F{Under budget?}
-  F -->|Yes| G[Decide]
-  F -->|No| D`;
+  E --> F{Under $25/seat?}
+  F -->|No| G[Negotiate]
+  G --> D
+  F -->|Yes| H{Open API?}
+  H -->|No| I[Flag risk]
+  H -->|Yes| J{Scales to 15 seats?}
+  I --> J
+  J -->|No| D
+  J -->|Yes| K[Shortlist ✓]
+  K --> L{Team approves?}
+  L -->|No| A
+  L -->|Yes| M[Decide]`;
 
 const STICKIES = ['Double-check the 2026 pricing — sheet due Friday', 'Ask sales about seat floors before we commit'];
 
@@ -96,23 +113,29 @@ const COMMENT_BODY = `The 2026 pricing sheet lists Pipedrive Essential at ${TRUE
 // Fixed page-space layout — a sprawling workspace. The board is built ONCE; the
 // loop only drops/removes the PDF and streams the one cell, so the heavy shapes
 // (mermaid, link previews) render a single time.
+// Generous spacing: link- and doc-cards auto-grow to fit their content, so we
+// leave wide gutters between every card and pick heights that comfortably fit
+// the text — otherwise a grown card would overlap its neighbour.
 const L = {
+  // Staggered, not a rigid grid — offset x/y so the sources feel scattered like
+  // a real board. Compact heights (no media band now) keep them clear of the
+  // feature matrix below.
   links: [
-    { x: -780, y: -460, w: 250, h: 160 },
-    { x: -500, y: -460, w: 250, h: 160 },
-    { x: -780, y: -270, w: 250, h: 160 },
-    { x: -500, y: -270, w: 250, h: 160 },
+    { x: -980, y: -540, w: 270, h: 110 },
+    { x: -660, y: -585, w: 270, h: 110 },
+    { x: -1010, y: -360, w: 270, h: 110 },
+    { x: -640, y: -395, w: 270, h: 110 },
   ],
-  table: { x: 0, y: 0, w: 600, h: 330 },
-  table2: { x: -780, y: -30, w: 480, h: 290 },
-  doc: { x: 700, y: 0, w: 320, h: 300 },
-  notes: { x: 700, y: 340, w: 320, h: 230 },
-  diagram: { x: 0, y: 400, w: 560, h: 320 },
+  table2: { x: -980, y: -150, w: 470, h: 270 },
+  table: { x: 0, y: -200, w: 600, h: 330 },
+  doc: { x: 770, y: -210, w: 320, h: 420 },
+  notes: { x: 770, y: 300, w: 340, h: 400 },
+  diagram: { x: 30, y: 220, w: 600, h: 430 },
   stickies: [
-    { x: 640, y: -250, w: 210, h: 150 },
-    { x: -240, y: 430, w: 220, h: 150 },
+    { x: 780, y: -360, w: 220, h: 110 },
+    { x: -280, y: 560, w: 230, h: 140 },
   ],
-  pdf: { x: 1120, y: 20, w: 300, h: 420 },
+  pdf: { x: 1200, y: -200, w: 300, h: 420 },
 };
 
 const PDF_URL = `${import.meta.env.BASE_URL}evidence-pricing.pdf`;
@@ -159,9 +182,9 @@ export function EmbedShowreel() {
 
     // Camera framings the film pans between.
     const FRAME = {
-      wide: new Box(-820, -500, 2380, 1280), // the whole busy board
-      drop: new Box(560, -140, 1040, 640), // pushed in on the PDF + table's right
-      table: new Box(-180, -150, 960, 600), // settled on the comparison table
+      wide: new Box(-1030, -600, 2560, 1330), // the whole busy board
+      drop: new Box(660, -260, 1040, 660), // pushed in on the PDF + table's right
+      table: new Box(-190, -260, 980, 600), // settled on the comparison table
     };
     const panTo = (b: Box, ms: number) =>
       editor.zoomToBounds(b, { inset: 40, animation: { duration: reduce ? 0 : ms } });
@@ -214,20 +237,14 @@ export function EmbedShowreel() {
       const t2 = editor.getShape(table2);
       if (t2) setShapeTitle(editor, t2, 'Feature matrix');
 
-      // Real connector arrows — the visible edges that make it read as one
-      // connected piece of work.
-      createFlowEdge(editor, linkIds[0]!, table);
-      createFlowEdge(editor, linkIds[1]!, table);
-      createFlowEdge(editor, linkIds[2]!, table2);
-      createFlowEdge(editor, linkIds[3]!, table2);
-      createFlowEdge(editor, table2, table);
-      createFlowEdge(editor, table, doc);
-      createFlowEdge(editor, table, diagram);
-
-      // Provenance lineage — the table was built FROM the sources; the doc FROM
-      // the table. Selecting the table draws both hops with the product's lines.
+      // Connections are shown as the product's own PROVENANCE lineage (the subtle
+      // dotted hairlines), not solid connector arrows: the table was built FROM
+      // the four sources and the feature matrix; the recommendation and notes
+      // were built FROM the table. Selecting the table draws every hop as a
+      // dotted line, which is the whole web of work in one gesture.
       editor.updateShape({ id: table, type: 'table-card', meta: { [PROV_META_KEY]: [...linkIds, table2] } });
       editor.updateShape({ id: doc, type: 'doc-card', meta: { [PROV_META_KEY]: [table] } });
+      editor.updateShape({ id: notes, type: 'doc-card', meta: { [PROV_META_KEY]: [table] } });
 
       panTo(FRAME.wide, 0);
     };

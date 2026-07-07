@@ -143,7 +143,10 @@ function LinkCardBody(props: LinkCardShape['props']) {
 
   return (
     <div className="jz-card">
-      <LinkCardMedia image={image} url={url} themeColor={themeColor} siteName={siteName} />
+      {/* Only show the media band when there's a real thumbnail — an empty
+          placeholder band is just noise, so a preview with no image reads as a
+          clean, compact link (owner call, 2026-07-07). */}
+      {image ? <LinkCardMedia image={image} url={url} themeColor={themeColor} siteName={siteName} /> : null}
       <div className="jz-link-body">
         <div className="jz-link-title jz-clamp-2">{title || domain}</div>
         {description ? <div className="jz-link-desc jz-clamp-3">{description}</div> : null}
