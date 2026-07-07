@@ -8,6 +8,7 @@ import {
   toggleSidePanel,
 } from './sidePanelStore';
 import { UltraThink } from './UltraThink';
+import { canTidyBoard, useTidyBoard } from '../agents/tidyBoard';
 
 /**
  * Canvas chrome — top bar (Flora-aligned).
@@ -37,6 +38,7 @@ export function Topbar() {
       </div>
       <div className="jz-topbar-right">
         <UltraThink />
+        <TidyButton />
         <ZoomDropdown />
         <ThemeToggleButton />
       </div>
@@ -171,6 +173,42 @@ function LastSaved() {
     <span className="jz-last-saved">
       {status === 'saving' ? 'Saving…' : 'Autosaved'}
     </span>
+  );
+}
+
+/**
+ * Global tidy — one tap masonry-packs every card on the board in place (gaps
+ * closed, columns preserved; see agents/tidyBoard.ts). Sits beside the zoom
+ * controls. Dims to a disabled state when there's nothing to tidy (<2 cards),
+ * so it reads as "available only when it'd do something".
+ */
+function TidyButton() {
+  const editor = useEditor();
+  const { tidyBoard } = useTidyBoard();
+  // Track card count reactively so the button enables/disables as cards land.
+  const enabled = useValue('topbar-can-tidy', () => canTidyBoard(editor), [editor]);
+  return (
+    <button
+      className="jz-tidy-btn"
+      onClick={() => tidyBoard(undefined, { frame: true })}
+      disabled={!enabled}
+      title="Tidy up the board"
+      aria-label="Tidy up the board"
+    >
+      <TidyGlyph />
+    </button>
+  );
+}
+
+/** Masonry mark — three columns of differing heights, the "tidy" idea at a glance. */
+function TidyGlyph() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="3" width="6" height="10" rx="1.5" />
+      <rect x="3" y="15" width="6" height="6" rx="1.5" />
+      <rect x="15" y="3" width="6" height="6" rx="1.5" />
+      <rect x="15" y="11" width="6" height="10" rx="1.5" />
+    </svg>
   );
 }
 

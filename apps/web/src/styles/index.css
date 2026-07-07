@@ -939,6 +939,32 @@ body,
   background: var(--jz-hairline);
 }
 
+/* Global tidy button — icon button beside the zoom control (masonry the board). */
+.jz-tidy-btn {
+  pointer-events: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--jz-hairline);
+  border-radius: 50%;
+  cursor: pointer;
+  background: var(--jz-surface-raised);
+  color: var(--jz-ink-700);
+  box-shadow: var(--jz-e1);
+  transition: color var(--jz-dur-fast) var(--jz-ease-out), transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-tidy-btn:hover:not(:disabled) {
+  color: var(--jz-ink-900);
+  transform: translateY(-1px);
+}
+.jz-tidy-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 /* Theme toggle — single sun/moon icon button with a gentle flip animation. */
 .jz-theme-toggle {
   pointer-events: auto;
