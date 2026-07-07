@@ -36,9 +36,10 @@ import { cardShapeUtils } from './shapes';
 import { BoardEntry } from './boards/BoardEntry';
 import { getRestoreError, isRestoring, subscribeRestore } from './boards/backup';
 import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
-import { isDemo, isEmbed } from './boards/demo';
+import { isDemo, isEmbed, isUseCases } from './boards/demo';
 import { seedDemoBoard } from './boards/demoSeed';
 import { EmbedShowreel } from './ui/EmbedShowreel';
+import { EmbedUseCases } from './ui/EmbedUseCases';
 import { CardTitleTag } from './ui/CardTitleTag';
 import { DocFocusOverlay } from './ui/DocFocusOverlay';
 import { CardFocusOverlay } from './ui/CardFocusOverlay';
@@ -106,6 +107,16 @@ function EmbedOverlay() {
   );
 }
 
+/** The use-cases overlay (?usecases=1): one board of four persona workspaces
+ *  plus the Next/Back camera controller. */
+function UseCasesOverlay() {
+  return (
+    <>
+      <Safe label="EmbedUseCases"><EmbedUseCases /></Safe>
+    </>
+  );
+}
+
 /**
  * Calm the tldraw chrome. The canvas pivot (docs/CANVAS-PIVOT.md, P0) re-enables
  * the primitive toolbar — curated to FigJam essentials — and the style panel, so
@@ -144,6 +155,13 @@ const components: TLComponents = {
 const embedComponents: TLComponents = {
   ...components,
   InFrontOfTheCanvas: EmbedOverlay,
+  StylePanel: null,
+};
+
+/** Use-cases canvas: the persona-workspaces overlay, chrome hidden like embed. */
+const useCasesComponents: TLComponents = {
+  ...components,
+  InFrontOfTheCanvas: UseCasesOverlay,
   StylePanel: null,
 };
 
@@ -186,15 +204,14 @@ const handleMount = (editor: Editor) => {
 
   // Embedded demo: land the visitor on content. ?embed=1 is the minified
   // live-preview (one card + composer); ?demo=1 is the full seeded board.
-  if (isEmbed()) {
-    // The EmbedComposer owns the canvas here — it auto-plays the idea→board
-    // transformation on load, then hands off to the visitor — so we don't seed
-    // anything up front.
+  if (isEmbed() || isUseCases()) {
+    // The overlay (EmbedShowreel / EmbedUseCases) owns the canvas here and seeds
+    // it — so we don't seed anything up front.
     // The preview lives in an iframe on the marketing page. Without this, the
     // canvas swallows the scroll wheel and zooms the board out of sight ("it
     // closes when I scroll on it"). Turn off wheel + drag camera moves so the
     // page scrolls normally over the preview and the board stays framed;
-    // programmatic reframing (the composer's autoplay) still works.
+    // programmatic reframing (the overlay's camera control) still works.
     editor.setCameraOptions({ ...editor.getCameraOptions(), wheelBehavior: 'none', panSpeed: 0 });
   } else if (isDemo()) seedDemoBoard(editor);
 };
@@ -256,7 +273,7 @@ function LocalBoard() {
       persistenceKey={persistenceKey}
       assetUrls={tldrawAssetUrls}
       shapeUtils={cardShapeUtils}
-      components={isEmbed() ? embedComponents : components}
+      components={isUseCases() ? useCasesComponents : isEmbed() ? embedComponents : components}
       onMount={handleMount}
     />
   );

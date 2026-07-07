@@ -185,10 +185,13 @@ export function EmbedShowreel() {
     };
 
     // Camera framings the film pans between.
+    // Three distinct framings. drop and table are tight and DON'T overlap, so
+    // travelling between them reads as a real camera pan (following Jarwiz across
+    // the board), not an imperceptible zoom nudge.
     const FRAME = {
       wide: new Box(-1030, -600, 2560, 1330), // the whole busy board
-      drop: new Box(660, -260, 1040, 660), // pushed in on the PDF + table's right
-      table: new Box(-190, -260, 980, 600), // settled on the comparison table
+      drop: new Box(760, -200, 900, 620), // pushed in on the doc + dropped PDF (right side)
+      table: new Box(-150, -180, 900, 540), // tight on the comparison table (left of it)
     };
     const panTo = (b: Box, ms: number) =>
       editor.zoomToBounds(b, { inset: 40, animation: { duration: reduce ? 0 : ms } });
@@ -298,7 +301,7 @@ export function EmbedShowreel() {
       //    table stays selected the whole loop).
 
       // 2) Push in on the drop zone; the Maker drops the PDF.
-      after(3400, () => panTo(FRAME.drop, 950));
+      after(3400, () => panTo(FRAME.drop, 1100));
       after(4500, () => {
         const p = pdfC();
         setYou({ x: p.x, y: p.y + 150, visible: true, status: null });
@@ -329,15 +332,15 @@ export function EmbedShowreel() {
 
       // 4) Camera FOLLOWS Jarwiz to the table; it pins the discrepancy.
       after(9400, () => {
-        panTo(FRAME.table, 950);
+        panTo(FRAME.table, 1250); // the hero follow — a deliberate lateral glide
         setJz((c) => ({ ...c, status: 'following the trail…' }));
       });
-      after(10450, () => {
-        const c = tableCorner();
+      after(10800, () => {
+        const c = tableCorner(); // pan has settled — anchor is stable
         setJz({ x: c.x - 14, y: c.y + 16, visible: true, status: 'spotting a discrepancy…' });
         setComment({ x: c.x, y: c.y, open: false });
       });
-      after(11050, () => {
+      after(11400, () => {
         setComment((s) => (s ? { ...s, open: true } : s));
         setJz(HIDDEN);
       });
@@ -364,10 +367,11 @@ export function EmbedShowreel() {
         setYou((c) => ({ ...c, visible: false }));
       });
 
-      // 6) Settle, pull back to the wide board, and loop.
-      after(16100, () => setJz((c) => ({ ...c, visible: false })));
-      after(16500, () => panTo(FRAME.wide, 950));
-      after(18400, run);
+      // 6) Settle on the fixed result, then a slow, graceful pull-back to the
+      //    whole board — "here's everything you built" — and loop.
+      after(16400, () => setJz((c) => ({ ...c, visible: false })));
+      after(16900, () => panTo(FRAME.wide, 1400));
+      after(19000, run);
     };
 
     seed();

@@ -2685,6 +2685,65 @@ body,
   pointer-events: none;
 }
 
+/* Use-cases overlay: the board scrolls under a non-interactive layer; only the
+   Next/Back controller in the corner takes pointer events. */
+.jz-uc {
+  position: absolute;
+  inset: 0;
+  z-index: 306;
+  pointer-events: none;
+}
+.jz-uc-ctrl {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--jz-radius-pill);
+  background: color-mix(in srgb, var(--jz-ink-900) 82%, transparent);
+  border: 1px solid var(--jz-hairline);
+  box-shadow: var(--jz-e3);
+  backdrop-filter: blur(10px);
+  pointer-events: auto;
+}
+.jz-uc-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--jz-hairline);
+  background: color-mix(in srgb, var(--jz-paper) 8%, transparent);
+  color: var(--jz-paper);
+  cursor: pointer;
+  transition: background var(--jz-dur-base) var(--jz-ease-out);
+}
+.jz-uc-btn:hover { background: color-mix(in srgb, var(--jz-paper) 16%, transparent); }
+.jz-uc-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 168px;
+  line-height: 1.2;
+}
+.jz-uc-name { color: var(--jz-paper); font-size: var(--jz-text-body-size); font-weight: 650; }
+.jz-uc-count { color: var(--jz-paper); opacity: 0.6; font-size: var(--jz-text-micro-size); margin-top: 2px; }
+.jz-uc-dots { display: flex; gap: 6px; padding-left: 4px; }
+.jz-uc-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--jz-paper) 26%, transparent);
+  transition: background var(--jz-dur-base) var(--jz-ease-out);
+}
+.jz-uc-dot.on { background: var(--jz-paper); }
+
 /* Showreel cursors (hero embed only): the scripted demo drives two collaborator
    cursors. Jarwiz keeps the default ink arrow; "You" gets a distinct blue so the
    two reads apart at a glance. Scripted glide gets a transform transition (the

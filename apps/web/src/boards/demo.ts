@@ -16,6 +16,13 @@ export function isEmbed(): boolean {
   return hasParam('embed');
 }
 
+/** Use-cases canvas (?usecases=1) — the marketing site's "different boards for
+ *  different people" section: one big board holding four rich persona
+ *  workspaces, with a Next/Back controller that flies the camera between them. */
+export function isUseCases(): boolean {
+  return hasParam('usecases');
+}
+
 function hasParam(key: string): boolean {
   if (typeof window === 'undefined') return false;
   try {
