@@ -2756,22 +2756,30 @@ body,
   }
 }
 
-/* A quick click ripple where the scripted cursor "clicks" — a ring that expands
-   and fades once. The point is the ring's centre. */
+/* A quick click ripple where a scripted cursor "clicks". The wrapper is
+   positioned in page space (rAF sets its transform), so the scale animation
+   lives on the ::before to avoid clobbering that transform. */
 .jz-click-ring {
   position: absolute;
+  width: 0;
+  height: 0;
+  z-index: 311;
+}
+.jz-click-ring::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: -5px;
   width: 10px;
   height: 10px;
-  margin: -5px 0 0 -5px;
   border-radius: 50%;
-  border: 2px solid var(--jz-ink-900);
+  border: 2px solid rgba(255, 255, 255, 0.85);
   opacity: 0;
   animation: jz-click-pulse 0.5s var(--jz-ease-out) forwards;
-  z-index: 311;
 }
 @keyframes jz-click-pulse {
   0% {
-    opacity: 0.55;
+    opacity: 0.7;
     transform: scale(0.4);
   }
   100% {
@@ -2780,9 +2788,35 @@ body,
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .jz-click-ring {
+  .jz-click-ring::before {
     animation: none;
   }
+}
+
+/* The file the Maker drags in before it becomes a card — a white file chip that
+   rides the canvas (rAF-positioned) and fades where the card forms on drop. */
+.jz-drag-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--jz-paper);
+  color: var(--jz-ink-900);
+  border: 1px solid var(--jz-hairline);
+  box-shadow: var(--jz-e3);
+  font-size: 12.5px;
+  font-weight: 650;
+  white-space: nowrap;
+  transition: opacity 0.4s var(--jz-ease-out);
+  z-index: 309;
+}
+.jz-drag-file svg {
+  flex: none;
+  color: var(--jz-danger);
+}
+.jz-drag-file--hidden {
+  opacity: 0;
 }
 
 /* Use-cases overlay: the board scrolls under a non-interactive layer; only the
