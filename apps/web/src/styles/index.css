@@ -2678,6 +2678,22 @@ body,
 
 /* Hero showreel overlay: pinned over the canvas, wholly non-interactive so the
    marketing page scrolls over it and the loop stays deterministic. */
+/* Marketing embeds (?embed / ?usecases) are pure showcases — the camera is
+   driven only by the scripted loop or the Next/Back controller, never by the
+   visitor. Make the tldraw canvas immune to pointer/wheel input so a stray
+   hover/scroll/click can't pan-or-zoom it into empty space (reads as "going
+   blank"), and so hover hit-testing can't re-render a shape mid-animation.
+   The `.jz-lockcanvas` class lands on tldraw's `.tl-container`. The overlays
+   above are already pointer-events:none; the controller re-enables its own. */
+.jz-lockcanvas.tl-container,
+.jz-lockcanvas .tl-container {
+  pointer-events: none;
+}
+.jz-lockcanvas .jz-uc-ctrl,
+.jz-lockcanvas .jz-uc-ctrl * {
+  pointer-events: auto;
+}
+
 .jz-showreel {
   position: absolute;
   inset: 0;
