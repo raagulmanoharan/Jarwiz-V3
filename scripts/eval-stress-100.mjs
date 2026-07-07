@@ -138,7 +138,7 @@ const expectStatus = (code) => ({ status, json }) =>
 
 // ── shared fixtures ─────────────────────────────────────────────────────────
 const NOTE = (text, extra = {}) => ({ cardId: 'c1', kind: 'note', x: 0, y: 0, w: 220, h: 220, text, ...extra });
-const T = { fast: 45_000, llm: 90_000, web: 160_000, io: 15_000 };
+const T = { fast: 45_000, llm: 90_000, web: 160_000, webMax: 240_000, io: 15_000 };
 
 const PDF_BYTES = (() => {
   try { return readFileSync('node_modules/pdf-parse/test/data/01-valid.pdf'); } catch { return null; }
@@ -313,14 +313,25 @@ machineAsk('proscons', 'Adopting a four-day work week at a 50-person software co
 machineAsk('fivewhys', 'Our checkout conversion dropped 20% after the last release', true);
 machineAsk('persona', 'The primary user of a budgeting app for freelancers with irregular income', true);
 
+// Compose & board machines emit a `plan` listing slots, then wrap each card's
+// events in { type:'slot', slot, event }. Count planned cards + created slots.
+const composedCards = (events) => {
+  const plan = events.find((e) => e.type === 'plan');
+  const planned = Array.isArray(plan?.cards) ? plan.cards.length : 0;
+  const created = events.filter((e) => e.type === 'slot' && e.event?.type === 'card.create').length;
+  return { planned, created };
+};
+const composeCheck = (min = 2) => ({ events, status }) => {
+  if (status !== 200) return { ok: false, detail: `HTTP ${status}` };
+  if (hadError(events)) return { ok: false, detail: 'stream error' };
+  const { planned, created } = composedCards(events);
+  return planned >= min && created >= 1 && hasTerminal(events)
+    ? { ok: true, detail: `planned ${planned} cards, ${created} rendered` }
+    : { ok: false, detail: `planned=${planned} created=${created} done=${hasTerminal(events)}` };
+};
 const machineBoard = (id, intent, opts) => add('F · Thinking Machine', `machine board: ${id}`,
-  sse('/api/compose', { intent, machineId: id, board: [], options: opts || [] }, T.web),
-  ({ events, status }) => {
-    if (status !== 200) return { ok: false, detail: `HTTP ${status}` };
-    if (hadError(events)) return { ok: false, detail: 'stream error' };
-    const created = events.filter((e) => e.type === 'card.create').length;
-    return created >= 2 && hasTerminal(events) ? { ok: true, detail: `${created} cards fanned out` } : { ok: false, detail: `cards=${created}` };
-  });
+  sse('/api/compose', { intent, machineId: id, board: [], options: opts || [] }, T.webMax),
+  composeCheck(2));
 machineBoard('swot', 'A regional coffee-roaster chain considering national expansion', ['tows']);
 machineBoard('effortimpact', 'Backlog for a small design team: redesign onboarding, fix a11y, add dark mode, write docs, refactor tokens', ['verdict']);
 
@@ -382,13 +393,8 @@ add('G · Notice', 'notice: proactive board review', jpost('/api/notice', { toda
   jsonOk((j) => Array.isArray(j?.comments) ? `${j.comments.length} comment(s)${j.comments[0] ? `: "${String(j.comments[0].body).slice(0, 40)}…"` : ' (board is fine — valid)'}` : { ok: false, detail: JSON.stringify(j).slice(0, 80) }));
 add('G · Annotate', 'annotate: stickies pass', jpost('/api/annotate', { prompt: 'Flag anything unrealistic about this plan', cards: boardCards }, T.llm),
   jsonOk((j) => Array.isArray(j?.notes) ? `${j.notes.length} sticky note(s)` : { ok: false, detail: JSON.stringify(j).slice(0, 80) }));
-add('G · Compose', 'compose: free-form plan fan-out', sse('/api/compose', { intent: 'Plan a two-week launch sprint for a small SaaS: workstreams, milestones and owners', board: [] }, T.llm),
-  ({ events, status }) => {
-    if (status !== 200) return { ok: false, detail: `HTTP ${status}` };
-    if (hadError(events)) return { ok: false, detail: 'stream error' };
-    const created = events.filter((e) => e.type === 'card.create').length;
-    return created >= 2 && hasTerminal(events) ? { ok: true, detail: `${created} cards laid out` } : { ok: false, detail: `cards=${created}` };
-  });
+add('G · Compose', 'compose: free-form plan fan-out', sse('/api/compose', { intent: 'Plan a two-week launch sprint for a small SaaS: workstreams, milestones and owners', board: [] }, T.web),
+  composeCheck(2));
 
 // ── runner (bounded concurrency) ────────────────────────────────────────────
 async function runCase(c) {
