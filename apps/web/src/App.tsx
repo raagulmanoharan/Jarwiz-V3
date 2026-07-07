@@ -46,6 +46,7 @@ import { Topbar } from './ui/Topbar';
 import { HelpLayer } from './ui/HelpLayer';
 import { SidePanel } from './ui/SidePanel';
 import { ErrorBoundary, Safe } from './ui/ErrorBoundary';
+import { TidyContextMenu } from './ui/TidyContextMenu';
 import { getTheme, subscribeTheme } from './ui/theme';
 
 /**
@@ -117,6 +118,9 @@ function CanvasBehind() {
 const components: TLComponents = {
   InFrontOfTheCanvas: JarwizOverlay,
   OnTheCanvas: CanvasBehind,
+  // Right-click on a card selection gets a "Tidy up" item (local masonry tidy);
+  // every stock context-menu action still renders below it.
+  ContextMenu: TidyContextMenu,
   Toolbar: null, // replaced by our right-edge ToolRail
   StylePanel: CanvasStylePanel,
   MainMenu: null,
