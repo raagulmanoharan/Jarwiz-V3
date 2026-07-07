@@ -38,7 +38,7 @@ import { getRestoreError, isRestoring, subscribeRestore } from './boards/backup'
 import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
 import { isDemo, isEmbed } from './boards/demo';
 import { seedDemoBoard } from './boards/demoSeed';
-import { EmbedComposer } from './ui/EmbedComposer';
+import { EmbedShowreel } from './ui/EmbedShowreel';
 import { CardTitleTag } from './ui/CardTitleTag';
 import { DocFocusOverlay } from './ui/DocFocusOverlay';
 import { CardFocusOverlay } from './ui/CardFocusOverlay';
@@ -99,7 +99,7 @@ function EmbedOverlay() {
   return (
     <>
       <Safe label="CardTitleTag"><CardTitleTag /></Safe>
-      <Safe label="EmbedComposer"><EmbedComposer /></Safe>
+      <Safe label="EmbedShowreel"><EmbedShowreel /></Safe>
     </>
   );
 }
