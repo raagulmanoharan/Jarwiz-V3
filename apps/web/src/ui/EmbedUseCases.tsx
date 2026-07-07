@@ -1,11 +1,10 @@
 /**
  * The use-cases canvas (?usecases=1) — the marketing site's "different boards
- * for different people" section. One big board holds four rich, deliberately
- * busy persona workspaces built from REAL card shapes (docs, tables, diagrams,
- * links) with sticky notes that annotate and highlight things on the board — a
- * describe-the-use-case sticky plus a couple of hand-scrawled callouts. A bare
- * Next/Back arrow controller flies the camera from one workspace to the next,
- * so the use cases are shown *inside the product*.
+ * for different people" section. One big board holds four deliberately dense,
+ * messy persona workspaces built from REAL card shapes (docs, tables, complex
+ * diagrams, source links, images/photos) with sticky notes annotating the
+ * board, all wired with the product's own dotted provenance lineage. A bare
+ * Next/Back arrow controller flies the camera between workspaces.
  *
  * The overlay is pointer-events:none except the controller, so the marketing
  * page scrolls over it; the camera is driven only by the controller.
@@ -16,87 +15,146 @@ import { Box, createShapeId, stopEventPropagation, useEditor, type TLShapeId } f
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PROV_META_KEY } from '../ask/useAsk';
 
+const IMG = (name: string) => `${import.meta.env.BASE_URL}uc/${name}.jpg`;
+
 type CardSpec =
-  | { slot: 'desc' | 'note1' | 'note2'; text: string }
-  | { slot: 'doc'; title: string; text: string }
-  | { slot: 'table' | 'table2'; columns: string[]; rows: string[][] }
-  | { slot: 'diagram'; title: string; code: string }
-  | { slot: 'link'; url: string; siteName: string; title: string; description: string };
+  | { kind: 'note'; slot: string; text: string }
+  | { kind: 'doc'; slot: string; title: string; text: string }
+  | { kind: 'table'; slot: string; columns: string[]; rows: string[][] }
+  | { kind: 'diagram'; slot: string; title: string; code: string }
+  | { kind: 'link'; slot: string; url: string; siteName: string; title: string; description: string }
+  | { kind: 'img'; slot: string; src: string; name: string };
 
 interface Persona {
   name: string;
   cards: CardSpec[];
 }
 
-// Staggered placement of each slot within a persona's region (region centre = 0)
-// — offset so the board reads as a real, messy workspace, not a tidy grid.
-const SLOTS: Record<CardSpec['slot'], { dx: number; dy: number; w: number; h: number }> = {
-  desc: { dx: -1090, dy: -400, w: 300, h: 210 },
-  table: { dx: -360, dy: -430, w: 660, h: 300 },
-  table2: { dx: 400, dy: -410, w: 380, h: 300 },
-  doc: { dx: -770, dy: -120, w: 360, h: 470 },
-  diagram: { dx: -300, dy: -90, w: 600, h: 360 },
-  link: { dx: 430, dy: -80, w: 350, h: 150 },
-  note1: { dx: 360, dy: 130, w: 190, h: 120 },
-  note2: { dx: -380, dy: 300, w: 210, h: 120 },
+// Staggered placement of every slot within a persona's region (region centre = 0)
+// — a big, busy workspace, offset so it reads as real work, not a grid.
+const SLOTS: Record<string, { dx: number; dy: number; w: number; h: number }> = {
+  desc: { dx: -1420, dy: -560, w: 300, h: 200 },
+  doc: { dx: -1120, dy: -320, w: 380, h: 540 },
+  doc2: { dx: -1120, dy: 290, w: 380, h: 280 },
+  table: { dx: -700, dy: -600, w: 620, h: 300 },
+  table2: { dx: -40, dy: -600, w: 420, h: 280 },
+  table3: { dx: -700, dy: 320, w: 540, h: 270 },
+  diagram: { dx: -700, dy: -260, w: 700, h: 500 },
+  diagram2: { dx: 40, dy: 330, w: 640, h: 320 },
+  link: { dx: 460, dy: -600, w: 360, h: 150 },
+  link2: { dx: 460, dy: -432, w: 360, h: 150 },
+  link3: { dx: 840, dy: -600, w: 360, h: 150 },
+  img: { dx: 840, dy: -432, w: 320, h: 220 },
+  img2: { dx: 840, dy: -192, w: 320, h: 230 },
+  img3: { dx: 460, dy: -262, w: 360, h: 250 },
+  note1: { dx: 150, dy: -250, w: 190, h: 120 },
+  note2: { dx: -140, dy: 660, w: 210, h: 120 },
+  note3: { dx: 720, dy: 700, w: 200, h: 120 },
 };
 
-const REGION_GAP = 2700;
+const REGION_GAP = 3400;
 
 const PERSONAS: Persona[] = [
   {
     name: 'Product managers',
     cards: [
-      { slot: 'desc', text: 'Product managers\n\nTurn a fuzzy feature idea into a shipped plan — competitors, trade-offs, the spec, and the flow, on one board.' },
-      { slot: 'doc', title: 'PRD — Saved Views', text: '## Saved Views\n\n**Problem.** Power users rebuild the same filters every day.\n\n**Goal.** Save a filter set once, reopen and share it.\n\n- **P0** — save, name, reopen a view\n- **P1** — share with a teammate\n- **P2** — set a team default\n\n**Success:** 30% of weekly actives save a view within 30 days.' },
-      { slot: 'table', columns: ['Tool', 'Saved views', 'Sharing', 'Feel'], rows: [['Linear', 'Yes', 'Team', 'Fast'], ['Jira', 'Yes', 'Complex', 'Heavy'], ['Height', 'Partial', 'No', 'Simple'], ['Us', '—', '—', 'the gap']] },
-      { slot: 'diagram', title: 'User flow', code: 'flowchart LR\n  A[Filter list] --> B[Save view]\n  B --> C[Name it]\n  C --> D{Share?}\n  D -->|No| E[Reopen later]\n  D -->|Yes| F[Pick teammate]\n  F --> E' },
-      { slot: 'table2', columns: ['Idea', 'Effort', 'Impact', 'Bucket'], rows: [['Save view', 'S', 'H', 'Quick win'], ['Sharing', 'M', 'H', 'Big bet'], ['Team default', 'M', 'M', 'Fill-in'], ['Pinned tabs', 'L', 'L', 'Time sink']] },
-      { slot: 'link', url: 'https://linear.app/docs/views', siteName: 'Linear', title: 'Custom views & filters', description: 'How Linear models saved, shareable views.' },
-      { slot: 'note1', text: 'P0 — ship this first' },
-      { slot: 'note2', text: '← the gap we own' },
+      { kind: 'note', slot: 'desc', text: 'Product managers\n\nTurn a fuzzy feature idea into a shipped plan — competitors, trade-offs, the spec, the flow, the rollout.' },
+      { kind: 'doc', slot: 'doc', title: 'PRD — Saved Views', text: '## Saved Views\n\n**Problem.** Power users rebuild the same filters every day; the reset bug loses them mid-session.\n\n**Goal.** Save a filter set once, reopen and share it.\n\n- **P0** — save, name, reopen a view\n- **P1** — share with a teammate\n- **P2** — set a team default\n\n**Non-goals.** Cross-project views, per-view notifications.\n\n**Open questions.** Do shared views inherit permissions? What happens on a deleted field?\n\n**Success:** 30% of weekly actives save a view within 30 days.' },
+      { kind: 'doc', slot: 'doc2', title: 'Rollout plan', text: '## Rollout\n\n- **Wk 1** — internal dogfood\n- **Wk 2** — 5% beta, watch crash-free\n- **Wk 3** — ramp to 50%\n- **Wk 4** — GA + changelog\n\n**Guardrail:** hold the ramp if crash-free < 99.5%.' },
+      { kind: 'table', slot: 'table', columns: ['Tool', 'Saved views', 'Sharing', 'Defaults', 'Feel'], rows: [['Linear', 'Yes', 'Team', 'Yes', 'Fast'], ['Jira', 'Yes', 'Complex', 'Yes', 'Heavy'], ['Height', 'Partial', 'No', 'No', 'Simple'], ['Asana', 'Yes', 'Team', 'No', 'Busy'], ['Us', '—', '—', '—', 'the gap']] },
+      { kind: 'table', slot: 'table2', columns: ['Idea', 'Effort', 'Impact', 'Bucket'], rows: [['Save view', 'S', 'H', 'Quick win'], ['Sharing', 'M', 'H', 'Big bet'], ['Team default', 'M', 'M', 'Fill-in'], ['Pinned tabs', 'L', 'L', 'Time sink']] },
+      { kind: 'table', slot: 'table3', columns: ['Metric', 'Target', 'Now'], rows: [['Views saved / WAU', '30%', '—'], ['Shares per view', '0.4', '—'], ['Filter-reset bugs', '0', '12 / wk']] },
+      { kind: 'diagram', slot: 'diagram', title: 'User flow', code: 'flowchart TD\n  A[Open list] --> B[Apply filters]\n  B --> C{Save?}\n  C -->|No| Z[Just browse]\n  C -->|Yes| D[Name view]\n  D --> E{Share?}\n  E -->|Private| F[My views]\n  E -->|Team| G[Team views]\n  G --> H{Set default?}\n  H -->|Yes| I[Team default]\n  H -->|No| F\n  F --> J[Reopen anytime]\n  I --> J' },
+      { kind: 'diagram', slot: 'diagram2', title: 'Release ramp', code: 'flowchart LR\n  A[Dogfood] --> B[Beta 5%]\n  B --> C{Crash-free?}\n  C -->|No| D[Fix + hold]\n  D --> B\n  C -->|Yes| E[Ramp 50%]\n  E --> F[GA]' },
+      { kind: 'link', slot: 'link', url: 'https://linear.app/docs/views', siteName: 'Linear', title: 'Custom views & filters', description: 'How Linear models saved, shareable views.' },
+      { kind: 'link', slot: 'link2', url: 'https://support.atlassian.com/jira', siteName: 'Atlassian', title: 'JQL & saved filters', description: 'Jira’s filter + subscription model.' },
+      { kind: 'link', slot: 'link3', url: 'https://height.app/changelog', siteName: 'Height', title: 'Views — changelog', description: 'How a lighter tool shipped views.' },
+      { kind: 'img', slot: 'img', src: 'wireframe', name: 'Feature wireframes' },
+      { kind: 'note', slot: 'note1', text: 'P0 — ship this first' },
+      { kind: 'note', slot: 'note2', text: '← the gap we own' },
+      { kind: 'note', slot: 'note3', text: 'measure week 1' },
     ],
   },
   {
     name: 'Designers',
     cards: [
-      { slot: 'desc', text: 'Designers\n\nSynthesize research, map the journey, and pressure-test the direction — scattered inputs become a board you can build from.' },
-      { slot: 'doc', title: 'Research synthesis', text: '## What we heard\n\n5 interviews · 2 usability tests\n\n- **Onboarding is the cliff** — 3/5 dropped at “connect data”.\n- Users trust **templates** over a blank canvas.\n- “Where do I even start?” came up every session.\n\n**Direction:** lead with a template gallery, defer the blank canvas.' },
-      { slot: 'table', columns: ['App', 'Onboarding', 'First win', 'Empty state'], rows: [['Notion', 'Templates', '< 1 min', 'Guided'], ['Linear', 'Sample data', 'Fast', 'Clean'], ['Figma', 'Blank + tips', 'Slow', 'Sparse'], ['Ours', 'TBD', 'TBD', 'TBD']] },
-      { slot: 'diagram', title: 'Journey map', code: 'flowchart LR\n  A[Discover] --> B[Sign up]\n  B --> C[Connect data]\n  C --> D{First value?}\n  D -->|No| E[Drop off]\n  D -->|Yes| F[Habit]' },
-      { slot: 'table2', columns: ['Signal', 'Count', 'Move'], rows: [['Wants templates', '4/5', 'P0'], ['Confused start', '5/5', 'P0'], ['Likes shortcuts', '2/5', 'P2']] },
-      { slot: 'link', url: 'https://maze.co/reports/ux-research', siteName: 'Maze', title: 'Usability test readout', description: 'The 12-participant onboarding study.' },
-      { slot: 'note1', text: 'lead with templates' },
-      { slot: 'note2', text: 'the cliff is here ↑' },
+      { kind: 'note', slot: 'desc', text: 'Designers\n\nSynthesize research, map the journey, and pressure-test the direction — scattered inputs become a board you build from.' },
+      { kind: 'doc', slot: 'doc', title: 'Research synthesis', text: '## What we heard\n\n5 interviews · 2 usability tests · 1 diary study\n\n- **Onboarding is the cliff** — 3/5 dropped at “connect data”.\n- Users trust **templates** over a blank canvas.\n- “Where do I even start?” came up every session.\n- Power users want **keyboard-first** everything.\n\n**Direction:** lead with a template gallery, defer the blank canvas, and add a first-run checklist.' },
+      { kind: 'doc', slot: 'doc2', title: 'Personas', text: '## Two personas\n\n**Maya · indie maker** — ships side projects, hates setup, lives in shortcuts.\n\n**Sam · team lead** — needs templates and sharing, cares about consistency.\n\nBoth open with: “where do I start?”' },
+      { kind: 'table', slot: 'table', columns: ['App', 'Onboarding', 'First win', 'Empty state'], rows: [['Notion', 'Templates', '< 1 min', 'Guided'], ['Linear', 'Sample data', 'Fast', 'Clean'], ['Figma', 'Blank + tips', 'Slow', 'Sparse'], ['Ours', 'TBD', 'TBD', 'TBD']] },
+      { kind: 'table', slot: 'table2', columns: ['Signal', 'Count', 'Move'], rows: [['Wants templates', '4/5', 'P0'], ['Confused start', '5/5', 'P0'], ['Likes shortcuts', '2/5', 'P2']] },
+      { kind: 'table', slot: 'table3', columns: ['Heuristic', 'Score', 'Note'], rows: [['Visibility', '3/5', 'status unclear'], ['Error prevention', '2/5', 'no undo'], ['Consistency', '4/5', 'mostly ok'], ['Recognition', '3/5', 'hidden actions']] },
+      { kind: 'diagram', slot: 'diagram', title: 'Journey map', code: 'flowchart TD\n  A[Discover] --> B[Landing]\n  B --> C{Sign up?}\n  C -->|No| X[Bounce]\n  C -->|Yes| D[Onboarding]\n  D --> E{Connect data?}\n  E -->|No| F[The cliff]\n  F --> G[Email nudge]\n  G --> E\n  E -->|Yes| H[First value]\n  H --> I{Return D2?}\n  I -->|Yes| J[Habit]\n  I -->|No| G' },
+      { kind: 'diagram', slot: 'diagram2', title: 'Information architecture', code: 'flowchart TD\n  Home --> Templates\n  Home --> Canvas\n  Home --> Settings\n  Templates --> New[New board]\n  Canvas --> Share\n  Canvas --> Export' },
+      { kind: 'link', slot: 'link', url: 'https://maze.co/reports/ux-research', siteName: 'Maze', title: 'Usability test readout', description: 'The 12-participant onboarding study.' },
+      { kind: 'link', slot: 'link2', url: 'https://baymard.com/blog', siteName: 'Baymard', title: 'Onboarding UX benchmarks', description: 'What great first-runs have in common.' },
+      { kind: 'link', slot: 'link3', url: 'https://dribbble.com/tags/onboarding', siteName: 'Dribbble', title: 'Onboarding references', description: 'Visual patterns worth stealing.' },
+      { kind: 'img', slot: 'img', src: 'storyboard', name: 'UX storyboard' },
+      { kind: 'img', slot: 'img2', src: 'proxilexis', name: 'Concept board' },
+      { kind: 'img', slot: 'img3', src: 'des-ui', name: 'UI reference' },
+      { kind: 'note', slot: 'note1', text: 'lead with templates' },
+      { kind: 'note', slot: 'note2', text: 'the cliff is here ↑' },
+      { kind: 'note', slot: 'note3', text: 'steal this pattern' },
     ],
   },
   {
     name: 'Students & researchers',
     cards: [
-      { slot: 'desc', text: 'Students & researchers\n\nDrop your sources and get a cited literature review, a concept map, and a study guide — grounded and traceable.' },
-      { slot: 'doc', title: 'Literature review — Attention', text: '## Attention in NLP\n\nSelf-attention [1] reframed sequence modeling as fully parallel, removing recurrence.\n\n- **Transformers** [1] — self-attention + positional encoding.\n- **BERT** [2] — bidirectional pretraining, fine-tuned per task.\n- **Scaling laws** [3] — loss falls predictably with compute.\n\n_See sources for the primary papers._' },
-      { slot: 'table', columns: ['Paper', 'Year', 'Key idea', 'Cited by'], rows: [['Attention Is All You Need', '2017', 'Transformer', '110k+'], ['BERT', '2018', 'Bidirectional', '90k+'], ['Scaling Laws', '2020', 'Compute→loss', '9k+']] },
-      { slot: 'diagram', title: 'Concept map', code: 'flowchart TD\n  A[Attention] --> B[Transformers]\n  B --> C[BERT]\n  B --> D[GPT]\n  B --> E[Scaling laws]\n  C --> F[Fine-tuning]\n  D --> F' },
-      { slot: 'table2', columns: ['Term', 'In one line'], rows: [['Self-attention', 'Tokens weigh each other'], ['Head', 'One attention pattern'], ['Pretraining', 'Learn before the task']] },
-      { slot: 'link', url: 'https://arxiv.org/abs/1706.03762', siteName: 'arXiv', title: 'Attention Is All You Need', description: 'Vaswani et al., 2017 — the Transformer.' },
-      { slot: 'note1', text: 'cite every claim' },
-      { slot: 'note2', text: 'start with [1]' },
+      { kind: 'note', slot: 'desc', text: 'Students & researchers\n\nDrop your sources and get a cited literature review, a concept map, and a study guide — grounded and traceable.' },
+      { kind: 'doc', slot: 'doc', title: 'Literature review — Attention', text: '## Attention in NLP\n\nSelf-attention [1] reframed sequence modeling as fully parallel, removing recurrence and unlocking scale.\n\n- **Transformers** [1] — self-attention + positional encoding.\n- **BERT** [2] — bidirectional pretraining, fine-tuned per task.\n- **Scaling laws** [3] — loss falls predictably with compute.\n- **Emergence** [4] — new abilities appear past a scale threshold.\n\n_See sources for the primary papers; complexity is O(n²·d)._' },
+      { kind: 'doc', slot: 'doc2', title: 'Study guide', text: '## Exam-ready\n\n- **Define** self-attention: softmax(QKᵀ/√d)·V.\n- **Contrast** RNN vs Transformer.\n- **Explain** why scaling helps [3].\n\n**Likely Q:** derive attention complexity → O(n²·d).' },
+      { kind: 'table', slot: 'table', columns: ['Paper', 'Year', 'Key idea', 'Cited by'], rows: [['Attention Is All You Need', '2017', 'Transformer', '110k+'], ['BERT', '2018', 'Bidirectional', '90k+'], ['GPT-3', '2020', 'Few-shot', '30k+'], ['Scaling Laws', '2020', 'Compute→loss', '9k+']] },
+      { kind: 'table', slot: 'table2', columns: ['Term', 'In one line'], rows: [['Self-attention', 'Tokens weigh each other'], ['Head', 'One attention pattern'], ['Pretraining', 'Learn before the task']] },
+      { kind: 'table', slot: 'table3', columns: ['Year', 'Milestone'], rows: [['2014', 'Attention (Bahdanau)'], ['2017', 'Transformer'], ['2018', 'BERT / GPT'], ['2020', 'Scaling laws']] },
+      { kind: 'diagram', slot: 'diagram', title: 'Concept map', code: 'flowchart TD\n  A[Attention] --> B[Self-attention]\n  A --> C[Cross-attention]\n  B --> D[Transformers]\n  D --> E[Encoder]\n  D --> F[Decoder]\n  E --> G[BERT]\n  F --> H[GPT]\n  D --> I[Scaling laws]\n  G --> J[Fine-tuning]\n  H --> J\n  I --> K[Emergent ability]' },
+      { kind: 'diagram', slot: 'diagram2', title: 'Method lineage', code: 'flowchart LR\n  A[RNN] --> B[LSTM]\n  B --> C[Attention]\n  C --> D[Transformer]\n  D --> E[Pretrain + FT]' },
+      { kind: 'link', slot: 'link', url: 'https://arxiv.org/abs/1706.03762', siteName: 'arXiv', title: 'Attention Is All You Need', description: 'Vaswani et al., 2017 — the Transformer.' },
+      { kind: 'link', slot: 'link2', url: 'https://jalammar.github.io/illustrated-transformer', siteName: 'jalammar.github.io', title: 'The Illustrated Transformer', description: 'The canonical visual explainer.' },
+      { kind: 'link', slot: 'link3', url: 'https://paperswithcode.com/method/transformer', siteName: 'Papers with Code', title: 'Transformer — leaderboard', description: 'Benchmarks and implementations.' },
+      { kind: 'img', slot: 'img', src: 'radar', name: 'Fig — AI capability by job' },
+      { kind: 'note', slot: 'note1', text: 'cite every claim' },
+      { kind: 'note', slot: 'note2', text: 'start with [1]' },
+      { kind: 'note', slot: 'note3', text: 'exam: know O(n²·d)' },
     ],
   },
   {
     name: 'Founders & strategists',
     cards: [
-      { slot: 'desc', text: 'Founders & strategists\n\nSize the market, benchmark rivals, and stress-test the risks before you bet — one prompt, a whole strategy board.' },
-      { slot: 'doc', title: 'Thesis — Ambient scribe', text: '## AI note-taker for clinicians\n\n**Wedge:** an ambient scribe for solo & small practices.\n\n- **Why now** — speech models are finally good enough; documentation burnout is peaking.\n- **Moat** — specialty templates + EHR integrations.\n\n**Ask:** $1.5M pre-seed to reach 50 paying clinics.' },
-      { slot: 'table', columns: ['Layer', 'Who', 'Value'], rows: [['TAM', 'All US clinicians', '$12B'], ['SAM', 'Outpatient notes', '$3.4B'], ['SOM', 'Solo + small (yr 3)', '$260M']] },
-      { slot: 'diagram', title: 'Go-to-market', code: 'flowchart LR\n  A[Solo clinics] --> B[Free trial]\n  B --> C{Loves it?}\n  C -->|Yes| D[Paid seat]\n  C -->|No| E[Learn why]\n  D --> F[Referral]\n  F --> A' },
-      { slot: 'table2', columns: ['Rival', 'Focus', 'Gap'], rows: [['Abridge', 'Hospitals', 'Not for solo'], ['Nuance DAX', 'Enterprise', 'Pricey'], ['Freed', 'Solo', 'Few templates']] },
-      { slot: 'link', url: 'https://rockhealth.com/insights', siteName: 'Rock Health', title: 'Digital health funding 2025', description: 'Where AI clinical tooling raised this year.' },
-      { slot: 'note1', text: 'why now ✦' },
-      { slot: 'note2', text: 'biggest risk ↓' },
+      { kind: 'note', slot: 'desc', text: 'Founders & strategists\n\nSize the market, benchmark rivals, and stress-test the risks before you bet — one prompt, a whole strategy board.' },
+      { kind: 'doc', slot: 'doc', title: 'Thesis — Ambient scribe', text: '## AI note-taker for clinicians\n\n**Wedge:** an ambient scribe for solo & small practices.\n\n- **Why now** — speech models are finally good enough; documentation burnout is peaking; reimbursement favors throughput.\n- **Moat** — specialty templates + EHR integrations + a data flywheel from corrections.\n- **Risk** — enterprise incumbents move down-market.\n\n**Ask:** $1.5M pre-seed to reach 50 paying clinics and prove retention.' },
+      { kind: 'doc', slot: 'doc2', title: 'Go-to-market', text: '## GTM\n\n- **Beachhead** — solo primary-care.\n- **Channel** — clinician communities + referrals.\n- **Price** — $99 / seat / mo, annual.\n\n**Motion:** PLG trial → onboarding call at activation.' },
+      { kind: 'table', slot: 'table', columns: ['Layer', 'Who', 'Value'], rows: [['TAM', 'All US clinicians', '$12B'], ['SAM', 'Outpatient notes', '$3.4B'], ['SOM', 'Solo + small (yr 3)', '$260M']] },
+      { kind: 'table', slot: 'table2', columns: ['Rival', 'Focus', 'Gap'], rows: [['Abridge', 'Hospitals', 'Not for solo'], ['Nuance DAX', 'Enterprise', 'Pricey'], ['Freed', 'Solo', 'Few templates']] },
+      { kind: 'table', slot: 'table3', columns: ['Metric', 'Value'], rows: [['ACV', '$1.2k'], ['CAC', '$400'], ['Payback', '4 mo'], ['Gross margin', '82%']] },
+      { kind: 'diagram', slot: 'diagram', title: 'Go-to-market loop', code: 'flowchart TD\n  A[Solo clinics] --> B[Free trial]\n  B --> C{Activated?}\n  C -->|No| D[Onboard call]\n  D --> C\n  C -->|Yes| E[Paid seat]\n  E --> F{Happy?}\n  F -->|Yes| G[Referral]\n  G --> A\n  F -->|No| H[Save / churn]' },
+      { kind: 'diagram', slot: 'diagram2', title: 'Funnel', code: 'flowchart LR\n  A[1000 signups] --> B[600 activate]\n  B --> C[220 paid]\n  C --> D[180 retained]' },
+      { kind: 'link', slot: 'link', url: 'https://rockhealth.com/insights', siteName: 'Rock Health', title: 'Digital health funding 2025', description: 'Where AI clinical tooling raised this year.' },
+      { kind: 'link', slot: 'link2', url: 'https://a16z.com/tag/healthcare', siteName: 'a16z', title: 'AI in the clinic — thesis', description: 'The investor case for ambient AI.' },
+      { kind: 'link', slot: 'link3', url: 'https://www.crunchbase.com/hub/ai-scribe', siteName: 'Crunchbase', title: 'AI scribe — funding rounds', description: 'Who raised, how much, when.' },
+      { kind: 'img', slot: 'img', src: 'stocks', name: 'The AI circle of money' },
+      { kind: 'img', slot: 'img2', src: 'fnd-chart', name: 'Market size — 2022–2032' },
+      { kind: 'note', slot: 'note1', text: 'why now ✦' },
+      { kind: 'note', slot: 'note2', text: 'biggest risk ↓' },
+      { kind: 'note', slot: 'note3', text: '$25/seat ceiling' },
     ],
   },
 ];
+
+// Provenance edges by slot: sources → derived work. Drawn as the product's own
+// dotted lineage (every card stays selected below).
+const PROV: [string, string[]][] = [
+  ['table', ['link', 'link3']],
+  ['table2', ['link2']],
+  ['doc', ['table', 'table2', 'img3']],
+  ['doc2', ['doc']],
+  ['diagram', ['doc']],
+  ['diagram2', ['table3']],
+  ['table3', ['table']],
+];
+const SLOT_TYPE: Record<string, string> = {
+  table: 'table-card', table2: 'table-card', table3: 'table-card',
+  doc: 'doc-card', doc2: 'doc-card', diagram: 'diagram-card', diagram2: 'diagram-card',
+};
 
 export function EmbedUseCases() {
   const editor = useEditor();
@@ -104,7 +162,6 @@ export function EmbedUseCases() {
   const idxRef = useRef(0);
 
   useEffect(() => {
-    // Wipe any persisted board, then lay out every persona region.
     const existing = [...editor.getCurrentPageShapeIds()];
     if (existing.length) editor.deleteShapes(existing);
 
@@ -112,45 +169,43 @@ export function EmbedUseCases() {
     const allIds: TLShapeId[] = [];
     PERSONAS.forEach((persona, i) => {
       const cx = i * REGION_GAP;
-      const bySlot: Partial<Record<CardSpec['slot'], TLShapeId>> = {};
+      const bySlot: Record<string, TLShapeId> = {};
       for (const card of persona.cards) {
         const s = SLOTS[card.slot];
+        if (!s) continue;
         const x = cx + s.dx;
         const y = s.dy;
         const id = createShapeId();
         bySlot[card.slot] = id;
         allIds.push(id);
-        if (card.slot === 'desc' || card.slot === 'note1' || card.slot === 'note2') {
+        if (card.kind === 'note') {
           editor.createShape({ id, type: 'note-card', x, y, props: { w: s.w, h: s.h, text: card.text, color: '' } });
-        } else if (card.slot === 'doc') {
+        } else if (card.kind === 'doc') {
           editor.createShape({ id, type: 'doc-card', x, y, props: { w: s.w, h: s.h, title: card.title, text: card.text } });
-        } else if (card.slot === 'table' || card.slot === 'table2') {
+        } else if (card.kind === 'table') {
           editor.createShape({ id, type: 'table-card', x, y, props: { w: s.w, h: s.h, columns: card.columns, rows: card.rows } });
-        } else if (card.slot === 'diagram') {
+        } else if (card.kind === 'diagram') {
           editor.createShape({ id, type: 'diagram-card', x, y, props: { w: s.w, h: s.h, title: card.title, code: card.code } });
-        } else if (card.slot === 'link') {
+        } else if (card.kind === 'link') {
           editor.createShape({ id, type: 'link-card', x, y, props: { w: s.w, h: s.h, url: card.url, title: card.title, description: card.description, image: '', favicon: '', siteName: card.siteName, loading: false } });
+        } else if (card.kind === 'img') {
+          editor.createShape({ id, type: 'image-card', x, y, props: { w: s.w, h: s.h, src: IMG(card.src), name: card.name } });
         }
       }
-      // Provenance lineage within the region: the source link feeds the tables;
-      // the tables feed the recommendation doc; the doc feeds the diagram. Drawn
-      // as the product's own dotted lines (the cards stay selected below).
-      const prov = (target: TLShapeId | undefined, type: string, sources: (TLShapeId | undefined)[]) => {
-        const src = sources.filter((s): s is TLShapeId => !!s);
-        if (target && src.length) {
-          editor.updateShape({ id: target, type, meta: { [PROV_META_KEY]: src } } as Parameters<typeof editor.updateShape>[0]);
+      // Wire provenance for whatever slots this persona actually has.
+      for (const [target, sources] of PROV) {
+        const tid = bySlot[target];
+        const src = sources.map((s) => bySlot[s]).filter((v): v is TLShapeId => !!v);
+        const type = SLOT_TYPE[target];
+        if (tid && type && src.length) {
+          editor.updateShape({ id: tid, type, meta: { [PROV_META_KEY]: src } } as Parameters<typeof editor.updateShape>[0]);
         }
-      };
-      prov(bySlot.table, 'table-card', [bySlot.link]);
-      prov(bySlot.table2, 'table-card', [bySlot.link]);
-      prov(bySlot.doc, 'doc-card', [bySlot.table]);
-      prov(bySlot.diagram, 'diagram-card', [bySlot.doc]);
-      frames.push(new Box(cx - 1150, -480, 1980, 960));
+      }
+      frames.push(new Box(cx - 1480, -680, 2820, 1520));
     });
     framesRef.current = frames;
-    // Keep everything selected so every region's dotted lineage stays drawn.
     editor.setSelectedShapes(allIds);
-    editor.zoomToBounds(frames[0]!, { inset: 40, animation: { duration: 0 } });
+    editor.zoomToBounds(frames[0]!, { inset: 36, animation: { duration: 0 } });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
 
@@ -160,7 +215,7 @@ export function EmbedUseCases() {
     const n = (next + frames.length) % frames.length;
     idxRef.current = n;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    editor.zoomToBounds(frames[n]!, { inset: 40, animation: { duration: reduce ? 0 : 900 } });
+    editor.zoomToBounds(frames[n]!, { inset: 36, animation: { duration: reduce ? 0 : 950 } });
   };
 
   return (
