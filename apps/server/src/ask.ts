@@ -706,7 +706,7 @@ Examples:
 "which option is best and why" → NEW
 "turn this into an action plan" → NEW
 
-If genuinely balanced, prefer NEW (a new card never overwrites their work). Reply with EXACTLY one word: EDIT or NEW.`;
+Answer EDIT when the instruction is a clear command to change THIS card (as in the EDIT examples — a direct change to its own content, structure, or appearance). If you genuinely cannot tell, or it could just as reasonably be a separate piece of work, answer NEW — a new card is safe and never overwrites their work. Reply with EXACTLY one word: EDIT or NEW.`;
 
 export async function classifyRefineIntent(
   prompt: string,
@@ -719,7 +719,11 @@ export async function classifyRefineIntent(
   } catch {
     return 'new'; // never block on the classifier — default to the safe path
   }
-  return raw.trim().toUpperCase().startsWith('EDIT') ? 'edit' : 'new';
+  // Edit ONLY on a clear, unambiguous EDIT verdict. Anything else — a NEW, an
+  // undecided/mixed answer ("EDIT or NEW"), or empty — falls back to a new card
+  // (the safe default: it never overwrites the user's work).
+  const ans = raw.trim().toUpperCase();
+  return ans.startsWith('EDIT') && !ans.includes('NEW') ? 'edit' : 'new';
 }
 
 export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGenerator<AskEvent> {
