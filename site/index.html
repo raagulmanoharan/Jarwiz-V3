@@ -262,27 +262,21 @@
          dashboard down the left, the prototype in the middle, a doc + the
          composer on the right, and a wide flow diagram across the bottom. */
       /* The canvas is a VIEWPORT onto a larger board: the inner grid is bigger
-         than the frame, so every edge card runs off the edge and is clipped. A
-         soft mask fades all four edges so the cards dissolve into the board
-         rather than hard-cutting — a window into an infinite canvas. */
+         than the frame, so every edge card runs off the edge and is HARD-clipped
+         at the crisp canvas border — a window into an infinite canvas. */
       .board-canvas {
         position: relative; overflow: hidden;
         height: 640px; border-radius: var(--r-xl);
+        border: 1px solid var(--hairline-2);
         background:
           radial-gradient(circle at center, rgba(255,255,255,0.05) 1px, transparent 1.5px) 0 0 / 26px 26px,
           linear-gradient(180deg, var(--bg-2), var(--bg));
-        -webkit-mask-image:
-          linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%),
-          linear-gradient(to bottom, transparent 0, #000 8%, #000 92%, transparent 100%);
-        -webkit-mask-composite: source-in; mask-composite: intersect;
-        mask-image:
-          linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%),
-          linear-gradient(to bottom, transparent 0, #000 8%, #000 92%, transparent 100%);
+        box-shadow: 0 40px 120px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05);
       }
-      /* The board itself — larger than the viewport, offset so it bleeds on all
-         sides. Row heights stretch (1fr) to fill. */
+      /* The board itself — larger than the viewport, offset so every edge card
+         runs off the frame. Modest bleeds so each card stays recognizable. */
       .board-inner {
-        position: absolute; top: -74px; left: -70px; right: -70px; bottom: -74px;
+        position: absolute; top: -46px; left: -30px; right: -46px; bottom: -52px;
         display: grid;
         grid-template-columns: 1.05fr 0.95fr 1fr;
         grid-template-rows: repeat(5, 1fr);
@@ -331,38 +325,58 @@
       /* Doc + composer content. */
       .b-doc { align-items: flex-start; padding: 16px 18px; }
       .b-doc .doccard { padding: 0; }
-      .b-composer { align-items: center; padding: 20px; }
+      .b-composer { align-items: center; justify-content: center; padding: 20px; }
 
       /* The complex flow diagram (real Mermaid SVG), wide across the bottom. */
       .b-flow { background: #0b0b0e; align-items: center; justify-content: center; padding: 16px 20px; }
       .b-flow .flow-svg { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; }
 
-      /* mini composer used in the composer card */
-      .mini-composer { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+      /* Composer card — mirrors the real prompt bar: a clearly-visible input
+         with the prompt forming inside and the ✦ suggestion chip, plus a send
+         button. */
+      .mini-composer { display: flex; align-items: flex-end; gap: 12px; width: 100%; }
       .mini-composer .mp {
-        display: block; padding: 12px 15px; border-radius: 12px; text-align: left;
-        border: 1px solid var(--hairline-2); background: var(--bg); color: var(--ink);
-        font-size: 13.5px; letter-spacing: -0.01em;
+        flex: 1; display: flex; flex-direction: column; gap: 13px; text-align: left;
+        padding: 15px 16px; border-radius: 16px;
+        border: 1px solid var(--hairline-2); background: var(--surface-2); color: var(--ink);
+        font-size: 15px; line-height: 1.45; letter-spacing: -0.01em; min-height: 104px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
       }
+      .mini-composer .mp-line { display: block; }
       .mini-composer .mp .caret {
-        display: inline-block; width: 1.5px; height: 1em; margin-left: 1px; vertical-align: -2px;
-        background: var(--ink-2); animation: blink 1.15s steps(1) infinite;
+        display: inline-block; width: 2px; height: 1.05em; margin-left: 1px; vertical-align: -3px;
+        background: var(--accent); animation: blink 1.15s steps(1) infinite;
       }
       @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
       @media (prefers-reduced-motion: reduce) { .mini-composer .mp .caret { animation: none; } }
+      .mp-send {
+        flex: none; width: 44px; height: 44px; border-radius: 13px; border: none; cursor: default;
+        display: grid; place-items: center; background: var(--ink); color: var(--bg);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+      }
+      .mp-send svg { width: 19px; height: 19px; }
       .suggest {
         display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
-        padding: 7px 13px; border-radius: 999px;
+        padding: 6px 12px; border-radius: 999px;
         border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--hairline-2));
-        background: color-mix(in srgb, var(--accent) 10%, transparent);
-        color: var(--accent-2); font-size: 13px; font-weight: 600; white-space: nowrap;
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        color: var(--accent-2); font-size: 12.5px; font-weight: 600; white-space: nowrap;
       }
-      .suggest .spk { font-size: 12.5px; opacity: 0.9; }
+      .suggest .spk { font-size: 12px; opacity: 0.9; }
       .suggest .lbl { color: var(--ink-3); font-weight: 500; }
+      .suggest .sug-caret { color: var(--ink-3); }
       /* JS-animated suggestion label: the typed prompt drives which shape shows,
          and the chip swaps with a soft rise as each prompt cycles. */
-      .sug-shape { color: var(--ink); font-weight: 600; min-width: 70px; text-align: left; transition: opacity 0.22s var(--ease), transform 0.22s var(--ease); }
+      .sug-shape { color: var(--ink); font-weight: 700; min-width: 66px; text-align: left; transition: opacity 0.22s var(--ease), transform 0.22s var(--ease); }
       .sug-shape.swap { opacity: 0; transform: translateY(-4px); }
+
+      /* Subtle brushed-metal variety on a couple of cards. */
+      .bcard.metallic {
+        background:
+          linear-gradient(135deg, rgba(255,255,255,0.07), rgba(255,255,255,0) 42%),
+          linear-gradient(160deg, #292930 0%, #17171b 55%, #201f26 100%);
+        border-color: var(--hairline-2);
+      }
 
       @media (max-width: 900px) {
         .board-canvas { height: 600px; }
@@ -584,7 +598,7 @@
           <div class="board-canvas reveal" role="img" aria-label="A Jarwiz canvas — a viewport onto a board where a dashboard, prototype, comparison table, research doc, the composer, and a flow diagram run off every edge.">
            <div class="board-inner">
             <!-- top-left: a table card, its top running off the canvas -->
-            <div class="bcard b-table">
+            <div class="bcard b-table metallic">
               <table class="doccard-tbl">
                 <thead><tr><th>CRM</th><th>Price /mo</th><th>Best for</th></tr></thead>
                 <tbody>
@@ -606,8 +620,8 @@
                   <div class="md-kpi"><span>Avg order</span><b>$245</b><i>+3%</i></div>
                 </div>
                 <div class="md-panel">
-                  <div class="md-ct">Revenue by region</div>
-                  <div class="md-bars"><span style="height:100%"></span><span style="height:66%"></span><span style="height:44%"></span><span style="height:30%"></span></div>
+                  <div class="md-ct">Revenue by month</div>
+                  <div class="md-bars"><span style="height:38%"></span><span style="height:52%"></span><span style="height:46%"></span><span style="height:64%"></span><span style="height:58%"></span><span style="height:76%"></span><span style="height:70%"></span><span style="height:88%"></span><span style="height:82%"></span><span style="height:100%"></span><span style="height:94%"></span><span style="height:90%"></span></div>
                 </div>
                 <div class="md-panel">
                   <div class="md-ct">Monthly trend</div>
@@ -622,7 +636,7 @@
             </div>
 
             <!-- top-right: a doc card with a citation -->
-            <div class="bcard b-doc">
+            <div class="bcard b-doc metallic">
               <div class="doccard">
                 <div class="doccard-title">CRM market size</div>
                 <div class="doccard-body">
@@ -635,13 +649,18 @@
             <!-- right: the composer capturing intent -->
             <div class="bcard b-composer">
               <div class="mini-composer">
-                <span class="mp"><span class="mp-text" data-typed>Turn my Q2 sales into a report</span><span class="caret" aria-hidden="true"></span></span>
-                <span class="suggest">
-                  <span class="spk" aria-hidden="true">✦</span>
-                  <span class="lbl">Suggested</span>
-                  <span class="sug-shape" data-shape>Dashboard</span>
-                  <span aria-hidden="true">▾</span>
-                </span>
+                <div class="mp">
+                  <span class="mp-line"><span class="mp-text" data-typed>Turn my Q2 sales into a report</span><span class="caret" aria-hidden="true"></span></span>
+                  <span class="suggest">
+                    <span class="spk" aria-hidden="true">✦</span>
+                    <span class="lbl">Suggested</span>
+                    <span class="sug-shape" data-shape>Dashboard</span>
+                    <span class="sug-caret" aria-hidden="true">▾</span>
+                  </span>
+                </div>
+                <button class="mp-send" aria-hidden="true" tabindex="-1">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+                </button>
               </div>
             </div>
 
