@@ -13,7 +13,8 @@ import { AFFINITY_COLORS, NOTE_PAPER, PROTOTYPE_PROMPT_SIZE, type NoteCardShape,
 import { ASKABLE, hasAskableContent } from './askable';
 import { formatControlledTextarea, insertBlock, insertTableBlock, toggleInline, toggleLinePrefix, type FormatResult } from './textFormat';
 import { uploadAsset } from '../lib/uploadAsset';
-import { openDocFocus } from '../ui/focusDoc';
+import { openCardFocus } from '../ui/focusCard';
+import { canFocusCard } from '../ui/CardFocusOverlay';
 import { PROFILE_PROMPT } from './profilePrompt';
 import { useAsk } from './useAsk';
 import { useDiagram } from '../agents/useDiagram';
@@ -226,6 +227,13 @@ export function CardActionBar() {
       });
     }
   }
+  // Every card that has a full-screen view gets an explicit ⤢ Expand at the top
+  // of the Actions menu — open the card as a focused, full-screen page over a
+  // dimmed board (the doc card also keeps its ⤢ icon in the format group).
+  if (!sel.multi && hasContent && canFocusCard(sel.type)) {
+    transforms.unshift({ label: '⤢ Expand', run: () => openCardFocus(id) });
+  }
+
   // The drop-moment profile (docs/PDF-EDGE.md build 3): a dropped PDF or
   // spreadsheet lands selected, so this bar IS the drop moment — Profile
   // rides it as a fixed action (a profile is the file's summary; owner call,
@@ -366,7 +374,7 @@ export function CardActionBar() {
                 className="jz-cardbar-iconbtn"
                 title="Edit full screen"
                 aria-label="Edit full screen"
-                onClick={() => openDocFocus(id)}
+                onClick={() => openCardFocus(id)}
               >
                 <Maximize2 {...FMT_ICON} />
               </button>

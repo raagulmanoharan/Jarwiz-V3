@@ -12,7 +12,7 @@ import { Bold, Italic, Underline, Strikethrough, List, ListTodo, X } from 'lucid
 import { toggleInline, toggleLinePrefix, shortcutMarker, type FormatResult } from '../ask/textFormat';
 import { deriveTitle, getShapeTitle, setShapeTitle, titleIsAuto } from '../shapes/shapeTitle';
 import type { DocCardShape } from '../shapes';
-import { closeDocFocus, getDocFocus, subscribeDocFocus } from './focusDoc';
+import { closeCardFocus, getCardFocus, subscribeCardFocus } from './focusCard';
 
 const ICON = { size: 15, strokeWidth: 2 };
 
@@ -27,7 +27,7 @@ const FORMATS: Array<{ key: string; label: string; icon: React.ReactNode; run: (
 
 export function DocFocusOverlay() {
   const editor = useEditor();
-  const focusId = useSyncExternalStore(subscribeDocFocus, getDocFocus, getDocFocus);
+  const focusId = useSyncExternalStore(subscribeCardFocus, getCardFocus, getCardFocus);
   const shape = useValue(
     'focus-doc',
     () => (focusId ? (editor.getShape(focusId) as DocCardShape | undefined) : undefined),
@@ -49,7 +49,7 @@ export function DocFocusOverlay() {
   useEffect(() => {
     if (!focusId) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeDocFocus();
+      if (e.key === 'Escape') closeCardFocus();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -88,7 +88,7 @@ export function DocFocusOverlay() {
       onPointerDown={(e) => {
         stopEventPropagation(e);
         // Only a click on the backdrop itself closes — not clicks in the page.
-        if (e.target === e.currentTarget) closeDocFocus();
+        if (e.target === e.currentTarget) closeCardFocus();
       }}
     >
       <div className="jz-focus-page" role="dialog" aria-label="Full-screen editor">
@@ -106,7 +106,7 @@ export function DocFocusOverlay() {
               }
               // Handled here because stopPropagation keeps the window
               // listener from ever seeing keys typed in the inputs.
-              if (e.key === 'Escape') closeDocFocus();
+              if (e.key === 'Escape') closeCardFocus();
               e.stopPropagation();
             }}
           />
@@ -123,7 +123,7 @@ export function DocFocusOverlay() {
                 {f.icon}
               </button>
             ))}
-            <button className="jz-cardbar-iconbtn jz-focus-close" title="Close (Esc)" aria-label="Close full-screen editor" onClick={closeDocFocus}>
+            <button className="jz-cardbar-iconbtn jz-focus-close" title="Close (Esc)" aria-label="Close full-screen editor" onClick={closeCardFocus}>
               <X {...ICON} />
             </button>
           </div>
@@ -142,7 +142,7 @@ export function DocFocusOverlay() {
               applyFormat((t, s, en) => toggleInline(t, s, en, marker));
               return;
             }
-            if (e.key === 'Escape') closeDocFocus();
+            if (e.key === 'Escape') closeCardFocus();
             e.stopPropagation();
           }}
         />
