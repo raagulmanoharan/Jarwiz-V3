@@ -147,28 +147,6 @@ function looksLikeDiff(prompt: string): boolean {
   return /\b(conflict|contradict|differ|discrepan|clause|reconcile|inconsisten|at odds)\b/i.test(prompt);
 }
 
-/** A "draw / visualise this as a diagram" request (→ a Mermaid diagram card). */
-function looksLikeDiagram(prompt: string): boolean {
-  return /\b(diagram|flow ?chart|sequence diagram|mind ?map|org chart|gantt|class diagram|er diagram|entity[- ]relationship|state diagram|user journey|journey map|process (map|flow)|visuali[sz]e|sketch|draw)\b/i.test(
-    prompt,
-  );
-}
-
-/** A "make a dashboard / KPIs / chart this data" request (→ the interactive
- *  dashboard card). Checked BEFORE the prototype gate, whose regex also catches
- *  "dashboard" — a data dashboard is the better default now that it's a
- *  first-class card (a UI mockup is still reachable via /prototype). */
-function looksLikeDashboard(prompt: string): boolean {
-  return /\b(dashboard|kpis?|scorecard|metrics? (overview|dashboard|view)|analytics (view|dashboard))\b/i.test(prompt);
-}
-
-/** A "mock up / wireframe / design a UI" request (→ a live HTML prototype card). */
-function looksLikePrototype(prompt: string): boolean {
-  return /\b(mock-?up|wireframe|ui design|ux design|landing page|web ?page|design (a|the|me)? ?(screen|page|ui|interface|app|dashboard|form|website|site|component|layout)|prototype (a|the|screen|ui)|html (page|prototype|prototype))\b/i.test(
-    prompt,
-  );
-}
-
 /** An "action items / to-dos / next steps" request (→ a checklist inside a card). */
 function wantsChecklist(prompt: string): boolean {
   return /\b(action items?|actions?|to-?dos?|task list|checklist|next steps|follow[- ]ups?)\b/i.test(prompt);
@@ -181,14 +159,6 @@ function wantsChecklist(prompt: string): boolean {
  *  as a section label) — those stay on the normal budget. */
 function looksLikeResearch(prompt: string): boolean {
   return /\b(research|deep dive|dig (into|deeper|around)|investigate|due diligence|(find|get|check|pull|look up) (the )?(reviews?|ratings?|prices?|rates?)|reviews? (from|across|on|elsewhere)|what (do|are) (people|guests|users|reviewers|others) say(ing)?|reputation|is (it|this|that)( \w+)? (legit|safe|reliable|any good|worth it)|(any )?complaints? about|tell me everything|everything (about|you can find)|(compare|find) alternatives?|(scout|vet) (this|it|the))\b/i.test(
-    prompt,
-  );
-}
-
-/** An explicit "as written prose / in words" request (→ a doc card). Lets a
- *  refinement of a table/diagram convert back to prose ("as a short write-up"). */
-function looksLikeProse(prompt: string): boolean {
-  return /\b(prose|in writing|short write[- ]?up|written (summary|explanation|form|prose|account)|as an? (essay|narrative|paragraph)|in paragraphs?)\b/i.test(
     prompt,
   );
 }
@@ -310,35 +280,15 @@ export async function proposeSeedPrompts(
   }
 }
 
-function pickShape(prompt: string, current?: AskShape): AskShape {
-  const p = prompt.toLowerCase();
-  // NOTE: brainstorm/affinity prompts no longer route to sticky notes —
-  // stickies are the USER's annotation medium, not an AI output (owner
-  // decision 2026-07-05). Brainstorms land as lists like any idea dump.
-  // The affinity event machinery stays for possible user-driven layouts.
-  if (looksLikeDashboard(prompt)) return 'dashboard';
-  if (looksLikePrototype(prompt)) return 'prototype';
-  if (looksLikeDiagram(prompt)) return 'diagram';
-  // An explicit "as prose" request wins over the keep-current fallback, so a
-  // table/diagram can be turned back into a written card on demand.
-  if (looksLikeProse(prompt)) return 'doc';
-  if (
-    looksLikeDiff(prompt) ||
-    /\b(compare|comparison|vs\.?|versus|pros and cons|trade-?offs?|matrix|table|side by side)\b/.test(p)
-  ) {
-    return 'table';
-  }
-  // A checklist is a list whose items are task lines; both route to 'list'.
-  if (
-    wantsChecklist(prompt) ||
-    /\b(list|bullets?|enumerate|steps|key (points|dates|terms)|what are the)\b/.test(p)
-  ) {
-    return 'list';
-  }
-  // No explicit format named. When refining an existing answer, keep its shape
-  // so a tweak ("add a node", "make it shorter") regenerates that same card
-  // in place rather than producing a different artefact. Affinity boards are a
-  // multi-card layout, not a single refinable card — never keep them here.
+function pickShape(_prompt: string, current?: AskShape): AskShape {
+  // NO implicit shape detection from the prompt text — the response shape is
+  // driven ONLY by the explicit "/" mode (sent as req.shape) (owner call
+  // 2026-07-07). Here we handle just the two non-explicit cases:
+  //  - an in-place refine keeps the card's OWN current shape, so a tweak
+  //    ("add a node", "make it shorter") regenerates that same card rather than
+  //    morphing into a different artefact (affinity is a multi-card layout, not
+  //    a single refinable card — never kept here);
+  //  - everything else defaults to a doc (the first-class default).
   if (current && current !== 'affinity') return current;
   return 'doc';
 }
@@ -726,12 +676,37 @@ async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenera
 /** Edit-vs-new intent for a typed composer instruction on a selected card.
  *  Static system prompt (cache-friendly); the card type + instruction ride the
  *  user turn. Biased to NEW when unsure — a new card never overwrites work. */
-const INTENT_SYSTEM = `A user has a single card selected on an infinite canvas and typed an instruction into the composer. Decide whether they want to MODIFY that selected card in place, or CREATE a NEW separate card derived from it.
+const INTENT_SYSTEM = `A user has ONE card selected on a canvas and typed an instruction. Decide if they want to MODIFY that selected card in place (EDIT) or produce a NEW separate card derived from it (NEW).
 
-- EDIT — they want to change the selected card itself: shorten, expand, rephrase, fix, translate, restyle, add/remove/reorder its contents, filter/refocus it, recompute, "make it …", "turn this into …", "add a column/chart", "focus on …".
-- NEW — they want a new, separate artifact: summarize it, answer a question about it, extract, compare, brainstorm, "write a …", "what are …", "give me …".
+EDIT = change the selected card's OWN content/structure/appearance — the instruction is a command to alter THIS card (shorten, expand, rephrase, translate, fix, proofread, restyle; add/remove/reorder/sort/filter/rename/highlight its parts; add a column/row/section/node/chart/KPI/screen; recompute; "focus it on X", "make it <adjective>", "change the <part>"). Reshaping a table's own rows/columns is EDIT — keeping only some rows, dropping/adding a column, ordering/sorting by a field, transposing, appending a total.
 
-When genuinely unsure, answer NEW — a new card is safe (an in-place edit overwrites their work). Reply with EXACTLY one word: EDIT or NEW.`;
+NEW = produce a separate piece of writing, analysis, or an answer ABOUT the card, leaving it untouched (summarize, explain, describe, critique, review; "what are/what could/which is…"; write an email/tweet/copy/summary/recommendation/action plan; brainstorm; compare). Asking for prose or answers is NEW even when it says "this" or "based on this". Asking to POINT OUT / FLAG / CALL OUT / SPOT / PULL OUT the notable things (anomalies, highlights, weak spots, key movements) is analysis → NEW — it reports about the card, it does not change it.
+
+Examples:
+"make it shorter" → EDIT
+"expand this with more detail" → EDIT
+"translate to Spanish" → EDIT
+"fix the grammar" → EDIT
+"remove the last paragraph" → EDIT
+"change the title to Q3 Review" → EDIT
+"add a column for margin" → EDIT
+"sort by date" → EDIT
+"focus on APAC only" → EDIT
+"add a KPI for churn" → EDIT
+"make it dark mode" → EDIT
+"add a footer with links" → EDIT
+"summarize this" → NEW
+"what are the risks here" → NEW
+"list the pros and cons" → NEW
+"explain this to a beginner" → NEW
+"critique this" → NEW
+"write an email about this" → NEW
+"write marketing copy for this" → NEW
+"what could go wrong in this flow" → NEW
+"which option is best and why" → NEW
+"turn this into an action plan" → NEW
+
+If genuinely balanced, prefer NEW (a new card never overwrites their work). Reply with EXACTLY one word: EDIT or NEW.`;
 
 export async function classifyRefineIntent(
   prompt: string,
