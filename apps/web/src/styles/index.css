@@ -4920,7 +4920,9 @@ body,
   color: var(--jz-ink-900);
   font-size: 13px;
 }
-.jzd-scroll { width: 100%; height: 100%; overflow: auto; padding: 18px; }
+/* Uniform card inset — space-5 on every side, matching .jz-doc-content and
+ * every other text-bearing card (owner call, 2026-07-05). */
+.jzd-scroll { width: 100%; height: 100%; overflow: auto; padding: var(--jz-space-5); box-sizing: border-box; }
 .jzd-loading {
   display: flex; align-items: center; gap: 10px; height: 100%;
   justify-content: center; color: var(--jz-ink-500); font-size: 13px;
