@@ -2705,57 +2705,57 @@ body,
   pointer-events: none;
 }
 
-/* Rotating "scanning" border drawn over the PDF card while Jarwiz parses it —
-   a conic-gradient ring (masked to just the border) that sweeps around the card.
-   Anchored in viewport space over the card by the showreel script. */
-@property --jz-halo-angle {
-  syntax: '<angle>';
-  initial-value: 0deg;
-  inherits: false;
-}
+/* A soft white glow around the PDF card while Jarwiz parses it — gently breathes
+   to read as "processing". Anchored in viewport space over the card. */
 .jz-parse-halo {
   position: absolute;
   border-radius: 16px;
-  padding: 3.5px;
-  /* A faint full ring with a bright highlight that sweeps around it. */
-  background: conic-gradient(
-    from var(--jz-halo-angle),
-    rgba(124, 92, 255, 0.28) 0deg,
-    rgba(124, 92, 255, 0.28) 170deg,
-    #a48bff 250deg,
-    #ffffff 300deg,
-    #a48bff 340deg,
-    rgba(124, 92, 255, 0.28) 360deg
-  );
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  animation: jz-halo-spin 1.15s linear infinite;
-  box-shadow: 0 0 26px rgba(124, 92, 255, 0.45);
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, 0.45),
+    0 0 34px 8px rgba(255, 255, 255, 0.22);
+  animation: jz-parse-glow 1.7s ease-in-out infinite;
   z-index: 304;
 }
-@keyframes jz-halo-spin {
-  to {
-    --jz-halo-angle: 360deg;
+@keyframes jz-parse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.3), 0 0 24px 5px rgba(255, 255, 255, 0.14);
   }
-}
-/* Fallback where @property isn't available: just spin the whole ring. */
-@supports not (background: conic-gradient(from var(--jz-halo-angle), #000, #fff)) {
-  .jz-parse-halo {
-    animation: jz-halo-spin-fallback 1.15s linear infinite;
-  }
-  @keyframes jz-halo-spin-fallback {
-    to {
-      transform: rotate(360deg);
-    }
+  50% {
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.62), 0 0 46px 12px rgba(255, 255, 255, 0.34);
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .jz-parse-halo {
     animation: none;
-    background: var(--jz-accent, #7c5cff);
-    opacity: 0.6;
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.4), 0 0 30px 6px rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* The cell being regenerated: a soft white highlight over just that cell while
+   the corrected value streams in. */
+.jz-cell-hi {
+  position: absolute;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, 0.5),
+    0 0 24px 5px rgba(255, 255, 255, 0.28);
+  animation: jz-cell-hi-pulse 0.85s ease-in-out infinite;
+  z-index: 304;
+}
+@keyframes jz-cell-hi-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-cell-hi {
+    animation: none;
   }
 }
 
