@@ -1,36 +1,37 @@
 /**
  * The hero showreel (?embed=1) — a perpetual, non-interactive loop that tells
  * Jarwiz's core story with the REAL product pieces: real card shapes (link,
- * table, doc, diagram, note, pdf), real connector arrows, real provenance
- * lineage, the real collaborator-cursor look, and the real proactive-comment
- * popover. Nothing here is a mock render.
+ * table, doc, diagram, note, image), real provenance lineage, the real
+ * collaborator-cursor look, and the real proactive-comment popover.
  *
- * The film, looped forever (the camera moves like the real product):
- *   1. WIDE — a genuinely busy research board: source link-cards, two tables, a
- *      recommendation doc, research notes, a decision flow diagram, sticky
- *      notes, all wired together with connector arrows + provenance lineage.
- *   2. The Maker drops a **PDF** of canonical evidence; the camera pushes IN.
- *   3. **Jarwiz** flies over and *reads* it (the real "reading…" behaviour).
- *   4. The camera FOLLOWS Jarwiz's cursor as it travels to the comparison table
- *      and pins a **discrepancy comment** (a row is on last year's price).
- *   5. **“Let Jarwiz fix it”** — the stale cell backspaces and the corrected
- *      value STREAMS back in, like a real generation.
- *   6. The camera pulls back to the wide board and the loop resets.
+ * Everything ephemeral (both cursors, the dragged file, the comment, the parse
+ * glow, the click ripples) is anchored in PAGE coordinates and re-projected to
+ * screen every animation frame — exactly like the product's own cursor layer —
+ * so it truly rides the canvas: it pans and zooms with the board and never
+ * drifts when the camera moves or the page scrolls.
  *
- * It is a *showreel*: pointer-events:none, never hands off (visitors click
- * "Try it free"). Every beat recomputes its anchors from the live camera, so
- * cursors and the comment stay pinned to their cards through the pans.
+ * The film, looped forever:
+ *   1. WIDE — a genuinely busy research board.
+ *   2. The Maker's cursor carries a **file** in and drops it; it becomes a PDF
+ *      card (an image of the pricing sheet — always renders, no pdf.js).
+ *   3. After a beat, **Jarwiz** flies over, selects the card and scans it (a soft
+ *      white glow) while it parses the evidence.
+ *   4. Jarwiz travels to the comparison table and flags the stale cell — a
+ *      **discrepancy comment** is pinned right there.
+ *   5. After a beat, the Maker opens the comment and clicks **"Fix it with
+ *      Jarwiz"**; the real cell highlights and the value regenerates inline.
+ *   6. The card is removed, the camera pulls back, and the loop resets.
  */
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Box, createShapeId, useEditor, type TLShapeId } from 'tldraw';
-import { Sparkles, Wand2, Scale } from 'lucide-react';
+import { Sparkles, Wand2, Scale, FileText } from 'lucide-react';
 import { setShapeTitle } from '../shapes/shapeTitle';
 import { PROV_META_KEY } from '../ask/useAsk';
 
 // ── The canned research board ──────────────────────────────────────────────
 // One stale cell (`STALE`) is the whole story: the table quotes last year's
-// Pipedrive price; the evidence PDF says otherwise; the fix streams it to `TRUE`.
+// Pipedrive price; the evidence sheet says otherwise; the fix streams it to `TRUE`.
 const STALE = '$14';
 const TRUE = '$19';
 
@@ -110,15 +111,8 @@ const STICKIES = ['Double-check the 2026 pricing — sheet due Friday', 'Ask sal
 const COMMENT_BODY = `The 2026 pricing sheet lists Pipedrive Essential at ${TRUE}/seat — this row still shows ${STALE}, last year's price.`;
 
 // Fixed page-space layout — a sprawling workspace. The board is built ONCE; the
-// loop only drops/removes the PDF and streams the one cell, so the heavy shapes
-// (mermaid, link previews) render a single time.
-// Generous spacing: link- and doc-cards auto-grow to fit their content, so we
-// leave wide gutters between every card and pick heights that comfortably fit
-// the text — otherwise a grown card would overlap its neighbour.
+// loop only drops/removes the evidence card and streams the one cell.
 const L = {
-  // Staggered, not a rigid grid — offset x/y so the sources feel scattered like
-  // a real board. Compact heights (no media band now) keep them clear of the
-  // feature matrix below.
   links: [
     { x: -980, y: -540, w: 270, h: 110 },
     { x: -660, y: -585, w: 270, h: 110 },
@@ -130,48 +124,57 @@ const L = {
   doc: { x: 770, y: -210, w: 320, h: 420 },
   notes: { x: 770, y: 300, w: 340, h: 400 },
   diagram: { x: 30, y: 220, w: 600, h: 430 },
-  // The hand-drawn whiteboard the flow diagram was digitised from — an image
-  // card, sitting just left of the diagram and feeding it as a source.
   sketch: { x: -460, y: 250, w: 400, h: 300 },
   stickies: [
     { x: 780, y: -360, w: 220, h: 110 },
     { x: -300, y: 600, w: 230, h: 140 },
   ],
-  pdf: { x: 1200, y: -200, w: 300, h: 420 },
+  // The evidence card — an IMAGE of the pricing sheet (aspect ≈ 0.775 w/h).
+  pdf: { x: 1200, y: -210, w: 300, h: 388 },
 };
 
-const PDF_URL = `${import.meta.env.BASE_URL}evidence-pricing.pdf`;
+const PDF_IMG = `${import.meta.env.BASE_URL}evidence-pricing.jpg`;
 const SKETCH_URL = `${import.meta.env.BASE_URL}sketch-flow.jpg`;
 
-interface Cursor {
-  x: number;
-  y: number;
-  visible: boolean;
-  status: string | null;
+const CURSOR_PATH = 'M4.5 2.8 L20.4 9.6 L13.4 11.9 L10.7 18.8 Z';
+
+// A page-space tween: current (x,y) eases from (fx,fy) to (tx,ty) over `dur`.
+interface Tween {
+  x: number; y: number; fx: number; fy: number; tx: number; ty: number; t0: number; dur: number;
 }
-const HIDDEN: Cursor = { x: 0, y: 0, visible: false, status: null };
+const newTween = (): Tween => ({ x: 0, y: 0, fx: 0, fy: 0, tx: 0, ty: 0, t0: 0, dur: 0 });
 
 export function EmbedShowreel() {
   const editor = useEditor();
   const rootRef = useRef<HTMLDivElement>(null);
-  const fixBtnRef = useRef<HTMLButtonElement>(null);
+  const youRef = useRef<HTMLDivElement>(null);
+  const jzRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLDivElement>(null);
+  const commentRef = useRef<HTMLDivElement>(null);
+  const parseRef = useRef<HTMLDivElement>(null);
+  const clickRef = useRef<HTMLSpanElement>(null);
   const timers = useRef<number[]>([]);
   const ids = useRef<{ table: TLShapeId; diagram: TLShapeId; pdf: TLShapeId } | null>(null);
 
-  const [you, setYou] = useState<Cursor>(HIDDEN);
-  const [jz, setJz] = useState<Cursor>(HIDDEN);
-  const [comment, setComment] = useState<{ x: number; y: number; open: boolean } | null>(null);
-  // A soft white glow drawn over the PDF card while Jarwiz parses it.
-  const [parse, setParse] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
-  // A one-shot click ripple at a point (keyed so each click replays the animation).
-  const [click, setClick] = useState<{ x: number; y: number; n: number } | null>(null);
+  // Page-space anchors, projected to screen each frame by the rAF loop.
+  const youTw = useRef<Tween>(newTween());
+  const jzTw = useRef<Tween>(newTween());
+  const commentPage = useRef({ x: 0, y: 0 });
+  const clickPage = useRef({ x: 0, y: 0 });
+
+  const [youVis, setYouVis] = useState(false);
+  const [fileVis, setFileVis] = useState(false);
+  const [jz, setJz] = useState<{ visible: boolean; status: string | null }>({ visible: false, status: null });
+  const [comment, setComment] = useState<{ visible: boolean; open: boolean }>({ visible: false, open: false });
+  const [parseVis, setParseVis] = useState(false);
+  const [click, setClick] = useState(0);
   const clickSeq = useRef(0);
   const reduce =
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   useEffect(() => {
     const after = (ms: number, fn: () => void) => {
-      const t = window.setTimeout(fn, reduce ? Math.min(ms, 300) : ms) as unknown as number;
+      const t = window.setTimeout(fn, reduce ? Math.min(ms, 250) : ms) as unknown as number;
       timers.current.push(t);
     };
     const clearTimers = () => {
@@ -179,23 +182,74 @@ export function EmbedShowreel() {
       timers.current = [];
     };
 
-    const vp = (px: number, py: number) => editor.pageToViewport({ x: px, y: py });
-    const rectCenter = (el: HTMLElement | null) => {
-      const root = rootRef.current;
-      if (!el || !root) return null;
-      const r = el.getBoundingClientRect();
-      const rr = root.getBoundingClientRect();
-      return { x: r.left - rr.left + r.width / 2, y: r.top - rr.top + r.height / 2 };
+    // ── Page-space motion ──────────────────────────────────────────────────
+    const place = (tw: Tween, x: number, y: number) => {
+      tw.x = x; tw.y = y; tw.fx = x; tw.fy = y; tw.tx = x; tw.ty = y; tw.dur = 0;
+    };
+    const glideTo = (tw: Tween, x: number, y: number, dur: number) => {
+      tw.fx = tw.x; tw.fy = tw.y; tw.tx = x; tw.ty = y; tw.t0 = performance.now(); tw.dur = reduce ? 0 : dur;
+    };
+    const tick = (tw: Tween) => {
+      if (tw.dur <= 0) { tw.x = tw.tx; tw.y = tw.ty; return; }
+      const k = Math.min(1, (performance.now() - tw.t0) / tw.dur);
+      const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; // easeInOutQuad
+      tw.x = tw.fx + (tw.tx - tw.fx) * e;
+      tw.y = tw.fy + (tw.ty - tw.fy) * e;
+    };
+
+    // The rAF loop: project every page anchor to screen and write the DOM. This
+    // is what makes the whole cast ride the canvas through pans and zooms.
+    let raf = 0;
+    const project = (px: number, py: number) => editor.pageToViewport({ x: px, y: py });
+    const frame = () => {
+      raf = requestAnimationFrame(frame);
+      tick(youTw.current);
+      tick(jzTw.current);
+      if (youRef.current) {
+        const s = project(youTw.current.x, youTw.current.y);
+        youRef.current.style.transform = `translate(${s.x - 4}px, ${s.y - 3}px)`;
+      }
+      if (fileRef.current) {
+        // Below the "You" badge so the two don't overlap while dragging.
+        const s = project(youTw.current.x, youTw.current.y);
+        fileRef.current.style.transform = `translate(${s.x + 8}px, ${s.y + 46}px)`;
+      }
+      if (jzRef.current) {
+        const s = project(jzTw.current.x, jzTw.current.y);
+        jzRef.current.style.transform = `translate(${s.x - 4}px, ${s.y - 3}px)`;
+      }
+      if (commentRef.current) {
+        const s = project(commentPage.current.x, commentPage.current.y);
+        commentRef.current.style.transform = `translate(${s.x}px, ${s.y}px)`;
+      }
+      if (clickRef.current) {
+        const s = project(clickPage.current.x, clickPage.current.y);
+        clickRef.current.style.transform = `translate(${s.x}px, ${s.y}px)`;
+      }
+      if (parseRef.current && ids.current) {
+        const b = editor.getShapePageBounds(ids.current.pdf);
+        if (b) {
+          const tl = project(b.x, b.y);
+          const br = project(b.x + b.w, b.y + b.h);
+          parseRef.current.style.transform = `translate(${tl.x}px, ${tl.y}px)`;
+          parseRef.current.style.width = `${br.x - tl.x}px`;
+          parseRef.current.style.height = `${br.y - tl.y}px`;
+        }
+      }
+    };
+    raf = requestAnimationFrame(frame);
+
+    const clickAt = (x: number, y: number) => {
+      clickPage.current = { x, y };
+      clickSeq.current += 1;
+      setClick(clickSeq.current);
     };
 
     // Camera framings the film pans between.
-    // Three distinct framings. drop and table are tight and DON'T overlap, so
-    // travelling between them reads as a real camera pan (following Jarwiz across
-    // the board), not an imperceptible zoom nudge.
     const FRAME = {
-      wide: new Box(-1030, -600, 2560, 1330), // the whole busy board
-      drop: new Box(760, -200, 900, 620), // pushed in on the doc + dropped PDF (right side)
-      table: new Box(-150, -180, 900, 540), // tight on the comparison table (left of it)
+      wide: new Box(-1030, -600, 2560, 1330),
+      drop: new Box(760, -220, 900, 640),
+      table: new Box(-150, -180, 900, 540),
     };
     const panTo = (b: Box, ms: number) =>
       editor.zoomToBounds(b, { inset: 40, animation: { duration: reduce ? 0 : ms } });
@@ -244,21 +298,17 @@ export function EmbedShowreel() {
         editor.createShape({ id: stickyIds[i]!, type: 'note-card', x: pos.x, y: pos.y, props: { w: pos.w, h: pos.h, text: STICKIES[i]!, color: '' } });
       });
 
-      // Titles that ride on meta (tables have no title prop).
       const t = editor.getShape(table);
       if (t) setShapeTitle(editor, t, 'CRM shortlist');
       const t2 = editor.getShape(table2);
       if (t2) setShapeTitle(editor, t2, 'Feature matrix');
 
-      // Connections are shown as the product's own PROVENANCE lineage (the subtle
-      // dotted hairlines), not solid connector arrows: the table was built FROM
-      // the four sources and the feature matrix; the recommendation and notes
-      // were built FROM the table. Selecting the table draws every hop as a
-      // dotted line, which is the whole web of work in one gesture.
+      // Provenance lineage (dotted): the table was built FROM the sources + the
+      // feature matrix; the recommendation and notes FROM the table; the flow
+      // diagram FROM the whiteboard sketch.
       editor.updateShape({ id: table, type: 'table-card', meta: { [PROV_META_KEY]: [...linkIds, table2] } });
       editor.updateShape({ id: doc, type: 'doc-card', meta: { [PROV_META_KEY]: [table] } });
       editor.updateShape({ id: notes, type: 'doc-card', meta: { [PROV_META_KEY]: [table] } });
-      // The flow diagram was digitised FROM the hand-drawn whiteboard sketch.
       editor.updateShape({ id: diagram, type: 'diagram-card', meta: { [PROV_META_KEY]: [sketch] } });
 
       panTo(FRAME.wide, 0);
@@ -268,10 +318,10 @@ export function EmbedShowreel() {
       if (!ids.current) return;
       editor.createShape({
         id: ids.current.pdf,
-        type: 'pdf-card',
+        type: 'image-card',
         x: L.pdf.x,
         y: L.pdf.y,
-        props: { w: L.pdf.w, h: L.pdf.h, src: PDF_URL, assetId: '', name: 'Vendor Pricing 2026', pages: 1, status: 'ready' },
+        props: { w: L.pdf.w, h: L.pdf.h, src: PDF_IMG, name: 'Vendor Pricing 2026' },
       });
     };
     const clearPdf = () => {
@@ -281,24 +331,8 @@ export function EmbedShowreel() {
       if (!ids.current) return;
       editor.updateShape({ id: ids.current.table, type: 'table-card', props: { rows: rowsWith(price) } });
     };
-
-    // Fire a click ripple at a viewport point.
-    const clickAt = (p: { x: number; y: number }) => {
-      clickSeq.current += 1;
-      setClick({ x: p.x, y: p.y, n: clickSeq.current });
-    };
-    // The PDF card's rectangle in viewport space, for the soft parse glow.
-    const pdfHaloRect = () => {
-      if (!ids.current) return null;
-      const b = editor.getShapePageBounds(ids.current.pdf);
-      if (!b) return null;
-      const tl = editor.pageToViewport({ x: b.x, y: b.y });
-      const br = editor.pageToViewport({ x: b.x + b.w, y: b.y + b.h });
-      return { left: tl.x, top: tl.y, width: br.x - tl.x, height: br.y - tl.y };
-    };
-    // Flag/unflag the stale price cell on the REAL table shape (Pipedrive row,
-    // Price/seat column) via meta — the highlight is drawn on the actual cell, so
-    // it's always pixel-aligned; no floating overlay.
+    // Flag/unflag the stale price cell ON the real table shape (Pipedrive row,
+    // Price/seat column) via meta — the highlight rides the actual cell.
     const flashCell = (on: boolean) => {
       if (!ids.current) return;
       const cur = editor.getShape(ids.current.table);
@@ -310,163 +344,161 @@ export function EmbedShowreel() {
       } as Parameters<typeof editor.updateShape>[0]);
     };
 
+    // Key page-space anchors.
+    const DROP = { x: L.pdf.x + L.pdf.w * 0.5, y: L.pdf.y + L.pdf.h * 0.5 };
+    const CELL = { x: L.table.x + L.table.w * 0.46, y: L.table.y + L.table.h * 0.33 };
+    // The "Fix it with Jarwiz" button sits inside the popover, below the pin.
+    const FIXBTN = { x: CELL.x + 24, y: CELL.y + 128 };
+
     // ── One pass of the film ────────────────────────────────────────────────
-    // The Maker drops the PDF; Jarwiz flies in, selects the card and scans it
-    // (a soft white glow, ~5s), travels to the table and flags the stale cell —
-    // the comment is pinned right where the cursor lands. The Maker's cursor
-    // opens the comment and clicks "Fix it with Jarwiz"; then (no Jarwiz cursor)
-    // the real cell highlights and its value regenerates inline. The PDF is
-    // removed just before the pull-back so the wide board matches the start.
     const run = () => {
       clearPdf();
       setPrice(STALE);
       flashCell(false);
-      setComment(null);
-      setParse(null);
-      setClick(null);
-      setYou(HIDDEN);
-      setJz(HIDDEN);
-      // Keep the table AND the flow diagram selected for the WHOLE loop so both
-      // dotted provenance webs stay drawn (selection chrome is transparent).
+      setComment({ visible: false, open: false });
+      setParseVis(false);
+      setYouVis(false);
+      setFileVis(false);
+      setJz({ visible: false, status: null });
+      setClick(0);
       if (ids.current) editor.select(ids.current.table, ids.current.diagram);
       panTo(FRAME.wide, 0);
+      place(youTw.current, 1780, -540);
+      place(jzTw.current, 1820, 560);
 
-      const pdfC = () => vp(L.pdf.x + L.pdf.w * 0.3, L.pdf.y + L.pdf.h * 0.42);
-      const priceCell = () => vp(L.table.x + L.table.w * 0.46, L.table.y + L.table.h * 0.33);
-      // Where the comment gets pinned — captured when Jarwiz flags the cell.
-      let commentPt = { x: 0, y: 0 };
+      // 1) Brief wide beat, then push in on the drop zone.
+      after(900, () => panTo(FRAME.drop, 1400));
 
-      // 1) A brief wide beat, then push in on the drop zone; the Maker drops the PDF.
-      after(900, () => panTo(FRAME.drop, 1300));
-      after(2500, () => { const p = pdfC(); setYou({ x: p.x, y: p.y + 170, visible: true, status: 'dropping evidence…' }); });
-      after(3200, () => { const p = pdfC(); setYou({ x: p.x, y: p.y + 44, visible: true, status: 'dropping evidence…' }); });
-      after(3700, () => { dropPdf(); const p = pdfC(); clickAt(p); setYou({ x: p.x + 26, y: p.y + 18, visible: true, status: null }); });
-      after(4300, () => setYou(HIDDEN));
+      // 2) The Maker's cursor comes in CARRYING the file, and drags it to the
+      //    drop spot slowly (0.8×). The file is tied to the cursor.
+      after(2500, () => { place(youTw.current, 1720, -470); setYouVis(true); setFileVis(true); });
+      after(2750, () => glideTo(youTw.current, DROP.x + 18, DROP.y + 12, 2600));
 
-      // 2) Jarwiz flies in, selects the card, and scans it (~5s soft glow) while
-      //    it parses the evidence.
-      after(4500, () => { const p = pdfC(); setJz({ x: p.x, y: p.y, visible: true, status: 'reading the evidence…' }); });
-      after(5000, () => setParse(pdfHaloRect()));
-      after(6800, () => setJz((c) => ({ ...c, status: 'cross-checking the prices…' })));
-      after(8600, () => setJz((c) => ({ ...c, status: 'found a mismatch…' })));
-      after(10000, () => setParse(null));
+      // 3) Drop → the file becomes the card; the file fades where the card forms.
+      after(5450, () => { dropPdf(); setFileVis(false); clickAt(DROP.x, DROP.y); });
+      after(6000, () => setYouVis(false));
 
-      // 3) Camera follows Jarwiz to the table; it flags the stale cell — the
-      //    comment is pinned right where the cursor lands, then opens.
-      after(10100, () => { panTo(FRAME.table, 1400); setJz((c) => ({ ...c, status: 'following the trail…' })); });
-      after(11700, () => { const c = priceCell(); setJz({ x: c.x, y: c.y, visible: true, status: 'flagging it…' }); });
-      after(12500, () => { const c = priceCell(); commentPt = c; clickAt(c); setComment({ x: c.x, y: c.y, open: false }); });
-      after(13000, () => setJz(HIDDEN));
+      // 4) A beat, then Jarwiz flies in, selects the card and scans it (~5s).
+      after(7000, () => { place(jzTw.current, DROP.x + 180, DROP.y + 190); glideTo(jzTw.current, DROP.x - 30, DROP.y - 10, 750); setJz({ visible: true, status: 'reading the evidence…' }); });
+      after(7700, () => setParseVis(true));
+      after(9400, () => setJz({ visible: true, status: 'cross-checking the prices…' }));
+      after(11200, () => setJz({ visible: true, status: 'found a mismatch…' }));
+      after(12600, () => setParseVis(false));
 
-      // 4) The Maker's cursor comes over, opens the comment, and clicks
+      // 5) Camera follows Jarwiz to the table; it flags the stale cell — the
+      //    comment is pinned right there.
+      after(12700, () => { panTo(FRAME.table, 1400); glideTo(jzTw.current, CELL.x, CELL.y, 1400); setJz({ visible: true, status: 'following the trail…' }); });
+      after(14300, () => setJz({ visible: true, status: 'flagging it…' }));
+      after(15100, () => { commentPage.current = { x: CELL.x, y: CELL.y }; clickAt(CELL.x, CELL.y); setComment({ visible: true, open: false }); });
+      after(15700, () => setJz({ visible: false, status: null }));
+
+      // 6) A beat, then the Maker goes over, opens the comment and clicks
       //    "Fix it with Jarwiz".
-      after(13600, () => setYou({ x: commentPt.x + 6, y: commentPt.y + 10, visible: true, status: null }));
-      after(14300, () => { clickAt(commentPt); setComment((s) => (s ? { ...s, open: true } : s)); });
-      after(15400, () => { const b = rectCenter(fixBtnRef.current); const t = b ?? { x: commentPt.x + 40, y: commentPt.y + 150 }; setYou({ x: t.x, y: t.y, visible: true, status: null }); });
-      after(16200, () => { const b = rectCenter(fixBtnRef.current); if (b) clickAt(b); });
-      after(16600, () => setYou(HIDDEN));
+      after(16900, () => { place(youTw.current, CELL.x + 150, CELL.y - 130); glideTo(youTw.current, CELL.x + 6, CELL.y + 8, 1000); setYouVis(true); });
+      after(18100, () => { clickAt(CELL.x, CELL.y); setComment({ visible: true, open: true }); });
+      after(19300, () => glideTo(youTw.current, FIXBTN.x, FIXBTN.y, 850));
+      after(20250, () => clickAt(FIXBTN.x, FIXBTN.y));
+      after(20650, () => setYouVis(false));
 
-      // 5) No Jarwiz cursor: the comment closes, the real cell highlights, and the
-      //    corrected value regenerates inline (backspace, then stream in).
-      after(16600, () => { setComment(null); flashCell(true); });
+      // 7) No Jarwiz cursor: the comment closes, the real cell highlights, and the
+      //    value regenerates inline (backspace, then stream in).
+      after(20700, () => { setComment({ visible: false, open: false }); flashCell(true); });
       const STREAM = ['$1', '$', '', '$', '$1', TRUE];
       const STREAM_STEP = 120;
-      STREAM.forEach((v, i) => after(16900 + i * STREAM_STEP, () => setPrice(v)));
-      const streamEnd = 16900 + STREAM.length * STREAM_STEP;
-      after(streamEnd + 800, () => flashCell(false));
+      STREAM.forEach((v, i) => after(21000 + i * STREAM_STEP, () => setPrice(v)));
+      const streamEnd = 21000 + STREAM.length * STREAM_STEP;
+      after(streamEnd + 900, () => flashCell(false));
 
-      // 6) Settle, hide the PDF BEFORE the pull-back (so the wide board matches the
-      //    loop's start), then a slow pull-back and loop.
-      after(streamEnd + 1600, () => clearPdf());
-      after(streamEnd + 1900, () => panTo(FRAME.wide, 1500));
-      after(streamEnd + 4200, run);
+      // 8) Settle, remove the card BEFORE the pull-back (so the wide board matches
+      //    the loop's start), then a slow pull-back and loop.
+      after(streamEnd + 1700, () => clearPdf());
+      after(streamEnd + 2000, () => panTo(FRAME.wide, 1500));
+      after(streamEnd + 4400, run);
     };
 
     seed();
     after(300, run);
-    return clearTimers;
+
+    return () => {
+      clearTimers();
+      cancelAnimationFrame(raf);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
 
   return (
     <div ref={rootRef} className="jz-showreel" aria-hidden="true">
-      {parse ? (
-        <div
-          className="jz-parse-halo"
-          style={{ left: parse.left, top: parse.top, width: parse.width, height: parse.height }}
-        />
-      ) : null}
-      <ScriptedCursor cursor={you} label="You" you />
-      <ScriptedCursor cursor={jz} label="Jarwiz" />
-      {comment ? <ShowreelComment pos={comment} open={comment.open} fixRef={fixBtnRef} /> : null}
-      {click ? <span key={click.n} className="jz-click-ring" style={{ left: click.x, top: click.y }} /> : null}
-    </div>
-  );
-}
+      {/* The scanning glow rides the PDF card's page bounds (rAF-positioned). */}
+      <div
+        ref={parseRef}
+        className="jz-parse-halo"
+        style={{ position: 'absolute', left: 0, top: 0, display: parseVis ? 'block' : 'none' }}
+      />
 
-function ScriptedCursor({ cursor, label, you = false }: { cursor: Cursor; label: string; you?: boolean }) {
-  // The Maker cursor is simply "You" — the muttering quips are Jarwiz's alone.
-  const status = you ? null : cursor.status;
-  return (
-    <div
-      className={`jz-avatar jz-avatar--scripted jz-avatar--jarwiz${you ? ' jz-avatar--you' : ''}${
-        status ? '' : ' jz-avatar--idle'
-      }${cursor.visible ? '' : ' jz-avatar--hidden'}`}
-      style={{ transform: `translate(${cursor.x - 4}px, ${cursor.y - 3}px)` }}
-    >
-      <svg className="jz-cursor-arrow" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M4.5 2.8 L20.4 9.6 L13.4 11.9 L10.7 18.8 Z" />
-      </svg>
-      <div className="jz-avatar-badge">
-        <span className="jz-avatar-name">{label}</span>
-        {status ? (
-          <span key={status} className="jz-avatar-status">
-            {status}
-          </span>
+      {/* The proactive comment, pinned in page space at the flagged cell. */}
+      <div
+        ref={commentRef}
+        className="jz-comment"
+        style={{ position: 'absolute', left: 0, top: 0, display: comment.visible ? 'block' : 'none' }}
+      >
+        <button className={`jz-comment-pin jz-comment-pin--tension${comment.open ? ' jz-comment-pin--open' : ''}`}>
+          <Sparkles size={12} />
+        </button>
+        {comment.open ? (
+          <div className="jz-comment-pop">
+            <div className="jz-comment-head">
+              <span className="jz-comment-avatar"><Sparkles size={12} /></span>
+              <span className="jz-comment-name">Jarwiz</span>
+              <span className="jz-comment-kind jz-comment-kind--tension"><Scale size={12} />Tension</span>
+            </div>
+            <div className="jz-comment-body">{COMMENT_BODY}</div>
+            <div className="jz-comment-actions">
+              <button className="jz-comment-fix"><Wand2 size={13} /> Fix it with Jarwiz</button>
+              <button className="jz-comment-dismiss">Dismiss</button>
+            </div>
+          </div>
         ) : null}
       </div>
-    </div>
-  );
-}
 
-/** The proactive-comment popover, reusing the product's own `.jz-comment*`
- *  design. Non-interactive here (the loop drives it) — the fix button is real
- *  markup so the "You" cursor can land on it. */
-function ShowreelComment({
-  pos,
-  open,
-  fixRef,
-}: {
-  pos: { x: number; y: number };
-  open: boolean;
-  fixRef: React.Ref<HTMLButtonElement>;
-}) {
-  return (
-    <div className="jz-comment" style={{ left: pos.x, top: pos.y }}>
-      <button className={`jz-comment-pin jz-comment-pin--tension${open ? ' jz-comment-pin--open' : ''}`}>
-        <Sparkles size={12} />
-      </button>
-      {open ? (
-        <div className="jz-comment-pop">
-          <div className="jz-comment-head">
-            <span className="jz-comment-avatar">
-              <Sparkles size={12} />
-            </span>
-            <span className="jz-comment-name">Jarwiz</span>
-            <span className="jz-comment-kind jz-comment-kind--tension">
-              <Scale size={12} />
-              Tension
-            </span>
-          </div>
-          <div className="jz-comment-body">{COMMENT_BODY}</div>
-          <div className="jz-comment-actions">
-            <button ref={fixRef} className="jz-comment-fix">
-              <Wand2 size={13} /> Fix it with Jarwiz
-            </button>
-            <button className="jz-comment-dismiss">Dismiss</button>
-          </div>
+      {/* The file the Maker carries in — tied to the "You" cursor until it drops. */}
+      <div
+        ref={fileRef}
+        className={`jz-drag-file${fileVis ? '' : ' jz-drag-file--hidden'}`}
+        style={{ position: 'absolute', left: 0, top: 0 }}
+      >
+        <FileText size={15} />
+        <span>Vendor Pricing 2026.pdf</span>
+      </div>
+
+      {/* The Maker cursor — simply "You". */}
+      <div
+        ref={youRef}
+        className={`jz-avatar jz-avatar--jarwiz jz-avatar--you jz-avatar--idle${youVis ? '' : ' jz-avatar--hidden'}`}
+        style={{ position: 'absolute', left: 0, top: 0 }}
+      >
+        <svg className="jz-cursor-arrow" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+          <path d={CURSOR_PATH} />
+        </svg>
+        <div className="jz-avatar-badge"><span className="jz-avatar-name">You</span></div>
+      </div>
+
+      {/* The Jarwiz cursor — carries the muttering quips. */}
+      <div
+        ref={jzRef}
+        className={`jz-avatar jz-avatar--jarwiz${jz.status ? '' : ' jz-avatar--idle'}${jz.visible ? '' : ' jz-avatar--hidden'}`}
+        style={{ position: 'absolute', left: 0, top: 0 }}
+      >
+        <svg className="jz-cursor-arrow" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+          <path d={CURSOR_PATH} />
+        </svg>
+        <div className="jz-avatar-badge">
+          <span className="jz-avatar-name">Jarwiz</span>
+          {jz.status ? <span key={jz.status} className="jz-avatar-status">{jz.status}</span> : null}
         </div>
-      ) : null}
+      </div>
+
+      {/* A click ripple, keyed so each click replays; rAF keeps it on its cell. */}
+      {click ? <span ref={clickRef} key={click} className="jz-click-ring" style={{ position: 'absolute', left: 0, top: 0 }} /> : null}
     </div>
   );
 }
