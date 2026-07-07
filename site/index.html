@@ -244,6 +244,7 @@
       }
       .card-shot img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
       .card-shot.top img { object-position: top; }
+      .card-shot.bottom img { object-position: bottom; }
       .card-shot::after {
         content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
@@ -536,7 +537,7 @@
             <div class="cell w2 reveal">
               <span class="clabel">Grounded, with sources</span>
               <h3>Researches &amp; cites.</h3>
-              <div class="card-shot">
+              <div class="card-shot bottom">
                 <img src="assets/card-doc.png" alt="A research doc card by Jarwiz on CRM market size, citing the market reaching $101.4B in 2025 and a projected $262B by 2032, with a 'Source: Grand View Research' citation link." loading="lazy" />
               </div>
             </div>
