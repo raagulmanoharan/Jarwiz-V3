@@ -21,6 +21,7 @@ import { CardActionBar } from './ask/CardActionBar';
 import { ProvenanceLayer } from './ask/ProvenanceLayer';
 import { ClarifyLayer } from './ask/ClarifyLayer';
 import { CommentLayer } from './ask/CommentLayer';
+import { setComments, toggleComment, commentSig } from './ask/comments';
 import { MachineRunner } from './ui/MachineRunner';
 import { PrototypeRunner } from './ui/PrototypeRunner';
 import { DashboardRunner } from './ui/DashboardRunner';
@@ -174,6 +175,12 @@ const handleMount = (editor: Editor) => {
   });
   // Dev convenience + e2e hook: reach the editor from the console.
   (window as unknown as { editor: Editor }).editor = editor;
+  // e2e / marketing-capture hook: stage a proactive comment on a card and open
+  // it, without waiting on the server review pass. Inert unless called.
+  (window as unknown as { __jzSeedComment?: (c: import('@jarwiz/shared').NoticeComment) => void }).__jzSeedComment = (c) => {
+    setComments([c]);
+    toggleComment(commentSig(c));
+  };
 
   // Embedded demo: land the visitor on content. ?embed=1 is the minified
   // live-preview (one card + composer); ?demo=1 is the full seeded board.

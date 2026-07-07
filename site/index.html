@@ -105,6 +105,9 @@
       @media (prefers-reduced-motion: reduce) { .btn:hover { transform: none; } }
       .nav-actions .ghost-sm { display: inline-flex; }
       @media (max-width: 480px) { .nav-actions .ghost-sm { display: none; } }
+      /* Real GitHub star button (live star count via ghbtns iframe) */
+      .gh-star { display: inline-flex; align-items: center; height: 30px; }
+      .gh-star iframe { display: block; }
 
       /* Eyebrow label */
       .eyebrow {
@@ -197,6 +200,59 @@
       .vs-card li::before { content: ""; position: absolute; left: 0; top: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); opacity: 0.5; }
       .vs-card.win li::before { background: var(--accent); opacity: 1; }
       .vs-mid { display: grid; place-items: center; color: var(--ink-3); font-size: 13px; font-weight: 600; }
+      .versus { align-items: stretch; }
+      .vs-card { display: flex; flex-direction: column; }
+      .vs-card .kind { margin-bottom: 18px; display: inline-flex; align-items: center; gap: 8px; }
+      .vs-foot { margin: 18px 0 0; font-size: 13.5px; color: var(--ink-3); line-height: 1.45; }
+      .vs-card.win .vs-foot { color: var(--ink-2); }
+      .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+        animation: pulse 2.4s var(--ease) infinite; }
+      @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+
+      /* LEFT — the chatbot: one long answer streaming into a wall of prose. Lines
+         reveal top-to-bottom on a loop, with a caret on the growing last line. */
+      .vs-stream { flex: 1; display: flex; flex-direction: column; gap: 9px; }
+      .vs-stream .ln { height: 8px; border-radius: 4px; background: var(--hairline-2); transform-origin: left;
+        animation: stream 6s var(--ease) infinite; }
+      .vs-stream .ln.s1 { width: 74%; } .vs-stream .ln.s2 { width: 88%; } .vs-stream .ln.s3 { width: 42%; position: relative; }
+      .vs-stream .ln:nth-child(1){animation-delay:0s}.vs-stream .ln:nth-child(2){animation-delay:.25s}
+      .vs-stream .ln:nth-child(3){animation-delay:.5s}.vs-stream .ln:nth-child(4){animation-delay:.75s}
+      .vs-stream .ln:nth-child(5){animation-delay:1s}.vs-stream .ln:nth-child(6){animation-delay:1.25s}
+      .vs-stream .ln:nth-child(7){animation-delay:1.5s}.vs-stream .ln:nth-child(8){animation-delay:1.75s}
+      .vs-stream .ln:nth-child(9){animation-delay:2s}.vs-stream .ln:nth-child(10){animation-delay:2.25s}
+      .vs-stream .cur { position: absolute; right: -9px; top: 50%; transform: translateY(-50%);
+        width: 2px; height: 12px; background: var(--accent); animation: blink 1.1s steps(1) infinite; }
+      @keyframes stream { 0%,6% { transform: scaleX(0); opacity: 0; } 12%,72% { transform: scaleX(1); opacity: 1; } 92%,100% { opacity: 0; } }
+
+      /* RIGHT — Jarwiz: the same answer laid out as distinct artifacts (doc,
+         table, image, flow) that grow onto the canvas, staggered, when in view. */
+      .vs-board { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 12px; }
+      .mini { border-radius: 10px; border: 1px solid var(--hairline-2); padding: 12px;
+        background: color-mix(in srgb, var(--accent) 5%, transparent); min-height: 66px;
+        display: flex; opacity: 0; transform: scale(0.9); transform-origin: center; }
+      .versus.in .mini { animation: grow 0.55s var(--ease) forwards; }
+      .versus.in .mini:nth-child(1){animation-delay:.15s}.versus.in .mini:nth-child(2){animation-delay:.35s}
+      .versus.in .mini:nth-child(3){animation-delay:.55s}.versus.in .mini:nth-child(4){animation-delay:.75s}
+      @keyframes grow { to { opacity: 1; transform: scale(1); } }
+      .mini.doc { flex-direction: column; gap: 6px; justify-content: center; }
+      .mini.doc b { height: 7px; width: 55%; border-radius: 3px; background: var(--accent); }
+      .mini.doc i { height: 5px; border-radius: 3px; background: var(--ink-3); }
+      .mini.doc i.s { width: 72%; }
+      .mini.table { flex-direction: column; gap: 5px; justify-content: center; }
+      .mini.table u { height: 6px; border-radius: 3px; background: var(--ink-2); }
+      .mini.table u.h { background: var(--accent); }
+      .mini.image { padding: 8px; align-items: center; justify-content: center; }
+      .mini.image svg { width: 100%; height: auto; max-height: 46px; }
+      .mini.flow { align-items: center; justify-content: center; gap: 6px; }
+      .mini.flow .nd { width: 15px; height: 15px; border-radius: 4px; background: var(--ink-2); flex: none; }
+      .mini.flow .nd.on { background: var(--accent); }
+      .mini.flow .ar { width: 12px; height: 2px; border-radius: 2px; background: var(--ink-3); flex: none; }
+      @media (prefers-reduced-motion: reduce) {
+        .vs-stream .ln { animation: none; opacity: 1; transform: none; }
+        .vs-stream .cur { animation: none; }
+        .mini { opacity: 1; transform: none; }
+        .versus.in .mini { animation: none; }
+      }
       @media (max-width: 720px) {
         .versus { grid-template-columns: 1fr; }
         .vs-mid { padding: 4px 0; }
@@ -249,6 +305,18 @@
         content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
       }
+      /* Peek: the screenshot is a rounded artifact card that overflows the
+         cell's bottom-right edge and gets clipped there (the cell's rounded
+         overflow does the cutting), so it reads as a real card peeking out —
+         NOT a framed thumbnail and NOT a separate header band. It keeps its own
+         rounded corners on the inside; only the bled edges are cut. */
+      .card-shot.peek {
+        margin: 18px -34px -34px 6px;
+        border-radius: var(--r-md);
+        border: 1px solid var(--hairline-2);
+        box-shadow: 0 20px 44px rgba(0, 0, 0, 0.5);
+      }
+      .card-shot.peek::after { box-shadow: inset 0 1px 0 rgba(255,255,255,0.06); }
 
       /* mini composer used in the "suggests the shape" cell */
       .mini-composer { display: flex; flex-direction: column; gap: 12px; width: 100%; align-self: end; }
@@ -272,20 +340,10 @@
       }
       .suggest .spk { font-size: 12.5px; opacity: 0.9; }
       .suggest .lbl { color: var(--ink-3); font-weight: 500; }
-      .rotator { position: relative; display: inline-grid; min-width: 74px; text-align: left; }
-      .rotator span { grid-area: 1 / 1; opacity: 0; transform: translateY(4px); animation: rot 9s var(--ease) infinite; }
-      .rotator span:nth-child(1) { animation-delay: 0s; }
-      .rotator span:nth-child(2) { animation-delay: 3s; }
-      .rotator span:nth-child(3) { animation-delay: 6s; }
-      @keyframes rot {
-        0% { opacity: 0; transform: translateY(4px); }
-        4%, 30% { opacity: 1; transform: none; }
-        36%, 100% { opacity: 0; transform: translateY(-4px); }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .rotator span { animation: none; opacity: 0; transform: none; }
-        .rotator span.rest { opacity: 1; }
-      }
+      /* JS-animated suggestion label: the typed prompt drives which shape shows,
+         and the chip swaps with a soft rise as each prompt cycles. */
+      .sug-shape { color: var(--ink); font-weight: 600; min-width: 70px; text-align: left; transition: opacity 0.22s var(--ease), transform 0.22s var(--ease); }
+      .sug-shape.swap { opacity: 0; transform: translateY(-4px); }
 
       @media (max-width: 900px) {
         .bento { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 216px; }
@@ -401,7 +459,9 @@
       <div class="wrap nav">
         <a class="brand" href="#top"><span class="spark">✦</span> Jarwiz</a>
         <div class="nav-actions">
-          <a class="btn btn-ghost ghost-sm" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener"><svg class="gh" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 012-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
+          <span class="gh-star ghost-sm" aria-hidden="false">
+            <iframe title="Star raagulmanoharan/Jarwiz-V3 on GitHub" src="https://ghbtns.com/github-btn.html?user=raagulmanoharan&amp;repo=Jarwiz-V3&amp;type=star&amp;count=true&amp;size=large" frameborder="0" scrolling="0" width="116" height="30"></iframe>
+          </span>
           <a class="btn btn-primary" href="app/?demo=1" target="_blank" rel="noopener">Try it free ↗</a>
         </div>
       </div>
@@ -411,7 +471,6 @@
       <!-- HERO -->
       <section class="hero">
         <div class="wrap">
-          <span class="hero-badge"><span class="dot" aria-hidden="true"></span> Now builds live dashboards &amp; prototypes</span>
           <h1>The AI whiteboard that does the <span class="grad">thinking</span>.</h1>
           <p class="sub">
             Describe anything and Jarwiz builds the <b>right artifact</b> for it — a doc, a table,
@@ -419,7 +478,6 @@
           </p>
           <div class="hero-cta">
             <a class="btn btn-primary btn-lg" href="app/?demo=1" target="_blank" rel="noopener">Try it free ↗</a>
-            <a class="link-ghost" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener"><svg class="gh" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 012-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Star on GitHub</a>
           </div>
           <div class="trust">
             <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 7v6c0 5 3.5 7.5 8 9 4.5-1.5 8-4 8-9V7z"/></svg> Open source, MIT licensed</span>
@@ -449,29 +507,38 @@
       <section id="why" style="padding-top: 40px;">
         <div class="wrap">
           <div class="sec-head reveal">
-            <span class="eyebrow">The wedge</span>
             <h2>The right shape for every answer.</h2>
-            <p>A chatbot hands you one wall of prose to scroll — no matter the question. Jarwiz picks the form the answer wants, and lays it on a canvas you keep.</p>
+            <p>Same question, same research — two ways to receive it. One scrolls. One shows.</p>
           </div>
           <div class="versus reveal">
             <div class="vs-card">
-              <p class="kind">A chatbot gives you</p>
-              <ul>
-                <li>One answer, in a wall of text</li>
-                <li>The same prose shape for every question</li>
-                <li>A single thread you scroll and lose</li>
-                <li>A sidebar bolted onto someone else's app</li>
-              </ul>
+              <p class="kind"><span class="live-dot" aria-hidden="true"></span> A chatbot — streaming…</p>
+              <div class="vs-stream" aria-hidden="true">
+                <span class="ln"></span><span class="ln"></span><span class="ln s1"></span>
+                <span class="ln"></span><span class="ln"></span><span class="ln s2"></span>
+                <span class="ln"></span><span class="ln"></span><span class="ln"></span>
+                <span class="ln s3"><i class="cur"></i></span>
+              </div>
+              <p class="vs-foot">One long answer, pouring into a wall of text you scroll and lose.</p>
             </div>
             <div class="vs-mid">vs</div>
             <div class="vs-card win">
-              <p class="kind">Jarwiz gives you</p>
-              <ul>
-                <li>A table to compare, a dashboard for data, a board to think in</li>
-                <li>The right shape, suggested as you type</li>
-                <li>Real frameworks, researched and cited</li>
-                <li>A canvas you keep, extend, and hand off</li>
-              </ul>
+              <p class="kind">Jarwiz — laid out on the canvas</p>
+              <div class="vs-board" aria-hidden="true">
+                <div class="mini doc">
+                  <b></b><i></i><i></i><i class="s"></i>
+                </div>
+                <div class="mini table">
+                  <u class="h"></u><u></u><u></u><u></u>
+                </div>
+                <div class="mini image">
+                  <svg viewBox="0 0 48 32" fill="none"><rect width="48" height="32" rx="4" fill="rgba(255,255,255,.05)"/><circle cx="14" cy="11" r="4" fill="rgba(255,255,255,.5)"/><path d="M4 30l12-12 8 7 7-8 13 13" stroke="rgba(255,255,255,.6)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div class="mini flow">
+                  <span class="nd"></span><span class="ar"></span><span class="nd"></span><span class="ar"></span><span class="nd on"></span>
+                </div>
+              </div>
+              <p class="vs-foot">The same answer, built into a doc, a table, an image, and a flow — at a glance.</p>
             </div>
           </div>
         </div>
@@ -481,7 +548,6 @@
       <section id="build">
         <div class="wrap">
           <div class="sec-head reveal">
-            <span class="eyebrow">What it builds</span>
             <h2>One prompt. The right shape.</h2>
             <p>Ask for anything and Jarwiz picks the form the answer wants — a doc, a table, a diagram, a live prototype, a dashboard, or a whole board — and suggests it as you type.</p>
           </div>
@@ -489,74 +555,63 @@
           <div class="bento">
             <!-- Dominant hero card: Dashboard (real screenshot) -->
             <div class="cell w2 h2 wfull reveal">
-              <span class="clabel">Your data → a dashboard</span>
               <h3>Turn a spreadsheet into a live dashboard.</h3>
-              <p>Drop a table and Jarwiz builds <b>KPI tiles, bar and line charts, and a data table</b> — every number computed from your real rows. Filter or refocus it right on the canvas.</p>
-              <div class="card-shot top">
+              <p>Drop a table and Jarwiz builds <b>KPI tiles, charts, and a data table</b> — every number computed from your real rows.</p>
+              <div class="card-shot top peek">
                 <img src="assets/card-dashboard.png" alt="A live Jarwiz dashboard card: KPI tiles for total revenue $890.2k, total orders 3,629, new customers 609 and average order value $245; a bar chart of Q2 revenue by region, a line chart of the monthly revenue trend, another bar chart of new customers by region, and a monthly regional detail data table." loading="lazy" />
               </div>
             </div>
 
             <!-- Diagram (real screenshot, tall portrait) -->
             <div class="cell w1 h2 reveal">
-              <span class="clabel">Map a flow</span>
-              <h3>Diagram.</h3>
-              <div class="card-shot top">
+              <h3>Map a flow.</h3>
+              <div class="card-shot top peek">
                 <img src="assets/card-diagram.png" alt="A flowchart card built by Jarwiz: an onboarding flow branching from New signup to an Email verified? decision, into Onboarding then Activated, or Send reminder." loading="lazy" />
               </div>
             </div>
 
             <!-- Prototype (real screenshot, tall) -->
             <div class="cell w1 h2 reveal">
-              <span class="clabel">Describe a UI</span>
-              <h3>Prototype.</h3>
-              <div class="card-shot">
-                <img src="assets/card-prototype.png" alt="A working prototype card rendered live by Jarwiz: a Pomodoro focus timer reading 16:12, with Focus, Short break and Long break tabs and Pause and Reset buttons." loading="lazy" />
+              <h3>Describe a UI.</h3>
+              <div class="card-shot top peek">
+                <img src="assets/card-prototype.png" alt="A working prototype rendered live by Jarwiz: a clean mobile focus-timer app in a phone frame." loading="lazy" />
               </div>
             </div>
 
             <!-- Thinking Machines (real SWOT board) -->
             <div class="cell w2 reveal">
-              <span class="clabel">Seven frameworks, run for you</span>
               <h3>Run a real framework.</h3>
-              <div class="card-shot top">
+              <div class="card-shot top peek">
                 <img src="assets/example-board.png" alt="A finished Jarwiz SWOT board: a 2×2 of strengths, weaknesses, opportunities and threats, a TOWS strategic-moves table, and a strategic verdict with top priorities." loading="lazy" />
               </div>
             </div>
 
             <!-- Table (real screenshot, wide) -->
             <div class="cell w2 reveal">
-              <span class="clabel">Compare</span>
-              <h3>Table.</h3>
-              <div class="card-shot top">
+              <h3>Compare in a table.</h3>
+              <div class="card-shot top peek">
                 <img src="assets/card-table.png" alt="A comparison table card built by Jarwiz benchmarking CRMs — HubSpot, Salesforce, Pipedrive and Attio — by monthly price, who they are best for, and whether they offer a free tier." loading="lazy" />
               </div>
             </div>
 
             <!-- Doc — grounded research with citations (real screenshot) -->
             <div class="cell w2 reveal">
-              <span class="clabel">Grounded, with sources</span>
-              <h3>Researches &amp; cites.</h3>
-              <div class="card-shot bottom">
+              <h3>Research, with sources.</h3>
+              <div class="card-shot bottom peek">
                 <img src="assets/card-doc.png" alt="A research doc card by Jarwiz on CRM market size, citing the market reaching $101.4B in 2025 and a projected $262B by 2032, with a 'Source: Grand View Research' citation link." loading="lazy" />
               </div>
             </div>
 
-            <!-- Smart composer — the live ✦ suggestion mock -->
+            <!-- Smart composer — the live ✦ suggestion mock (JS-animated) -->
             <div class="cell w2 reveal">
-              <span class="clabel">Smart composer</span>
               <h3>It suggests the shape as you type.</h3>
-              <div class="cell-viz" role="img" aria-label="A prompt reading 'Turn my Q2 sales into a report' with Jarwiz suggesting the Dashboard shape.">
+              <div class="cell-viz" role="img" aria-label="Jarwiz suggesting the right shape as different prompts are typed into the composer.">
                 <div class="mini-composer">
-                  <span class="mp">Turn my Q2 sales into a report<span class="caret" aria-hidden="true"></span></span>
+                  <span class="mp"><span class="mp-text" data-typed>Turn my Q2 sales into a report</span><span class="caret" aria-hidden="true"></span></span>
                   <span class="suggest">
                     <span class="spk" aria-hidden="true">✦</span>
                     <span class="lbl">Suggested</span>
-                    <span class="rotator" aria-hidden="true">
-                      <span>Table</span>
-                      <span class="rest">Dashboard</span>
-                      <span>Diagram</span>
-                    </span>
+                    <span class="sug-shape" data-shape>Dashboard</span>
                     <span aria-hidden="true">▾</span>
                   </span>
                 </div>
@@ -566,18 +621,11 @@
         </div>
       </section>
 
-      <!-- SHOWCASE — real screenshots -->
+      <!-- SHOWCASE — real screenshots, each block self-contained (one heading) -->
       <section id="showcase">
         <div class="wrap">
-          <div class="sec-head reveal">
-            <span class="eyebrow">Real output</span>
-            <h2>Not a mockup. Real output.</h2>
-            <p>Actual boards and dashboards Jarwiz laid down from a single prompt. Every card is live and editable.</p>
-          </div>
-
           <div class="showcase-item reveal">
             <div class="showcase-lead">
-              <span class="eyebrow">Dashboard · from a spreadsheet</span>
               <h3>Drop a spreadsheet. Get a dashboard.</h3>
               <p>Hand Jarwiz your rows and it builds a live dashboard — KPI tiles, charts, and a data table — then lets you filter and refocus it in place.</p>
             </div>
@@ -589,14 +637,13 @@
 
           <div class="showcase-item reveal">
             <div class="showcase-lead">
-              <span class="eyebrow">Board · SWOT</span>
               <h3>A board that argues back.</h3>
-              <p>One prompt — “SWOT Figma” — and this is the board Jarwiz laid down: the 2×2, a TOWS strategy table, and a verdict with priorities.</p>
+              <p>One prompt — “SWOT Figma” — and Jarwiz lays down the whole board, then leaves comments on it: what’s thin, what to pressure-test, where to dig next.</p>
             </div>
             <div class="shot">
-              <img src="assets/example-board.png" alt="A finished Jarwiz board: a SWOT 2×2 of Figma, a TOWS strategic-moves table, and a strategic verdict with top priorities." loading="lazy" />
+              <img src="assets/example-board.png" alt="A finished Jarwiz board with a SWOT 2×2, a TOWS strategy table and a verdict — and a Jarwiz comment pin opened on one card, questioning an assumption and suggesting a next move." loading="lazy" />
             </div>
-            <p class="shot-cap"><b>Real output, not a mockup.</b> Move a card, dig deeper on any of them, or reshape a doc into a table — right on the canvas.</p>
+            <p class="shot-cap"><b>It reads its own work.</b> Jarwiz pins comments where the thinking is thin — open one to see the note, then move a card, dig deeper, or reshape it right on the canvas.</p>
           </div>
         </div>
       </section>
@@ -605,7 +652,6 @@
       <section id="machines">
         <div class="wrap">
           <div class="sec-head reveal">
-            <span class="eyebrow">Depth</span>
             <h2>Seven machines that do the thinking.</h2>
             <p>Drop one on the canvas, type a subject, hit Run. It researches the live web and lays a whole framework of cards onto your board.</p>
           </div>
@@ -660,7 +706,6 @@
       <section id="how">
         <div class="wrap">
           <div class="sec-head reveal">
-            <span class="eyebrow">The loop</span>
             <h2>Three moves from blank to finished.</h2>
           </div>
           <div class="steps">
@@ -744,6 +789,52 @@
       } else {
         document.querySelectorAll('.reveal').forEach((el) => el.classList.add('in'));
       }
+
+      // Smart-composer demo: type a series of prompts and swap the suggested
+      // shape chip in sync, so the bento card shows the ✦ suggestion reacting to
+      // intent — the way it does live in the app.
+      (function animateComposer() {
+        const typed = document.querySelector('[data-typed]');
+        const shapeEl = document.querySelector('[data-shape]');
+        if (!typed || !shapeEl) return;
+        const PAIRS = [
+          ['Turn my Q2 sales into a report', 'Dashboard'],
+          ['Compare the top 5 CRMs', 'Table'],
+          ['Map the onboarding flow', 'Diagram'],
+          ['Draft a launch plan for the app', 'Doc'],
+          ['Storyboard a 5-day trip to Goa', 'Board'],
+        ];
+        if (reduce) { typed.textContent = PAIRS[0][0]; shapeEl.textContent = PAIRS[0][1]; return; }
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        let i = 0;
+        async function loop() {
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            const [prompt, shape] = PAIRS[i];
+            // Swap the chip as the new prompt starts forming.
+            shapeEl.classList.add('swap');
+            await sleep(200);
+            shapeEl.textContent = shape;
+            shapeEl.classList.remove('swap');
+            for (let c = 1; c <= prompt.length; c++) { typed.textContent = prompt.slice(0, c); await sleep(42); }
+            await sleep(1700);
+            for (let c = prompt.length; c >= 0; c--) { typed.textContent = prompt.slice(0, c); await sleep(22); }
+            await sleep(260);
+            i = (i + 1) % PAIRS.length;
+          }
+        }
+        // Only animate while the card is on screen (saves cycles + battery).
+        const card = typed.closest('.cell');
+        if (card && 'IntersectionObserver' in window) {
+          let started = false;
+          const io2 = new IntersectionObserver((es) => {
+            for (const e of es) if (e.isIntersecting && !started) { started = true; loop(); io2.disconnect(); }
+          }, { threshold: 0.3 });
+          io2.observe(card);
+        } else {
+          loop();
+        }
+      })();
     </script>
   </body>
 </html>
