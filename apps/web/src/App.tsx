@@ -267,6 +267,13 @@ function LocalBoard() {
     getActivePersistenceKey,
     getActivePersistenceKey,
   );
+  // The marketing embeds (?embed / ?usecases) are pure showcases: the camera is
+  // driven ONLY by the scripted loop or the Next/Back controller. Lock the canvas
+  // to visitor input so a stray hover/scroll/click/keypress can't pan-or-zoom the
+  // board into empty space (which reads as the widget "going blank"). Programmatic
+  // camera moves are JS, so they're unaffected; the controller re-enables its own
+  // pointer events in CSS.
+  const lockCanvas = isEmbed() || isUseCases();
   return (
     <Tldraw
       key={board?.id ?? 'legacy'}
@@ -275,6 +282,8 @@ function LocalBoard() {
       shapeUtils={cardShapeUtils}
       components={isUseCases() ? useCasesComponents : isEmbed() ? embedComponents : components}
       onMount={handleMount}
+      className={lockCanvas ? 'jz-lockcanvas' : undefined}
+      autoFocus={lockCanvas ? false : undefined}
     />
   );
 }
