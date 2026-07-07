@@ -282,32 +282,29 @@
       .cell.w1 .cell-viz svg { max-height: 90px; }
       .cell-viz.right { place-items: end center; }
 
-      /* Real product-card screenshot, framed as an embedded artifact */
-      .card-shot {
-        position: relative; flex: 1; min-height: 0; margin-top: 12px;
-        border-radius: 12px; overflow: hidden;
-        border: 1px solid var(--hairline); background: #0b0b0e;
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 16px 38px rgba(0, 0, 0, 0.42);
+      /* Each capability card mounts a REAL shape (not a screenshot) on its own
+         card-screen background — one subtle surface, no heavy border/shadow (so
+         it reads as a card without stacking boxes-within-boxes). */
+      .cell-canvas {
+        flex: 1; min-height: 0; margin-top: 14px; position: relative;
+        border-radius: var(--r-sm); overflow: hidden; display: flex;
+        background: #0b0b0e;
       }
-      .card-shot img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
-      .card-shot.top img { object-position: top; }
-      .card-shot.bottom img { object-position: bottom; }
-      .card-shot::after {
-        content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-      }
-      /* Peek: the screenshot is a rounded artifact card that overflows the
-         cell's bottom-right edge and gets clipped there (the cell's rounded
-         overflow does the cutting), so it reads as a real card peeking out —
-         NOT a framed thumbnail and NOT a separate header band. It keeps its own
-         rounded corners on the inside; only the bled edges are cut. */
-      .card-shot.peek {
-        margin: 18px -34px -34px 6px;
-        border-radius: var(--r-md);
-        border: 1px solid var(--hairline-2);
-        box-shadow: 0 20px 44px rgba(0, 0, 0, 0.5);
-      }
-      .card-shot.peek::after { box-shadow: inset 0 1px 0 rgba(255,255,255,0.06); }
+      /* Full render, shown whole; dark-bg images blend into the screen. */
+      .cell-canvas.fit { align-items: center; justify-content: center; }
+      .cell-canvas.fit img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; }
+      /* Cover-fill (dashboard): fills the screen, only the tail of a long table
+         trails off the bottom — no letterbox padding. */
+      .cell-canvas.cover img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
+      /* The real diagram SVG, centered and whole. */
+      .cell-canvas.flow { align-items: center; justify-content: center; padding: 6px; }
+      .cell-canvas.flow .flow-svg { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; }
+      /* Live prototype iframe fills the space. */
+      .proto-frame { width: 100%; height: 100%; border: 0; display: block; background: #0b0b0e; }
+      /* Real HTML table / doc card content on the card screen. */
+      .cell-canvas.data { align-items: flex-start; padding: 16px 18px; }
+      .cell-canvas.data .doccard { padding: 0; }
+      .cell-canvas.data .doccard-tbl { margin: 0; }
 
       /* mini composer used in the "suggests the shape" cell */
       .mini-composer { display: flex; flex-direction: column; gap: 12px; width: 100%; align-self: end; }
@@ -347,8 +344,8 @@
         .cell, .cell.w2, .cell.w1, .cell.wfull { grid-column: span 1; }
         .cell.h2 { grid-row: span 1; }
         .cell { min-height: 236px; }
-        .card-shot { min-height: 176px; }
-        .cell.h2 .card-shot { min-height: 260px; }
+        .cell-canvas { min-height: 176px; }
+        .cell.h2 .cell-canvas { min-height: 280px; }
       }
 
       /* Showcase — real screenshots */
@@ -498,20 +495,17 @@
       <section id="why" style="padding-top: 40px;">
         <div class="wrap">
           <div class="sec-head reveal">
-            <h2>The right shape for every answer.</h2>
-            <p>Same question, same research — two ways to receive it. One pours out a wall of text. One hands you a crisp doc you can scan.</p>
+            <h2>A card is worth a thousand words.</h2>
+            <p>Same question, same research. One pours out a wall of text; the other hands you a doc you can scan in seconds.</p>
           </div>
           <div class="versus reveal">
             <div class="vs-card">
-              <p class="kind"><span class="live-dot" aria-hidden="true"></span> A chatbot — streaming…</p>
               <div class="vs-scroll" data-stream>
                 <p class="chat-txt"></p>
               </div>
-              <p class="vs-foot">One long answer, in a wall of prose you scroll and lose.</p>
             </div>
             <div class="vs-mid">vs</div>
             <div class="vs-card win">
-              <p class="kind">Jarwiz — a doc card</p>
               <div class="vs-scroll" data-doc>
                 <div class="doccard">
                   <div class="doccard-title">CRM tools, compared</div>
@@ -530,7 +524,6 @@
                   </div>
                 </div>
               </div>
-              <p class="vs-foot">The same answer — crisp, scannable, and yours to keep.</p>
             </div>
           </div>
         </div>
@@ -545,52 +538,65 @@
           </div>
 
           <div class="bento">
-            <!-- Dominant hero card: Dashboard (real screenshot) -->
+            <!-- Dominant hero card: Dashboard (full render, un-cropped) -->
             <div class="cell w2 h2 wfull reveal">
               <h3>Turn a spreadsheet into a live dashboard.</h3>
               <p>Drop a table and Jarwiz builds <b>KPI tiles, charts, and a data table</b> — every number computed from your real rows.</p>
-              <div class="card-shot top peek">
-                <img src="assets/card-dashboard.png" alt="A live Jarwiz dashboard card: KPI tiles for total revenue $890.2k, total orders 3,629, new customers 609 and average order value $245; a bar chart of Q2 revenue by region, a line chart of the monthly revenue trend, another bar chart of new customers by region, and a monthly regional detail data table." loading="lazy" />
+              <div class="cell-canvas cover">
+                <img src="assets/card-dashboard.png" alt="A live Jarwiz dashboard: KPI tiles for total revenue $890.2k, total orders 3,629, new customers 609 and average order value $245; a bar chart of Q2 revenue by region, a line chart of the monthly revenue trend, another bar chart of new customers by region, and a monthly regional detail data table." loading="lazy" />
               </div>
             </div>
 
-            <!-- Diagram (real screenshot, tall portrait) -->
+            <!-- Diagram — the real Mermaid SVG the diagram card renders -->
             <div class="cell w1 h2 reveal">
               <h3>Map a flow.</h3>
-              <div class="card-shot top peek">
-                <img src="assets/card-diagram.png" alt="A flowchart card built by Jarwiz: an onboarding flow branching from New signup to an Email verified? decision, into Onboarding then Activated, or Send reminder." loading="lazy" />
+              <div class="cell-canvas flow">
+                <img class="flow-svg" src="assets/flow.svg" alt="A flowchart: New signup branches on 'Email verified?' — Yes goes to Onboarding then Activated, No goes to Send reminder." loading="lazy" />
               </div>
             </div>
 
-            <!-- Prototype (real screenshot, tall) -->
+            <!-- Prototype — the actual generated UI, running live in an iframe -->
             <div class="cell w1 h2 reveal">
               <h3>Describe a UI.</h3>
-              <div class="card-shot top peek">
-                <img src="assets/card-prototype.png" alt="A working prototype rendered live by Jarwiz: a clean mobile focus-timer app in a phone frame." loading="lazy" />
+              <div class="cell-canvas">
+                <iframe class="proto-frame" src="assets/proto-focus.html" title="A live Focus mobile-app prototype rendered by Jarwiz" loading="lazy" scrolling="no"></iframe>
               </div>
             </div>
 
-            <!-- Thinking Machines (real SWOT board) -->
+            <!-- Thinking Machines (full SWOT board render, un-cropped) -->
             <div class="cell w2 reveal">
               <h3>Run a real framework.</h3>
-              <div class="card-shot top peek">
-                <img src="assets/example-board.png" alt="A finished Jarwiz SWOT board: a 2×2 of strengths, weaknesses, opportunities and threats, a TOWS strategic-moves table, and a strategic verdict with top priorities." loading="lazy" />
+              <div class="cell-canvas fit">
+                <img src="assets/board-band.png" alt="A Jarwiz SWOT board: Strengths and Weaknesses cards beside a TOWS strategy table — with a Jarwiz comment opened on the Weaknesses card." loading="lazy" />
               </div>
             </div>
 
-            <!-- Table (real screenshot, wide) -->
+            <!-- Table — a real HTML comparison table (the table card) -->
             <div class="cell w2 reveal">
               <h3>Compare in a table.</h3>
-              <div class="card-shot top peek">
-                <img src="assets/card-table.png" alt="A comparison table card built by Jarwiz benchmarking CRMs — HubSpot, Salesforce, Pipedrive and Attio — by monthly price, who they are best for, and whether they offer a free tier." loading="lazy" />
+              <div class="cell-canvas data">
+                <table class="doccard-tbl">
+                  <thead><tr><th>CRM</th><th>Price /mo</th><th>Best for</th><th>Free tier</th></tr></thead>
+                  <tbody>
+                    <tr><td>HubSpot</td><td>$0–$45</td><td>All-in-one</td><td>Yes</td></tr>
+                    <tr><td>Salesforce</td><td>$25–$300</td><td>Enterprise</td><td>No</td></tr>
+                    <tr><td>Pipedrive</td><td>$14–$99</td><td>Small teams</td><td>No</td></tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <!-- Doc — grounded research with citations (real screenshot) -->
+            <!-- Doc — a real doc card with a grounded citation -->
             <div class="cell w2 reveal">
               <h3>Research, with sources.</h3>
-              <div class="card-shot bottom peek">
-                <img src="assets/card-doc.png" alt="A research doc card by Jarwiz on CRM market size, citing the market reaching $101.4B in 2025 and a projected $262B by 2032, with a 'Source: Grand View Research' citation link." loading="lazy" />
+              <div class="cell-canvas data">
+                <div class="doccard">
+                  <div class="doccard-title">CRM market size</div>
+                  <div class="doccard-body">
+                    <p>The global CRM market hit <b>$101.4B in 2025</b>, up ~13% YoY, and is projected to reach <b>$262B by 2032</b>.</p>
+                    <p class="doccard-src">Source: Grand View Research</p>
+                  </div>
+                </div>
               </div>
             </div>
 
