@@ -23,6 +23,7 @@ import { ClarifyLayer } from './ask/ClarifyLayer';
 import { CommentLayer } from './ask/CommentLayer';
 import { MachineRunner } from './ui/MachineRunner';
 import { PrototypeRunner } from './ui/PrototypeRunner';
+import { DashboardRunner } from './ui/DashboardRunner';
 import { DraftControls } from './ask/DraftControls';
 import { RegenControls } from './ask/RegenControls';
 import { SelectionAsk } from './ask/SelectionAsk';
@@ -39,6 +40,7 @@ import { seedDemoBoard } from './boards/demoSeed';
 import { EmbedComposer } from './ui/EmbedComposer';
 import { CardTitleTag } from './ui/CardTitleTag';
 import { DocFocusOverlay } from './ui/DocFocusOverlay';
+import { CardFocusOverlay } from './ui/CardFocusOverlay';
 import { EmptyState } from './ui/EmptyState';
 import { Topbar } from './ui/Topbar';
 import { HelpLayer } from './ui/HelpLayer';
@@ -76,6 +78,7 @@ function JarwizOverlay() {
       <Safe label="CommentLayer"><CommentLayer /></Safe>
       <Safe label="MachineRunner"><MachineRunner /></Safe>
       <Safe label="PrototypeRunner"><PrototypeRunner /></Safe>
+      <Safe label="DashboardRunner"><DashboardRunner /></Safe>
       <Safe label="DraftControls"><DraftControls /></Safe>
       <Safe label="RegenControls"><RegenControls /></Safe>
       <Safe label="SelectionAsk"><SelectionAsk /></Safe>
@@ -83,6 +86,7 @@ function JarwizOverlay() {
       <Safe label="Timeline"><Timeline /></Safe>
       {/* Last = on top: focus mode covers the whole board when open. */}
       <Safe label="DocFocusOverlay"><DocFocusOverlay /></Safe>
+      <Safe label="CardFocusOverlay"><CardFocusOverlay /></Safe>
     </>
   );
 }

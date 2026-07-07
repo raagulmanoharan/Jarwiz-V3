@@ -26,12 +26,14 @@ import {
   DOC_CARD_SIZE,
   TABLE_CARD_SIZE,
   PROTOTYPE_CARD_SIZE,
+  DASHBOARD_CARD_SIZE,
   affinityColor,
   type DiagramCardShape,
   type DocCardShape,
   type NoteCardShape,
   type TableCardShape,
   type PrototypeCardShape,
+  type DashboardCardShape,
 } from '../shapes';
 import { readSSE } from '../agents/sse';
 import { startStreaming, stopStreaming } from '../agents/streaming';
@@ -72,6 +74,7 @@ const REFINABLE: Record<string, AskShape> = {
   'table-card': 'table',
   'diagram-card': 'diagram',
   'prototype-card': 'prototype',
+  'dashboard-card': 'dashboard',
 };
 
 /** Does a server-chosen shape land on the SAME card kind we're refining? A
@@ -83,6 +86,7 @@ function isInPlace(cardType: string | undefined, shape: AskShape): boolean {
   if (cardType === 'table-card') return shape === 'table';
   if (cardType === 'diagram-card') return shape === 'diagram';
   if (cardType === 'prototype-card') return shape === 'prototype';
+  if (cardType === 'dashboard-card') return shape === 'dashboard';
   return false;
 }
 
@@ -144,6 +148,13 @@ function toSource(editor: Editor, shape: TLShape): AskSource | null {
       const src = String(p.src ?? '');
       if (!src.startsWith('data:image/')) return null;
       return { kind: 'image', title: String(p.name ?? ''), dataUrl: src };
+    }
+    case 'dashboard-card': {
+      // The dashboard's own OpenUI Lang spec is the context — asking about it
+      // reads the KPIs/charts/table it already holds, and a refinement ("add a
+      // margin chart") builds on the existing spec. Sent as a doc source.
+      const spec = String((p as { spec?: unknown }).spec ?? '');
+      return spec.trim() ? { kind: 'doc', title: getShapeTitle(shape), text: `Current dashboard (OpenUI Lang spec):\n${spec}` } : null;
     }
     case 'machine-card': {
       // A machine block grounds its answer on the subject typed into it; the
@@ -421,6 +432,12 @@ export function useAsk() {
                   type: 'prototype-card',
                   props: { html: '' },
                 });
+              } else if (t.type === 'dashboard-card') {
+                editor.updateShape<DashboardCardShape>({
+                  id: targetId,
+                  type: 'dashboard-card',
+                  props: { spec: '', status: 'running' },
+                });
               } else if (t.type === 'table-card') {
                 cols = (event.columns ?? []).slice(0, 6);
                 rows = Array.from({ length: event.rowCount ?? 0 }, () => cols.map(() => ''));
@@ -466,6 +483,15 @@ export function useAsk() {
                 y: at.y,
                 props: { w: PROTOTYPE_CARD_SIZE.w, h: PROTOTYPE_CARD_SIZE.h, html: '', title: trimmed.slice(0, 70) },
               });
+            } else if (event.shape === 'dashboard') {
+              const at = placeInLane(editor, sourceIds, DASHBOARD_CARD_SIZE.w, DASHBOARD_CARD_SIZE.h);
+              editor.createShape<DashboardCardShape>({
+                id,
+                type: 'dashboard-card',
+                x: at.x,
+                y: at.y,
+                props: { w: DASHBOARD_CARD_SIZE.w, h: DASHBOARD_CARD_SIZE.h, spec: '', title: trimmed.slice(0, 70), status: 'running' },
+              });
             } else if (event.shape === 'table') {
               cols = (event.columns ?? []).slice(0, 6);
               // Width scales with the column count so generated comparisons
@@ -509,7 +535,7 @@ export function useAsk() {
             // it lands — select it so the provenance hairline to its source(s)
             // is drawn immediately (ProvenanceLayer reveals on selection),
             // instead of waiting for a click.
-            if (event.shape === 'prototype' && contributingIds.length > 0) {
+            if ((event.shape === 'prototype' || event.shape === 'dashboard') && contributingIds.length > 0) {
               editor.setSelectedShapes([id]);
             }
             break;
@@ -535,6 +561,12 @@ export function useAsk() {
                 id: cardId,
                 type: 'prototype-card',
                 props: { html: (s.props as { html: string }).html + event.textDelta },
+              });
+            } else if (s.type === 'dashboard-card') {
+              editor.updateShape<DashboardCardShape>({
+                id: cardId,
+                type: 'dashboard-card',
+                props: { spec: (s.props as { spec: string }).spec + event.textDelta },
               });
             } else if ('text' in (s.props as object)) {
               editor.updateShape({
@@ -590,7 +622,15 @@ export function useAsk() {
             break;
           }
           case 'card.done':
-            if (cardId) stopStreaming(cardId);
+            if (cardId) {
+              // A dashboard streams its spec into `spec`; flip it out of the
+              // running state so its renderer goes live (interactions enabled).
+              const dc = editor.getShape(cardId);
+              if (dc?.type === 'dashboard-card') {
+                editor.updateShape<DashboardCardShape>({ id: cardId, type: 'dashboard-card', props: { status: 'done' } });
+              }
+              stopStreaming(cardId);
+            }
             break;
           case 'done':
             updateDraft({ status: 'done' });

@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@jarwiz/shared": "0.0.0",
+    "@openuidev/lang-core": "^0.2.7",
+    "@openuidev/react-lang": "^0.2.8",
     "@tldraw/assets": "5.1.0",
     "@tldraw/sync": "^5.1.0",
     "lucide-react": "^1.21.0",

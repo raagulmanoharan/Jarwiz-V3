@@ -7,15 +7,17 @@
  */
 
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react';
-import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue, type Editor, type TLRichText, type TLShape } from 'tldraw';
-import { Slash, ArrowUp } from 'lucide-react';
+import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue, type Editor, type TLRichText, type TLShape, type TLShapeId } from 'tldraw';
+import { Slash, ArrowUp, Sparkles } from 'lucide-react';
 import type { AnalyzeMode, AskShape } from '@jarwiz/shared';
+import { type ModeShape } from './modeShape';
+import { suggestShape } from './suggestShape';
 import { ASKABLE, hasAskableContent } from './askable';
 import { getShapeTitle } from '../shapes/shapeTitle';
 import { useAsk } from './useAsk';
 import { useCompose } from '../agents/useCompose';
 import { useAnnotate } from '../agents/useAnnotate';
-import { looksLikeBoard } from './boardIntent';
+import { classifyRefineIntent, INLINE_EDITABLE, REFINE_SHAPE } from './refineIntent';
 import { useAnalyze } from '../agents/useAnalyze';
 import { gatherBoardCards } from '../agents/boardText';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
@@ -40,15 +42,16 @@ function shapeLabel(editor: Editor, shape: TLShape): string {
 /** The "/" mode menu — every shape an answer can take. Stickies appear here
  *  deliberately: the router never chooses them (they're the user's annotation
  *  medium), but an explicit pick is user intent. */
-/** Response shapes for the "/" menu. 'board' is not a single-card AskShape —
- *  it fans the answer out into a set of cards (compose), handled specially. */
-type ModeShape = AskShape | 'board';
+// Doc/Text is deliberately ABSENT: it's the implicit default — typing with no
+// mode selected always answers as a doc. The selector only lists the shapes you
+// must explicitly opt into to get something OTHER than a doc (owner call
+// 2026-07-07).
 const MODES: Array<{ shape: ModeShape; label: string; hint: string }> = [
-  { shape: 'doc', label: 'Text', hint: 'a written card' },
   { shape: 'list', label: 'List', hint: 'bullets or a checklist' },
   { shape: 'table', label: 'Table', hint: 'rows × columns' },
   { shape: 'diagram', label: 'Diagram', hint: 'boxes and arrows' },
   { shape: 'prototype', label: 'Prototype', hint: 'a live UI, rendered' },
+  { shape: 'dashboard', label: 'Dashboard', hint: 'KPIs, charts, a table' },
   { shape: 'affinity', label: 'Stickies', hint: 'notes across your cards' },
   { shape: 'board', label: 'Board', hint: 'a set of cards' },
 ];
@@ -63,6 +66,10 @@ export function PromptBar() {
   // The "/" mode selector: an explicitly chosen response shape, pinned as a
   // chip until the ask is sent (or the chip dismissed).
   const [mode, setMode] = useState<ModeShape | null>(null);
+  // Who pinned the mode chip: the user (via "/" or a manual pick/dismiss) or the
+  // live shape suggester. 'user' is sticky — once the user owns the choice we
+  // stop auto-suggesting for this prompt so we never fight their pick.
+  const [modeSource, setModeSource] = useState<'user' | 'auto' | null>(null);
   const [modeMenu, setModeMenu] = useState(false);
   const [modeIdx, setModeIdx] = useState(0);
   // Inline filtering, Claude-Code style: while the input reads "/que…", the
@@ -152,6 +159,7 @@ export function PromptBar() {
     if (fill.groundId && editor.getShape(fill.groundId)) editor.select(fill.groundId);
     setValue(fill.text);
     setMode(null);
+    setModeSource(null);
     requestAnimationFrame(() => {
       const ta = document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input');
       ta?.focus();
@@ -160,8 +168,43 @@ export function PromptBar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fill?.nonce]);
 
+  // ── Smart shape suggestion ────────────────────────────────────────────────
+  // As the user types a from-scratch prompt, ask the model which shape fits and
+  // pre-pin the "/" chip (they can change or dismiss it — the shape stays
+  // explicit). Model-inferred, not keyword-matched. Gated to UNGROUNDED prompts
+  // (a selection means "edit vs new", a different path) and backs off the moment
+  // the user owns the choice. Debounced so it settles a beat after typing and a
+  // stale in-flight guess can't overwrite a newer one (AbortController).
+  useEffect(() => {
+    if (modeSource === 'user') return; // user owns the choice — hands off.
+    if (groundIds.length > 0) {
+      if (modeSource === 'auto') { setMode(null); setModeSource(null); }
+      return;
+    }
+    if (value.trim().length < 4 || value.startsWith('/')) {
+      if (modeSource === 'auto') { setMode(null); setModeSource(null); }
+      return;
+    }
+    const ac = new AbortController();
+    const t = setTimeout(() => {
+      void suggestShape(value, ac.signal).then((guess) => {
+        if (ac.signal.aborted) return;
+        if (guess) {
+          setMode((m) => (m === guess ? m : guess));
+          setModeSource('auto');
+        } else {
+          // Model sees no clear non-doc shape → clear any prior auto guess.
+          setModeSource((src) => (src === 'auto' ? (setMode(null), null) : src));
+        }
+      });
+    }, 500); // let the typing settle before spending a model call
+    return () => { ac.abort(); clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, groundIds.length, modeSource]);
+
   const pickMode = (shape: ModeShape) => {
     setMode(shape);
+    setModeSource('user'); // an explicit pick — stop suggesting for this prompt.
     setModeMenu(false);
     setModeIdx(0);
     // Swallow the "/query" that summoned the menu — it was a command, not prose.
@@ -171,26 +214,41 @@ export function PromptBar() {
 
   const composing = composePhase === 'planning' || composePhase === 'building';
   const annotating = annotatePhase === 'thinking';
+  // A single artifact card is selected and the user typed with no mode. Ask the
+  // model whether the instruction EDITS that card in place or makes a NEW card
+  // from it, then dispatch: an edit regenerates the same card (keeping its
+  // shape); a new request lands a fresh doc grounded on the selection.
+  const routeSelectedAsk = async (q: string, id: TLShapeId, cardType: string) => {
+    const intent = await classifyRefineIntent(q, cardType);
+    if (intent === 'edit') {
+      void ask(q, [id], { targetId: id, forceShape: REFINE_SHAPE[cardType], skipClarify: true });
+    } else {
+      void ask(q, [id], { forceShape: 'doc' });
+    }
+  };
+
   const submit = () => {
     const q = value.trim();
     if (!q || isAsking || composing || annotating) return;
-    // Route by intent:
-    //  - Board (explicit "/" Board or inferred) → fan out into a set of cards.
-    //  - Stickies (explicit "/" Stickies) → drop a note across each relevant card.
-    //  - else → a single-card ask, shape optionally forced by the "/" mode.
-    if (mode === 'board' || (!mode && looksLikeBoard(q))) {
+    // SHAPE is explicit only — no implicit routing from the prompt text. With no
+    // mode selected the answer is always a DOC (the composer's first-class
+    // default); Board / Stickies / any other shape require picking the "/" mode
+    // (owner call 2026-07-07). Whether a typed instruction EDITS a selected card
+    // in place vs makes a new card is inferred from intent (see routeSelectedAsk).
+    if (mode === 'board') {
       void compose(q);
     } else if (mode === 'affinity') {
       void annotate(q);
-    } else if (!mode && sole && !sole.pdf && sole.type === 'prototype-card') {
-      // Selecting a prototype and typing an instruction regenerates it in place
-      // (the card IS the prototype) — not a new card beside it.
-      void ask(q, [sole.id], { targetId: sole.id, forceShape: 'prototype', skipClarify: true });
+    } else if (!mode && sole && !sole.pdf && INLINE_EDITABLE.has(sole.type)) {
+      // A single artifact card is selected and no mode chosen → let intent decide
+      // edit-in-place vs a new doc (async classify), then dispatch.
+      void routeSelectedAsk(q, sole.id, sole.type);
     } else {
-      void ask(q, groundIds, mode ? { forceShape: mode as AskShape } : undefined);
+      void ask(q, groundIds, { forceShape: (mode as AskShape) ?? 'doc' });
     }
     setValue('');
     setMode(null); // the mode applies to one ask, like the text it rode with
+    setModeSource(null);
   };
   const runTool = (mode: AnalyzeMode) => { void analyze(mode); };
   // While the sole card is being EDITED, a pill is an offer for Jarwiz to
@@ -351,9 +409,18 @@ export function PromptBar() {
                 chip takes its place (dismiss to hand the choice back to the
                 model). Same menu as typing "/" in the input. */}
             {mode ? (
-              <span className="jz-pb-ground jz-pb-mode" title="Answer shape — picked with /">
+              <span
+                key={`${mode}-${modeSource}`}
+                className={`jz-pb-ground jz-pb-mode${modeSource === 'auto' ? ' jz-pb-mode--auto' : ''}`}
+                title={modeSource === 'auto' ? 'Suggested answer shape — change it with / or dismiss to write a doc' : 'Answer shape — picked with /'}
+              >
+                {modeSource === 'auto' ? <Sparkles className="jz-pb-mode-spark" size={11} strokeWidth={2} aria-hidden /> : null}
                 {MODES.find((m) => m.shape === mode)?.label ?? mode}
-                <button className="jz-pb-ground-x" aria-label="Clear answer shape (the model decides)" onClick={() => setMode(null)}>✕</button>
+                <button
+                  className="jz-pb-ground-x"
+                  aria-label="Clear answer shape (write a doc)"
+                  onClick={() => { setMode(null); setModeSource('user'); }}
+                >✕</button>
               </span>
             ) : (
               <button

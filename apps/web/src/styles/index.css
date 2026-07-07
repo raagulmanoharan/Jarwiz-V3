@@ -3575,6 +3575,33 @@ body,
   font-weight: 600;
 }
 
+/* Suggested variant: the shape classifier pinned this as the user typed. The
+ * spring pop-in (replayed on every re-suggest via a changing React key) reads
+ * as "Jarwiz's guess"; the spark marks it as a suggestion, not a manual pick,
+ * so dismissing reads as "no, I'll write a doc". */
+.jz-pb-mode--auto {
+  gap: 4px;
+  padding-left: 7px;
+  animation: jz-pb-mode-pop var(--jz-dur-base) var(--jz-ease-spring) both;
+}
+.jz-pb-mode-spark {
+  color: var(--jz-spark);
+  animation: jz-pb-spark-in var(--jz-dur-slow) var(--jz-ease-glide) both;
+}
+@keyframes jz-pb-mode-pop {
+  from { opacity: 0; transform: translateY(2px) scale(0.82); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes jz-pb-spark-in {
+  0%   { opacity: 0; transform: rotate(-35deg) scale(0.4); }
+  60%  { opacity: 1; transform: rotate(6deg) scale(1.12); }
+  100% { opacity: 1; transform: rotate(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-pb-mode--auto { animation: jz-fade-in var(--jz-dur-fast) var(--jz-ease-out) both; }
+  .jz-pb-mode-spark { animation: none; }
+}
+
 /* ── "/" mode menu — the shapes an answer can take ───────────────────────── */
 .jz-mode-menu {
   position: absolute;
@@ -3787,7 +3814,7 @@ body,
   align-items: flex-start;
   justify-content: center;
   /* Deep dim — the board should clearly recede behind the page. */
-  background: rgba(8, 9, 11, 0.78);
+  background: rgba(6, 7, 9, 0.92);
   pointer-events: all;
   overflow-y: auto;
   /* Spacing lives on the page's margin, NOT here: the sticky header pins
@@ -3807,7 +3834,7 @@ body,
   left: 0;
   right: 0;
   height: 14px;
-  background: rgba(8, 9, 11, 0.78);
+  background: rgba(6, 7, 9, 0.92);
   z-index: 2;
   pointer-events: none;
 }
@@ -3915,10 +3942,104 @@ body,
 
 @media (prefers-reduced-motion: reduce) {
   .jz-focus-backdrop,
-  .jz-focus-page {
+  .jz-focus-page,
+  .jz-cardfocus-page {
     animation: none;
   }
 }
+
+/* ─── Card focus (read presentation for non-text cards) ─────────────────────
+ * Same dimmed backdrop as the doc editor, but a wide fixed-height lightbox
+ * page: a dashboard fills it, an image/PDF/prototype gets room, a table is
+ * legible edge to edge. Each body owns its own fit/scroll inside the stage. */
+.jz-cardfocus-page {
+  display: flex;
+  flex-direction: column;
+  width: min(1200px, 94vw);
+  height: 88vh;
+  flex: none;
+  margin: 6vh 0;
+  background: var(--jz-card-surface);
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-lg);
+  box-shadow: var(--jz-e4);
+  box-sizing: border-box;
+  overflow: hidden;
+  animation: jz-focus-rise var(--jz-dur-base) var(--jz-ease-glide);
+}
+
+.jz-cardfocus-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+  padding: 14px 16px 14px 22px;
+  border-bottom: 1px solid var(--jz-hairline);
+}
+.jz-cardfocus-head .jz-focus-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* The stage holds one card body, filling the page below the header. */
+.jz-cardfocus-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+.jz-cardfocus-stage > * { flex: 1; min-width: 0; min-height: 0; }
+
+/* Media that fills the frame edge to edge (iframe: PDF, prototype, video). */
+.jz-cardfocus-frame { width: 100%; height: 100%; border: 0; background: var(--jz-surface-raised); }
+
+/* Centred media (image, diagram, link preview) on a calm inset. */
+.jz-cardfocus-center {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: auto;
+  box-sizing: border-box;
+}
+.jz-cardfocus-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+.jz-cardfocus-diagram { width: 100%; display: flex; justify-content: center; }
+.jz-cardfocus-diagram svg { max-width: 100%; height: auto; }
+
+/* Scrollable body (dashboard, table, sheet) — fills, scrolls internally. */
+.jz-cardfocus-scroll { width: 100%; height: 100%; overflow: auto; padding: var(--jz-space-5); box-sizing: border-box; }
+/* A dashboard reuses its own .jzd-* library; drop the card chrome in focus. */
+.jz-cardfocus-scroll.jzd-root { background: transparent; border-radius: 0; }
+.jz-cardfocus-scroll.jzd-root .jzd-scroll { padding: 0; }
+
+.jz-cardfocus-empty { margin: auto; color: var(--jz-ink-500); font-size: 13px; }
+
+/* A legible full-width table for table/sheet cards — row AND column dividers,
+ * matching the on-canvas table card (border-right on every cell but the last). */
+.jz-cardfocus-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.jz-cardfocus-table th, .jz-cardfocus-table td {
+  text-align: left;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--jz-hairline);
+  border-right: 1px solid var(--jz-hairline);
+  color: var(--jz-ink-700);
+  white-space: nowrap;
+}
+.jz-cardfocus-table th:last-child, .jz-cardfocus-table td:last-child { border-right: none; }
+.jz-cardfocus-table th { color: var(--jz-ink-500); font-weight: 600; position: sticky; top: 0; background: var(--jz-card-surface); }
+
+/* Link preview — a big, calm card. */
+.jz-cardfocus-link { max-width: 640px; display: flex; flex-direction: column; gap: 16px; }
+.jz-cardfocus-link-img { width: 100%; border-radius: 12px; border: 1px solid var(--jz-hairline); }
+.jz-cardfocus-link-site { font-size: 12px; color: var(--jz-ink-500); text-transform: uppercase; letter-spacing: 0.04em; }
+.jz-cardfocus-link-title { font-size: 22px; font-weight: 600; color: var(--jz-ink-900); margin-top: 4px; }
+.jz-cardfocus-link-desc { font-size: 14px; line-height: 1.6; color: var(--jz-ink-600); }
+.jz-cardfocus-link-open {
+  display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+  color: var(--jz-ink-900); font-size: 13px; font-weight: 500; text-decoration: none;
+  padding: 8px 14px; border: 1px solid var(--jz-hairline); border-radius: 999px;
+}
+.jz-cardfocus-link-open:hover { background: var(--jz-surface-raised); }
 
 /* Text-card format group — compact icon buttons on the bar (B I U S • ☑). */
 .jz-cardbar-fmt {
@@ -4909,3 +5030,58 @@ body,
     scroll-behavior: auto !important;
   }
 }
+
+/* ─── Dashboard card (OpenUI-rendered, monochrome) ─────────────────────────── */
+.jzd-root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--jz-card-surface);
+  border-radius: var(--jz-radius-lg, 16px);
+  color: var(--jz-ink-900);
+  font-size: 13px;
+}
+/* Uniform card inset — space-5 on every side, matching .jz-doc-content and
+ * every other text-bearing card (owner call, 2026-07-05). */
+.jzd-scroll { width: 100%; height: 100%; overflow: auto; padding: var(--jz-space-5); box-sizing: border-box; }
+.jzd-loading {
+  display: flex; align-items: center; gap: 10px; height: 100%;
+  justify-content: center; color: var(--jz-ink-500); font-size: 13px;
+}
+.jzd-spin { animation: jz-pdf-spin 1s linear infinite; }
+.jzd-error { position: absolute; bottom: 12px; left: 14px; display: flex; gap: 6px; align-items: center; color: var(--jz-danger); font-size: 12px; }
+
+.jzd-stack { display: flex; gap: 14px; }
+.jzd-stack[data-dir="column"] { flex-direction: column; }
+.jzd-stack[data-dir="row"] { flex-direction: row; flex-wrap: wrap; }
+.jzd-grid { display: grid; gap: 14px; }
+
+.jzd-card {
+  background: var(--jz-surface-raised);
+  border: 1px solid var(--jz-hairline);
+  border-radius: 12px;
+  padding: 16px;
+  min-width: 0;
+}
+.jzd-card-title { font-size: 13px; font-weight: 600; color: var(--jz-ink-700); margin-bottom: 12px; letter-spacing: -0.01em; }
+.jzd-text { color: var(--jz-ink-700); line-height: 1.5; }
+.jzd-text--sm { font-size: 12px; color: var(--jz-ink-500); }
+.jzd-text--lg { font-size: 18px; font-weight: 600; color: var(--jz-ink-900); }
+
+.jzd-kpi { background: var(--jz-surface-raised); border: 1px solid var(--jz-hairline); border-radius: 12px; padding: 14px 16px; min-width: 120px; flex: 1; }
+.jzd-kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--jz-ink-400); }
+.jzd-kpi-value { font-size: 26px; font-weight: 700; color: var(--jz-ink-900); margin-top: 4px; letter-spacing: -0.02em; }
+.jzd-kpi-delta { font-size: 12px; color: var(--jz-ink-500); margin-top: 2px; }
+
+.jzd-chartcard { background: var(--jz-surface-raised); border: 1px solid var(--jz-hairline); border-radius: 12px; padding: 16px; flex: 1; min-width: 0; }
+.jzd-chart { width: 100%; height: auto; display: block; }
+.jzd-bar { fill: var(--jz-ink-700); }
+.jzd-line { stroke: var(--jz-ink-800); stroke-width: 2; }
+.jzd-dot { fill: var(--jz-ink-900); }
+.jzd-axis { fill: var(--jz-ink-400); font-size: 10px; }
+
+.jzd-tablewrap { overflow: auto; border: 1px solid var(--jz-hairline); border-radius: 12px; }
+.jzd-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.jzd-table th { text-align: left; padding: 9px 12px; color: var(--jz-ink-500); font-weight: 600; border-bottom: 1px solid var(--jz-hairline); background: var(--jz-surface-raised); position: sticky; top: 0; }
+.jzd-table td { padding: 9px 12px; color: var(--jz-ink-800); border-bottom: 1px solid var(--jz-hairline); }
+.jzd-table tr:last-child td { border-bottom: none; }

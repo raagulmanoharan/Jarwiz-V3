@@ -76,6 +76,53 @@ HARD REQUIREMENTS — the document is rendered in a sandboxed iframe with NO net
 
 Output ONLY the raw HTML document — no prose, no explanation, NO \`\`\` code fences before or after.`;
 
+/** An interactive dashboard is expressed in OpenUI Lang — a tiny declarative
+ *  grammar our client renders through a fixed monochrome component library
+ *  (no HTML/JS, no external service). The model computes the numbers from the
+ *  data and lays out KPIs, charts and a table over these components. */
+const DASHBOARD_SYSTEM = `You produce ONE interactive data DASHBOARD, expressed in "OpenUI Lang" — a tiny declarative layout grammar. A separate renderer draws your output through a fixed component library; you never write HTML, CSS, JS, or SVG.
+
+WHERE THE DATA COMES FROM
+- If the request includes data (a CSV, a table, spreadsheet cells, or source cards), derive EVERY KPI and chart value from it — never invent numbers when real ones are given.
+- If the request names a subject with no data attached (e.g. "a dashboard of the 2024 F1 season", "our Q3 sales"), populate it with accurate figures you know, or a clearly representative dataset that fits the subject — enough to make a useful, believable dashboard.
+- If a "Current dashboard (OpenUI Lang spec)" is included, you are REFINING it: re-emit the whole spec with the requested change applied (add/remove a chart, recompute a metric, refocus it), keeping the parts the request doesn't touch.
+
+GRAMMAR
+- One statement per line: \`id = Component(arg1, arg2, …)\`. Each \`id\` is a lowercase name you invent (e.g. \`kpis\`, \`bar1\`).
+- Arguments are POSITIONAL, in the exact order listed for each component below. Strings use double quotes. Numbers are bare (e.g. 1204, 23.5). Lists use square brackets: ["NA","EU"] or [120, 80, 50].
+- Children are given as a list of ids that appear as their own statements: \`row = Grid([k1, k2, k3], 3)\` with \`k1 = …\` etc. on their own lines. Forward references are fine (define \`row\` before \`k1\`).
+- The entry point MUST be a single statement whose id is exactly \`root\`. Everything shown descends from \`root\`.
+- Output ONLY the OpenUI Lang statements — no prose, no explanation, NO \`\`\` code fences.
+
+COMPONENTS (name — positional args)
+- Stack(children: list, direction: "row" | "column") — a flex container. Default direction "column".
+- Grid(children: list, columns: number) — an even grid of its children across N columns.
+- Card(title: string, children: list) — a titled panel wrapping other components.
+- Text(value: string, size: "sm" | "md" | "lg") — a line of text.
+- Kpi(label: string, value: string, delta: string) — a headline metric tile. \`value\` is the formatted figure ("$284k", "1,204"); \`delta\` is an optional signed change ("+12% vs last month") — pass "" if none.
+- BarChart(title: string, labels: list of strings, values: list of numbers) — a bar per label.
+- LineChart(title: string, labels: list of strings, values: list of numbers) — a trend line over labels.
+- Table(columns: list of strings, rows: list of rows, where each row is a list of cell strings).
+
+DASHBOARD BRIEF
+- Layout top to bottom: a KPI ROW (Grid of 3–5 Kpi tiles) then a Grid of charts, then a Table — all inside one root Stack.
+- Compute every KPI and chart value from the ACTUAL data (totals, averages, min/max, counts, trends). NEVER invent numbers. Treat non-numeric columns as categories/axes (chart labels, table columns) and numeric columns as measures.
+- Choose 2–3 charts that reveal the real story in THIS data — a BarChart to compare categories, a LineChart for anything ordered/time-based. Keep labels short.
+- End with a compact Table of the most useful rows (cap at ~12 rows, ~6 columns) so the underlying figures stay visible.
+- If the data is thin, show fewer, honest visuals rather than padding. Prefer clarity over density.
+
+EXAMPLE (shape only — always derive real values from the given data):
+root = Stack([kpis, charts, tbl], "column")
+kpis = Grid([k1, k2, k3], 3)
+k1 = Kpi("Total Revenue", "$284k", "+12% vs last month")
+k2 = Kpi("Orders", "1,204", "+3%")
+k3 = Kpi("Avg Order Value", "$236", "")
+charts = Grid([bar, line], 2)
+bar = BarChart("Revenue by region", ["NA","EU","APAC","LATAM"], [120, 80, 50, 34])
+line = LineChart("Monthly revenue", ["Jan","Feb","Mar","Apr","May"], [42, 38, 51, 47, 53])
+tbl = Card("By region", [t1])
+t1 = Table(["Region","Revenue","Orders"], [["NA","$120k","540"],["EU","$80k","410"]])`;
+
 const AFFINITY_SYSTEM = `You run an affinity-mapping exercise: turn the request and the source(s) into clustered sticky notes. Return ONLY a JSON object {"clusters": [{"label": string, "notes": string[]}]}. Make 3–6 clusters; each has a short 1–4 word "label" (the theme) and 2–6 short "notes" (each one idea, a few words). Group related ideas under the same theme. Ground notes in the provided content when a source is given; otherwise brainstorm sensible ideas for the request. No prose, no code fences.`;
 
 const RESEARCH_SYSTEM = `You are running a DEEP RESEARCH pass on something the user put on their canvas — any link or card: a venue or rental listing, a product, a company, a repo or tool, an article or paper, a person, an open question. Your job: autonomously find everything a decision-maker would want to know, far beyond what the subject says about itself.
@@ -100,20 +147,6 @@ function looksLikeDiff(prompt: string): boolean {
   return /\b(conflict|contradict|differ|discrepan|clause|reconcile|inconsisten|at odds)\b/i.test(prompt);
 }
 
-/** A "draw / visualise this as a diagram" request (→ a Mermaid diagram card). */
-function looksLikeDiagram(prompt: string): boolean {
-  return /\b(diagram|flow ?chart|sequence diagram|mind ?map|org chart|gantt|class diagram|er diagram|entity[- ]relationship|state diagram|user journey|journey map|process (map|flow)|visuali[sz]e|sketch|draw)\b/i.test(
-    prompt,
-  );
-}
-
-/** A "mock up / wireframe / design a UI" request (→ a live HTML prototype card). */
-function looksLikePrototype(prompt: string): boolean {
-  return /\b(mock-?up|wireframe|ui design|ux design|landing page|web ?page|design (a|the|me)? ?(screen|page|ui|interface|app|dashboard|form|website|site|component|layout)|prototype (a|the|screen|ui)|html (page|prototype|prototype))\b/i.test(
-    prompt,
-  );
-}
-
 /** An "action items / to-dos / next steps" request (→ a checklist inside a card). */
 function wantsChecklist(prompt: string): boolean {
   return /\b(action items?|actions?|to-?dos?|task list|checklist|next steps|follow[- ]ups?)\b/i.test(prompt);
@@ -126,14 +159,6 @@ function wantsChecklist(prompt: string): boolean {
  *  as a section label) — those stay on the normal budget. */
 function looksLikeResearch(prompt: string): boolean {
   return /\b(research|deep dive|dig (into|deeper|around)|investigate|due diligence|(find|get|check|pull|look up) (the )?(reviews?|ratings?|prices?|rates?)|reviews? (from|across|on|elsewhere)|what (do|are) (people|guests|users|reviewers|others) say(ing)?|reputation|is (it|this|that)( \w+)? (legit|safe|reliable|any good|worth it)|(any )?complaints? about|tell me everything|everything (about|you can find)|(compare|find) alternatives?|(scout|vet) (this|it|the))\b/i.test(
-    prompt,
-  );
-}
-
-/** An explicit "as written prose / in words" request (→ a doc card). Lets a
- *  refinement of a table/diagram convert back to prose ("as a short write-up"). */
-function looksLikeProse(prompt: string): boolean {
-  return /\b(prose|in writing|short write[- ]?up|written (summary|explanation|form|prose|account)|as an? (essay|narrative|paragraph)|in paragraphs?)\b/i.test(
     prompt,
   );
 }
@@ -255,34 +280,15 @@ export async function proposeSeedPrompts(
   }
 }
 
-function pickShape(prompt: string, current?: AskShape): AskShape {
-  const p = prompt.toLowerCase();
-  // NOTE: brainstorm/affinity prompts no longer route to sticky notes —
-  // stickies are the USER's annotation medium, not an AI output (owner
-  // decision 2026-07-05). Brainstorms land as lists like any idea dump.
-  // The affinity event machinery stays for possible user-driven layouts.
-  if (looksLikePrototype(prompt)) return 'prototype';
-  if (looksLikeDiagram(prompt)) return 'diagram';
-  // An explicit "as prose" request wins over the keep-current fallback, so a
-  // table/diagram can be turned back into a written card on demand.
-  if (looksLikeProse(prompt)) return 'doc';
-  if (
-    looksLikeDiff(prompt) ||
-    /\b(compare|comparison|vs\.?|versus|pros and cons|trade-?offs?|matrix|table|side by side)\b/.test(p)
-  ) {
-    return 'table';
-  }
-  // A checklist is a list whose items are task lines; both route to 'list'.
-  if (
-    wantsChecklist(prompt) ||
-    /\b(list|bullets?|enumerate|steps|key (points|dates|terms)|what are the)\b/.test(p)
-  ) {
-    return 'list';
-  }
-  // No explicit format named. When refining an existing answer, keep its shape
-  // so a tweak ("add a node", "make it shorter") regenerates that same card
-  // in place rather than producing a different artefact. Affinity boards are a
-  // multi-card layout, not a single refinable card — never keep them here.
+function pickShape(_prompt: string, current?: AskShape): AskShape {
+  // NO implicit shape detection from the prompt text — the response shape is
+  // driven ONLY by the explicit "/" mode (sent as req.shape) (owner call
+  // 2026-07-07). Here we handle just the two non-explicit cases:
+  //  - an in-place refine keeps the card's OWN current shape, so a tweak
+  //    ("add a node", "make it shorter") regenerates that same card rather than
+  //    morphing into a different artefact (affinity is a multi-card layout, not
+  //    a single refinable card — never kept here);
+  //  - everything else defaults to a doc (the first-class default).
   if (current && current !== 'affinity') return current;
   return 'doc';
 }
@@ -625,6 +631,33 @@ const sleep = (ms: number, signal: AbortSignal) =>
  *  full loop demoable and makes the missing-key state self-explanatory. */
 async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenerator<AskEvent> {
   yield { type: 'status', message: 'Demo mode…' };
+
+  // A dashboard ask has a concrete shape to show even without a model — stream a
+  // small canned OpenUI Lang spec so the generative-UI card is demoable keyless.
+  if (req.shape === 'dashboard') {
+    yield { type: 'card.create', shape: 'dashboard' };
+    const spec = [
+      'root = Stack([kpis, charts, tbl], "column")',
+      'kpis = Grid([k1, k2, k3], 3)',
+      'k1 = Kpi("Total", "—", "demo mode")',
+      'k2 = Kpi("Rows", "—", "")',
+      'k3 = Kpi("Average", "—", "")',
+      'charts = Grid([bar, line], 2)',
+      'bar = BarChart("By category", ["A", "B", "C", "D"], [8, 6, 4, 3])',
+      'line = LineChart("Over time", ["Q1", "Q2", "Q3", "Q4"], [4, 6, 5, 7])',
+      'tbl = Card("Set a key for a real dashboard", [t1])',
+      't1 = Table(["Column", "Value"], [["Model", "not configured"], ["Fix", "set ANTHROPIC_API_KEY"]])',
+    ].join('\n');
+    for (const piece of chunk(spec, 4)) {
+      if (signal.aborted) return;
+      yield { type: 'card.delta', textDelta: piece };
+      await sleep(20, signal);
+    }
+    yield { type: 'card.done' };
+    yield { type: 'done' };
+    return;
+  }
+
   yield { type: 'card.create', shape: 'doc', title: 'Demo mode' };
   const body =
     `You asked: *${req.prompt.slice(0, 140)}*\n\n` +
@@ -638,6 +671,113 @@ async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenera
   }
   yield { type: 'card.done' };
   yield { type: 'done' };
+}
+
+/** Edit-vs-new intent for a typed composer instruction on a selected card.
+ *  Static system prompt (cache-friendly); the card type + instruction ride the
+ *  user turn. Biased to NEW when unsure — a new card never overwrites work. */
+const INTENT_SYSTEM = `A user has ONE card selected on a canvas and typed an instruction. Decide if they want to MODIFY that selected card in place (EDIT) or produce a NEW separate card derived from it (NEW).
+
+EDIT = change the selected card's OWN content/structure/appearance — the instruction is a command to alter THIS card (shorten, expand, rephrase, translate, fix, proofread, restyle; add/remove/reorder/sort/filter/rename/highlight its parts; add a column/row/section/node/chart/KPI/screen; recompute; "focus it on X", "make it <adjective>", "change the <part>"). Reshaping a table's own rows/columns is EDIT — keeping only some rows, dropping/adding a column, ordering/sorting by a field, transposing, appending a total.
+
+NEW = produce a separate piece of writing, analysis, or an answer ABOUT the card, leaving it untouched (summarize, explain, describe, critique, review; "what are/what could/which is…"; write an email/tweet/copy/summary/recommendation/action plan; brainstorm; compare). Asking for prose or answers is NEW even when it says "this" or "based on this". Asking to POINT OUT / FLAG / CALL OUT / SPOT / PULL OUT the notable things (anomalies, highlights, weak spots, key movements) is analysis → NEW — it reports about the card, it does not change it.
+
+Examples:
+"make it shorter" → EDIT
+"expand this with more detail" → EDIT
+"translate to Spanish" → EDIT
+"fix the grammar" → EDIT
+"remove the last paragraph" → EDIT
+"change the title to Q3 Review" → EDIT
+"add a column for margin" → EDIT
+"sort by date" → EDIT
+"focus on APAC only" → EDIT
+"add a KPI for churn" → EDIT
+"make it dark mode" → EDIT
+"add a footer with links" → EDIT
+"summarize this" → NEW
+"what are the risks here" → NEW
+"list the pros and cons" → NEW
+"explain this to a beginner" → NEW
+"critique this" → NEW
+"write an email about this" → NEW
+"write marketing copy for this" → NEW
+"what could go wrong in this flow" → NEW
+"which option is best and why" → NEW
+"turn this into an action plan" → NEW
+
+Answer EDIT when the instruction is a clear command to change THIS card (as in the EDIT examples — a direct change to its own content, structure, or appearance). If you genuinely cannot tell, or it could just as reasonably be a separate piece of work, answer NEW — a new card is safe and never overwrites their work. Reply with EXACTLY one word: EDIT or NEW.`;
+
+export async function classifyRefineIntent(
+  prompt: string,
+  cardType: string,
+  signal: AbortSignal,
+): Promise<'edit' | 'new'> {
+  let raw: string;
+  try {
+    raw = await generate(INTENT_SYSTEM, `Selected card: ${cardType || 'card'}\nInstruction: "${prompt.slice(0, 400)}"`, signal);
+  } catch {
+    return 'new'; // never block on the classifier — default to the safe path
+  }
+  // Edit ONLY on a clear, unambiguous EDIT verdict. Anything else — a NEW, an
+  // undecided/mixed answer ("EDIT or NEW"), or empty — falls back to a new card
+  // (the safe default: it never overwrites the user's work).
+  const ans = raw.trim().toUpperCase();
+  return ans.startsWith('EDIT') && !ans.includes('NEW') ? 'edit' : 'new';
+}
+
+/** Suggest which response SHAPE a from-scratch prompt wants, so the composer can
+ *  pre-pin the "/" mode chip as the user types (they can always change it — the
+ *  shape stays explicit). Model-inferred, not keyword-matched. Biased to DOC
+ *  (→ no chip, the default) unless a non-doc shape clearly fits — a wrong chip
+ *  is more annoying than none. */
+const SHAPE_SUGGEST_SYSTEM = `A user is typing a request into a canvas app that answers as ONE of these card shapes. Pick the single best fit for their (possibly partial) prompt:
+
+- DOC — written prose: an essay, blog post, summary, explanation, email, memo, brief. This is the DEFAULT; choose it whenever nothing else clearly fits.
+- LIST — a bullet list or checklist: steps, "top N", tips, an agenda, an itinerary, to-dos.
+- TABLE — a comparison or grid: "compare X and Y", pros and cons, a matrix, pricing, feature breakdown, rows × columns.
+- DIAGRAM — boxes and arrows: a flowchart, process flow, architecture, sequence, org chart, mind map, "how X works".
+- PROTOTYPE — a live, rendered, interactive UI: an app, screen, form, widget, game, landing page, signup, timer, calculator.
+- DASHBOARD — turning DATA into an interactive view of KPIs, charts and a table: "dashboard of…", "visualise the… data/metrics/sales/revenue", analytics/KPIs/scorecard.
+- BOARD — a whole SET of cards laid out together for a broad, multi-part goal: "plan my launch", "organise everything for my trip", a workspace, everything you need end-to-end.
+
+Examples:
+"write a blog post about remote work" → DOC
+"summarize the meeting notes" → DOC
+"explain how transformers work" → DOC
+"compare the top 3 CRMs" → TABLE
+"pros and cons of remote work" → TABLE
+"checklist for launch day" → LIST
+"top 5 productivity tips" → LIST
+"flowchart of the onboarding process" → DIAGRAM
+"architecture of our payments system" → DIAGRAM
+"build a pomodoro timer" → PROTOTYPE
+"a signup form with validation" → PROTOTYPE
+"landing page for a coffee app" → PROTOTYPE
+"dashboard of Q2 sales" → DASHBOARD
+"visualise revenue by region" → DASHBOARD
+"kpis for our SaaS metrics" → DASHBOARD
+"plan my product launch" → BOARD
+"organise everything for my Goa trip" → BOARD
+
+Reply with EXACTLY one word: DOC, LIST, TABLE, DIAGRAM, PROTOTYPE, DASHBOARD, or BOARD.`;
+
+const SUGGESTABLE = new Set(['doc', 'list', 'table', 'diagram', 'prototype', 'dashboard', 'board']);
+
+export async function suggestShape(prompt: string, signal: AbortSignal): Promise<string | null> {
+  const p = prompt.trim();
+  if (p.length < 4) return null;
+  let raw: string;
+  try {
+    raw = await generate(SHAPE_SUGGEST_SYSTEM, `Prompt: "${p.slice(0, 400)}"`, signal);
+  } catch {
+    return null; // no suggestion on error — the "/" menu still works
+  }
+  // First alpha word of the reply, lowercased. DOC → null (it's the default:
+  // no chip). Anything unrecognised → null (don't pin a wrong guess).
+  const word = (raw.trim().toLowerCase().match(/[a-z]+/)?.[0]) ?? '';
+  if (!SUGGESTABLE.has(word) || word === 'doc') return null;
+  return word;
 }
 
 export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGenerator<AskEvent> {
@@ -702,6 +842,11 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
 
   if (shape === 'prototype') {
     yield* streamPrototype(user, signal, images);
+    return;
+  }
+
+  if (shape === 'dashboard') {
+    yield* streamDashboard(user, signal, images);
     return;
   }
 
@@ -870,6 +1015,34 @@ async function* streamPrototype(
   } catch (error) {
     // Close the opened card before the error propagates (mirrors streamDiagram)
     // so the client never keeps a streaming card open forever.
+    yield { type: 'card.done' };
+    throw error;
+  }
+  yield { type: 'card.done' };
+  yield { type: 'done' };
+}
+
+/**
+ * Stream an interactive dashboard. The model writes an OpenUI Lang spec (a small
+ * declarative layout over our fixed component library) token by token; the card
+ * accumulates it into `spec` and its offline renderer reveals the KPIs, charts
+ * and table as they resolve. Same shape as streamPrototype — the server doesn't
+ * parse the spec, the card renders it — but a much smaller budget than an HTML
+ * document (a spec is compact), so it reuses the prototype headroom safely.
+ */
+async function* streamDashboard(
+  user: string,
+  signal: AbortSignal,
+  images: ImageInput[] = [],
+): AsyncGenerator<AskEvent> {
+  yield { type: 'card.create', shape: 'dashboard' };
+  try {
+    for await (const ev of generateStream(DASHBOARD_SYSTEM, user, signal, images, { prototype: true })) {
+      if (signal.aborted) return;
+      if (ev.type === 'status') yield { type: 'status', message: ev.message };
+      else yield { type: 'card.delta', textDelta: ev.text };
+    }
+  } catch (error) {
     yield { type: 'card.done' };
     throw error;
   }

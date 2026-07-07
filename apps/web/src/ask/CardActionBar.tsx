@@ -13,10 +13,13 @@ import { AFFINITY_COLORS, NOTE_PAPER, PROTOTYPE_PROMPT_SIZE, type NoteCardShape,
 import { ASKABLE, hasAskableContent } from './askable';
 import { formatControlledTextarea, insertBlock, insertTableBlock, toggleInline, toggleLinePrefix, type FormatResult } from './textFormat';
 import { uploadAsset } from '../lib/uploadAsset';
-import { openDocFocus } from '../ui/focusDoc';
+import { openCardFocus } from '../ui/focusCard';
+import { canFocusCard } from '../ui/CardFocusOverlay';
 import { PROFILE_PROMPT } from './profilePrompt';
 import { useAsk } from './useAsk';
 import { useDiagram } from '../agents/useDiagram';
+import { useDashboard } from '../agents/useDashboard';
+import { gridIsDashboardable } from '../lib/dashboardable';
 import { refreshPrototype } from '../agents/prototypeRefresh';
 import { useTidy, canTidy } from '../agents/useTidy';
 import { useCluster, canCluster } from '../agents/useCluster';
@@ -73,6 +76,7 @@ export function CardActionBar() {
   const { diagram } = useDiagram();
   const { tidy } = useTidy();
   const { cluster } = useCluster();
+  const { buildDashboard } = useDashboard();
   const [menu, setMenu] = useState<null | 'refine' | 'tint' | 'more'>(null);
   // Hidden picker for "insert image" — uploads to the blob store, then drops
   // a markdown image at the caret (the doc card renders it inline).
@@ -139,8 +143,8 @@ export function CardActionBar() {
       { label: 'Make it shorter', run: () => ask('Make this shorter and tighter, keeping the key points.', [id], { targetId: id, skipClarify: true }) },
       { label: 'Go deeper', run: () => ask('Go deeper — add detail, nuance, and specifics.', [id], { targetId: id, skipClarify: true }) },
     );
-    if (sel.type !== 'table-card') transforms.push({ label: 'As a table', run: () => ask('Reformat this as a comparison table.', [id], { skipClarify: true }) });
-    if (sel.type !== 'diagram-card') transforms.push({ label: 'As a diagram', run: () => ask('Turn this into a diagram.', [id], { skipClarify: true }) });
+    if (sel.type !== 'table-card') transforms.push({ label: 'As a table', run: () => ask('Reformat this as a comparison table.', [id], { skipClarify: true, forceShape: 'table' }) });
+    if (sel.type !== 'diagram-card') transforms.push({ label: 'As a diagram', run: () => ask('Turn this into a diagram.', [id], { skipClarify: true, forceShape: 'diagram' }) });
     transforms.push({ label: 'Regenerate', run: () => ask('Regenerate this, same intent, fresh take.', [id], { targetId: id }) });
   }
   // A link card with extracted page text refines like a document — the page
@@ -166,6 +170,16 @@ export function CardActionBar() {
       { label: 'Regenerate', run: () => ask('Regenerate this UI prototype, same intent, fresh take.', [id], { targetId: id }) },
     );
   }
+  // A dashboard's Actions stay lean: Regenerate (fresh take, same data) and a
+  // data Summary (→ a doc). Pointed edits ("add a margin chart", "focus on
+  // APAC") live in the composer — select the card and ask (owner call
+  // 2026-07-07); the dashboard's own spec grounds each refinement via toSource.
+  if (!sel.multi && hasContent && sel.type === 'dashboard-card') {
+    transforms.push(
+      { label: '✦ Summarise the data', run: () => ask('Summarise the story in this dashboard — the headline numbers, the trend, and any outliers.', [id], { skipClarify: true, logLabel: 'Summarised the dashboard' }) },
+      { label: 'Regenerate', run: () => ask('Regenerate this dashboard, same data, fresh take.', [id], { targetId: id }) },
+    );
+  }
   // An image is a vision input — offer moves that read the picture.
   if (!sel.multi && hasContent && sel.type === 'image-card') {
     transforms.push(
@@ -189,12 +203,46 @@ export function CardActionBar() {
   // A spreadsheet reads like data, not prose — offer analysis moves that fit
   // a grid, plus the shared table/diagram reshapes.
   if (!sel.multi && hasContent && sel.type === 'sheet-card') {
+    // Data-aware gate (not regex): the SheetCard writes meta.jzDashboardable
+    // once its grid loads — offer the interactive dashboard only when the sheet
+    // actually holds chartable data (measures × dimensions).
+    const sheet = editor.getShape(id);
+    if (sheet?.meta?.jzDashboardable) {
+      const p = sheet.props as { assetId?: string; name?: string };
+      transforms.push({
+        label: '✦ Interactive dashboard',
+        run: () =>
+          buildDashboard(id, p.name ?? '', async () => {
+            const res = await fetch(`/api/sheet/${encodeURIComponent(p.assetId ?? '')}/grid`);
+            const data = (await res.json()) as { sheets?: { rows: string[][] }[] };
+            return data.sheets?.[0]?.rows ?? [];
+          }),
+      });
+    }
     transforms.push(
       { label: 'Key insights', run: () => ask('What are the key insights in this spreadsheet? Call out notable totals, trends, and outliers.', [id], { skipClarify: true, logLabel: 'Analysed the sheet' }) },
       { label: 'Summarise the columns', run: () => ask('Summarise what each column of this spreadsheet holds and what the data is about.', [id], { skipClarify: true }) },
-      { label: '◇ Chart the trend', run: () => diagram('Turn the main trend in this spreadsheet into a diagram.', [id]) },
     );
   }
+  // A table of numbers is dashboard-able too — same data-shape gate, read
+  // straight from the card's cells.
+  if (!sel.multi && hasContent && sel.type === 'table-card') {
+    const t = editor.getShape(id);
+    const tp = t?.props as { columns?: string[]; rows?: string[][] } | undefined;
+    const grid = tp ? [tp.columns ?? [], ...(tp.rows ?? [])] : [];
+    if (gridIsDashboardable(grid)) {
+      transforms.unshift({
+        label: '✦ Interactive dashboard',
+        run: () => buildDashboard(id, (t?.meta?.jzTitle as string) ?? '', () => grid),
+      });
+    }
+  }
+  // Every card with a full-screen view gets a standalone ⤢ Expand icon button
+  // in the bar (a first-class affordance, not buried in the Actions menu —
+  // owner call 2026-07-07). Open the card as a focused, full-screen page over a
+  // dimmed board. The doc card also keeps its ⤢ icon in the format group.
+  const focusable = !sel.multi && hasContent && canFocusCard(sel.type);
+
   // The drop-moment profile (docs/PDF-EDGE.md build 3): a dropped PDF or
   // spreadsheet lands selected, so this bar IS the drop moment — Profile
   // rides it as a fixed action (a profile is the file's summary; owner call,
@@ -335,7 +383,7 @@ export function CardActionBar() {
                 className="jz-cardbar-iconbtn"
                 title="Edit full screen"
                 aria-label="Edit full screen"
-                onClick={() => openDocFocus(id)}
+                onClick={() => openCardFocus(id)}
               >
                 <Maximize2 {...FMT_ICON} />
               </button>
@@ -386,6 +434,16 @@ export function CardActionBar() {
             </div>
           ) : null}
         </div>
+      ) : null}
+      {focusable && sel.type !== 'doc-card' ? (
+        <button
+          className="jz-cardbar-btn jz-cardbar-btn--icon"
+          aria-label="Expand full screen"
+          title="Expand full screen"
+          onClick={() => openCardFocus(id)}
+        >
+          <Maximize2 {...FMT_ICON} />
+        </button>
       ) : null}
       {showMore ? (
         <div className="jz-cardbar-group">
