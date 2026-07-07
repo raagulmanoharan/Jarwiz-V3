@@ -210,7 +210,7 @@
       .sec-head p { margin: 18px 0 0; color: var(--ink-2); font-size: 17px; line-height: 1.6; }
 
       /* ===== BENTO capability grid (the centerpiece) ===== */
-      .bento { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 208px; gap: 14px; }
+      .bento { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 224px; gap: 14px; }
       .cell {
         position: relative; grid-column: span 2;
         display: flex; flex-direction: column; gap: 8px;
@@ -234,6 +234,20 @@
       .cell.h2 .cell-viz svg { max-height: 230px; }
       .cell.w1 .cell-viz svg { max-height: 90px; }
       .cell-viz.right { place-items: end center; }
+
+      /* Real product-card screenshot, framed as an embedded artifact */
+      .card-shot {
+        position: relative; flex: 1; min-height: 0; margin-top: 12px;
+        border-radius: 12px; overflow: hidden;
+        border: 1px solid var(--hairline); background: #0b0b0e;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 16px 38px rgba(0, 0, 0, 0.42);
+      }
+      .card-shot img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
+      .card-shot.top img { object-position: top; }
+      .card-shot::after {
+        content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      }
 
       /* mini composer used in the "suggests the shape" cell */
       .mini-composer { display: flex; flex-direction: column; gap: 12px; width: 100%; align-self: end; }
@@ -273,7 +287,7 @@
       }
 
       @media (max-width: 900px) {
-        .bento { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 210px; }
+        .bento { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 216px; }
         .cell, .cell.w2, .cell.w1 { grid-column: span 1; }
         .cell.wfull { grid-column: span 2; }
         .cell.h2 { grid-row: span 2; }
@@ -282,7 +296,9 @@
         .bento { grid-template-columns: 1fr; grid-auto-rows: auto; }
         .cell, .cell.w2, .cell.w1, .cell.wfull { grid-column: span 1; }
         .cell.h2 { grid-row: span 1; }
-        .cell { min-height: 210px; }
+        .cell { min-height: 236px; }
+        .card-shot { min-height: 176px; }
+        .cell.h2 .card-shot { min-height: 260px; }
       }
 
       /* Showcase — real screenshots */
@@ -470,94 +486,62 @@
           </div>
 
           <div class="bento">
-            <!-- Dominant hero card: Dashboard -->
+            <!-- Dominant hero card: Dashboard (real screenshot) -->
             <div class="cell w2 h2 wfull reveal">
               <span class="clabel">Your data → a dashboard</span>
               <h3>Turn a spreadsheet into a live dashboard.</h3>
               <p>Drop a table and Jarwiz builds <b>KPI tiles, bar and line charts, and a data table</b> — every number computed from your real rows. Filter or refocus it right on the canvas.</p>
-              <div class="cell-viz right" aria-hidden="true">
-                <svg viewBox="0 0 340 200" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="8" y="10" width="74" height="40" rx="7" stroke-opacity=".5"/>
-                  <rect x="90" y="10" width="74" height="40" rx="7" stroke-opacity=".5"/>
-                  <rect x="172" y="10" width="74" height="40" rx="7" stroke-opacity=".5"/>
-                  <rect x="254" y="10" width="78" height="40" rx="7" stroke-opacity=".5"/>
-                  <rect x="18" y="20" width="34" height="7" rx="3.5" fill="currentColor" fill-opacity=".28" stroke="none"/>
-                  <rect x="18" y="33" width="46" height="10" rx="4" fill="currentColor" fill-opacity=".85" stroke="none"/>
-                  <rect x="100" y="33" width="38" height="10" rx="4" fill="currentColor" fill-opacity=".85" stroke="none"/>
-                  <rect x="182" y="33" width="34" height="10" rx="4" fill="currentColor" fill-opacity=".85" stroke="none"/>
-                  <rect x="264" y="33" width="42" height="10" rx="4" fill="currentColor" fill-opacity=".85" stroke="none"/>
-                  <rect x="8" y="62" width="158" height="60" rx="7" stroke-opacity=".4"/>
-                  <rect x="26" y="92" width="18" height="22" fill="currentColor" fill-opacity=".55" stroke="none"/>
-                  <rect x="54" y="80" width="18" height="34" fill="currentColor" fill-opacity=".8" stroke="none"/>
-                  <rect x="82" y="98" width="18" height="16" fill="currentColor" fill-opacity=".4" stroke="none"/>
-                  <rect x="110" y="88" width="18" height="26" fill="currentColor" fill-opacity=".6" stroke="none"/>
-                  <rect x="174" y="62" width="158" height="60" rx="7" stroke-opacity=".4"/>
-                  <polyline points="188,106 214,86 240,94 266,72 300,62" stroke-opacity=".9" stroke-linecap="round" stroke-linejoin="round"/>
-                  <circle cx="300" cy="62" r="3" fill="currentColor" stroke="none"/>
-                  <rect x="8" y="134" width="324" height="58" rx="7" stroke-opacity=".4"/>
-                  <line x1="8" y1="154" x2="332" y2="154" stroke-opacity=".45"/>
-                  <line x1="8" y1="173" x2="332" y2="173" stroke-opacity=".22"/>
-                  <line x1="92" y1="134" x2="92" y2="192" stroke-opacity=".2"/>
-                  <line x1="176" y1="134" x2="176" y2="192" stroke-opacity=".2"/>
-                  <line x1="256" y1="134" x2="256" y2="192" stroke-opacity=".2"/>
-                </svg>
+              <div class="card-shot top">
+                <img src="assets/card-dashboard.png" alt="A live Jarwiz dashboard card: KPI tiles for total revenue $890.2k, total orders 3,629, new customers 609 and average order value $245; a bar chart of Q2 revenue by region, a line chart of the monthly revenue trend, another bar chart of new customers by region, and a monthly regional detail data table." loading="lazy" />
               </div>
             </div>
 
-            <!-- Prototype -->
-            <div class="cell w2 reveal">
+            <!-- Diagram (real screenshot, tall portrait) -->
+            <div class="cell w1 h2 reveal">
+              <span class="clabel">Map a flow</span>
+              <h3>Diagram.</h3>
+              <div class="card-shot top">
+                <img src="assets/card-diagram.png" alt="A flowchart card built by Jarwiz: an onboarding flow branching from New signup to an Email verified? decision, into Onboarding then Activated, or Send reminder." loading="lazy" />
+              </div>
+            </div>
+
+            <!-- Prototype (real screenshot, tall) -->
+            <div class="cell w1 h2 reveal">
               <span class="clabel">Describe a UI</span>
-              <h3>See it rendered, live.</h3>
-              <p>Ask for “a pomodoro timer” and get a real, clickable prototype card — not a screenshot.</p>
-              <div class="cell-viz" aria-hidden="true">
-                <svg viewBox="0 0 200 112" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="56" y="12" width="88" height="88" rx="9" stroke-opacity=".45"/>
-                  <line x1="56" y1="32" x2="144" y2="32" stroke-opacity=".35"/>
-                  <circle cx="67" cy="22" r="2.4" fill="currentColor" fill-opacity=".6" stroke="none"/>
-                  <circle cx="76" cy="22" r="2.4" fill="currentColor" fill-opacity=".6" stroke="none"/>
-                  <circle cx="100" cy="62" r="20" stroke-opacity=".5"/>
-                  <path d="M100 47 a15 15 0 0 1 13 7.5" stroke-opacity=".95" stroke-linecap="round"/>
-                  <line x1="100" y1="62" x2="100" y2="52" stroke-opacity=".9" stroke-linecap="round"/>
-                  <line x1="100" y1="62" x2="108" y2="66" stroke-opacity=".9" stroke-linecap="round"/>
-                  <rect x="80" y="88" width="40" height="10" rx="5" fill="currentColor" fill-opacity=".85" stroke="none"/>
-                </svg>
+              <h3>Prototype.</h3>
+              <div class="card-shot">
+                <img src="assets/card-prototype.png" alt="A working prototype card rendered live by Jarwiz: a Pomodoro focus timer reading 16:12, with Focus, Short break and Long break tabs and Pause and Reset buttons." loading="lazy" />
               </div>
             </div>
 
-            <!-- Table -->
-            <div class="cell w1 reveal">
+            <!-- Thinking Machines (real SWOT board) -->
+            <div class="cell w2 reveal">
+              <span class="clabel">Seven frameworks, run for you</span>
+              <h3>Run a real framework.</h3>
+              <div class="card-shot top">
+                <img src="assets/example-board.png" alt="A finished Jarwiz SWOT board: a 2×2 of strengths, weaknesses, opportunities and threats, a TOWS strategic-moves table, and a strategic verdict with top priorities." loading="lazy" />
+              </div>
+            </div>
+
+            <!-- Table (real screenshot, wide) -->
+            <div class="cell w2 reveal">
               <span class="clabel">Compare</span>
-              <h3>Table</h3>
-              <div class="cell-viz" aria-hidden="true">
-                <svg viewBox="0 0 200 112" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="34" y="18" width="132" height="76" rx="7" stroke-opacity=".45"/>
-                  <rect x="34" y="18" width="132" height="21" rx="7" fill="currentColor" fill-opacity=".14" stroke="none"/>
-                  <line x1="34" y1="39" x2="166" y2="39" stroke-opacity=".4"/>
-                  <line x1="34" y1="62" x2="166" y2="62" stroke-opacity=".26"/>
-                  <line x1="80" y1="18" x2="80" y2="94" stroke-opacity=".26"/>
-                  <line x1="122" y1="18" x2="122" y2="94" stroke-opacity=".26"/>
-                </svg>
+              <h3>Table.</h3>
+              <div class="card-shot top">
+                <img src="assets/card-table.png" alt="A comparison table card built by Jarwiz benchmarking CRMs — HubSpot, Salesforce, Pipedrive and Attio — by monthly price, who they are best for, and whether they offer a free tier." loading="lazy" />
               </div>
             </div>
 
-            <!-- Diagram -->
-            <div class="cell w1 reveal">
-              <span class="clabel">Flow</span>
-              <h3>Diagram</h3>
-              <div class="cell-viz" aria-hidden="true">
-                <svg viewBox="0 0 200 112" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="76" y1="28" x2="118" y2="28" stroke-opacity=".4"/>
-                  <line x1="97" y1="40" x2="97" y2="66" stroke-opacity=".4"/>
-                  <line x1="118" y1="82" x2="140" y2="82" stroke-opacity=".4"/>
-                  <rect x="42" y="18" width="36" height="22" rx="5" stroke-opacity=".7"/>
-                  <rect x="116" y="18" width="36" height="22" rx="5" stroke-opacity=".7"/>
-                  <rect x="79" y="66" width="38" height="22" rx="5" stroke-opacity=".7"/>
-                  <rect x="136" y="66" width="34" height="22" rx="5" fill="currentColor" fill-opacity=".14" stroke-opacity=".7"/>
-                </svg>
+            <!-- Doc — grounded research with citations (real screenshot) -->
+            <div class="cell w2 reveal">
+              <span class="clabel">Grounded, with sources</span>
+              <h3>Researches &amp; cites.</h3>
+              <div class="card-shot">
+                <img src="assets/card-doc.png" alt="A research doc card by Jarwiz on CRM market size, citing the market reaching $101.4B in 2025 and a projected $262B by 2032, with a 'Source: Grand View Research' citation link." loading="lazy" />
               </div>
             </div>
 
-            <!-- Suggests the shape (composer) -->
+            <!-- Smart composer — the live ✦ suggestion mock -->
             <div class="cell w2 reveal">
               <span class="clabel">Smart composer</span>
               <h3>It suggests the shape as you type.</h3>
@@ -575,65 +559,6 @@
                     <span aria-hidden="true">▾</span>
                   </span>
                 </div>
-              </div>
-            </div>
-
-            <!-- Thinking Machines -->
-            <div class="cell w2 reveal">
-              <span class="clabel">Seven frameworks</span>
-              <h3>Thinking Machines that research &amp; build.</h3>
-              <p>SWOT, competitive analysis, risk, personas — each researches the live web and lays a whole framework onto the board.</p>
-              <div class="cell-viz" aria-hidden="true">
-                <svg viewBox="0 0 200 112" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="52" y="16" width="42" height="36" rx="6" stroke-opacity=".6"/>
-                  <rect x="106" y="16" width="42" height="36" rx="6" stroke-opacity=".45"/>
-                  <rect x="52" y="60" width="42" height="36" rx="6" stroke-opacity=".45"/>
-                  <rect x="106" y="60" width="42" height="36" rx="6" fill="currentColor" fill-opacity=".12" stroke-opacity=".6"/>
-                  <line x1="61" y1="27" x2="85" y2="27" stroke-opacity=".45"/>
-                  <line x1="61" y1="37" x2="79" y2="37" stroke-opacity=".28"/>
-                  <line x1="115" y1="71" x2="139" y2="71" stroke-opacity=".45"/>
-                  <line x1="115" y1="81" x2="133" y2="81" stroke-opacity=".28"/>
-                </svg>
-              </div>
-            </div>
-
-            <!-- Cited research -->
-            <div class="cell w2 reveal">
-              <span class="clabel">Grounded</span>
-              <h3>Researches the live web — and cites it.</h3>
-              <p>Research-heavy asks pull real data from today’s web and link their sources. You can always check the receipts.</p>
-              <div class="cell-viz" aria-hidden="true">
-                <svg viewBox="0 0 200 96" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="46" cy="46" r="26" stroke-opacity=".5"/>
-                  <path d="M46 20 a26 34 0 0 1 0 52 a26 34 0 0 1 0-52" stroke-opacity=".32"/>
-                  <line x1="20" y1="46" x2="72" y2="46" stroke-opacity=".32"/>
-                  <line x1="24" y1="30" x2="68" y2="30" stroke-opacity=".22"/>
-                  <line x1="24" y1="62" x2="68" y2="62" stroke-opacity=".22"/>
-                  <line x1="98" y1="26" x2="176" y2="26" stroke-opacity=".35"/>
-                  <line x1="98" y1="42" x2="164" y2="42" stroke-opacity=".28"/>
-                  <line x1="98" y1="58" x2="176" y2="58" stroke-opacity=".28"/>
-                  <rect x="98" y="70" width="20" height="14" rx="4" fill="currentColor" fill-opacity=".16" stroke-opacity=".55"/>
-                  <rect x="124" y="70" width="20" height="14" rx="4" fill="currentColor" fill-opacity=".16" stroke-opacity=".55"/>
-                  <rect x="150" y="70" width="20" height="14" rx="4" fill="currentColor" fill-opacity=".16" stroke-opacity=".55"/>
-                </svg>
-              </div>
-            </div>
-
-            <!-- Tidy & focus -->
-            <div class="cell w2 reveal">
-              <span class="clabel">Stay tidy</span>
-              <h3>Focus a card. Tidy the board.</h3>
-              <p>Open any card full-screen to work in it alone — then hit Tidy Up to masonry-pack a messy board into a clean grid.</p>
-              <div class="cell-viz" aria-hidden="true">
-                <svg viewBox="0 0 200 96" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="20" y="14" width="52" height="30" rx="5" stroke-opacity=".55"/>
-                  <rect x="20" y="52" width="52" height="30" rx="5" stroke-opacity=".4"/>
-                  <path d="M86 48h22m0 0-6-6m6 6-6 6" stroke-opacity=".6" stroke-linecap="round" stroke-linejoin="round"/>
-                  <rect x="122" y="14" width="58" height="20" rx="5" stroke-opacity=".55"/>
-                  <rect x="122" y="38" width="28" height="44" rx="5" stroke-opacity=".4"/>
-                  <rect x="154" y="38" width="26" height="20" rx="5" fill="currentColor" fill-opacity=".12" stroke-opacity=".5"/>
-                  <rect x="154" y="62" width="26" height="20" rx="5" stroke-opacity=".4"/>
-                </svg>
               </div>
             </div>
           </div>
