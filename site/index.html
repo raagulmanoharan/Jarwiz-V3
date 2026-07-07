@@ -239,6 +239,10 @@
       .doccard-tbl td { color: var(--ink-2); }
       .doccard-tbl td:first-child { color: var(--ink); font-weight: 600; }
       .doccard-tbl tbody tr:last-child td { border-bottom: none; }
+      /* Compact inline table inside a doc card. */
+      .doccard-body .doc-inline { margin: 6px 0 12px; font-size: 12.5px; }
+      .doccard-body .doc-inline th, .doccard-body .doc-inline td { padding: 6px 8px; }
+      .doccard-body .doc-inline th { font-size: 10px; }
 
       @media (prefers-reduced-motion: reduce) {
         .vs-scroll { height: auto; max-height: 360px; overflow-y: auto; }
@@ -283,8 +287,8 @@
         grid-template-areas:
           "table proto doc"
           "table proto doc"
+          "dash  proto doc"
           "dash  proto comp"
-          "dash  flow  flow"
           "dash  flow  flow"
           "dash  flow  flow";
         gap: 18px;
@@ -601,6 +605,9 @@
                   <tr><td>Salesforce</td><td>$25–$300</td><td>Enterprise</td></tr>
                   <tr><td>Pipedrive</td><td>$14–$99</td><td>Small teams</td></tr>
                   <tr><td>Attio</td><td>$0–$59</td><td>Startups</td></tr>
+                  <tr><td>Zoho</td><td>$0–$52</td><td>Value</td></tr>
+                  <tr><td>Freshsales</td><td>$0–$59</td><td>SMBs</td></tr>
+                  <tr><td>Close</td><td>$49–$139</td><td>Outbound</td></tr>
                 </tbody>
               </table>
             </div>
@@ -635,7 +642,16 @@
               <div class="doccard">
                 <div class="doccard-title">CRM market size</div>
                 <div class="doccard-body">
-                  <p>The global CRM market hit <b>$101.4B in 2025</b>, up ~13% YoY, and is projected to reach <b>$262B by 2032</b>.</p>
+                  <p>The global CRM market hit <b>$101.4B in 2025</b>, up ~13% YoY, and is projected to reach <b>$262B by 2032</b> as AI-native tools expand the category.</p>
+                  <table class="doccard-tbl doc-inline">
+                    <thead><tr><th>Segment</th><th>Share</th><th>CAGR</th></tr></thead>
+                    <tbody>
+                      <tr><td>SMB</td><td>41%</td><td>15%</td></tr>
+                      <tr><td>Mid-market</td><td>34%</td><td>12%</td></tr>
+                      <tr><td>Enterprise</td><td>25%</td><td>9%</td></tr>
+                    </tbody>
+                  </table>
+                  <p>SMB is the fastest-moving segment — AI-native suites are pulling first-time buyers into the category.</p>
                   <p class="doccard-src">Source: Grand View Research</p>
                 </div>
               </div>
