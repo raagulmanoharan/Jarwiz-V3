@@ -131,14 +131,18 @@ const L = {
   doc: { x: 770, y: -210, w: 320, h: 420 },
   notes: { x: 770, y: 300, w: 340, h: 400 },
   diagram: { x: 30, y: 220, w: 600, h: 430 },
+  // The hand-drawn whiteboard the flow diagram was digitised from — an image
+  // card, sitting just left of the diagram and feeding it as a source.
+  sketch: { x: -460, y: 250, w: 400, h: 300 },
   stickies: [
     { x: 780, y: -360, w: 220, h: 110 },
-    { x: -280, y: 560, w: 230, h: 140 },
+    { x: -300, y: 600, w: 230, h: 140 },
   ],
   pdf: { x: 1200, y: -200, w: 300, h: 420 },
 };
 
 const PDF_URL = `${import.meta.env.BASE_URL}evidence-pricing.pdf`;
+const SKETCH_URL = `${import.meta.env.BASE_URL}sketch-flow.png`;
 
 interface Cursor {
   x: number;
@@ -153,7 +157,7 @@ export function EmbedShowreel() {
   const rootRef = useRef<HTMLDivElement>(null);
   const fixBtnRef = useRef<HTMLButtonElement>(null);
   const timers = useRef<number[]>([]);
-  const ids = useRef<{ table: TLShapeId; pdf: TLShapeId } | null>(null);
+  const ids = useRef<{ table: TLShapeId; diagram: TLShapeId; pdf: TLShapeId } | null>(null);
 
   const [you, setYou] = useState<Cursor>(HIDDEN);
   const [jz, setJz] = useState<Cursor>(HIDDEN);
@@ -208,9 +212,10 @@ export function EmbedShowreel() {
       const doc = createShapeId();
       const notes = createShapeId();
       const diagram = createShapeId();
+      const sketch = createShapeId();
       const stickyIds = L.stickies.map(() => createShapeId());
       const pdf = createShapeId();
-      ids.current = { table, pdf };
+      ids.current = { table, diagram, pdf };
 
       L.links.forEach((pos, i) => {
         const src = LINKS[i]!;
@@ -227,6 +232,7 @@ export function EmbedShowreel() {
       editor.createShape({ id: doc, type: 'doc-card', x: L.doc.x, y: L.doc.y, props: { w: L.doc.w, h: L.doc.h, title: 'Recommendation', text: DOC_TEXT } });
       editor.createShape({ id: notes, type: 'doc-card', x: L.notes.x, y: L.notes.y, props: { w: L.notes.w, h: L.notes.h, title: 'Research notes', text: NOTES_DOC } });
       editor.createShape({ id: diagram, type: 'diagram-card', x: L.diagram.x, y: L.diagram.y, props: { w: L.diagram.w, h: L.diagram.h, code: DIAGRAM, title: 'Evaluation flow' } });
+      editor.createShape({ id: sketch, type: 'image-card', x: L.sketch.x, y: L.sketch.y, props: { w: L.sketch.w, h: L.sketch.h, src: SKETCH_URL, name: 'Whiteboard — evaluation flow' } });
       L.stickies.forEach((pos, i) => {
         editor.createShape({ id: stickyIds[i]!, type: 'note-card', x: pos.x, y: pos.y, props: { w: pos.w, h: pos.h, text: STICKIES[i]!, color: '' } });
       });
@@ -245,6 +251,8 @@ export function EmbedShowreel() {
       editor.updateShape({ id: table, type: 'table-card', meta: { [PROV_META_KEY]: [...linkIds, table2] } });
       editor.updateShape({ id: doc, type: 'doc-card', meta: { [PROV_META_KEY]: [table] } });
       editor.updateShape({ id: notes, type: 'doc-card', meta: { [PROV_META_KEY]: [table] } });
+      // The flow diagram was digitised FROM the hand-drawn whiteboard sketch.
+      editor.updateShape({ id: diagram, type: 'diagram-card', meta: { [PROV_META_KEY]: [sketch] } });
 
       panTo(FRAME.wide, 0);
     };
@@ -274,11 +282,12 @@ export function EmbedShowreel() {
       setComment(null);
       setYou(HIDDEN);
       setJz(HIDDEN);
-      // Keep the comparison table selected for the WHOLE loop so its dotted
-      // provenance lineage is always drawn — in the wide establishing shot and
-      // in the zoomed-in views alike. (Selection chrome is transparent in this
-      // build, so nothing but the lineage shows.)
-      if (ids.current) editor.select(ids.current.table);
+      // Keep the table AND the flow diagram selected for the WHOLE loop so both
+      // dotted provenance webs are always drawn — table←sources and
+      // diagram←sketch — in the wide establishing shot and the zoomed-in views
+      // alike. (Selection chrome is transparent in this build, so only the
+      // lineage shows.)
+      if (ids.current) editor.select(ids.current.table, ids.current.diagram);
       panTo(FRAME.wide, 0);
 
       const pdfC = () => vp(L.pdf.x + L.pdf.w * 0.24, L.pdf.y + L.pdf.h * 0.42);
