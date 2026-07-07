@@ -8,6 +8,10 @@ body,
 #root {
   margin: 0;
   height: 100%;
+  /* The app is a fixed, full-viewport canvas — nothing should ever scroll the
+     document (any scrollable surface owns its own overflow). This also keeps a
+     stray scrollbar out of the embedded marketing iframes. */
+  overflow: hidden;
   font-family: var(--jz-font-ui);
   color: var(--jz-ink-900);
   -webkit-font-smoothing: antialiased;
@@ -2699,6 +2703,89 @@ body,
   inset: 0;
   z-index: 305;
   pointer-events: none;
+}
+
+/* Rotating "scanning" border drawn over the PDF card while Jarwiz parses it —
+   a conic-gradient ring (masked to just the border) that sweeps around the card.
+   Anchored in viewport space over the card by the showreel script. */
+@property --jz-halo-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+.jz-parse-halo {
+  position: absolute;
+  border-radius: 16px;
+  padding: 3.5px;
+  /* A faint full ring with a bright highlight that sweeps around it. */
+  background: conic-gradient(
+    from var(--jz-halo-angle),
+    rgba(124, 92, 255, 0.28) 0deg,
+    rgba(124, 92, 255, 0.28) 170deg,
+    #a48bff 250deg,
+    #ffffff 300deg,
+    #a48bff 340deg,
+    rgba(124, 92, 255, 0.28) 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: jz-halo-spin 1.15s linear infinite;
+  box-shadow: 0 0 26px rgba(124, 92, 255, 0.45);
+  z-index: 304;
+}
+@keyframes jz-halo-spin {
+  to {
+    --jz-halo-angle: 360deg;
+  }
+}
+/* Fallback where @property isn't available: just spin the whole ring. */
+@supports not (background: conic-gradient(from var(--jz-halo-angle), #000, #fff)) {
+  .jz-parse-halo {
+    animation: jz-halo-spin-fallback 1.15s linear infinite;
+  }
+  @keyframes jz-halo-spin-fallback {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-parse-halo {
+    animation: none;
+    background: var(--jz-accent, #7c5cff);
+    opacity: 0.6;
+  }
+}
+
+/* A quick click ripple where the scripted cursor "clicks" — a ring that expands
+   and fades once. The point is the ring's centre. */
+.jz-click-ring {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  border: 2px solid var(--jz-ink-900);
+  opacity: 0;
+  animation: jz-click-pulse 0.5s var(--jz-ease-out) forwards;
+  z-index: 311;
+}
+@keyframes jz-click-pulse {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(3.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-click-ring {
+    animation: none;
+  }
 }
 
 /* Use-cases overlay: the board scrolls under a non-interactive layer; only the

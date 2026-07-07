@@ -169,17 +169,14 @@
         border-radius: var(--r-xl); border: 1px solid var(--hairline-2);
         background: #0b0b0e;
         box-shadow: 0 60px 150px rgba(0,0,0,0.66), inset 0 1px 0 rgba(255,255,255,0.05);
-        /* Deliberately NO `overflow: hidden` and NO `transform` here. On Safari,
-           an <iframe> renders blank the moment its content repaints (the embedded
-           canvas zooming) when it is either clipped by a rounded overflow-hidden
-           ancestor OR nested inside a transformed ancestor. So we don't clip the
-           iframe from the outside at all — the bar and the iframe round their own
-           outer corners below, which Safari handles fine. */
+        /* Fixed height, clean rounded clip — no stray scrollbar. (Earlier this
+           clip was removed while chasing a "canvas goes blank" bug; that turned
+           out to be a tldraw licensing issue, not the clip, so the clip is back.) */
+        overflow: hidden;
       }
       .stage-bar {
         display: flex; align-items: center; gap: 10px; height: 42px; flex: none;
         padding: 0 16px; border-bottom: 1px solid var(--hairline); background: var(--bg-2);
-        border-radius: var(--r-xl) var(--r-xl) 0 0;
       }
       .stage-bar .dots { display: flex; gap: 7px; }
       .stage-bar .dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--hairline-2); }
@@ -189,11 +186,7 @@
         display: inline-flex; align-items: center; gap: 7px;
       }
       .stage-bar .addr svg { width: 12px; height: 12px; opacity: 0.7; }
-      .stage-frame { flex: 1; width: 100%; border: 0; display: block; background: #0b0b0e;
-        /* The iframe rounds its OWN bottom corners rather than being clipped by a
-           rounded ancestor — this avoids the Safari iframe-blanks-on-repaint bug.
-           No transform/backface here: those can themselves blank an iframe on Safari. */
-        border-radius: 0 0 var(--r-xl) var(--r-xl); }
+      .stage-frame { flex: 1; width: 100%; border: 0; display: block; background: #0b0b0e; }
       .stage-cap { margin: 20px auto 0; max-width: 640px; color: var(--ink-3); font-size: 14px; line-height: 1.6; }
       .stage-cap a { color: var(--accent-2); font-weight: 600; }
       .stage-cap a:hover { text-decoration: underline; }

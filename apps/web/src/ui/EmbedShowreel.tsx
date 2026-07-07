@@ -25,7 +25,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Box, createShapeId, useEditor, type TLShapeId } from 'tldraw';
 import { Sparkles, Wand2, Scale } from 'lucide-react';
-import { readingQuips } from '../agents/jarwizLife';
 import { setShapeTitle } from '../shapes/shapeTitle';
 import { PROV_META_KEY } from '../ask/useAsk';
 
@@ -162,6 +161,11 @@ export function EmbedShowreel() {
   const [you, setYou] = useState<Cursor>(HIDDEN);
   const [jz, setJz] = useState<Cursor>(HIDDEN);
   const [comment, setComment] = useState<{ x: number; y: number; open: boolean } | null>(null);
+  // A rotating "scanning" border drawn over the PDF card while Jarwiz parses it.
+  const [parse, setParse] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  // A one-shot click ripple at a point (keyed so each click replays the animation).
+  const [click, setClick] = useState<{ x: number; y: number; n: number } | null>(null);
+  const clickSeq = useRef(0);
   const reduce =
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -278,100 +282,89 @@ export function EmbedShowreel() {
       editor.updateShape({ id: ids.current.table, type: 'table-card', props: { rows: rowsWith(price) } });
     };
 
+    // Fire a click ripple at a viewport point.
+    const clickAt = (p: { x: number; y: number }) => {
+      clickSeq.current += 1;
+      setClick({ x: p.x, y: p.y, n: clickSeq.current });
+    };
+    // The PDF card's rectangle in viewport space, for the rotating scan border.
+    const pdfHaloRect = () => {
+      if (!ids.current) return null;
+      const b = editor.getShapePageBounds(ids.current.pdf);
+      if (!b) return null;
+      const tl = editor.pageToViewport({ x: b.x, y: b.y });
+      const br = editor.pageToViewport({ x: b.x + b.w, y: b.y + b.h });
+      return { left: tl.x, top: tl.y, width: br.x - tl.x, height: br.y - tl.y };
+    };
+
     // ── One pass of the film ────────────────────────────────────────────────
+    // Deliberately unhurried: each beat gets room to read. The PDF is dropped,
+    // Jarwiz selects + scans it (a rotating border, ~5.5s), travels to the table
+    // and clicks it (comment appears at the cursor), the Maker opens the comment
+    // and clicks "fix", Jarwiz streams the correction, then the PDF is removed
+    // just before the pull-back so the wide board matches the loop's start.
     const run = () => {
       clearPdf();
       setPrice(STALE);
       setComment(null);
+      setParse(null);
+      setClick(null);
       setYou(HIDDEN);
       setJz(HIDDEN);
       // Keep the table AND the flow diagram selected for the WHOLE loop so both
-      // dotted provenance webs are always drawn — table←sources and
-      // diagram←sketch — in the wide establishing shot and the zoomed-in views
-      // alike. (Selection chrome is transparent in this build, so only the
-      // lineage shows.)
+      // dotted provenance webs stay drawn (selection chrome is transparent).
       if (ids.current) editor.select(ids.current.table, ids.current.diagram);
       panTo(FRAME.wide, 0);
 
-      const pdfC = () => vp(L.pdf.x + L.pdf.w * 0.24, L.pdf.y + L.pdf.h * 0.42);
-      const tableCorner = () => vp(L.table.x + L.table.w, L.table.y);
-      const priceCell = () => vp(L.table.x + L.table.w * 0.46, L.table.y + L.table.h * 0.35);
+      const pdfC = () => vp(L.pdf.x + L.pdf.w * 0.3, L.pdf.y + L.pdf.h * 0.42);
+      const priceCell = () => vp(L.table.x + L.table.w * 0.46, L.table.y + L.table.h * 0.33);
+      // Where the comment gets pinned — captured when Jarwiz clicks the cell so
+      // the popover (and the Maker's cursor) stay exactly on that spot.
+      let commentPt = { x: 0, y: 0 };
 
-      // 1) WIDE: let the busy board breathe (the lineage is already drawn — the
-      //    table stays selected the whole loop).
-
+      // 1) WIDE establishing shot — let the busy board breathe.
       // 2) Push in on the drop zone; the Maker drops the PDF.
-      after(3400, () => panTo(FRAME.drop, 1100));
-      after(4500, () => {
-        const p = pdfC();
-        setYou({ x: p.x, y: p.y + 150, visible: true, status: null });
-      });
-      after(5100, () => {
-        const p = pdfC();
-        setYou({ x: p.x, y: p.y, visible: true, status: 'dropping a file…' });
-      });
-      after(5700, () => {
-        dropPdf();
-        const p = pdfC();
-        setYou({ x: p.x + 30, y: p.y + 20, visible: true, status: null });
-      });
-      after(6300, () => setYou((c) => ({ ...c, visible: false })));
+      after(2600, () => panTo(FRAME.drop, 1500));
+      after(4400, () => { const p = pdfC(); setYou({ x: p.x, y: p.y + 170, visible: true, status: 'dropping evidence…' }); });
+      after(5200, () => { const p = pdfC(); setYou({ x: p.x, y: p.y + 44, visible: true, status: 'dropping evidence…' }); });
+      after(5700, () => { dropPdf(); const p = pdfC(); clickAt(p); setYou({ x: p.x + 26, y: p.y + 18, visible: true, status: null }); });
+      after(6300, () => setYou(HIDDEN));
 
-      // 3) Jarwiz flies over and reads the evidence.
-      const quips = readingQuips('pdf');
-      after(6400, () => {
-        const p = pdfC();
-        setJz({ x: p.x, y: p.y, visible: true, status: quips[0] ?? 'reading…' });
-      });
-      [1, 2, 3].forEach((k) =>
-        after(6400 + k * 900, () => {
-          const p = pdfC();
-          setJz({ x: p.x + (k % 2 ? 26 : -26), y: p.y + (k % 2 ? 30 : -22), visible: true, status: quips[k % quips.length] ?? 'reading…' });
-        }),
-      );
+      // 3) Jarwiz flies in, SELECTS the card, and scans it (~5.5s of rotating
+      //    border) while it parses the evidence.
+      after(6600, () => { const p = pdfC(); setJz({ x: p.x, y: p.y, visible: true, status: 'reading the evidence…' }); });
+      after(7200, () => setParse(pdfHaloRect()));
+      after(9000, () => setJz((c) => ({ ...c, status: 'cross-checking the prices…' })));
+      after(11000, () => setJz((c) => ({ ...c, status: 'found a mismatch…' })));
+      after(12600, () => setParse(null));
 
-      // 4) Camera FOLLOWS Jarwiz to the table; it pins the discrepancy.
-      after(9400, () => {
-        panTo(FRAME.table, 1250); // the hero follow — a deliberate lateral glide
-        setJz((c) => ({ ...c, status: 'following the trail…' }));
-      });
-      after(10800, () => {
-        const c = tableCorner(); // pan has settled — anchor is stable
-        setJz({ x: c.x - 14, y: c.y + 16, visible: true, status: 'spotting a discrepancy…' });
-        setComment({ x: c.x, y: c.y, open: false });
-      });
-      after(11400, () => {
-        setComment((s) => (s ? { ...s, open: true } : s));
-        setJz(HIDDEN);
-      });
+      // 4) Camera FOLLOWS Jarwiz to the table; it clicks the stale cell and pins
+      //    the comment right where the cursor lands.
+      after(12700, () => { panTo(FRAME.table, 1500); setJz((c) => ({ ...c, status: 'following the trail…' })); });
+      after(14500, () => { const c = priceCell(); setJz({ x: c.x, y: c.y, visible: true, status: 'flagging it…' }); });
+      after(15300, () => { const c = priceCell(); commentPt = c; clickAt(c); setComment({ x: c.x, y: c.y, open: false }); });
+      after(15900, () => setJz(HIDDEN));
 
-      // 5) You click the fix; the cell backspaces then STREAMS the correction.
-      after(12150, () => {
-        const b = rectCenter(fixBtnRef.current);
-        const c = tableCorner();
-        const target = b ?? { x: c.x + 40, y: c.y + 120 };
-        setYou({ x: target.x, y: target.y, visible: true, status: null });
-      });
-      after(13200, () => {
-        const p = priceCell();
-        setJz({ x: p.x, y: p.y, visible: true, status: 'fixing…' });
-      });
-      after(13600, () => setComment(null));
+      // 5) The Maker goes over, opens the comment, and clicks "Let Jarwiz fix it".
+      after(16900, () => setYou({ x: commentPt.x + 8, y: commentPt.y + 10, visible: true, status: null }));
+      after(17600, () => { clickAt(commentPt); setComment((s) => (s ? { ...s, open: true } : s)); });
+      after(18800, () => { const b = rectCenter(fixBtnRef.current); const t = b ?? { x: commentPt.x + 40, y: commentPt.y + 150 }; setYou({ x: t.x, y: t.y, visible: true, status: null }); });
+      after(19600, () => { const b = rectCenter(fixBtnRef.current); if (b) clickAt(b); });
+
+      // 6) Jarwiz fixes it — the stale cell backspaces, then the value STREAMS in.
+      after(19900, () => { const p = priceCell(); setJz({ x: p.x, y: p.y, visible: true, status: 'fixing…' }); setComment(null); });
       const STREAM = ['$1', '$', '', '$', '$1', TRUE];
-      const STREAM_STEP = 95;
-      STREAM.forEach((v, i) => after(13800 + i * STREAM_STEP, () => setPrice(v)));
-      const streamEnd = 13800 + STREAM.length * STREAM_STEP;
-      after(streamEnd + 150, () => {
-        const p = priceCell();
-        setJz({ x: p.x, y: p.y, visible: true, status: 'fixed ✓' });
-        setYou((c) => ({ ...c, visible: false }));
-      });
+      const STREAM_STEP = 110;
+      STREAM.forEach((v, i) => after(20200 + i * STREAM_STEP, () => setPrice(v)));
+      const streamEnd = 20200 + STREAM.length * STREAM_STEP;
+      after(streamEnd + 200, () => { const p = priceCell(); setJz({ x: p.x, y: p.y, visible: true, status: 'fixed ✓' }); setYou(HIDDEN); });
 
-      // 6) Settle on the fixed result, then a slow, graceful pull-back to the
-      //    whole board — "here's everything you built" — and loop.
-      after(16400, () => setJz((c) => ({ ...c, visible: false })));
-      after(16900, () => panTo(FRAME.wide, 1400));
-      after(19000, run);
+      // 7) Settle on the fix, hide the PDF BEFORE the pull-back (so the wide board
+      //    matches the loop's start), then a slow pull-back and loop.
+      after(streamEnd + 2000, () => setJz(HIDDEN));
+      after(streamEnd + 2400, () => clearPdf());
+      after(streamEnd + 2700, () => panTo(FRAME.wide, 1600));
+      after(streamEnd + 5200, run);
     };
 
     seed();
@@ -382,9 +375,16 @@ export function EmbedShowreel() {
 
   return (
     <div ref={rootRef} className="jz-showreel" aria-hidden="true">
+      {parse ? (
+        <div
+          className="jz-parse-halo"
+          style={{ left: parse.left, top: parse.top, width: parse.width, height: parse.height }}
+        />
+      ) : null}
       <ScriptedCursor cursor={you} label="You" you />
       <ScriptedCursor cursor={jz} label="Jarwiz" />
       {comment ? <ShowreelComment pos={comment} open={comment.open} fixRef={fixBtnRef} /> : null}
+      {click ? <span key={click.n} className="jz-click-ring" style={{ left: click.x, top: click.y }} /> : null}
     </div>
   );
 }
