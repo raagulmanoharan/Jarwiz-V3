@@ -298,7 +298,7 @@
       .jz-tip {
         position: fixed; z-index: 200; pointer-events: none; left: 0; top: 0;
         transform: translate(-50%, calc(-100% - 12px));
-        display: flex; flex-direction: column; gap: 5px; max-width: 260px;
+        display: flex; flex-direction: column; gap: 5px; max-width: 300px;
         padding: 11px 14px; border-radius: 12px;
         background: #000; border: 1px solid var(--hairline-2);
         box-shadow: 0 16px 40px rgba(0,0,0,0.6);
@@ -313,9 +313,12 @@
         border-radius: var(--r-md); border: 1px solid var(--hairline);
         background: linear-gradient(180deg, var(--surface), var(--bg-2));
         box-shadow: 0 12px 30px rgba(0,0,0,0.4);
-        transition: transform 0.25s var(--ease), border-color 0.25s var(--ease);
+        transition: transform 0.25s var(--ease), border-color 0.25s var(--ease), opacity 0.25s var(--ease), filter 0.25s var(--ease);
       }
       .bcard:hover { transform: translateY(-3px); border-color: var(--hairline-2); }
+      /* Spotlight: while one card is hovered, the rest dim back so the focused
+         shape leads the eye — this is the moment we tell you what Jarwiz makes. */
+      .board-inner.jz-focus .bcard:not(:hover) { opacity: 0.4; filter: brightness(0.8) saturate(0.9); }
       /* Hover: a metallic sheen travels around the card's hairline border — same
          1px thickness (a masked ring), no extra border. */
       .bcard::after {
@@ -638,7 +641,7 @@
           <div class="board-canvas reveal" role="img" aria-label="A Jarwiz canvas — a viewport onto a board where a dashboard, prototype, comparison table, research doc, the composer, and a flow diagram run off every edge.">
            <div class="board-inner">
             <!-- top-left: a table card, its top running off the canvas -->
-            <div class="bcard b-table" data-desc="A table that compares options side by side." data-utt="Compare the top CRMs in a table">
+            <div class="bcard b-table" data-desc="A comparison table — Jarwiz gathers the options, fills every cell, and keeps it sortable and editable." data-utt="Compare the top CRMs in a table">
               <table class="doccard-tbl">
                 <thead><tr><th>CRM</th><th>Price /mo</th><th>Best for</th></tr></thead>
                 <tbody>
@@ -652,7 +655,7 @@
             </div>
 
             <!-- left: a live dashboard card (portrait, built as real HTML) -->
-            <div class="bcard b-dash metallic" data-desc="A live dashboard, computed from your data." data-utt="Turn my Q2 sales into a dashboard">
+            <div class="bcard b-dash metallic" data-desc="A live dashboard — drop in your numbers and Jarwiz computes the KPIs, trends, and charts for you." data-utt="Turn my Q2 sales into a dashboard">
               <div class="minidash">
                 <div class="md-kpis">
                   <div class="md-kpi"><span>Total revenue</span><b>$890.2k <em>+18%</em></b>
@@ -681,12 +684,12 @@
             </div>
 
             <!-- center: the prototype, running live -->
-            <div class="bcard b-proto" data-desc="A real, working prototype you can try." data-utt="Prototype a focus-timer app">
+            <div class="bcard b-proto" data-desc="A real, clickable prototype — not a mockup, working software Jarwiz builds from a single sentence." data-utt="Prototype a focus-timer app">
               <iframe class="proto-frame" src="assets/proto-focus.html" title="A live Focus mobile-app prototype rendered by Jarwiz" loading="lazy" scrolling="no"></iframe>
             </div>
 
             <!-- top-right: a doc card with a citation -->
-            <div class="bcard b-doc metallic" data-desc="A researched doc, grounded with sources." data-utt="Research the CRM market size">
+            <div class="bcard b-doc metallic" data-desc="A researched doc — written, structured, and grounded in real sources you can trace and cite." data-utt="Research the CRM market size">
               <div class="doccard">
                 <div class="doccard-title">CRM market size</div>
                 <div class="doccard-body">
@@ -706,7 +709,7 @@
             </div>
 
             <!-- right: the composer capturing intent — the card IS the prompt bar -->
-            <div class="bcard b-composer" data-desc="The composer — it suggests the right shape as you type.">
+            <div class="bcard b-composer" data-desc="Just describe what you want — the composer reads your intent and suggests the right shape as you type.">
               <div class="pb-input"><span class="mp-text" data-typed>Turn my Q2 sales into a report</span><span class="caret" aria-hidden="true"></span></div>
               <div class="pb-foot">
                 <span class="suggest">
@@ -719,7 +722,7 @@
             </div>
 
             <!-- bottom: a complex flow diagram (the real Mermaid SVG), wide -->
-            <div class="bcard b-flow" data-desc="A flowchart that maps a process end to end." data-utt="Map the onboarding flow as a diagram">
+            <div class="bcard b-flow" data-desc="A flowchart that maps any process end to end — every branch, decision, and loop, laid out clearly." data-utt="Map the onboarding flow as a diagram">
               <img class="flow-svg" src="assets/flow.svg" alt="A flowchart: Visit branches on 'New user?' into Sign up / Log in, through Verify email to the Dashboard, then 'Has data?' into Import or Insights." loading="lazy" />
             </div>
            </div>
@@ -1008,6 +1011,7 @@
       (function cardTooltips() {
         const tip = document.querySelector('.jz-tip');
         if (!tip) return;
+        const board = document.querySelector('.board-inner');
         const descEl = tip.querySelector('.jz-tip-desc');
         const uttEl = tip.querySelector('.jz-tip-utt');
         const place = (e) => {
@@ -1021,11 +1025,13 @@
             place(e);
             tip.classList.add('on');
             tip.setAttribute('aria-hidden', 'false');
+            if (board) board.classList.add('jz-focus'); // dim the other cards
           });
           card.addEventListener('mousemove', place);
           card.addEventListener('mouseleave', () => {
             tip.classList.remove('on');
             tip.setAttribute('aria-hidden', 'true');
+            if (board) board.classList.remove('jz-focus');
           });
         });
       })();
