@@ -21,14 +21,14 @@ body{font-family:-apple-system,'Segoe UI',Inter,sans-serif;background:radial-gra
 .btn.ghost{width:46px;background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1);color:#c2c2c8;font-size:17px}
 .pips{display:flex;align-items:center;gap:7px;font-size:11px;color:#8a8a94;font-weight:600}
 .pips i{width:7px;height:7px;border-radius:50%;background:#2a2a31}.pips i.on{background:#f5f5f7}
-.sheet{margin:14px 16px 0;background:#121216;border:1px solid rgba(255,255,255,.07);border-radius:18px 18px 0 0;flex:1;padding:16px 18px;display:flex;flex-direction:column;gap:14px;min-height:0}
+.sheet{margin:12px 16px 0;background:#121216;border:1px solid rgba(255,255,255,.07);border-radius:18px 18px 0 0;flex:1;padding:14px 18px 18px;display:flex;flex-direction:column;gap:12px;min-height:0}
 .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 .stat{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:11px 12px}
 .stat .n{font-size:19px;font-weight:800;letter-spacing:-.02em}
 .stat .l{font-size:10px;color:#8a8a94;font-weight:600;margin-top:2px;text-transform:uppercase;letter-spacing:.05em}
 .wk{flex:1;display:flex;flex-direction:column;min-height:0}
 .wk .h{font-size:11px;color:#8a8a94;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
-.wk .bars{flex:1;display:flex;align-items:flex-end;gap:9px;min-height:44px}
+.wk .bars{flex:1;display:flex;align-items:flex-end;gap:9px;min-height:34px}
 .wk .bars .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
 .wk .bars .col b{width:100%;border-radius:5px 5px 0 0;background:linear-gradient(180deg,#e7e7ea,#8a8a94);display:block}
 .wk .bars .col.today b{background:#f5f5f7}
@@ -38,9 +38,9 @@ body{font-family:-apple-system,'Segoe UI',Inter,sans-serif;background:radial-gra
 <div class="top">
   <span class="tag"><span class="live"></span> Deep work · session 2</span>
   <div class="ring">
-    <svg width="140" height="140" viewBox="0 0 140 140">
-      <circle class="track" cx="70" cy="70" r="60" fill="none" stroke-width="10"/>
-      <circle class="prog" id="prog" cx="70" cy="70" r="60" fill="none" stroke-width="10"/>
+    <svg width="128" height="128" viewBox="0 0 128 128">
+      <circle class="track" cx="64" cy="64" r="55" fill="none" stroke-width="10"/>
+      <circle class="prog" id="prog" cx="64" cy="64" r="55" fill="none" stroke-width="10"/>
     </svg>
     <div class="cx"><div class="big" id="time">24:05</div><div class="sm">remaining</div></div>
   </div>
@@ -70,7 +70,7 @@ body{font-family:-apple-system,'Segoe UI',Inter,sans-serif;background:radial-gra
   </div>
 </div>
 <script>
-  var TOTAL=25*60, r=60, C=2*Math.PI*r, remaining=24*60+5;
+  var TOTAL=25*60, r=55, C=2*Math.PI*r, remaining=24*60+5;
   var prog=document.getElementById('prog'), time=document.getElementById('time');
   prog.style.strokeDasharray=C;
   function render(){var m=Math.floor(remaining/60),s=remaining%60;time.textContent=m+':'+(s<10?'0':'')+s;prog.style.strokeDashoffset=C*(1-remaining/TOTAL);}
