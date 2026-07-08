@@ -8,7 +8,7 @@
 
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue, type Editor, type TLRichText, type TLShape, type TLShapeId } from 'tldraw';
-import { Slash, ArrowUp, Sparkles } from 'lucide-react';
+import { Slash, ArrowUp, Sparkles, FileText, Link2, ClipboardList } from 'lucide-react';
 import type { AnalyzeMode, AskShape } from '@jarwiz/shared';
 import { type ModeShape } from './modeShape';
 import { suggestShape } from './suggestShape';
@@ -547,6 +547,7 @@ export function PromptBar() {
               introAnim && introShape ? (
                 <span className="jz-pb-ground jz-pb-mode jz-pb-mode--auto" aria-hidden>
                   <Sparkles className="jz-pb-mode-spark" size={11} strokeWidth={2} />
+                  <span className="jz-pb-mode-lead">Suggested</span>
                   {MODES.find((m) => m.shape === introShape)?.label ?? introShape}
                 </span>
               ) : null
@@ -579,6 +580,18 @@ export function PromptBar() {
           </button>
         </div>
       </div>
+
+      {/* Onboarding on-ramps: bringing your own content is as inviting as
+          typing. Calm hints — the canvas already accepts drops and the composer
+          accepts pastes, so these communicate rather than gate. */}
+      {introMounted ? (
+        <div className={`jz-pb-onramp${introMode ? '' : ' jz-pb-onramp--leaving'}`} aria-hidden>
+          <span className="jz-pb-onramp-or">or</span>
+          <span className="jz-pb-onramp-item"><FileText size={13} strokeWidth={1.9} /> drop a PDF</span>
+          <span className="jz-pb-onramp-item"><Link2 size={13} strokeWidth={1.9} /> paste a link</span>
+          <span className="jz-pb-onramp-item"><ClipboardList size={13} strokeWidth={1.9} /> paste a transcript</span>
+        </div>
+      ) : null}
     </div>
   );
 }

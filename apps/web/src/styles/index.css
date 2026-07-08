@@ -3822,6 +3822,42 @@ body,
   color: var(--jz-ink-900);
   transform: translateY(-1px);
 }
+/* "Suggested" lead-in on the onboarding shape-preview chip. */
+.jz-pb-mode-lead {
+  color: var(--jz-ink-500);
+  font-weight: 400;
+  margin-right: 1px;
+}
+/* Onboarding on-ramp hints under the composer (drop / paste). */
+.jz-pb-onramp {
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+  transition: opacity var(--jz-dur-base) var(--jz-ease-out), transform var(--jz-dur-base) var(--jz-ease-out);
+}
+.jz-pb-onramp--leaving {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.jz-pb-onramp-or {
+  font-size: var(--jz-text-body-sm-size);
+  color: var(--jz-ink-400);
+}
+.jz-pb-onramp-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--jz-text-body-sm-size);
+  color: var(--jz-ink-500);
+  border: 1px dashed var(--jz-hairline-strong);
+  border-radius: 10px;
+  padding: 5px 11px;
+}
+.jz-pb-onramp-item svg { opacity: 0.85; }
 
 /* Outer card — tall rounded rect, column layout */
 .jz-promptbar {
