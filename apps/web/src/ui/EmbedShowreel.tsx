@@ -25,7 +25,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Box, createShapeId, useEditor, type TLShapeId } from 'tldraw';
-import { Sparkles, Wand2, Scale, FileText, Image as ImageIcon } from 'lucide-react';
+import { Sparkles, Wand2, Scale, FileText } from 'lucide-react';
 import { setShapeTitle } from '../shapes/shapeTitle';
 import { TABLE_HEADER_H } from '../shapes/TableCardShapeUtil';
 import { PROV_META_KEY } from '../ask/useAsk';
@@ -107,9 +107,9 @@ const DIAGRAM = `flowchart TD
   L -->|No| A
   L -->|Yes| M[Decide]`;
 
-const STICKIES = ['Double-check the 2026 pricing — sheet due Friday', 'Ask sales about seat floors before we commit'];
+const STICKIES = ['Double-check the 2026 pricing, sheet due Friday', 'Ask sales about seat floors before we commit'];
 
-const COMMENT_BODY = `The 2026 pricing sheet lists Pipedrive Essential at ${TRUE}/seat — this row still shows ${STALE}, last year's price.`;
+const COMMENT_BODY = `The 2026 pricing sheet lists Pipedrive Essential at ${TRUE}/seat. This row still shows ${STALE}, last year's price.`;
 
 // Fixed page-space layout — a sprawling workspace. The board is built ONCE; the
 // loop only drops/removes the evidence card and streams the one cell.
@@ -125,14 +125,15 @@ const L = {
   doc: { x: 770, y: -210, w: 320, h: 420 },
   notes: { x: 770, y: 300, w: 340, h: 400 },
   diagram: { x: 30, y: 220, w: 600, h: 430 },
-  // The whiteboard sketch and the second sticky are dropped by the Maker in the
-  // intro, and cleared each loop. They sit far to the LEFT so (a) the cursor can
-  // carry the image IN from off the left edge, and (b) they're fully outside the
-  // table framing when the loop clears them — nothing is seen vanishing.
+  // The whiteboard sketch is a SEEDED source — the flow diagram is derived from
+  // it (provenance), so it predates the Maker and lives on the pre-built board.
   sketch: { x: -640, y: 250, w: 400, h: 300 },
+  // Both sticky notes are HELD BACK — the Maker jots them in the intro, at two
+  // spots in the open workspace above the table. They sit above the table frame
+  // so the loop can clear them off-screen. The first one foreshadows the PDF.
   stickies: [
-    { x: 780, y: -360, w: 220, h: 110 },
-    { x: -480, y: 600, w: 230, h: 140 },
+    { x: 40, y: -560, w: 250, h: 96 },
+    { x: 352, y: -520, w: 250, h: 96 },
   ],
   // The evidence card — an IMAGE of the pricing sheet (aspect ≈ 0.775 w/h).
   pdf: { x: 1200, y: -210, w: 300, h: 388 },
@@ -163,7 +164,7 @@ export function EmbedShowreel() {
     table: TLShapeId;
     diagram: TLShapeId;
     pdf: TLShapeId;
-    sketch: TLShapeId;
+    sticky0: TLShapeId;
     sticky1: TLShapeId;
   } | null>(null);
 
@@ -174,11 +175,8 @@ export function EmbedShowreel() {
   const clickPage = useRef({ x: 0, y: 0 });
 
   const [youVis, setYouVis] = useState(false);
-  // The file the Maker carries in — its kind/label change between the intro's
-  // image drop and the evidence PDF drop.
-  const [file, setFile] = useState<{ visible: boolean; kind: 'pdf' | 'image'; label: string }>(
-    { visible: false, kind: 'pdf', label: '' },
-  );
+  // The evidence file the Maker carries in and drops as the PDF card.
+  const [file, setFile] = useState<{ visible: boolean; label: string }>({ visible: false, label: '' });
   const [jz, setJz] = useState<{ visible: boolean; status: string | null }>({ visible: false, status: null });
   const [comment, setComment] = useState<{ visible: boolean; open: boolean }>({ visible: false, open: false });
   const [parseVis, setParseVis] = useState(false);
@@ -263,7 +261,7 @@ export function EmbedShowreel() {
     // Camera framings the film pans between.
     const FRAME = {
       wide: new Box(-1030, -600, 2560, 1330),
-      build: new Box(-720, 210, 640, 600), // the lower-left workspace: sketch + sticky
+      build: new Box(-120, -600, 900, 620), // the open workspace above the table, where the notes go
       drop: new Box(760, -220, 900, 640),
       table: new Box(-150, -180, 900, 540),
     };
@@ -292,7 +290,7 @@ export function EmbedShowreel() {
       const sketch = createShapeId();
       const stickyIds = L.stickies.map(() => createShapeId());
       const pdf = createShapeId();
-      ids.current = { table, diagram, pdf, sketch, sticky1: stickyIds[1]! };
+      ids.current = { table, diagram, pdf, sticky0: stickyIds[0]!, sticky1: stickyIds[1]! };
 
       L.links.forEach((pos, i) => {
         const src = LINKS[i]!;
@@ -309,10 +307,9 @@ export function EmbedShowreel() {
       editor.createShape({ id: doc, type: 'doc-card', x: L.doc.x, y: L.doc.y, props: { w: L.doc.w, h: L.doc.h, title: 'Recommendation', text: DOC_TEXT } });
       editor.createShape({ id: notes, type: 'doc-card', x: L.notes.x, y: L.notes.y, props: { w: L.notes.w, h: L.notes.h, title: 'Research notes', text: NOTES_DOC } });
       editor.createShape({ id: diagram, type: 'diagram-card', x: L.diagram.x, y: L.diagram.y, props: { w: L.diagram.w, h: L.diagram.h, code: DIAGRAM, title: 'Evaluation flow' } });
-      // The whiteboard sketch and the second sticky are HELD BACK — the Maker
-      // drops them during the intro (see dropSketch / addSticky). Only the first
-      // sticky is part of the pre-built board.
-      editor.createShape({ id: stickyIds[0]!, type: 'note-card', x: L.stickies[0]!.x, y: L.stickies[0]!.y, props: { w: L.stickies[0]!.w, h: L.stickies[0]!.h, text: STICKIES[0]!, color: '' } });
+      // The whiteboard sketch is seeded (the diagram is derived FROM it). Both
+      // sticky notes are HELD BACK — the Maker jots them in the intro (addSticky).
+      editor.createShape({ id: sketch, type: 'image-card', x: L.sketch.x, y: L.sketch.y, props: { w: L.sketch.w, h: L.sketch.h, src: SKETCH_URL, name: 'Whiteboard sketch' } });
 
       const t = editor.getShape(table);
       if (t) setShapeTitle(editor, t, 'CRM shortlist');
@@ -343,25 +340,22 @@ export function EmbedShowreel() {
     const clearPdf = () => {
       if (ids.current && editor.getShape(ids.current.pdf)) editor.deleteShapes([ids.current.pdf]);
     };
-    // The two pieces the Maker builds in the intro — dropped, then cleared
-    // before the pull-back so the wide board matches the loop's starting state.
-    const dropSketch = () => {
-      if (!ids.current || editor.getShape(ids.current.sketch)) return;
-      editor.createShape({ id: ids.current.sketch, type: 'image-card', x: L.sketch.x, y: L.sketch.y, props: { w: L.sketch.w, h: L.sketch.h, src: SKETCH_URL, name: 'Whiteboard — evaluation flow' } });
+    // The two sticky notes the Maker jots in the intro — added EMPTY (the Maker
+    // types into them after), then cleared each loop so the wide board matches
+    // the loop's starting state.
+    const stickyId = (i: number) => (i === 0 ? ids.current!.sticky0 : ids.current!.sticky1);
+    const addSticky = (i: number) => {
+      if (!ids.current || editor.getShape(stickyId(i))) return;
+      const pos = L.stickies[i]!;
+      editor.createShape({ id: stickyId(i), type: 'note-card', x: pos.x, y: pos.y, props: { w: pos.w, h: pos.h, text: '', color: '' } });
     };
-    // The sticky lands EMPTY — the Maker types into it afterward (setStickyText).
-    const addSticky = () => {
-      if (!ids.current || editor.getShape(ids.current.sticky1)) return;
-      const pos = L.stickies[1]!;
-      editor.createShape({ id: ids.current.sticky1, type: 'note-card', x: pos.x, y: pos.y, props: { w: pos.w, h: pos.h, text: '', color: '' } });
-    };
-    const setStickyText = (text: string) => {
-      if (!ids.current || !editor.getShape(ids.current.sticky1)) return;
-      editor.updateShape({ id: ids.current.sticky1, type: 'note-card', props: { text } } as Parameters<typeof editor.updateShape>[0]);
+    const setStickyText = (i: number, text: string) => {
+      if (!ids.current || !editor.getShape(stickyId(i))) return;
+      editor.updateShape({ id: stickyId(i), type: 'note-card', props: { text } } as Parameters<typeof editor.updateShape>[0]);
     };
     const clearIntro = () => {
       if (!ids.current) return;
-      const rm = [ids.current.sketch, ids.current.sticky1].filter((id) => editor.getShape(id));
+      const rm = [ids.current.sticky0, ids.current.sticky1].filter((id) => editor.getShape(id));
       if (rm.length) editor.deleteShapes(rm);
     };
     const setPrice = (price: string) => {
@@ -383,8 +377,9 @@ export function EmbedShowreel() {
 
     // Key page-space anchors.
     const DROP = { x: L.pdf.x + L.pdf.w * 0.5, y: L.pdf.y + L.pdf.h * 0.5 };
-    const SKETCH_DROP = { x: L.sketch.x + L.sketch.w * 0.5, y: L.sketch.y + L.sketch.h * 0.5 };
-    const STICKY_SPOT = { x: L.stickies[1]!.x + L.stickies[1]!.w * 0.5, y: L.stickies[1]!.y + L.stickies[1]!.h * 0.5 };
+    const stickyCenter = (i: number) => ({ x: L.stickies[i]!.x + L.stickies[i]!.w * 0.5, y: L.stickies[i]!.y + L.stickies[i]!.h * 0.5 });
+    const STICKY_A = stickyCenter(0);
+    const STICKY_B = stickyCenter(1);
     // The comment pin sits on the RIGHT side of the flagged cell (Pipedrive,
     // Price/seat), vertically centered on that row — computed from the table's
     // LIVE page bounds so it lands exactly on the cell no matter how the
@@ -408,7 +403,7 @@ export function EmbedShowreel() {
       setComment({ visible: false, open: false });
       setParseVis(false);
       setYouVis(false);
-      setFile({ visible: false, kind: 'pdf', label: '' });
+      setFile({ visible: false, label: '' });
       setJz({ visible: false, status: null });
       setClick(0);
       if (ids.current) editor.select(ids.current.table, ids.current.diagram);
@@ -416,29 +411,32 @@ export function EmbedShowreel() {
       place(youTw.current, 1780, -540);
       place(jzTw.current, 1820, 560);
 
-      // ── ACT 0 — the Maker builds the board (unhurried) ────────────────────
-      // Ease into the lower-left workspace.
+      // ── ACT 0 — the Maker jots two sticky notes on the board (unhurried) ──
+      // Ease into the open workspace above the table.
       after(800, () => panTo(FRAME.build, 1500));
-      // The cursor slides IN FROM THE LEFT carrying an image and drags it to its
-      // spot, where it becomes the whiteboard sketch card.
-      after(2500, () => { place(youTw.current, SKETCH_DROP.x - 320, SKETCH_DROP.y - 20); setYouVis(true); setFile({ visible: true, kind: 'image', label: 'whiteboard-sketch.jpg' }); });
-      after(2850, () => glideTo(youTw.current, SKETCH_DROP.x + 12, SKETCH_DROP.y + 10, 2500));
-      after(5450, () => { dropSketch(); setFile({ visible: false, kind: 'image', label: '' }); clickAt(SKETCH_DROP.x, SKETCH_DROP.y); });
-      // Then the Maker adds a sticky note — it lands EMPTY, then types in.
-      after(6500, () => glideTo(youTw.current, STICKY_SPOT.x + 8, STICKY_SPOT.y + 8, 1000));
-      after(7600, () => { addSticky(); clickAt(STICKY_SPOT.x, STICKY_SPOT.y); });
-      const STK = STICKIES[1]!;
-      const stkTypeStart = 7950;
-      const stkStep = 34;
-      for (let i = 1; i <= STK.length; i++) after(stkTypeStart + i * stkStep, () => setStickyText(STK.slice(0, i)));
-      const stkEnd = stkTypeStart + STK.length * stkStep;
+      const stkStep = 30;
+      // Sticky 1 — cursor comes in, drops an EMPTY note, then types into it.
+      after(2500, () => { place(youTw.current, STICKY_A.x - 70, STICKY_A.y - 120); setYouVis(true); });
+      after(2800, () => glideTo(youTw.current, STICKY_A.x, STICKY_A.y, 900));
+      after(3800, () => { addSticky(0); clickAt(STICKY_A.x, STICKY_A.y); });
+      const STK0 = STICKIES[0]!;
+      const t0 = 4100;
+      for (let i = 1; i <= STK0.length; i++) after(t0 + i * stkStep, () => setStickyText(0, STK0.slice(0, i)));
+      const e0 = t0 + STK0.length * stkStep;
+      // Sticky 2 — over to a second spot, another empty note, typed in.
+      after(e0 + 500, () => glideTo(youTw.current, STICKY_B.x, STICKY_B.y, 900));
+      after(e0 + 1450, () => { addSticky(1); clickAt(STICKY_B.x, STICKY_B.y); });
+      const STK1 = STICKIES[1]!;
+      const t1 = e0 + 1800;
+      for (let i = 1; i <= STK1.length; i++) after(t1 + i * stkStep, () => setStickyText(1, STK1.slice(0, i)));
+      const stkEnd = t1 + STK1.length * stkStep;
       after(stkEnd + 500, () => setYouVis(false));
 
       // ── ACT 1 — pan across to the drop zone; the Maker drops the PDF ───────
       after(stkEnd + 800, () => panTo(FRAME.drop, 1600));
-      after(stkEnd + 2500, () => { place(youTw.current, 1720, -470); setYouVis(true); setFile({ visible: true, kind: 'pdf', label: 'Vendor Pricing 2026.pdf' }); });
+      after(stkEnd + 2500, () => { place(youTw.current, 1720, -470); setYouVis(true); setFile({ visible: true, label: 'Vendor Pricing 2026.pdf' }); });
       after(stkEnd + 2800, () => glideTo(youTw.current, DROP.x + 18, DROP.y + 12, 2600));
-      after(stkEnd + 5500, () => { dropPdf(); setFile({ visible: false, kind: 'pdf', label: '' }); clickAt(DROP.x, DROP.y); });
+      after(stkEnd + 5500, () => { dropPdf(); setFile({ visible: false, label: '' }); clickAt(DROP.x, DROP.y); });
       after(stkEnd + 6100, () => setYouVis(false));
 
       // ── ACT 2 — Jarwiz flies in, selects the card and scans it (~5s) ──────
@@ -477,8 +475,8 @@ export function EmbedShowreel() {
       const streamEnd = streamStart + STREAM.length * STREAM_STEP;
       after(streamEnd + 900, () => flashCell(false));
 
-      // ── ACT 6 — with the camera still on the table (the PDF, sketch and
-      //    sticky all sit off-screen to the sides), remove all three so nothing
+      // ── ACT 6 — with the camera still on the table (the PDF sits off-screen
+      //    right, the two sticky notes off-screen above), remove them so nothing
       //    is seen vanishing, then pull back to the clean base board and loop. ─
       after(streamEnd + 1300, () => { clearPdf(); clearIntro(); });
       after(streamEnd + 2200, () => panTo(FRAME.wide, 1500));
@@ -535,7 +533,7 @@ export function EmbedShowreel() {
         className={`jz-drag-file${file.visible ? '' : ' jz-drag-file--hidden'}`}
         style={{ position: 'absolute', left: 0, top: 0 }}
       >
-        {file.kind === 'image' ? <ImageIcon size={15} /> : <FileText size={15} />}
+        <FileText size={15} />
         <span>{file.label}</span>
       </div>
 
