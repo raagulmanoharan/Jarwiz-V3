@@ -353,10 +353,19 @@ export function EmbedShowreel() {
       if (!ids.current || !editor.getShape(stickyId(i))) return;
       editor.updateShape({ id: stickyId(i), type: 'note-card', props: { text } } as Parameters<typeof editor.updateShape>[0]);
     };
-    const clearIntro = () => {
+    // Remove the two intro stickies. The mid-loop call only fires while the
+    // camera is on the table frame, where the sticky region sits above the
+    // viewport — the viewport check makes that guarantee explicit so nothing is
+    // ever seen vanishing: a sticky is deleted only once it's fully OUT OF FRAME.
+    // The loop-reset call passes force=true (a hard cut to wide, where removal is
+    // instantaneous with the scene reset) as a backstop against accumulation.
+    const clearIntro = (force = false) => {
       if (!ids.current) return;
-      const rm = [ids.current.sticky0, ids.current.sticky1].filter((id) => editor.getShape(id));
-      if (rm.length) editor.deleteShapes(rm);
+      const vp = editor.getViewportPageBounds();
+      for (const id of [ids.current.sticky0, ids.current.sticky1]) {
+        const b = editor.getShapePageBounds(id);
+        if (b && (force || !vp.collides(b))) editor.deleteShapes([id]);
+      }
     };
     const setPrice = (price: string) => {
       if (!ids.current) return;
@@ -397,7 +406,7 @@ export function EmbedShowreel() {
     // ── One pass of the film ────────────────────────────────────────────────
     const run = () => {
       clearPdf();
-      clearIntro();
+      clearIntro(true);
       setPrice(STALE);
       flashCell(false);
       setComment({ visible: false, open: false });
