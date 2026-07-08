@@ -27,6 +27,7 @@ import { getPromptFill, subscribePromptFill } from './promptFill';
 import { getActiveBoard, markBoardUsed, subscribeBoards } from '../boards/boardStore';
 import { isDemo, isEmbed, isUseCases } from '../boards/demo';
 import { setOnboarding, setOnboardingEngaged } from './onboardingStore';
+import { hasIngestibleFile, ingestFiles } from '../ingest/registerIngestion';
 
 // Intent-first onboarding: on a brand-new empty board the composer rises to the
 // centre with a heading and a few starter prompts, then glides down into its
@@ -100,6 +101,8 @@ export function PromptBar() {
   const [modeSource, setModeSource] = useState<'user' | 'auto' | null>(null);
   const [modeMenu, setModeMenu] = useState(false);
   const [modeIdx, setModeIdx] = useState(0);
+  // A file dragged over the composer to attach it as context (drop-to-attach).
+  const [dragActive, setDragActive] = useState(false);
 
   // ── Intent-first onboarding (a brand-new, empty board) ────────────────────
   const board = useSyncExternalStore(subscribeBoards, getActiveBoard, getActiveBoard);
@@ -201,6 +204,26 @@ export function PromptBar() {
   const groundIds = ground.map((g) => g.id);
   const dropGround = (id: string) => {
     editor.setSelectedShapes(editor.getSelectedShapeIds().filter((x) => x !== id));
+  };
+  // Just-attached files whose upload is still running: shown as an
+  // "attaching…" pill so the composer reacts instantly, then it becomes a real
+  // context pill (above) the moment the card is readable.
+  const attaching = useValue(
+    'promptbar-attaching',
+    () =>
+      editor
+        .getSelectedShapeIds()
+        .map((id) => editor.getShape(id))
+        .filter((s): s is TLShape => Boolean(s) && (s!.type === 'pdf-card' || s!.type === 'sheet-card') && (s!.props as { status?: string }).status === 'uploading')
+        .map((s) => ({ id: s.id, label: ((s.props as { name?: string }).name || 'File').replace(/\.[^.]+$/, '') })),
+    [editor],
+  );
+  // Attach files dropped or pasted straight onto the composer: create the
+  // source card(s) and select them, so they surface as context pills right
+  // here (adding content also opens the board out of onboarding).
+  const attachFiles = (files: FileList | File[]) => {
+    if (!hasIngestibleFile(files)) return;
+    void ingestFiles(editor, Array.from(files));
   };
   // Gate the board-scan chips on SUBSTANCE, not shape count: the same
   // collector the scans run on must find enough contentful cards — three
@@ -455,8 +478,29 @@ export function PromptBar() {
         </div>
       ) : null}
 
-      <div className="jz-promptbar" style={{ '--pb-max': '560px' } as CSSProperties}>
-        {ground.length > 0 ? (
+      <div
+        className={`jz-promptbar${dragActive ? ' jz-promptbar--drag' : ''}`}
+        style={{ '--pb-max': '560px' } as CSSProperties}
+        onDragOver={(e) => {
+          // Only claim the drop if it actually carries a file we can attach.
+          if (!Array.from(e.dataTransfer.types).includes('Files')) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+          if (!dragActive) setDragActive(true);
+        }}
+        onDragLeave={(e) => {
+          if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+          setDragActive(false);
+        }}
+        onDrop={(e) => {
+          if (!Array.from(e.dataTransfer.types).includes('Files')) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setDragActive(false);
+          attachFiles(e.dataTransfer.files);
+        }}
+      >
+        {ground.length > 0 || attaching.length > 0 ? (
           <div className="jz-pb-grounds">
             {ground.slice(0, 3).map((g) => (
               <span key={g.id} className="jz-pb-ground" title={g.label}>
@@ -465,6 +509,12 @@ export function PromptBar() {
               </span>
             ))}
             {ground.length > 3 ? <span className="jz-pb-ground jz-pb-ground--more">+{ground.length - 3}</span> : null}
+            {attaching.map((a) => (
+              <span key={a.id} className="jz-pb-ground jz-pb-ground--attaching" title={`${a.label} · attaching…`}>
+                <span className="jz-pb-ground-spin" aria-hidden />
+                {a.label}
+              </span>
+            ))}
           </div>
         ) : null}
 
@@ -475,6 +525,12 @@ export function PromptBar() {
           placeholder={introAnim && introPh ? introPh : placeholder}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
+          onPaste={(e) => {
+            // A pasted file (a screenshot, a PDF) attaches as context; pasted
+            // text falls through to the input as the prompt.
+            const files = Array.from(e.clipboardData.files);
+            if (files.length && hasIngestibleFile(files)) { e.preventDefault(); attachFiles(files); }
+          }}
           onChange={(e) => {
             const next = e.target.value;
             setValue(next);

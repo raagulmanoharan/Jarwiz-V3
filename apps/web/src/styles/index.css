@@ -4151,6 +4151,29 @@ body,
   text-overflow: ellipsis;
 }
 
+/* Drop-to-attach: a file dragged over the composer highlights it as a target,
+ * and the just-dropped file shows an "attaching…" pill until it's readable. */
+.jz-promptbar--drag {
+  border-color: color-mix(in srgb, var(--jz-accent) 55%, var(--jz-hairline));
+  box-shadow: var(--jz-e4), 0 0 0 3px color-mix(in srgb, var(--jz-accent) 20%, transparent);
+}
+.jz-pb-ground--attaching {
+  color: var(--jz-ink-500);
+  padding-left: 6px;
+}
+.jz-pb-ground-spin {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--jz-ink-500) 35%, transparent);
+  border-top-color: var(--jz-ink-500);
+  animation: jz-pb-spin 0.7s linear infinite;
+}
+@keyframes jz-pb-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .jz-pb-ground-spin { animation: none; }
+}
+
 /* The pinned answer-shape chip (picked with "/") — accent-tinted so it reads
  * as an instruction to Jarwiz, not another grounding card. */
 .jz-pb-mode {

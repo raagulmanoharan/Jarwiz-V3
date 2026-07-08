@@ -180,8 +180,8 @@ function resolvePoint(editor: Editor, point: VecLike | undefined): VecLike {
   return { x: center.x, y: center.y };
 }
 
-async function placeFiles(editor: Editor, files: File[], center: VecLike): Promise<void> {
-  let placed = 0;
+async function placeFiles(editor: Editor, files: File[], center: VecLike): Promise<TLShapeId[]> {
+  const ids: TLShapeId[] = [];
   for (const file of files) {
     const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
     const isImage = /^image\/(png|jpeg|gif|webp)$/.test(file.type);
@@ -189,25 +189,50 @@ async function placeFiles(editor: Editor, files: File[], center: VecLike): Promi
       /\.(xlsx|xls|csv|tsv)$/i.test(file.name) ||
       /spreadsheet|excel|ms-excel|csv/i.test(file.type);
     if (!isPdf && !isImage && !isSheet) continue;
-    const offset = placed * MULTI_FILE_CASCADE;
+    const offset = ids.length * MULTI_FILE_CASCADE;
     const at = { x: center.x + offset, y: center.y + offset };
-    if (isPdf) placePdf(editor, file, at);
-    else if (isSheet) placeSheet(editor, file, at);
-    else await placeImage(editor, file, at);
-    placed += 1;
+    if (isPdf) ids.push(placePdf(editor, file, at));
+    else if (isSheet) ids.push(placeSheet(editor, file, at));
+    else { const id = await placeImage(editor, file, at); if (id) ids.push(id); }
   }
+  return ids;
+}
+
+/**
+ * Ingest files dropped or pasted straight onto the composer: create the source
+ * card(s) on the board (near the viewport centre) and SELECT them, so they
+ * surface as context pills in the prompt bar — attach a transcript, then type
+ * "summarise it" beneath. Same card pipeline as a canvas drop, just grounded on
+ * the composer instead of landing wherever the pointer was.
+ */
+export async function ingestFiles(editor: Editor, files: File[]): Promise<TLShapeId[]> {
+  const ids = await placeFiles(editor, Array.from(files), resolvePoint(editor, undefined));
+  if (ids.length) editor.setSelectedShapes(ids);
+  return ids;
+}
+
+/** Are any of these files a kind the composer can attach? Gates the drop
+ *  affordance so a stray drag of unsupported content doesn't flash "attach". */
+export function hasIngestibleFile(items: FileList | File[] | null | undefined): boolean {
+  if (!items) return false;
+  return Array.from(items).some(
+    (f) =>
+      f.type === 'application/pdf' || /\.pdf$/i.test(f.name) ||
+      /^image\/(png|jpeg|gif|webp)$/.test(f.type) ||
+      /\.(xlsx|xls|csv|tsv)$/i.test(f.name) || /spreadsheet|excel|ms-excel|csv/i.test(f.type),
+  );
 }
 
 /** An image lands as an image-card: data URL in props, sized to the image's
  *  own aspect (clamped) — the canvas finally accepts a screenshot. */
-async function placeImage(editor: Editor, file: File, center: VecLike): Promise<void> {
+async function placeImage(editor: Editor, file: File, center: VecLike): Promise<TLShapeId | null> {
   const src = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   }).catch(() => '');
-  if (!src) return;
+  if (!src) return null;
   const dims = await new Promise<{ w: number; h: number }>((resolve) => {
     const img = new Image();
     img.onload = () => resolve({ w: img.naturalWidth || 480, h: img.naturalHeight || 320 });
@@ -228,9 +253,10 @@ async function placeImage(editor: Editor, file: File, center: VecLike): Promise<
   editor.select(id);
   logEvent(editor, { kind: 'artefact', label: `Added ${file.name}`, detail: 'Image', shapeIds: [id] });
   noteIngestion(id, 'image');
+  return id;
 }
 
-function placePdf(editor: Editor, file: File, center: VecLike): void {
+function placePdf(editor: Editor, file: File, center: VecLike): TLShapeId {
   const { w, h } = PDF_CARD_SIZE;
   const id = createShapeId();
 
@@ -257,6 +283,7 @@ function placePdf(editor: Editor, file: File, center: VecLike): void {
       }
     })
     .catch(() => updatePdf(editor, id, { status: 'error' }));
+  return id;
 }
 
 function updatePdf(editor: Editor, id: TLShapeId, props: Partial<PdfCardShape['props']>): void {
@@ -266,7 +293,7 @@ function updatePdf(editor: Editor, id: TLShapeId, props: Partial<PdfCardShape['p
 
 /** A dropped .xlsx/.xls/.csv lands as a sheet card (PDF's spreadsheet twin):
  *  uploads to the blob store, then the card fetches its parsed grid. */
-function placeSheet(editor: Editor, file: File, center: VecLike): void {
+function placeSheet(editor: Editor, file: File, center: VecLike): TLShapeId {
   const { w, h } = SHEET_CARD_SIZE;
   const id = createShapeId();
   editor.createShape<SheetCardShape>({
@@ -286,4 +313,5 @@ function placeSheet(editor: Editor, file: File, center: VecLike): void {
     .catch(() => {
       if (editor.getShape(id)) editor.updateShape<SheetCardShape>({ id, type: 'sheet-card', props: { status: 'error' } });
     });
+  return id;
 }
