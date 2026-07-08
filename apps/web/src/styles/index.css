@@ -3822,12 +3822,6 @@ body,
   color: var(--jz-ink-900);
   transform: translateY(-1px);
 }
-/* "Suggested" lead-in on the onboarding shape-preview chip. */
-.jz-pb-mode-lead {
-  color: var(--jz-ink-500);
-  font-weight: 400;
-  margin-right: 1px;
-}
 /* Onboarding on-ramp hints under the composer (drop / paste). */
 .jz-pb-onramp {
   pointer-events: none;

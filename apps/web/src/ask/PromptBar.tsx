@@ -32,10 +32,12 @@ import { setOnboarding } from './onboardingStore';
 // centre with a heading and a few starter prompts, then glides down into its
 // dock as the first answer builds. Full example prompts so a first-timer sees
 // what a good ask looks like (and can send or edit).
-const INTRO_STARTERS = [
-  'Compare Notion, Linear and Asana for a small team',
-  'Brainstorm features for a habit-tracking app',
-  'Break down a launch plan for a new product',
+// Short labels so the chips sit in one horizontal row; tapping fills the fuller
+// prompt into the composer (editable before send).
+const INTRO_STARTERS: Array<{ label: string; prompt: string }> = [
+  { label: 'Compare a few tools', prompt: 'Compare Notion, Linear and Asana for a small team' },
+  { label: 'Brainstorm a feature', prompt: 'Brainstorm features for a habit-tracking app' },
+  { label: 'Break down a plan', prompt: 'Break down a launch plan for a new product' },
 ];
 
 // The empty intent composer types these on its own and previews the shape it'd
@@ -416,8 +418,8 @@ export function PromptBar() {
           <h1 className="jz-pb-intro-head">What are we figuring out?</h1>
           <p className="jz-pb-intro-sub">Drop in an idea, a document, or your notes. I’ll lay it out as a board you can shape.</p>
           <div className="jz-pb-intro-chips">
-            {INTRO_STARTERS.map((q) => (
-              <button key={q} className="jz-pb-intro-chip" onClick={() => useStarter(q)} title="Use this prompt (editable)">{q}</button>
+            {INTRO_STARTERS.map((s) => (
+              <button key={s.label} className="jz-pb-intro-chip" onClick={() => useStarter(s.prompt)} title="Use this prompt (editable)">{s.label}</button>
             ))}
           </div>
         </div>
@@ -547,7 +549,6 @@ export function PromptBar() {
               introAnim && introShape ? (
                 <span className="jz-pb-ground jz-pb-mode jz-pb-mode--auto" aria-hidden>
                   <Sparkles className="jz-pb-mode-spark" size={11} strokeWidth={2} />
-                  <span className="jz-pb-mode-lead">Suggested</span>
                   {MODES.find((m) => m.shape === introShape)?.label ?? introShape}
                 </span>
               ) : null
