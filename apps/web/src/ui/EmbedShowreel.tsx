@@ -25,8 +25,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Box, createShapeId, useEditor, type TLShapeId } from 'tldraw';
-import { Sparkles, Wand2, Scale, FileText } from 'lucide-react';
+import { Sparkles, Wand2, Scale, FileText, Image as ImageIcon } from 'lucide-react';
 import { setShapeTitle } from '../shapes/shapeTitle';
+import { TABLE_HEADER_H } from '../shapes/TableCardShapeUtil';
 import { PROV_META_KEY } from '../ask/useAsk';
 
 // ── The canned research board ──────────────────────────────────────────────
@@ -154,7 +155,13 @@ export function EmbedShowreel() {
   const parseRef = useRef<HTMLDivElement>(null);
   const clickRef = useRef<HTMLSpanElement>(null);
   const timers = useRef<number[]>([]);
-  const ids = useRef<{ table: TLShapeId; diagram: TLShapeId; pdf: TLShapeId } | null>(null);
+  const ids = useRef<{
+    table: TLShapeId;
+    diagram: TLShapeId;
+    pdf: TLShapeId;
+    sketch: TLShapeId;
+    sticky1: TLShapeId;
+  } | null>(null);
 
   // Page-space anchors, projected to screen each frame by the rAF loop.
   const youTw = useRef<Tween>(newTween());
@@ -163,7 +170,11 @@ export function EmbedShowreel() {
   const clickPage = useRef({ x: 0, y: 0 });
 
   const [youVis, setYouVis] = useState(false);
-  const [fileVis, setFileVis] = useState(false);
+  // The file the Maker carries in — its kind/label change between the intro's
+  // image drop and the evidence PDF drop.
+  const [file, setFile] = useState<{ visible: boolean; kind: 'pdf' | 'image'; label: string }>(
+    { visible: false, kind: 'pdf', label: '' },
+  );
   const [jz, setJz] = useState<{ visible: boolean; status: string | null }>({ visible: false, status: null });
   const [comment, setComment] = useState<{ visible: boolean; open: boolean }>({ visible: false, open: false });
   const [parseVis, setParseVis] = useState(false);
@@ -248,6 +259,7 @@ export function EmbedShowreel() {
     // Camera framings the film pans between.
     const FRAME = {
       wide: new Box(-1030, -600, 2560, 1330),
+      build: new Box(-540, 200, 740, 600), // the lower-left workspace: sketch + sticky
       drop: new Box(760, -220, 900, 640),
       table: new Box(-150, -180, 900, 540),
     };
@@ -276,7 +288,7 @@ export function EmbedShowreel() {
       const sketch = createShapeId();
       const stickyIds = L.stickies.map(() => createShapeId());
       const pdf = createShapeId();
-      ids.current = { table, diagram, pdf };
+      ids.current = { table, diagram, pdf, sketch, sticky1: stickyIds[1]! };
 
       L.links.forEach((pos, i) => {
         const src = LINKS[i]!;
@@ -293,10 +305,10 @@ export function EmbedShowreel() {
       editor.createShape({ id: doc, type: 'doc-card', x: L.doc.x, y: L.doc.y, props: { w: L.doc.w, h: L.doc.h, title: 'Recommendation', text: DOC_TEXT } });
       editor.createShape({ id: notes, type: 'doc-card', x: L.notes.x, y: L.notes.y, props: { w: L.notes.w, h: L.notes.h, title: 'Research notes', text: NOTES_DOC } });
       editor.createShape({ id: diagram, type: 'diagram-card', x: L.diagram.x, y: L.diagram.y, props: { w: L.diagram.w, h: L.diagram.h, code: DIAGRAM, title: 'Evaluation flow' } });
-      editor.createShape({ id: sketch, type: 'image-card', x: L.sketch.x, y: L.sketch.y, props: { w: L.sketch.w, h: L.sketch.h, src: SKETCH_URL, name: 'Whiteboard — evaluation flow' } });
-      L.stickies.forEach((pos, i) => {
-        editor.createShape({ id: stickyIds[i]!, type: 'note-card', x: pos.x, y: pos.y, props: { w: pos.w, h: pos.h, text: STICKIES[i]!, color: '' } });
-      });
+      // The whiteboard sketch and the second sticky are HELD BACK — the Maker
+      // drops them during the intro (see dropSketch / addSticky). Only the first
+      // sticky is part of the pre-built board.
+      editor.createShape({ id: stickyIds[0]!, type: 'note-card', x: L.stickies[0]!.x, y: L.stickies[0]!.y, props: { w: L.stickies[0]!.w, h: L.stickies[0]!.h, text: STICKIES[0]!, color: '' } });
 
       const t = editor.getShape(table);
       if (t) setShapeTitle(editor, t, 'CRM shortlist');
@@ -327,6 +339,22 @@ export function EmbedShowreel() {
     const clearPdf = () => {
       if (ids.current && editor.getShape(ids.current.pdf)) editor.deleteShapes([ids.current.pdf]);
     };
+    // The two pieces the Maker builds in the intro — dropped, then cleared
+    // before the pull-back so the wide board matches the loop's starting state.
+    const dropSketch = () => {
+      if (!ids.current || editor.getShape(ids.current.sketch)) return;
+      editor.createShape({ id: ids.current.sketch, type: 'image-card', x: L.sketch.x, y: L.sketch.y, props: { w: L.sketch.w, h: L.sketch.h, src: SKETCH_URL, name: 'Whiteboard — evaluation flow' } });
+    };
+    const addSticky = () => {
+      if (!ids.current || editor.getShape(ids.current.sticky1)) return;
+      const pos = L.stickies[1]!;
+      editor.createShape({ id: ids.current.sticky1, type: 'note-card', x: pos.x, y: pos.y, props: { w: pos.w, h: pos.h, text: STICKIES[1]!, color: '' } });
+    };
+    const clearIntro = () => {
+      if (!ids.current) return;
+      const rm = [ids.current.sketch, ids.current.sticky1].filter((id) => editor.getShape(id));
+      if (rm.length) editor.deleteShapes(rm);
+    };
     const setPrice = (price: string) => {
       if (!ids.current) return;
       editor.updateShape({ id: ids.current.table, type: 'table-card', props: { rows: rowsWith(price) } });
@@ -346,19 +374,32 @@ export function EmbedShowreel() {
 
     // Key page-space anchors.
     const DROP = { x: L.pdf.x + L.pdf.w * 0.5, y: L.pdf.y + L.pdf.h * 0.5 };
-    const CELL = { x: L.table.x + L.table.w * 0.46, y: L.table.y + L.table.h * 0.33 };
+    const SKETCH_DROP = { x: L.sketch.x + L.sketch.w * 0.5, y: L.sketch.y + L.sketch.h * 0.5 };
+    const STICKY_SPOT = { x: L.stickies[1]!.x + L.stickies[1]!.w * 0.5, y: L.stickies[1]!.y + L.stickies[1]!.h * 0.5 };
+    // The comment pin sits on the RIGHT side of the flagged cell (Pipedrive,
+    // Price/seat), vertically centered on that row — computed from the table's
+    // LIVE page bounds so it lands exactly on the cell no matter how the
+    // fit-height card settled (a fixed fraction drifted when the table shrank).
+    const cellPin = () => {
+      const tb = ids.current ? editor.getShapePageBounds(ids.current.table) : null;
+      if (!tb) return { x: L.table.x + L.table.w * 0.57, y: L.table.y + L.table.h * 0.3 };
+      const colW = tb.w / TABLE.columns.length; // 5 columns
+      const rowH = (tb.h - TABLE_HEADER_H) / TABLE.baseRows.length; // 6 data rows
+      return { x: tb.x + colW * 3 - 14, y: tb.y + TABLE_HEADER_H + rowH * 1.5 };
+    };
     // The "Fix it with Jarwiz" button sits inside the popover, below the pin.
-    const FIXBTN = { x: CELL.x + 24, y: CELL.y + 128 };
+    const fixBtn = () => { const c = cellPin(); return { x: c.x + 24, y: c.y + 128 }; };
 
     // ── One pass of the film ────────────────────────────────────────────────
     const run = () => {
       clearPdf();
+      clearIntro();
       setPrice(STALE);
       flashCell(false);
       setComment({ visible: false, open: false });
       setParseVis(false);
       setYouVis(false);
-      setFileVis(false);
+      setFile({ visible: false, kind: 'pdf', label: '' });
       setJz({ visible: false, status: null });
       setClick(0);
       if (ids.current) editor.select(ids.current.table, ids.current.diagram);
@@ -366,52 +407,59 @@ export function EmbedShowreel() {
       place(youTw.current, 1780, -540);
       place(jzTw.current, 1820, 560);
 
-      // 1) Brief wide beat, then push in on the drop zone.
-      after(900, () => panTo(FRAME.drop, 1400));
+      // ── ACT 0 — the Maker builds the board (unhurried) ────────────────────
+      // Ease into the lower-left workspace.
+      after(800, () => panTo(FRAME.build, 1500));
+      // The Maker carries an image in and drops it → the whiteboard sketch card.
+      after(2600, () => { place(youTw.current, 140, 300); setYouVis(true); setFile({ visible: true, kind: 'image', label: 'whiteboard-sketch.jpg' }); });
+      after(2900, () => glideTo(youTw.current, SKETCH_DROP.x + 16, SKETCH_DROP.y + 10, 2400));
+      after(5500, () => { dropSketch(); setFile({ visible: false, kind: 'image', label: '' }); clickAt(SKETCH_DROP.x, SKETCH_DROP.y); });
+      // A beat, then the Maker drops a sticky note nearby.
+      after(6600, () => glideTo(youTw.current, STICKY_SPOT.x + 8, STICKY_SPOT.y + 8, 1100));
+      after(7800, () => { addSticky(); clickAt(STICKY_SPOT.x, STICKY_SPOT.y); });
+      after(8600, () => setYouVis(false));
 
-      // 2) The Maker's cursor comes in CARRYING the file, and drags it to the
-      //    drop spot slowly (0.8×). The file is tied to the cursor.
-      after(2500, () => { place(youTw.current, 1720, -470); setYouVis(true); setFileVis(true); });
-      after(2750, () => glideTo(youTw.current, DROP.x + 18, DROP.y + 12, 2600));
+      // ── ACT 1 — pan across to the drop zone; the Maker drops the PDF ───────
+      after(9300, () => panTo(FRAME.drop, 1600));
+      after(11000, () => { place(youTw.current, 1720, -470); setYouVis(true); setFile({ visible: true, kind: 'pdf', label: 'Vendor Pricing 2026.pdf' }); });
+      after(11300, () => glideTo(youTw.current, DROP.x + 18, DROP.y + 12, 2600));
+      after(14000, () => { dropPdf(); setFile({ visible: false, kind: 'pdf', label: '' }); clickAt(DROP.x, DROP.y); });
+      after(14600, () => setYouVis(false));
 
-      // 3) Drop → the file becomes the card; the file fades where the card forms.
-      after(5450, () => { dropPdf(); setFileVis(false); clickAt(DROP.x, DROP.y); });
-      after(6000, () => setYouVis(false));
+      // ── ACT 2 — Jarwiz flies in, selects the card and scans it (~5s) ──────
+      after(15600, () => { place(jzTw.current, DROP.x + 180, DROP.y + 190); glideTo(jzTw.current, DROP.x - 30, DROP.y - 10, 750); setJz({ visible: true, status: 'reading the evidence…' }); });
+      after(16300, () => setParseVis(true));
+      after(18000, () => setJz({ visible: true, status: 'cross-checking the prices…' }));
+      after(19800, () => setJz({ visible: true, status: 'found a mismatch…' }));
+      after(21200, () => setParseVis(false));
 
-      // 4) A beat, then Jarwiz flies in, selects the card and scans it (~5s).
-      after(7000, () => { place(jzTw.current, DROP.x + 180, DROP.y + 190); glideTo(jzTw.current, DROP.x - 30, DROP.y - 10, 750); setJz({ visible: true, status: 'reading the evidence…' }); });
-      after(7700, () => setParseVis(true));
-      after(9400, () => setJz({ visible: true, status: 'cross-checking the prices…' }));
-      after(11200, () => setJz({ visible: true, status: 'found a mismatch…' }));
-      after(12600, () => setParseVis(false));
+      // ── ACT 3 — camera follows Jarwiz to the table; it flags the stale cell ─
+      after(21300, () => { panTo(FRAME.table, 1400); const c = cellPin(); glideTo(jzTw.current, c.x, c.y, 1400); setJz({ visible: true, status: 'following the trail…' }); });
+      after(22900, () => setJz({ visible: true, status: 'flagging it…' }));
+      after(23700, () => { const c = cellPin(); commentPage.current = c; clickAt(c.x, c.y); setComment({ visible: true, open: false }); });
+      after(24300, () => setJz({ visible: false, status: null }));
 
-      // 5) Camera follows Jarwiz to the table; it flags the stale cell — the
-      //    comment is pinned right there.
-      after(12700, () => { panTo(FRAME.table, 1400); glideTo(jzTw.current, CELL.x, CELL.y, 1400); setJz({ visible: true, status: 'following the trail…' }); });
-      after(14300, () => setJz({ visible: true, status: 'flagging it…' }));
-      after(15100, () => { commentPage.current = { x: CELL.x, y: CELL.y }; clickAt(CELL.x, CELL.y); setComment({ visible: true, open: false }); });
-      after(15700, () => setJz({ visible: false, status: null }));
+      // ── ACT 4 — the Maker opens the comment, READS it, then clicks Fix ────
+      after(25500, () => { const c = cellPin(); place(youTw.current, c.x + 150, c.y - 130); glideTo(youTw.current, c.x + 6, c.y + 8, 1000); setYouVis(true); });
+      after(26700, () => { const c = cellPin(); clickAt(c.x, c.y); setComment({ visible: true, open: true }); });
+      // Hold the popover open a couple of seconds so it can actually be read,
+      // THEN travel to the button and click.
+      after(29000, () => { const b = fixBtn(); glideTo(youTw.current, b.x, b.y, 850); });
+      after(30000, () => { const b = fixBtn(); clickAt(b.x, b.y); });
+      after(30400, () => setYouVis(false));
 
-      // 6) A beat, then the Maker goes over, opens the comment and clicks
-      //    "Fix it with Jarwiz".
-      after(16900, () => { place(youTw.current, CELL.x + 150, CELL.y - 130); glideTo(youTw.current, CELL.x + 6, CELL.y + 8, 1000); setYouVis(true); });
-      after(18100, () => { clickAt(CELL.x, CELL.y); setComment({ visible: true, open: true }); });
-      after(19300, () => glideTo(youTw.current, FIXBTN.x, FIXBTN.y, 850));
-      after(20250, () => clickAt(FIXBTN.x, FIXBTN.y));
-      after(20650, () => setYouVis(false));
-
-      // 7) No Jarwiz cursor: the comment closes, the real cell highlights, and the
-      //    value regenerates inline (backspace, then stream in).
-      after(20700, () => { setComment({ visible: false, open: false }); flashCell(true); });
+      // ── ACT 5 — no cursor: the cell highlights and regenerates inline ─────
+      after(30500, () => { setComment({ visible: false, open: false }); flashCell(true); });
       const STREAM = ['$1', '$', '', '$', '$1', TRUE];
       const STREAM_STEP = 120;
-      STREAM.forEach((v, i) => after(21000 + i * STREAM_STEP, () => setPrice(v)));
-      const streamEnd = 21000 + STREAM.length * STREAM_STEP;
+      const streamStart = 30800;
+      STREAM.forEach((v, i) => after(streamStart + i * STREAM_STEP, () => setPrice(v)));
+      const streamEnd = streamStart + STREAM.length * STREAM_STEP;
       after(streamEnd + 900, () => flashCell(false));
 
-      // 8) Settle, remove the card BEFORE the pull-back (so the wide board matches
-      //    the loop's start), then a slow pull-back and loop.
-      after(streamEnd + 1700, () => clearPdf());
+      // ── ACT 6 — settle, clear the loop's props BEFORE the pull-back so the
+      //    wide board matches the start, then a slow pull-back and loop. ─────
+      after(streamEnd + 1700, () => { clearPdf(); clearIntro(); });
       after(streamEnd + 2000, () => panTo(FRAME.wide, 1500));
       after(streamEnd + 4400, run);
     };
@@ -463,11 +511,11 @@ export function EmbedShowreel() {
       {/* The file the Maker carries in — tied to the "You" cursor until it drops. */}
       <div
         ref={fileRef}
-        className={`jz-drag-file${fileVis ? '' : ' jz-drag-file--hidden'}`}
+        className={`jz-drag-file${file.visible ? '' : ' jz-drag-file--hidden'}`}
         style={{ position: 'absolute', left: 0, top: 0 }}
       >
-        <FileText size={15} />
-        <span>Vendor Pricing 2026.pdf</span>
+        {file.kind === 'image' ? <ImageIcon size={15} /> : <FileText size={15} />}
+        <span>{file.label}</span>
       </div>
 
       {/* The Maker cursor — simply "You". */}
