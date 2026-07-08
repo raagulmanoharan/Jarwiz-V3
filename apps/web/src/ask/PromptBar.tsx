@@ -38,6 +38,19 @@ const INTRO_STARTERS = [
   'Break down a launch plan for a new product',
 ];
 
+// The empty intent composer types these on its own and previews the shape it'd
+// build a few words in — the box is alive, and Jarwiz shows it understood
+// before you commit. Shapes are real ModeShape values so the preview chip reuses
+// the composer's own suggestion chip.
+const INTRO_ANIM: Array<{ text: string; shape: ModeShape }> = [
+  { text: 'Compare Notion, Linear and Asana for a small team', shape: 'table' },
+  { text: 'Brainstorm features for a habit-tracking app', shape: 'board' },
+  { text: 'Map the onboarding flow end to end', shape: 'diagram' },
+  { text: 'Turn my Q2 numbers into a dashboard', shape: 'dashboard' },
+];
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 const clip = (s: string, n = 22) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
 function shapeLabel(editor: Editor, shape: TLShape): string {
@@ -121,6 +134,45 @@ export function PromptBar() {
     setLeaving(true);
     setTimeout(() => setLeaving(false), 650);
   };
+  // The empty intent composer types example intents on its own and previews the
+  // shape a few words in, so the box is alive and the intelligence shows before
+  // you commit. Purely a placeholder animation — it never touches the real value
+  // or mode, and it stops the moment you focus or type.
+  const [focused, setFocused] = useState(false);
+  const [introPh, setIntroPh] = useState('');
+  const [introShape, setIntroShape] = useState<ModeShape | null>(null);
+  const introAnim = introMode && !value.trim() && !focused && !prefersReducedMotion();
+  useEffect(() => {
+    if (!introAnim) { setIntroPh(''); setIntroShape(null); return; }
+    let alive = true;
+    const timers: number[] = [];
+    const wait = (ms: number) => new Promise<void>((res) => { timers.push(window.setTimeout(res, ms) as unknown as number); });
+    void (async () => {
+      let i = 0;
+      while (alive) {
+        const ex = INTRO_ANIM[i % INTRO_ANIM.length]!;
+        setIntroShape(null);
+        const reveal = Math.min(14, Math.max(6, Math.floor(ex.text.length * 0.4)));
+        for (let c = 1; c <= ex.text.length && alive; c++) {
+          setIntroPh(`${ex.text.slice(0, c)} ▏`);
+          if (c === reveal) setIntroShape(ex.shape);
+          await wait(38);
+        }
+        if (!alive) break;
+        setIntroPh(`${ex.text} ▏`);
+        await wait(1900);
+        for (let c = ex.text.length; c >= 0 && alive; c--) {
+          setIntroPh(c > 0 ? `${ex.text.slice(0, c)} ▏` : '');
+          if (c < 8) setIntroShape(null);
+          await wait(16);
+        }
+        await wait(450);
+        i += 1;
+      }
+    })();
+    return () => { alive = false; timers.forEach((t) => window.clearTimeout(t)); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [introAnim]);
   // Inline filtering, Claude-Code style: while the input reads "/que…", the
   // menu narrows to matching modes. Opened from the button, it shows all.
   const modeQuery = value.startsWith('/') ? value.slice(1).trim().toLowerCase() : '';
@@ -411,7 +463,9 @@ export function PromptBar() {
           className="jz-promptbar-input"
           value={value}
           rows={2}
-          placeholder={placeholder}
+          placeholder={introAnim && introPh ? introPh : placeholder}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           onChange={(e) => {
             const next = e.target.value;
             setValue(next);
@@ -487,6 +541,15 @@ export function PromptBar() {
                   onClick={() => { setMode(null); setModeSource('user'); }}
                 >✕</button>
               </span>
+            ) : introMode ? (
+              // Onboarding: no "/" (Jarwiz suggests the shape for you). While the
+              // composer types its own examples, preview the shape it would build.
+              introAnim && introShape ? (
+                <span className="jz-pb-ground jz-pb-mode jz-pb-mode--auto" aria-hidden>
+                  <Sparkles className="jz-pb-mode-spark" size={11} strokeWidth={2} />
+                  {MODES.find((m) => m.shape === introShape)?.label ?? introShape}
+                </span>
+              ) : null
             ) : (
               <button
                 className={`jz-promptbar-icon-btn${modeMenu ? ' jz-promptbar-icon-btn--active' : ''}`}
