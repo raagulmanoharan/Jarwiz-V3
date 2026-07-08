@@ -15,7 +15,8 @@
  * no roaming, instant parks, visible only while working.
  */
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { isOnboarding, subscribeOnboarding } from '../ask/onboardingStore';
 import { useEditor } from 'tldraw';
 import { JARWIZ } from '@jarwiz/shared';
 import { Follower, scanWaypoints, tremor, type Vec } from './cursorMotion';
@@ -248,9 +249,12 @@ function JarwizEntity() {
     return () => cancelAnimationFrame(raf);
   }, [editor]);
 
+  const onboarding = useSyncExternalStore(subscribeOnboarding, isOnboarding, isOnboarding);
   // Always mounted — the rAF loop owns the transform, so unmounting would
   // flash the avatar at the origin for a frame on re-entry. Hidden = faded.
-  return <JarwizAvatar status={status} hidden={!visible} wrapRef={wrapRef} />;
+  // Also parked away during the intent-first onboarding, so the empty intro
+  // screen stays clean.
+  return <JarwizAvatar status={status} hidden={!visible || onboarding} wrapRef={wrapRef} />;
 }
 
 function JarwizAvatar({

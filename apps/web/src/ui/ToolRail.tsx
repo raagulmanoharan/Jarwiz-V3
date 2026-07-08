@@ -12,6 +12,7 @@ import { toggleSidePanel } from './sidePanelStore';
 import { toggleHelp } from './help';
 import { MachinesRail } from './MachinesPalette';
 import { useSyncExternalStore } from 'react';
+import { isOnboarding, subscribeOnboarding } from '../ask/onboardingStore';
 
 /** Open a native file picker and hand the chosen PDFs to the same ingestion
  *  path a drag-and-drop takes (registerIngestion's 'files' handler). */
@@ -117,9 +118,12 @@ function spawnStickyNote(editor: ReturnType<typeof useEditor>) {
 export function ToolRail() {
   const editor = useEditor();
   const toolId = useValue('rail-tool', () => editor.getCurrentToolId(), [editor]);
+  // During intent-first onboarding the rail steps off-screen, then slides back
+  // in as the board opens (onboardingStore, driven by the PromptBar).
+  const onboarding = useSyncExternalStore(subscribeOnboarding, isOnboarding, isOnboarding);
 
   return (
-    <div className="jz-rail" onPointerDown={stopEventPropagation}>
+    <div className={`jz-rail${onboarding ? ' jz-rail--away' : ''}`} onPointerDown={stopEventPropagation}>
       <RailTool label="Select (V)" active={toolId === 'select'} onClick={() => editor.setCurrentTool('select')}>
         <MousePointer2 {...ICON_PROPS} />
       </RailTool>

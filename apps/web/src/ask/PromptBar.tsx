@@ -26,6 +26,7 @@ import { cardSeedKey, ensureCardSeeds, ensureSeedPrompts, getSeedPrompts, subscr
 import { getPromptFill, subscribePromptFill } from './promptFill';
 import { getActiveBoard, markBoardUsed, subscribeBoards } from '../boards/boardStore';
 import { isDemo, isEmbed, isUseCases } from '../boards/demo';
+import { setOnboarding } from './onboardingStore';
 
 // Intent-first onboarding: on a brand-new empty board the composer rises to the
 // centre with a heading and a few starter prompts, then glides down into its
@@ -106,6 +107,12 @@ export function PromptBar() {
   useEffect(() => {
     if (!boardEmpty && board?.isNew) markBoardUsed(board.id);
   }, [boardEmpty, board]);
+  // Tell the rest of the chrome (tool rail, parked cursor) to step aside while
+  // the intent screen is up, and slide back in as the board opens.
+  useEffect(() => {
+    setOnboarding(introMode);
+    return () => setOnboarding(false);
+  }, [introMode]);
   // Retire the intro on the first ask: clear isNew (so it never re-arms) and
   // hold the block for the glide, then unmount.
   const leaveIntro = () => {
@@ -353,8 +360,9 @@ export function PromptBar() {
           composer, which glides down to its dock as the first answer builds. */}
       {introMounted ? (
         <div className={`jz-pb-intro${introMode ? '' : ' jz-pb-intro--leaving'}`}>
-          <h1 className="jz-pb-intro-head">What do you want to figure out?</h1>
-          <p className="jz-pb-intro-sub">Describe it, drop a file, or paste your notes. Jarwiz lays it out as a board.</p>
+          <span className="jz-pb-intro-spark" aria-hidden>✦</span>
+          <h1 className="jz-pb-intro-head">What are we figuring out?</h1>
+          <p className="jz-pb-intro-sub">Drop in an idea, a document, or your notes. I’ll lay it out as a board you can shape.</p>
           <div className="jz-pb-intro-chips">
             {INTRO_STARTERS.map((q) => (
               <button key={q} className="jz-pb-intro-chip" onClick={() => useStarter(q)} title="Use this prompt (editable)">{q}</button>
