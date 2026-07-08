@@ -633,7 +633,7 @@
       <section id="build">
         <div class="wrap">
           <div class="sec-head reveal">
-            <h2>One prompt. The right shape.</h2>
+            <h2>Your ideas always get the right shape.</h2>
             <p>Ask for anything and Jarwiz picks the form the answer wants — a doc, a table, a diagram, a live prototype, a dashboard, or a whole board — and suggests it as you type.</p>
           </div>
 
@@ -735,7 +735,7 @@
         <div class="wrap">
           <div class="sec-head reveal">
             <h2>More than the right shape.</h2>
-            <p>Jarwiz doesn’t just answer — it researches the live web, builds real artifacts, and pushes back on its own work. Every card stays live.</p>
+            <p>It doesn’t just stop there. Jarwiz researches the live web, builds real artifacts, and pushes back on its own work — every card stays live.</p>
           </div>
           <div class="machines-grid">
             <div class="machine reveal">
@@ -776,7 +776,7 @@
       <section id="cases">
         <div class="wrap">
           <div class="sec-head reveal">
-            <h2>A different board for every kind of work.</h2>
+            <h2>One board for all your ideas.</h2>
             <p>Same canvas, shaped to the job — flip through real workspaces for PMs, designers, students and founders, all built from the same cards.</p>
           </div>
           <div class="stage uc-stage reveal">
@@ -846,10 +846,10 @@
       }
 
       // "Right shape" wedge: the LEFT card is a chatbot pouring out an endless
-      // wall of prose — it types ONCE (no loop, no bounce), overflowing its
-      // fixed card so you have to scroll to reach the end. The RIGHT card is the
-      // same answer as a crisp, succinct Jarwiz doc that just sits there. The
-      // contrast IS the pitch. Animates only while on screen.
+      // wall of prose — it types, overflowing its fixed card, then loops back to
+      // the top and starts over so the endless-scroll feeling never stops. The
+      // RIGHT card is the same answer as a crisp, succinct Jarwiz doc that just
+      // sits there. The contrast IS the pitch. Animates only while on screen.
       (function wedge() {
         const streamBox = document.querySelector('[data-stream]');
         const chat = streamBox && streamBox.querySelector('.chat-txt');
@@ -880,25 +880,33 @@
           "you commit to any single one of them. (Source: Grand View Research, plus various vendor pages.)";
         if (reduce) { chat.textContent = WALL; return; }
         const cur = document.createElement('span'); cur.className = 'cur';
-        // Type ONCE. Follow the tail as it grows; when it's done, stop — the card
-        // stays overflowing and scrollable so the reader can scroll back up.
-        function typeOnce() {
+        // Type the wall, following the tail as it grows. When it reaches the end,
+        // hold a beat on the finished wall, scroll back to the top, and stream it
+        // again — the endless-prose contrast loops forever.
+        function typeLoop() {
           let i = 0;
           const step = () => {
             i += 2;
             chat.textContent = WALL.slice(0, i);
             chat.appendChild(cur);
             streamBox.scrollTop = streamBox.scrollHeight;
-            if (i < WALL.length) window.setTimeout(step, 22);
+            if (i < WALL.length) {
+              window.setTimeout(step, 22);
+            } else {
+              window.setTimeout(() => {
+                streamBox.scrollTop = 0;
+                window.setTimeout(() => { i = 0; step(); }, 550);
+              }, 2600);
+            }
           };
           step();
         }
         const host = streamBox.closest('.versus');
         if (host && 'IntersectionObserver' in window) {
           let on = false;
-          const io3 = new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting && !on) { on = true; typeOnce(); io3.disconnect(); } }, { threshold: 0.25 });
+          const io3 = new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting && !on) { on = true; typeLoop(); io3.disconnect(); } }, { threshold: 0.25 });
           io3.observe(host);
-        } else { typeOnce(); }
+        } else { typeLoop(); }
       })();
 
       // Smart-composer demo: type a series of prompts and swap the suggested
