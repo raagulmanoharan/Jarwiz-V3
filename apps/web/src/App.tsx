@@ -277,11 +277,18 @@ function SyncedBoard({ room }: { room: string }) {
  *  Keyed on the active board id so tldraw remounts cleanly on switch. */
 function LocalBoard() {
   const board = useSyncExternalStore(subscribeBoards, getActiveBoard, getActiveBoard);
-  const persistenceKey = useSyncExternalStore(
+  const activePersistenceKey = useSyncExternalStore(
     subscribeBoards,
     getActivePersistenceKey,
     getActivePersistenceKey,
   );
+  // The embedded showcases (?embed hero, ?usecases) must NOT persist. Both live
+  // in iframes on the SAME marketing-page origin, so a shared persistenceKey
+  // makes tldraw cross-sync them (IndexedDB + its cross-tab BroadcastChannel) —
+  // the two boards overwrite each other's shapes (the hero shows use-cases
+  // cards; positions jump when you scroll away and back). In-memory only keeps
+  // each iframe isolated; both re-seed fresh on load anyway.
+  const persistenceKey = isEmbed() || isUseCases() ? undefined : activePersistenceKey;
   // The hero showreel (?embed) is a pure autoplay loop, so we lock its canvas to
   // visitor input (pointer-events:none + no autofocus). The use-cases board is
   // meant to be explored, so it stays interactive (wheel-zoom + drag-pan).
