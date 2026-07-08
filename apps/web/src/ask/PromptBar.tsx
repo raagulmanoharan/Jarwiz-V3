@@ -6,9 +6,9 @@
  * the pick pins a mode chip and forces that shape). Footer right: send.
  */
 
-import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue, type Editor, type TLRichText, type TLShape, type TLShapeId } from 'tldraw';
-import { Slash, ArrowUp, Sparkles, FileText, Link2, ClipboardList } from 'lucide-react';
+import { Slash, ArrowUp, Sparkles, FileText, Link2, ClipboardList, Paperclip } from 'lucide-react';
 import type { AnalyzeMode, AskShape } from '@jarwiz/shared';
 import { type ModeShape } from './modeShape';
 import { suggestShape } from './suggestShape';
@@ -27,7 +27,8 @@ import { getPromptFill, subscribePromptFill } from './promptFill';
 import { getActiveBoard, markBoardUsed, subscribeBoards } from '../boards/boardStore';
 import { isDemo, isEmbed, isUseCases } from '../boards/demo';
 import { setOnboarding, setOnboardingEngaged } from './onboardingStore';
-import { hasIngestibleFile, ingestFiles } from '../ingest/registerIngestion';
+import { hasIngestibleFile } from '../ingest/registerIngestion';
+import { classifyFile, materializeAttachment, uploadAttachment, type Attachment } from '../ingest/attachments';
 
 // Intent-first onboarding: on a brand-new empty board the composer rises to the
 // centre with a heading and a few starter prompts, then glides down into its
@@ -103,6 +104,9 @@ export function PromptBar() {
   const [modeIdx, setModeIdx] = useState(0);
   // A file dragged over the composer to attach it as context (drop-to-attach).
   const [dragActive, setDragActive] = useState(false);
+  // Composer attachments — context you attach before it's on the board (see below).
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const attachSeq = useRef(0);
 
   // ── Intent-first onboarding (a brand-new, empty board) ────────────────────
   const board = useSyncExternalStore(subscribeBoards, getActiveBoard, getActiveBoard);
@@ -146,10 +150,10 @@ export function PromptBar() {
   const [focused, setFocused] = useState(false);
   const [introPh, setIntroPh] = useState('');
   const [introShape, setIntroShape] = useState<ModeShape | null>(null);
-  const introAnim = introMode && !value.trim() && !focused && !prefersReducedMotion();
+  const introAnim = introMode && !value.trim() && !focused && attachments.length === 0 && !prefersReducedMotion();
   // The ambient scene stays alive until you actually reach for the composer —
   // focusing or typing hushes it the moment you engage, before the first send.
-  const introEngaged = introMode && (focused || Boolean(value.trim()));
+  const introEngaged = introMode && (focused || Boolean(value.trim()) || attachments.length > 0);
   useEffect(() => {
     setOnboardingEngaged(introEngaged);
     return () => setOnboardingEngaged(false);
@@ -205,26 +209,56 @@ export function PromptBar() {
   const dropGround = (id: string) => {
     editor.setSelectedShapes(editor.getSelectedShapeIds().filter((x) => x !== id));
   };
-  // Just-attached files whose upload is still running: shown as an
-  // "attaching…" pill so the composer reacts instantly, then it becomes a real
-  // context pill (above) the moment the card is readable.
-  const attaching = useValue(
-    'promptbar-attaching',
-    () =>
-      editor
-        .getSelectedShapeIds()
-        .map((id) => editor.getShape(id))
-        .filter((s): s is TLShape => Boolean(s) && (s!.type === 'pdf-card' || s!.type === 'sheet-card') && (s!.props as { status?: string }).status === 'uploading')
-        .map((s) => ({ id: s.id, label: ((s.props as { name?: string }).name || 'File').replace(/\.[^.]+$/, '') })),
-    [editor],
-  );
-  // Attach files dropped or pasted straight onto the composer: create the
-  // source card(s) and select them, so they surface as context pills right
-  // here (adding content also opens the board out of onboarding).
+  // ── Composer attachments ──────────────────────────────────────────────────
+  // Content you attach to the prompt as CONTEXT before it's on the board — a
+  // transcript, a PDF, a screenshot. Distinct from grounding on a SELECTED card:
+  // these persist in the composer regardless of canvas selection, and only
+  // become source cards when you send. Works on the intent screen and in-app.
   const attachFiles = (files: FileList | File[]) => {
-    if (!hasIngestibleFile(files)) return;
-    void ingestFiles(editor, Array.from(files));
+    for (const file of Array.from(files)) {
+      const kind = classifyFile(file);
+      if (!kind) continue;
+      const key = `att-${attachSeq.current++}`;
+      setAttachments((list) => [...list, { key, kind, name: file.name, status: 'uploading' }]);
+      void uploadAttachment(file, kind)
+        .then((patch) => setAttachments((list) => list.map((a) => (a.key === key ? { ...a, ...patch } : a))))
+        .catch(() => setAttachments((list) => list.map((a) => (a.key === key ? { ...a, status: 'error' } : a))));
+    }
   };
+  const removeAttachment = (key: string) => setAttachments((list) => list.filter((a) => a.key !== key));
+  const attachUploading = attachments.some((a) => a.status === 'uploading');
+  // Intercept a file drop/paste onto the composer at the document CAPTURE phase,
+  // before tldraw's own canvas drop handler sees it — otherwise the file would
+  // also land as a card on the board. A ref keeps the latest attachFiles without
+  // re-binding the listeners each render.
+  const barRef = useRef<HTMLDivElement>(null);
+  const attachFilesRef = useRef(attachFiles);
+  attachFilesRef.current = attachFiles;
+  useEffect(() => {
+    const inBar = (t: EventTarget | null) => t instanceof Node && Boolean(barRef.current?.contains(t));
+    const hasFiles = (dt: DataTransfer | null) => Boolean(dt && Array.from(dt.types).includes('Files'));
+    const onDragOver = (e: DragEvent) => {
+      if (!inBar(e.target) || !hasFiles(e.dataTransfer)) return;
+      e.preventDefault(); e.stopPropagation();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      setDragActive(true);
+    };
+    const onDrop = (e: DragEvent) => {
+      if (!inBar(e.target) || !hasFiles(e.dataTransfer)) return;
+      e.preventDefault(); e.stopPropagation();
+      setDragActive(false);
+      if (e.dataTransfer) attachFilesRef.current(e.dataTransfer.files);
+    };
+    const onDragLeave = (e: DragEvent) => { if (!inBar(e.relatedTarget)) setDragActive(false); };
+    document.addEventListener('dragover', onDragOver, true);
+    document.addEventListener('drop', onDrop, true);
+    document.addEventListener('dragleave', onDragLeave, true);
+    return () => {
+      document.removeEventListener('dragover', onDragOver, true);
+      document.removeEventListener('drop', onDrop, true);
+      document.removeEventListener('dragleave', onDragLeave, true);
+    };
+  }, []);
   // Gate the board-scan chips on SUBSTANCE, not shape count: the same
   // collector the scans run on must find enough contentful cards — three
   // empty cards, a couple of arrows, or a lone sticky summon nothing.
@@ -363,8 +397,23 @@ export function PromptBar() {
   const submit = () => {
     const q = value.trim();
     if (!q || isAsking || composing || annotating) return;
+    if (attachUploading) return; // wait for attachments to finish uploading
     // Onboarding: the first ask sends the composer gliding down into its dock.
     if (introMode) leaveIntro();
+    // Materialize any attachments into their source cards now (they weren't on
+    // the board until send) and ground the ask on them alongside any selection.
+    const attIds: TLShapeId[] = [];
+    if (attachments.length) {
+      const c = editor.getViewportPageBounds().center;
+      attachments
+        .filter((a) => a.status === 'ready')
+        .forEach((a, i) => {
+          const id = materializeAttachment(editor, a, { x: c.x + i * 28, y: c.y + i * 28 });
+          if (id) attIds.push(id);
+        });
+      setAttachments([]);
+    }
+    const grounds = [...groundIds, ...attIds];
     // SHAPE is explicit only — no implicit routing from the prompt text. With no
     // mode selected the answer is always a DOC (the composer's first-class
     // default); Board / Stickies / any other shape require picking the "/" mode
@@ -374,12 +423,12 @@ export function PromptBar() {
       void compose(q);
     } else if (mode === 'affinity') {
       void annotate(q);
-    } else if (!mode && sole && !sole.pdf && INLINE_EDITABLE.has(sole.type)) {
-      // A single artifact card is selected and no mode chosen → let intent decide
-      // edit-in-place vs a new doc (async classify), then dispatch.
+    } else if (!mode && attIds.length === 0 && sole && !sole.pdf && INLINE_EDITABLE.has(sole.type)) {
+      // A single artifact card is selected, no mode, and nothing attached → let
+      // intent decide edit-in-place vs a new doc (async classify), then dispatch.
       void routeSelectedAsk(q, sole.id, sole.type);
     } else {
-      void ask(q, groundIds, { forceShape: (mode as AskShape) ?? 'doc' });
+      void ask(q, grounds, { forceShape: (mode as AskShape) ?? 'doc' });
     }
     setValue('');
     setMode(null); // the mode applies to one ask, like the text it rode with
@@ -479,28 +528,11 @@ export function PromptBar() {
       ) : null}
 
       <div
+        ref={barRef}
         className={`jz-promptbar${dragActive ? ' jz-promptbar--drag' : ''}`}
         style={{ '--pb-max': '560px' } as CSSProperties}
-        onDragOver={(e) => {
-          // Only claim the drop if it actually carries a file we can attach.
-          if (!Array.from(e.dataTransfer.types).includes('Files')) return;
-          e.preventDefault();
-          e.dataTransfer.dropEffect = 'copy';
-          if (!dragActive) setDragActive(true);
-        }}
-        onDragLeave={(e) => {
-          if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-          setDragActive(false);
-        }}
-        onDrop={(e) => {
-          if (!Array.from(e.dataTransfer.types).includes('Files')) return;
-          e.preventDefault();
-          e.stopPropagation();
-          setDragActive(false);
-          attachFiles(e.dataTransfer.files);
-        }}
       >
-        {ground.length > 0 || attaching.length > 0 ? (
+        {ground.length > 0 || attachments.length > 0 ? (
           <div className="jz-pb-grounds">
             {ground.slice(0, 3).map((g) => (
               <span key={g.id} className="jz-pb-ground" title={g.label}>
@@ -509,10 +541,20 @@ export function PromptBar() {
               </span>
             ))}
             {ground.length > 3 ? <span className="jz-pb-ground jz-pb-ground--more">+{ground.length - 3}</span> : null}
-            {attaching.map((a) => (
-              <span key={a.id} className="jz-pb-ground jz-pb-ground--attaching" title={`${a.label} · attaching…`}>
-                <span className="jz-pb-ground-spin" aria-hidden />
-                {a.label}
+            {/* Attachments — context you brought, not a selected card. */}
+            {attachments.map((a) => (
+              <span
+                key={a.key}
+                className={`jz-pb-ground jz-pb-ground--attach${a.status === 'error' ? ' jz-pb-ground--error' : ''}`}
+                title={a.status === 'error' ? `${a.name} · couldn’t attach` : a.status === 'uploading' ? `${a.name} · attaching…` : a.name}
+              >
+                {a.status === 'uploading' ? (
+                  <span className="jz-pb-ground-spin" aria-hidden />
+                ) : (
+                  <Paperclip className="jz-pb-ground-clip" size={11} strokeWidth={2} aria-hidden />
+                )}
+                {a.name.replace(/\.[^.]+$/, '')}
+                <button className="jz-pb-ground-x" aria-label="Remove attachment" onClick={() => removeAttachment(a.key)}>✕</button>
               </span>
             ))}
           </div>
@@ -628,9 +670,9 @@ export function PromptBar() {
           </div>
           <button
             className="jz-promptbar-send"
-            disabled={!value.trim() || isAsking || composing || annotating}
+            disabled={!value.trim() || attachUploading || isAsking || composing || annotating}
             onClick={submit}
-            title="Send (Enter)"
+            title={attachUploading ? 'Attaching…' : 'Send (Enter)'}
           >
             {composing ? (
               <span className="jz-promptbar-busy-inline">{composePhase === 'planning' ? 'Planning…' : 'Building…'}</span>

@@ -4157,9 +4157,19 @@ body,
   border-color: color-mix(in srgb, var(--jz-accent) 55%, var(--jz-hairline));
   box-shadow: var(--jz-e4), 0 0 0 3px color-mix(in srgb, var(--jz-accent) 20%, transparent);
 }
-.jz-pb-ground--attaching {
-  color: var(--jz-ink-500);
-  padding-left: 6px;
+/* Attachment pills — context brought into the composer (not a selected card).
+ * A paperclip marks them apart from selection grounds; accent-tinted so they
+ * read as "yours". */
+.jz-pb-ground--attach {
+  gap: 5px;
+  padding-left: 7px;
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  color: color-mix(in srgb, var(--jz-accent) 65%, var(--jz-ink-900));
+}
+.jz-pb-ground-clip { flex: none; opacity: 0.75; }
+.jz-pb-ground--error {
+  background: color-mix(in srgb, var(--jz-danger) 14%, transparent);
+  color: var(--jz-danger);
 }
 .jz-pb-ground-spin {
   width: 11px;

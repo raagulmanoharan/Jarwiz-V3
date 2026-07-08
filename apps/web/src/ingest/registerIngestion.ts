@@ -198,21 +198,8 @@ async function placeFiles(editor: Editor, files: File[], center: VecLike): Promi
   return ids;
 }
 
-/**
- * Ingest files dropped or pasted straight onto the composer: create the source
- * card(s) on the board (near the viewport centre) and SELECT them, so they
- * surface as context pills in the prompt bar — attach a transcript, then type
- * "summarise it" beneath. Same card pipeline as a canvas drop, just grounded on
- * the composer instead of landing wherever the pointer was.
- */
-export async function ingestFiles(editor: Editor, files: File[]): Promise<TLShapeId[]> {
-  const ids = await placeFiles(editor, Array.from(files), resolvePoint(editor, undefined));
-  if (ids.length) editor.setSelectedShapes(ids);
-  return ids;
-}
-
-/** Are any of these files a kind the composer can attach? Gates the drop
- *  affordance so a stray drag of unsupported content doesn't flash "attach". */
+/** Are any of these files a kind the composer can attach? Gates the paste
+ *  affordance so a stray paste of unsupported content isn't captured. */
 export function hasIngestibleFile(items: FileList | File[] | null | undefined): boolean {
   if (!items) return false;
   return Array.from(items).some(
