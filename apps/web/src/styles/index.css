@@ -3747,7 +3747,7 @@ body,
   text-align: center;
   gap: 6px;
   max-width: min(680px, calc(100vw - 48px));
-  margin-bottom: 4px;
+  margin-bottom: 18px;
   transition: opacity var(--jz-dur-base) var(--jz-ease-out), transform var(--jz-dur-base) var(--jz-ease-out);
 }
 .jz-pb-intro--leaving {
@@ -3804,6 +3804,7 @@ body,
   flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
+  margin-top: 22px;
 }
 .jz-pb-intro-chip {
   pointer-events: auto;
