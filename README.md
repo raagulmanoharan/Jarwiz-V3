@@ -26,7 +26,8 @@ docs/            VISION, ARCHITECTURE, ROADMAP, DESIGN + the pivot specs
 
 ## Quickstart
 
-Requires **Node ≥ 20** (developed on 22).
+Requires **Node ≥ 20.12** (developed on 22) — the server reads your `.env` via
+`process.loadEnvFile`, added in 20.12.
 
 ```sh
 git clone https://github.com/raagulmanoharan/Jarwiz-V3.git
@@ -63,6 +64,18 @@ lives only on the server — the browser never sees it.
 
 Check which mode you're in: `curl http://localhost:3001/api/capabilities`
 → `{"live":true,"mode":"api"}` (or `"sidecar"` / demo `{"live":false}`).
+
+### Optional extras
+
+Everything below is optional — Jarwiz runs without any of it. See
+[`apps/server/.env.example`](apps/server/.env.example) for the full list of
+knobs; the ones most people ask about:
+
+- **Watched-video cards** — install `yt-dlp` and `ffmpeg` (on your PATH) and
+  dropping a video URL pulls captions *and* samples real frames Jarwiz can
+  watch. Without them, video gracefully falls back to captions only.
+- **PDF OCR** works out of the box — the bundled `eng.traineddata` (Tesseract)
+  ships in the repo, no extra download.
 
 ### Try it in 60 seconds
 
