@@ -25,6 +25,7 @@ const TLDRAW_LICENSE_KEY =
   'tldraw-2026-10-15/WyJxSWVWdzRkOCIsWyIqIl0sMTYsIjIwMjYtMTAtMTUiXQ.kbXeMnnbA7b3yl5tzrPUQFUMHCIAXwux32h1OB1m53DMcWkX5L3g0RRdvbg6cnfDP+ucDho9QfIy/4d3YkDrnA';
 import { useSync } from '@tldraw/sync';
 import { PromptBar } from './ask/PromptBar';
+import { AmbientOnboarding } from './onboarding/AmbientOnboarding';
 import { CardActionBar } from './ask/CardActionBar';
 import { ProvenanceLayer } from './ask/ProvenanceLayer';
 import { ClarifyLayer } from './ask/ClarifyLayer';
@@ -74,6 +75,7 @@ function JarwizOverlay() {
       <Safe label="Topbar"><Topbar /></Safe>
       <Safe label="SidePanel"><SidePanel /></Safe>
       <Safe label="ToolRail"><ToolRail /></Safe>
+      <Safe label="AmbientOnboarding"><AmbientOnboarding /></Safe>
       <Safe label="PromptBar"><PromptBar /></Safe>
       <Safe label="AgentCursorLayer"><AgentCursorLayer /></Safe>
       <Safe label="HelpLayer"><HelpLayer /></Safe>

@@ -26,7 +26,7 @@ import { cardSeedKey, ensureCardSeeds, ensureSeedPrompts, getSeedPrompts, subscr
 import { getPromptFill, subscribePromptFill } from './promptFill';
 import { getActiveBoard, markBoardUsed, subscribeBoards } from '../boards/boardStore';
 import { isDemo, isEmbed, isUseCases } from '../boards/demo';
-import { setOnboarding } from './onboardingStore';
+import { setOnboarding, setOnboardingEngaged } from './onboardingStore';
 
 // Intent-first onboarding: on a brand-new empty board the composer rises to the
 // centre with a heading and a few starter prompts, then glides down into its
@@ -144,6 +144,13 @@ export function PromptBar() {
   const [introPh, setIntroPh] = useState('');
   const [introShape, setIntroShape] = useState<ModeShape | null>(null);
   const introAnim = introMode && !value.trim() && !focused && !prefersReducedMotion();
+  // The ambient scene stays alive until you actually reach for the composer —
+  // focusing or typing hushes it the moment you engage, before the first send.
+  const introEngaged = introMode && (focused || Boolean(value.trim()));
+  useEffect(() => {
+    setOnboardingEngaged(introEngaged);
+    return () => setOnboardingEngaged(false);
+  }, [introEngaged]);
   useEffect(() => {
     if (!introAnim) { setIntroPh(''); setIntroShape(null); return; }
     let alive = true;
