@@ -125,10 +125,14 @@ const L = {
   doc: { x: 770, y: -210, w: 320, h: 420 },
   notes: { x: 770, y: 300, w: 340, h: 400 },
   diagram: { x: 30, y: 220, w: 600, h: 430 },
-  sketch: { x: -460, y: 250, w: 400, h: 300 },
+  // The whiteboard sketch and the second sticky are dropped by the Maker in the
+  // intro, and cleared each loop. They sit far to the LEFT so (a) the cursor can
+  // carry the image IN from off the left edge, and (b) they're fully outside the
+  // table framing when the loop clears them — nothing is seen vanishing.
+  sketch: { x: -640, y: 250, w: 400, h: 300 },
   stickies: [
     { x: 780, y: -360, w: 220, h: 110 },
-    { x: -300, y: 600, w: 230, h: 140 },
+    { x: -480, y: 600, w: 230, h: 140 },
   ],
   // The evidence card — an IMAGE of the pricing sheet (aspect ≈ 0.775 w/h).
   pdf: { x: 1200, y: -210, w: 300, h: 388 },
@@ -259,7 +263,7 @@ export function EmbedShowreel() {
     // Camera framings the film pans between.
     const FRAME = {
       wide: new Box(-1030, -600, 2560, 1330),
-      build: new Box(-540, 200, 740, 600), // the lower-left workspace: sketch + sticky
+      build: new Box(-720, 210, 640, 600), // the lower-left workspace: sketch + sticky
       drop: new Box(760, -220, 900, 640),
       table: new Box(-150, -180, 900, 540),
     };
@@ -345,10 +349,15 @@ export function EmbedShowreel() {
       if (!ids.current || editor.getShape(ids.current.sketch)) return;
       editor.createShape({ id: ids.current.sketch, type: 'image-card', x: L.sketch.x, y: L.sketch.y, props: { w: L.sketch.w, h: L.sketch.h, src: SKETCH_URL, name: 'Whiteboard — evaluation flow' } });
     };
+    // The sticky lands EMPTY — the Maker types into it afterward (setStickyText).
     const addSticky = () => {
       if (!ids.current || editor.getShape(ids.current.sticky1)) return;
       const pos = L.stickies[1]!;
-      editor.createShape({ id: ids.current.sticky1, type: 'note-card', x: pos.x, y: pos.y, props: { w: pos.w, h: pos.h, text: STICKIES[1]!, color: '' } });
+      editor.createShape({ id: ids.current.sticky1, type: 'note-card', x: pos.x, y: pos.y, props: { w: pos.w, h: pos.h, text: '', color: '' } });
+    };
+    const setStickyText = (text: string) => {
+      if (!ids.current || !editor.getShape(ids.current.sticky1)) return;
+      editor.updateShape({ id: ids.current.sticky1, type: 'note-card', props: { text } } as Parameters<typeof editor.updateShape>[0]);
     };
     const clearIntro = () => {
       if (!ids.current) return;
@@ -410,58 +419,70 @@ export function EmbedShowreel() {
       // ── ACT 0 — the Maker builds the board (unhurried) ────────────────────
       // Ease into the lower-left workspace.
       after(800, () => panTo(FRAME.build, 1500));
-      // The Maker carries an image in and drops it → the whiteboard sketch card.
-      after(2600, () => { place(youTw.current, 140, 300); setYouVis(true); setFile({ visible: true, kind: 'image', label: 'whiteboard-sketch.jpg' }); });
-      after(2900, () => glideTo(youTw.current, SKETCH_DROP.x + 16, SKETCH_DROP.y + 10, 2400));
-      after(5500, () => { dropSketch(); setFile({ visible: false, kind: 'image', label: '' }); clickAt(SKETCH_DROP.x, SKETCH_DROP.y); });
-      // A beat, then the Maker drops a sticky note nearby.
-      after(6600, () => glideTo(youTw.current, STICKY_SPOT.x + 8, STICKY_SPOT.y + 8, 1100));
-      after(7800, () => { addSticky(); clickAt(STICKY_SPOT.x, STICKY_SPOT.y); });
-      after(8600, () => setYouVis(false));
+      // The cursor slides IN FROM THE LEFT carrying an image and drags it to its
+      // spot, where it becomes the whiteboard sketch card.
+      after(2500, () => { place(youTw.current, SKETCH_DROP.x - 320, SKETCH_DROP.y - 20); setYouVis(true); setFile({ visible: true, kind: 'image', label: 'whiteboard-sketch.jpg' }); });
+      after(2850, () => glideTo(youTw.current, SKETCH_DROP.x + 12, SKETCH_DROP.y + 10, 2500));
+      after(5450, () => { dropSketch(); setFile({ visible: false, kind: 'image', label: '' }); clickAt(SKETCH_DROP.x, SKETCH_DROP.y); });
+      // Then the Maker adds a sticky note — it lands EMPTY, then types in.
+      after(6500, () => glideTo(youTw.current, STICKY_SPOT.x + 8, STICKY_SPOT.y + 8, 1000));
+      after(7600, () => { addSticky(); clickAt(STICKY_SPOT.x, STICKY_SPOT.y); });
+      const STK = STICKIES[1]!;
+      const stkTypeStart = 7950;
+      const stkStep = 34;
+      for (let i = 1; i <= STK.length; i++) after(stkTypeStart + i * stkStep, () => setStickyText(STK.slice(0, i)));
+      const stkEnd = stkTypeStart + STK.length * stkStep;
+      after(stkEnd + 500, () => setYouVis(false));
 
       // ── ACT 1 — pan across to the drop zone; the Maker drops the PDF ───────
-      after(9300, () => panTo(FRAME.drop, 1600));
-      after(11000, () => { place(youTw.current, 1720, -470); setYouVis(true); setFile({ visible: true, kind: 'pdf', label: 'Vendor Pricing 2026.pdf' }); });
-      after(11300, () => glideTo(youTw.current, DROP.x + 18, DROP.y + 12, 2600));
-      after(14000, () => { dropPdf(); setFile({ visible: false, kind: 'pdf', label: '' }); clickAt(DROP.x, DROP.y); });
-      after(14600, () => setYouVis(false));
+      after(stkEnd + 800, () => panTo(FRAME.drop, 1600));
+      after(stkEnd + 2500, () => { place(youTw.current, 1720, -470); setYouVis(true); setFile({ visible: true, kind: 'pdf', label: 'Vendor Pricing 2026.pdf' }); });
+      after(stkEnd + 2800, () => glideTo(youTw.current, DROP.x + 18, DROP.y + 12, 2600));
+      after(stkEnd + 5500, () => { dropPdf(); setFile({ visible: false, kind: 'pdf', label: '' }); clickAt(DROP.x, DROP.y); });
+      after(stkEnd + 6100, () => setYouVis(false));
 
       // ── ACT 2 — Jarwiz flies in, selects the card and scans it (~5s) ──────
-      after(15600, () => { place(jzTw.current, DROP.x + 180, DROP.y + 190); glideTo(jzTw.current, DROP.x - 30, DROP.y - 10, 750); setJz({ visible: true, status: 'reading the evidence…' }); });
-      after(16300, () => setParseVis(true));
-      after(18000, () => setJz({ visible: true, status: 'cross-checking the prices…' }));
-      after(19800, () => setJz({ visible: true, status: 'found a mismatch…' }));
-      after(21200, () => setParseVis(false));
+      const jz0 = stkEnd + 7100;
+      after(jz0, () => { place(jzTw.current, DROP.x + 180, DROP.y + 190); glideTo(jzTw.current, DROP.x - 30, DROP.y - 10, 750); setJz({ visible: true, status: 'reading the evidence…' }); });
+      after(jz0 + 700, () => setParseVis(true));
+      after(jz0 + 2400, () => setJz({ visible: true, status: 'cross-checking the prices…' }));
+      after(jz0 + 4200, () => setJz({ visible: true, status: 'found a mismatch…' }));
+      after(jz0 + 5600, () => setParseVis(false));
 
       // ── ACT 3 — camera follows Jarwiz to the table; it flags the stale cell ─
-      after(21300, () => { panTo(FRAME.table, 1400); const c = cellPin(); glideTo(jzTw.current, c.x, c.y, 1400); setJz({ visible: true, status: 'following the trail…' }); });
-      after(22900, () => setJz({ visible: true, status: 'flagging it…' }));
-      after(23700, () => { const c = cellPin(); commentPage.current = c; clickAt(c.x, c.y); setComment({ visible: true, open: false }); });
-      after(24300, () => setJz({ visible: false, status: null }));
+      const fl = jz0 + 5700;
+      after(fl, () => { panTo(FRAME.table, 1400); const c = cellPin(); glideTo(jzTw.current, c.x, c.y, 1400); setJz({ visible: true, status: 'following the trail…' }); });
+      after(fl + 1600, () => setJz({ visible: true, status: 'flagging it…' }));
+      after(fl + 2400, () => { const c = cellPin(); commentPage.current = c; clickAt(c.x, c.y); setComment({ visible: true, open: false }); });
+      after(fl + 3000, () => setJz({ visible: false, status: null }));
 
       // ── ACT 4 — the Maker opens the comment, READS it, then clicks Fix ────
-      after(25500, () => { const c = cellPin(); place(youTw.current, c.x + 150, c.y - 130); glideTo(youTw.current, c.x + 6, c.y + 8, 1000); setYouVis(true); });
-      after(26700, () => { const c = cellPin(); clickAt(c.x, c.y); setComment({ visible: true, open: true }); });
+      const op = fl + 4200;
+      after(op, () => { const c = cellPin(); place(youTw.current, c.x + 150, c.y - 130); glideTo(youTw.current, c.x + 6, c.y + 8, 1000); setYouVis(true); });
+      after(op + 1200, () => { const c = cellPin(); clickAt(c.x, c.y); setComment({ visible: true, open: true }); });
       // Hold the popover open a couple of seconds so it can actually be read,
       // THEN travel to the button and click.
-      after(29000, () => { const b = fixBtn(); glideTo(youTw.current, b.x, b.y, 850); });
-      after(30000, () => { const b = fixBtn(); clickAt(b.x, b.y); });
-      after(30400, () => setYouVis(false));
+      after(op + 3500, () => { const b = fixBtn(); glideTo(youTw.current, b.x, b.y, 850); });
+      after(op + 4400, () => { const b = fixBtn(); clickAt(b.x, b.y); });
+      after(op + 4800, () => setYouVis(false));
 
-      // ── ACT 5 — no cursor: the cell highlights and regenerates inline ─────
-      after(30500, () => { setComment({ visible: false, open: false }); flashCell(true); });
+      // ── ACT 5 — no cursor: the cell shows Jarwiz's rotating "working" border
+      //    and the value regenerates inline. ──────────────────────────────────
+      const rg = op + 4900;
+      after(rg, () => { setComment({ visible: false, open: false }); flashCell(true); });
       const STREAM = ['$1', '$', '', '$', '$1', TRUE];
-      const STREAM_STEP = 120;
-      const streamStart = 30800;
+      const STREAM_STEP = 140;
+      const streamStart = rg + 700; // let the working border spin a moment first
       STREAM.forEach((v, i) => after(streamStart + i * STREAM_STEP, () => setPrice(v)));
       const streamEnd = streamStart + STREAM.length * STREAM_STEP;
       after(streamEnd + 900, () => flashCell(false));
 
-      // ── ACT 6 — settle, clear the loop's props BEFORE the pull-back so the
-      //    wide board matches the start, then a slow pull-back and loop. ─────
-      after(streamEnd + 1700, () => { clearPdf(); clearIntro(); });
-      after(streamEnd + 2000, () => panTo(FRAME.wide, 1500));
-      after(streamEnd + 4400, run);
+      // ── ACT 6 — with the camera still on the table (the PDF, sketch and
+      //    sticky all sit off-screen to the sides), remove all three so nothing
+      //    is seen vanishing, then pull back to the clean base board and loop. ─
+      after(streamEnd + 1300, () => { clearPdf(); clearIntro(); });
+      after(streamEnd + 2200, () => panTo(FRAME.wide, 1500));
+      after(streamEnd + 4700, run);
     };
 
     seed();

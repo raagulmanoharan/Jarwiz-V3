@@ -2297,26 +2297,56 @@ body,
   animation: jz-cell-in var(--jz-dur-fast) var(--jz-ease-out);
 }
 
-/* A cell being regenerated (hero showreel): a soft white highlight ON the real
-   cell — always pixel-aligned. The value text stays fully legible; only the
-   border/glow breathes. */
-.jz-table-cell--flash {
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  animation: jz-cell-flash 0.85s ease-in-out infinite;
+/* A cell being regenerated (hero showreel): a rotating "working" border ON the
+   real cell — always pixel-aligned — signalling Jarwiz is actively updating it,
+   the same spinning-halo language as the parse pass. The value text stays fully
+   legible; a soft inset glow steadies the fill while the border sweeps around. */
+@property --jz-cell-spin {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
 }
-@keyframes jz-cell-flash {
-  0%,
-  100% {
-    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.35), 0 0 14px rgba(255, 255, 255, 0.14);
-  }
-  50% {
-    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.7), 0 0 24px rgba(255, 255, 255, 0.36);
+.jz-table-cell--flash {
+  position: relative;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), 0 0 16px rgba(255, 255, 255, 0.16);
+}
+/* The sweeping border: a conic gradient masked to a 1.5px ring, rotated in
+   place via the registered custom angle property (no transform → the ring stays
+   square-aligned while the bright arc travels around it). */
+.jz-table-cell--flash::after {
+  content: '';
+  position: absolute;
+  inset: -1.5px;
+  border-radius: 7px;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--jz-cell-spin),
+    rgba(255, 255, 255, 0) 0deg,
+    rgba(255, 255, 255, 0) 205deg,
+    rgba(255, 255, 255, 0.9) 315deg,
+    rgba(255, 255, 255, 0.15) 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask-composite: exclude;
+  animation: jz-cell-spin 1.05s linear infinite;
+  pointer-events: none;
+}
+@keyframes jz-cell-spin {
+  to {
+    --jz-cell-spin: 360deg;
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .jz-table-cell--flash {
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.5);
+  }
+  .jz-table-cell--flash::after {
     animation: none;
+    background: none;
     box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.5);
   }
 }
