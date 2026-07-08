@@ -24,6 +24,18 @@ import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { isAutopilotRunning, subscribeAutopilot } from '../agents/autopilotStore';
 import { cardSeedKey, ensureCardSeeds, ensureSeedPrompts, getSeedPrompts, subscribeSeed } from './seedPrompts';
 import { getPromptFill, subscribePromptFill } from './promptFill';
+import { getActiveBoard, markBoardUsed, subscribeBoards } from '../boards/boardStore';
+import { isDemo, isEmbed, isUseCases } from '../boards/demo';
+
+// Intent-first onboarding: on a brand-new empty board the composer rises to the
+// centre with a heading and a few starter prompts, then glides down into its
+// dock as the first answer builds. Full example prompts so a first-timer sees
+// what a good ask looks like (and can send or edit).
+const INTRO_STARTERS = [
+  'Compare Notion, Linear and Asana for a small team',
+  'Brainstorm features for a habit-tracking app',
+  'Break down a launch plan for a new product',
+];
 
 const clip = (s: string, n = 22) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
@@ -72,6 +84,36 @@ export function PromptBar() {
   const [modeSource, setModeSource] = useState<'user' | 'auto' | null>(null);
   const [modeMenu, setModeMenu] = useState(false);
   const [modeIdx, setModeIdx] = useState(0);
+
+  // ── Intent-first onboarding (a brand-new, empty board) ────────────────────
+  const board = useSyncExternalStore(subscribeBoards, getActiveBoard, getActiveBoard);
+  const boardEmpty = useValue('promptbar-board-empty', () => editor.getCurrentPageShapeIds().size === 0, [editor]);
+  // Let tldraw hydrate from IndexedDB before trusting emptiness, so a returning
+  // board that loads async never flashes the intro for a frame.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    setHydrated(false);
+    const t = setTimeout(() => setHydrated(true), 400);
+    return () => clearTimeout(t);
+  }, [board?.id]);
+  // `leaving` keeps the intro mounted through the glide-down so the composer
+  // reads as one object travelling to its dock, not a hard cut.
+  const [leaving, setLeaving] = useState(false);
+  const introMode =
+    Boolean(board?.isNew) && boardEmpty && hydrated && !leaving && !isDemo() && !isEmbed() && !isUseCases();
+  const introMounted = introMode || leaving;
+  // If the board gains a shape another way (a dropped PDF), retire the intro.
+  useEffect(() => {
+    if (!boardEmpty && board?.isNew) markBoardUsed(board.id);
+  }, [boardEmpty, board]);
+  // Retire the intro on the first ask: clear isNew (so it never re-arms) and
+  // hold the block for the glide, then unmount.
+  const leaveIntro = () => {
+    if (!board?.isNew) return;
+    markBoardUsed(board.id);
+    setLeaving(true);
+    setTimeout(() => setLeaving(false), 650);
+  };
   // Inline filtering, Claude-Code style: while the input reads "/que…", the
   // menu narrows to matching modes. Opened from the button, it shows all.
   const modeQuery = value.startsWith('/') ? value.slice(1).trim().toLowerCase() : '';
@@ -230,6 +272,8 @@ export function PromptBar() {
   const submit = () => {
     const q = value.trim();
     if (!q || isAsking || composing || annotating) return;
+    // Onboarding: the first ask sends the composer gliding down into its dock.
+    if (introMode) leaveIntro();
     // SHAPE is explicit only — no implicit routing from the prompt text. With no
     // mode selected the answer is always a DOC (the composer's first-class
     // default); Board / Stickies / any other shape require picking the "/" mode
@@ -304,7 +348,20 @@ export function PromptBar() {
     !runningMode && !isAsking && !soleBusy && !value.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
 
   return (
-    <div className="jz-promptbar-dock" onPointerDown={stopEventPropagation}>
+    <div className={`jz-promptbar-dock${introMode ? ' jz-promptbar-dock--intro' : ''}`} onPointerDown={stopEventPropagation}>
+      {/* Intent-first onboarding: heading + starter prompts above the centred
+          composer, which glides down to its dock as the first answer builds. */}
+      {introMounted ? (
+        <div className={`jz-pb-intro${introMode ? '' : ' jz-pb-intro--leaving'}`}>
+          <h1 className="jz-pb-intro-head">What do you want to figure out?</h1>
+          <p className="jz-pb-intro-sub">Describe it, drop a file, or paste your notes. Jarwiz lays it out as a board.</p>
+          <div className="jz-pb-intro-chips">
+            {INTRO_STARTERS.map((q) => (
+              <button key={q} className="jz-pb-intro-chip" onClick={() => useStarter(q)} title="Use this prompt (editable)">{q}</button>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {/* The coach bubble is gone: it described the two scan chips rendered
           directly beneath it (redundant teaching, permanent until dismissed,
           and part of the bottom-centre chrome pile-up — dogfood finding). */}

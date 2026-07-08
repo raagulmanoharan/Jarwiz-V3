@@ -5,7 +5,8 @@ import { getActiveBoard, subscribeBoards } from '../boards/boardStore';
 /**
  * The cold-board invitation shown when an existing board is empty (the user
  * deleted everything or is returning to a cleared board). Hidden on brand-new
- * boards — BoardEntry handles that case with the onboarding dialog.
+ * boards — the PromptBar's intent-first onboarding (centred composer) owns that
+ * case.
  * Purely decorative — pointer-events: none — so the canvas stays interactive.
  */
 export function EmptyState() {

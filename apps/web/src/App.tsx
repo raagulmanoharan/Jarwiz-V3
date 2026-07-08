@@ -41,7 +41,6 @@ import { registerIngestion } from './ingest/registerIngestion';
 import { AgentCursorLayer } from './agents/AgentCursorLayer';
 import { AgentTaskLayer } from './agents/AgentTaskLayer';
 import { cardShapeUtils } from './shapes';
-import { BoardEntry } from './boards/BoardEntry';
 import { getRestoreError, isRestoring, subscribeRestore } from './boards/backup';
 import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
 import { isDemo, isEmbed, isUseCases } from './boards/demo';
@@ -82,7 +81,6 @@ function JarwizOverlay() {
       {/* Behavioural overlays — the ask/refine loop on cards. (Provenance
           lineage renders in the OnTheCanvas slot below, behind the shapes.) */}
       <Safe label="EmptyState"><EmptyState /></Safe>
-      <Safe label="BoardEntry"><BoardEntry /></Safe>
       <Safe label="CardTitleTag"><CardTitleTag /></Safe>
       <Safe label="CardActionBar"><CardActionBar /></Safe>
       <Safe label="ClarifyLayer"><ClarifyLayer /></Safe>

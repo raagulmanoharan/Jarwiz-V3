@@ -3710,13 +3710,77 @@ body,
   position: absolute;
   left: 50%;
   bottom: 22px;
-  transform: translateX(-50%);
+  transform: translate(-50%, 0);
   z-index: 320;
   pointer-events: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--jz-space-5);
+  transition: transform var(--jz-dur-glide) var(--jz-ease-glide);
+}
+/* Intent-first onboarding: the composer rises to the vertical centre on a
+   brand-new empty board, then glides back down to this dock on the first ask. */
+.jz-promptbar-dock--intro {
+  transform: translate(-50%, calc(-50vh + 22px + 50%));
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-promptbar-dock { transition: none; }
+}
+.jz-pb-intro {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  max-width: min(680px, calc(100vw - 48px));
+  margin-bottom: 4px;
+  transition: opacity var(--jz-dur-base) var(--jz-ease-out), transform var(--jz-dur-base) var(--jz-ease-out);
+}
+.jz-pb-intro--leaving {
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+}
+.jz-pb-intro-head {
+  font-family: var(--jz-font-display);
+  font-optical-sizing: auto;
+  font-size: var(--jz-text-display-size);
+  line-height: var(--jz-text-display-lh);
+  font-weight: 540;
+  color: var(--jz-ink-900);
+  margin: 0;
+}
+.jz-pb-intro-sub {
+  font-size: var(--jz-text-body-size);
+  line-height: var(--jz-text-body-lh);
+  color: var(--jz-ink-500);
+  max-width: 46ch;
+  margin: 0 0 8px;
+}
+.jz-pb-intro-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.jz-pb-intro-chip {
+  pointer-events: auto;
+  font: inherit;
+  font-size: var(--jz-text-body-sm-size);
+  color: var(--jz-ink-700);
+  background: var(--jz-surface-raised);
+  border: 1px solid var(--jz-hairline);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: border-color var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out), transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-pb-intro-chip:hover {
+  border-color: var(--jz-hairline-strong);
+  color: var(--jz-ink-900);
+  transform: translateY(-1px);
 }
 
 /* Outer card — tall rounded rect, column layout */
