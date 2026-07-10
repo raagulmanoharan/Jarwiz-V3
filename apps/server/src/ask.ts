@@ -544,12 +544,14 @@ async function generate(
   const { tools, maxTokens, maxTurns, sidecarTimeoutMs } = genBudget(opts);
   if (process.env.ANTHROPIC_API_KEY?.trim()) {
     const client = new Anthropic();
+    const allTools = [...(tools ?? []), ...(opts.clientTools?.tools ?? [])];
     const messages: Anthropic.MessageParam[] = [
       { role: 'user', content: buildContent(user, images) },
     ];
     let text = '';
-    // Server tools may pause a long turn (stop_reason "pause_turn"); resume by
-    // replaying the assistant content until the model actually finishes.
+    // Server tools may pause a long turn (stop_reason "pause_turn") and client
+    // tools stop it outright (stop_reason "tool_use"); both resume by replaying
+    // the assistant content (plus tool results) until the model finishes.
     for (let turn = 0; turn <= maxTurns; turn++) {
       const msg = await client.messages.create(
         {
@@ -557,7 +559,7 @@ async function generate(
           max_tokens: maxTokens,
           system,
           messages,
-          ...(tools ? { tools } : {}),
+          ...(allTools.length ? { tools: allTools } : {}),
         },
         { signal },
       );
@@ -565,7 +567,22 @@ async function generate(
         .filter((b): b is Anthropic.TextBlock => b.type === 'text')
         .map((b) => b.text)
         .join('');
-      if (!tools || msg.stop_reason !== 'pause_turn') break;
+      if (msg.stop_reason === 'tool_use' && opts.clientTools) {
+        const calls = msg.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
+        if (calls.length > 0) {
+          const results = await Promise.all(
+            calls.map(async (c) => ({
+              type: 'tool_result' as const,
+              tool_use_id: c.id,
+              content: await opts.clientTools!.run(c.name, c.input),
+            })),
+          );
+          messages.push({ role: 'assistant', content: msg.content });
+          messages.push({ role: 'user', content: results });
+          continue;
+        }
+      }
+      if (!allTools.length || msg.stop_reason !== 'pause_turn') break;
       messages.push({ role: 'assistant', content: msg.content });
     }
     return text;
@@ -935,10 +952,27 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
     // (purely extractive across the given documents — no web there).
     const isDiff = looksLikeDiff(req.prompt) && req.sources.filter((s) => s.assetId).length >= 2;
     const tableSystem = isDiff ? CLAUSE_DIFF_SYSTEM : TABLE_SYSTEM + WEB_TABLE_DIRECTIVE;
-    const raw = await generate(tableSystem, user, signal, images, { web: !isDiff, framePaths, imageData });
+    const raw = await generate(tableSystem, user, signal, images, {
+      web: !isDiff,
+      framePaths,
+      imageData,
+      // Rows of visual things earn a thumbnail column — find_image gives the
+      // model real image URLs to fill it with (clause-diff stays text-only).
+      clientTools: isDiff
+        ? undefined
+        : {
+            tools: [FIND_IMAGE_TOOL],
+            run: (name, input) =>
+              name === 'find_image' ? runFindImage(input) : Promise.resolve('{"error":"unknown tool"}'),
+            status: 'finding images…',
+          },
+    });
     if (signal.aborted) return;
     let columns: string[] = [];
     let rows: string[][] = [];
+    // A cell holding an image/link token needs URL headroom — the plain-text
+    // cap would slice the URL mid-way and leave broken literal markdown.
+    const cellCap = (s: string) => s.slice(0, /!\[|\]\(/.test(s) ? 500 : 200);
     try {
       const json = JSON.parse(raw.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()) as {
         columns?: unknown;
@@ -946,7 +980,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
       };
       columns = Array.isArray(json.columns) ? json.columns.map((c) => String(c).slice(0, 60)) : [];
       rows = Array.isArray(json.rows)
-        ? json.rows.map((r) => (Array.isArray(r) ? r.map((c) => String(c ?? '').slice(0, 200)) : []))
+        ? json.rows.map((r) => (Array.isArray(r) ? r.map((c) => cellCap(String(c ?? ''))) : []))
         : [];
     } catch {
       /* fall through to a doc if the model didn't return clean JSON */

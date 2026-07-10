@@ -737,3 +737,23 @@ called it: the CTA should land in the "What brings you here?" flow.
   instantly; the ambient scene + self-typing composer now carry the "show
   intelligence early" job. If that proves too subtle, a themed seed *after*
   the persona pick is the natural follow-up.
+
+## 2026-07-10 (night) — Tables join the rich club
+
+**Intent:** "table mode should have web enrichment too — real-time data from
+the web, and images in the table if applicable."
+
+- Tables already reached the live web (prices/ratings/availability via
+  web_search/web_fetch); what they lacked was images. The `find_image`
+  provider chain is now offered on the table path too — `generate()` (the
+  non-streaming loop) learned the same client-tool handling `generateStream`
+  got for research.
+- Prompt: rows of VISUAL things (products, places, devices…) earn an "Image"
+  first column, one `![name](url)` per row, URLs verbatim from find_image or
+  fetched pages; the column is skipped for non-visual grids and the
+  clause-diff table stays text-only. Cell caps got URL headroom (500 chars
+  for cells carrying image/link tokens) so a thumbnail URL can't be sliced.
+- Client: cell thumbnails route through the `/api/image` cache-proxy and hide
+  on error — same no-broken-frames rule as the rich card hero.
+- Browser-verified: image column renders thumbnails, a dead web URL degrades
+  to an empty cell, link chips intact.
