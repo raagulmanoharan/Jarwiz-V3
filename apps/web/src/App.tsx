@@ -37,6 +37,7 @@ import { PrototypeRunner } from './ui/PrototypeRunner';
 import { DashboardRunner } from './ui/DashboardRunner';
 import { DraftControls } from './ask/DraftControls';
 import { RegenControls } from './ask/RegenControls';
+import { SyncLayer } from './ask/SyncLayer';
 import { SelectionAsk } from './ask/SelectionAsk';
 import { Timeline } from './log/Timeline';
 import { registerIngestion } from './ingest/registerIngestion';
@@ -96,6 +97,7 @@ function JarwizOverlay() {
       <Safe label="DashboardRunner"><DashboardRunner /></Safe>
       <Safe label="DraftControls"><DraftControls /></Safe>
       <Safe label="RegenControls"><RegenControls /></Safe>
+      <Safe label="SyncLayer"><SyncLayer /></Safe>
       <Safe label="SelectionAsk"><SelectionAsk /></Safe>
       <Safe label="AgentTaskLayer"><AgentTaskLayer /></Safe>
       <Safe label="Timeline"><Timeline /></Safe>

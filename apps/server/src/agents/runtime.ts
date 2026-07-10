@@ -310,6 +310,10 @@ export async function runAgentLoop(
         await emit({ type: 'status', message: `${meta.name} built a table` });
         return { result: JSON.stringify({ cardId }) };
       }
+      // NOTE: the web UI has no `edge.create` consumer today — the canvas
+      // shows lineage on click (ProvenanceLayer + meta.jzSources), not drawn
+      // arrows (owner call, 2026-07-05). Kept for the roadmap summon UI, which
+      // should map this onto jzSources meta rather than arrow shapes.
       case 'connect_cards': {
         const fromCardId = String(input.fromCardId ?? '');
         const toCardId = String(input.toCardId ?? '');

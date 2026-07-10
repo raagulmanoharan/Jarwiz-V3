@@ -624,3 +624,33 @@ the composer. Also: get the demo content off a competitor minefield.
   paragraphs in the polish rounds. The pick is the hook for persona-tuned
   seed pills / Ultra Think later, and a listening post on who actually
   shows up.
+
+## 2026-07-10 (later) — Provenance grows up: cards that stay true to their sources
+
+**Intent:** "the edges/provenance logic is messy" → clean it to one system,
+then make lineage *do* something: edit a source card and the cards generated
+from it should proactively update themselves, with a visible, undoable receipt.
+
+- **Cleanup first.** Three dead generations of provenance removed: the
+  session "Based on:" store (`ask/provenance.ts` — written on every ask, read
+  by nothing), the ephemeral PDF map (`pdf/provenance.ts` — redundant with the
+  durable `sourcePdfId` prop), the always-empty `draft.arrowIds`, and the
+  stale "drawn edges" comments. `meta.jzSources` + ProvenanceLayer is now the
+  ONE lineage system; the server's unused `edge.create` is annotated as
+  reserved for the summon UI (map it onto jzSources, not arrows).
+- **Auto-sync shipped (`ask/sync.ts` + `SyncLayer.tsx`).** Answers now also
+  record their ask in `meta.jzPrompt`. A store listener watches content props
+  only (per-type whitelist — moves/resizes never trigger), debounces 2.6s of
+  quiet, then re-runs the original ask **in place** on each dependent
+  (forceShape pins the format) and crawls on down the chain with a visited-set
+  cycle guard. One update at a time, always queued behind the human's own
+  asks; streaming/suppress guards keep the engine's own writes from reading
+  as user edits.
+- **The receipt.** Each updated card gets a card-anchored pill in the draft
+  controls' anatomy — "✦ Updated to match "Table"" with Undo (restores the
+  pre-update snapshot; chained updates keep the OLDEST snapshot so Undo
+  returns to the last user-approved state) and a quiet dismiss. A manual edit
+  to an updated card retires its pill — the user took over.
+- Verified end-to-end in the sandbox browser: table edit → summary card
+  rewrote itself with the new numbers → Undo restored the original, no
+  runaway re-syncs.
