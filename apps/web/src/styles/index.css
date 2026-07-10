@@ -129,7 +129,7 @@ body,
   position: absolute;
   left: 14px;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translate(0, -50%);
   z-index: 300;
   pointer-events: auto;
   display: flex;
@@ -143,6 +143,18 @@ body,
   box-shadow: var(--jz-e3);
   border: 1px solid var(--jz-hairline);
   box-sizing: border-box;
+  transition: transform var(--jz-dur-glide) var(--jz-ease-glide), opacity var(--jz-dur-base) var(--jz-ease-out);
+}
+/* Stepped off-screen while the intent-first onboarding is up; slides back in
+   as the first ask opens the board. */
+.jz-rail--away {
+  transform: translate(calc(-100% - 24px), -50%);
+  opacity: 0;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-rail { transition: opacity var(--jz-dur-base) var(--jz-ease-out); }
+  .jz-rail--away { transform: translate(0, -50%); }
 }
 
 
@@ -3710,14 +3722,299 @@ body,
   position: absolute;
   left: 50%;
   bottom: 22px;
-  transform: translateX(-50%);
+  transform: translate(-50%, 0);
   z-index: 320;
   pointer-events: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--jz-space-5);
+  transition: transform var(--jz-dur-glide) var(--jz-ease-glide);
 }
+/* Intent-first onboarding: the composer rises to the vertical centre on a
+   brand-new empty board, then glides back down to this dock on the first ask. */
+.jz-promptbar-dock--intro {
+  transform: translate(-50%, calc(-50vh + 22px + 50%));
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-promptbar-dock { transition: none; }
+}
+.jz-pb-intro {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  max-width: min(680px, calc(100vw - 48px));
+  margin-bottom: 18px;
+  transition: opacity var(--jz-dur-base) var(--jz-ease-out), transform var(--jz-dur-base) var(--jz-ease-out);
+}
+.jz-pb-intro--leaving {
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+}
+.jz-pb-intro-spark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  margin-bottom: 16px;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--jz-accent-ink);
+  background: var(--jz-accent);
+  box-shadow: var(--jz-e3);
+  animation: jz-intro-breathe 3.6s var(--jz-ease-glide) infinite;
+}
+@keyframes jz-intro-breathe {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    box-shadow: var(--jz-e3), 0 0 0 0 color-mix(in srgb, var(--jz-accent) 40%, transparent);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: var(--jz-e3), 0 0 34px 2px color-mix(in srgb, var(--jz-accent) 34%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-pb-intro-spark { animation: none; }
+}
+/* The orb bulges as it releases a Jarwiz into the ambient onboarding scene. */
+.jz-pb-intro-spark--emit {
+  animation: jz-intro-emit 0.62s var(--jz-ease-out);
+}
+@keyframes jz-intro-emit {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.22); box-shadow: var(--jz-e3), 0 0 48px 10px color-mix(in srgb, var(--jz-accent) 55%, transparent); }
+  100% { transform: scale(1); }
+}
+
+/* ─── Ambient onboarding — the "board is already alive" scene ─────────────── */
+/* A decorative overlay behind the intent composer: collaborators carry cards
+ * in from the edges; the orb births one Jarwiz per card. Pure illustration —
+ * pointer-events off, so the canvas beneath stays fully interactive. */
+.jz-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 150;                 /* above the empty canvas, below the chrome + composer */
+  pointer-events: none;
+  transition: opacity 0.8s var(--jz-ease-glide), filter 0.8s ease, transform 0.8s ease;
+}
+.jz-ambient--hushed {           /* the moment you engage the composer, the room bows out */
+  opacity: 0;
+  filter: blur(6px);
+  transform: scale(0.985);
+}
+
+.jz-amb-item {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  transform: translate(-50%, -52%) scale(0.9);
+  transition:
+    opacity 0.55s var(--jz-ease-out),
+    transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+    left 0.95s cubic-bezier(0.33, 0, 0.2, 1),
+    top 0.95s cubic-bezier(0.33, 0, 0.2, 1);
+}
+.jz-amb-item.jz-amb-in { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.jz-amb-item.jz-amb-noanim { transition: none; }
+.jz-amb-body { position: relative; animation: jz-amb-float 7s ease-in-out infinite; }
+@keyframes jz-amb-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.jz-amb-item.jz-amb-dropped .jz-amb-card,
+.jz-amb-item.jz-amb-dropped .jz-amb-note { animation: jz-amb-drop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes jz-amb-drop { 0% { transform: scale(1.05); } 60% { transform: scale(0.99); } 100% { transform: scale(1); } }
+
+/* card chrome — tracks the real cards (radius, hairline, quiet shadow) */
+.jz-amb-card {
+  border-radius: var(--jz-radius-lg);
+  border: 1px solid var(--jz-hairline);
+  background: var(--jz-surface);
+  box-shadow: var(--jz-e3);
+  overflow: hidden;
+  transition: box-shadow 0.45s ease;
+}
+.jz-amb-lit {
+  box-shadow: var(--jz-e3), 0 0 0 1.5px color-mix(in srgb, var(--jz-accent) 30%, transparent),
+    0 0 36px 3px color-mix(in srgb, var(--jz-accent) 16%, transparent) !important;
+}
+.jz-amb-note {
+  width: 210px;
+  padding: 18px;
+  background: #f1ece0;          /* the app's tinted note paper */
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: var(--jz-radius-lg);
+  box-shadow: var(--jz-e3);
+  color: #3f3a2e;
+  font-size: 14.5px;
+  line-height: 1.5;
+  transition: box-shadow 0.45s ease;
+}
+.jz-amb-link { width: 232px; }
+.jz-amb-link .media { height: 112px; background: linear-gradient(135deg, #2c3566, #6d4a86 55%, #a85f74); }
+.jz-amb-link .lbody { padding: 13px 14px 14px; }
+.jz-amb-link .ltitle { font-size: 13.5px; line-height: 1.35; color: var(--jz-ink-900); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.jz-amb-link .lfoot { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.jz-amb-link .fav { width: 17px; height: 17px; border-radius: 5px; background: linear-gradient(135deg, #58c7c0, #3a7f9a); flex: none; }
+.jz-amb-link .dom { font-size: 11.5px; color: var(--jz-ink-400); }
+.jz-amb-doc { width: 244px; padding: 18px; }
+.jz-amb-doc .dtitle { font-size: 14px; color: var(--jz-ink-900); font-weight: 560; letter-spacing: -0.01em; }
+.jz-amb-doc .dtext { font-size: 12.5px; line-height: 1.55; color: var(--jz-ink-400); margin-top: 9px; }
+.jz-amb-img { width: 224px; }
+.jz-amb-img .pic { height: 150px; background: linear-gradient(150deg, #3a3f7a, #7a4f8f 52%, #b06a7a); }
+
+/* cursors — collaborators (coloured) and Jarwiz (ink, with a soft glow) */
+.jz-amb-cur {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  transform: translate(-4px, -3px);
+  transform-origin: 4px 3px;
+  transition: transform 1.5s var(--jz-ease-glide), opacity 0.5s ease;
+  will-change: transform;
+}
+.jz-amb-cur.jz-amb-show { opacity: 1; }
+.jz-amb-cur.jz-amb-parked { opacity: 0.4; }
+.jz-amb-cur svg { width: 22px; height: 22px; display: block; filter: drop-shadow(0 2px 5px rgba(8, 9, 11, 0.4)); }
+.jz-amb-badge {
+  position: absolute;
+  left: 15px;
+  top: 15px;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  background: var(--jz-card-surface);
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-pill);
+  padding: 4px 6px 4px 10px;
+  box-shadow: var(--jz-e2);
+}
+.jz-amb-badge .nm { font-size: 11px; font-weight: 650; color: var(--jz-ink-900); }
+.jz-amb-badge .st { display: none; align-items: center; font-size: 11px; font-weight: 500; color: var(--jz-ink-500); margin-left: 8px; padding-left: 9px; border-left: 1px solid var(--jz-hairline); }
+.jz-amb-cur.jz-amb-working .jz-amb-badge .st { display: inline-flex; }
+.jz-amb-badge .dots { width: 4px; height: 4px; border-radius: 50%; background: var(--jz-ink-900); margin-right: 6px; animation: jz-amb-dots 1s ease-in-out infinite; }
+@keyframes jz-amb-dots { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+/* collaborators — coloured arrow + a solid coloured pill */
+.jz-amb-cur--persona .arrow { fill: var(--c); }
+.jz-amb-cur--persona .jz-amb-badge { background: var(--c); border-color: transparent; }
+.jz-amb-cur--persona .jz-amb-badge .nm { color: #17140c; }
+.jz-amb-cur--pm { --c: #e8b04b; }
+.jz-amb-cur--design { --c: #e8709a; }
+.jz-amb-cur--research { --c: #58c7c0; }
+.jz-amb-cur--founder { --c: #9b8cff; }
+
+/* Jarwiz — ink arrow (theme-safe), soft accent glow, brighter while working */
+.jz-amb-cur--jarwiz .arrow { fill: var(--jz-ink-900); }
+.jz-amb-cur--jarwiz svg { filter: drop-shadow(0 0 9px color-mix(in srgb, var(--jz-accent) 45%, transparent)) drop-shadow(0 2px 5px rgba(8, 9, 11, 0.4)); }
+.jz-amb-cur--jarwiz::after {
+  content: "";
+  position: absolute;
+  left: -13px;
+  top: -13px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--jz-accent) 22%, transparent), transparent 70%);
+  animation: jz-amb-glow 3.6s ease-in-out infinite;
+}
+@keyframes jz-amb-glow { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.12); } }
+.jz-amb-cur--jarwiz.jz-amb-working::after { opacity: 0.95; transform: scale(1.2); animation-duration: 1.9s; }
+
+/* the ring the orb radiates at each birth */
+.jz-amb-ring {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--jz-accent) 55%, transparent);
+  transform: translate(-50%, -50%) scale(0.5);
+  opacity: 0;
+}
+.jz-amb-ring.jz-amb-go { animation: jz-amb-ring 0.72s ease-out; }
+@keyframes jz-amb-ring { 0% { opacity: 0.6; transform: translate(-50%, -50%) scale(0.5); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(2.6); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .jz-amb-body, .jz-amb-cur--jarwiz::after, .jz-amb-badge .dots { animation: none; }
+  .jz-amb-cur, .jz-amb-item, .jz-ambient { transition: none; }
+}
+
+.jz-pb-intro-head {
+  font-family: var(--jz-font-display);
+  font-optical-sizing: auto;
+  font-size: var(--jz-text-display-size);
+  line-height: var(--jz-text-display-lh);
+  font-weight: 540;
+  color: var(--jz-ink-900);
+  margin: 0;
+  text-wrap: balance;
+}
+.jz-pb-intro-sub {
+  font-size: var(--jz-text-body-size);
+  line-height: var(--jz-text-body-lh);
+  color: var(--jz-ink-500);
+  max-width: 46ch;
+  margin: 0 0 8px;
+}
+.jz-pb-intro-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 22px;
+}
+.jz-pb-intro-chip {
+  pointer-events: auto;
+  font: inherit;
+  font-size: var(--jz-text-body-sm-size);
+  color: var(--jz-ink-700);
+  background: var(--jz-surface-raised);
+  border: 1px solid var(--jz-hairline);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: border-color var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out), transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-pb-intro-chip:hover {
+  border-color: var(--jz-hairline-strong);
+  color: var(--jz-ink-900);
+  transform: translateY(-1px);
+}
+/* Onboarding on-ramp hints under the composer (drop / paste). */
+.jz-pb-onramp {
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+  transition: opacity var(--jz-dur-base) var(--jz-ease-out), transform var(--jz-dur-base) var(--jz-ease-out);
+}
+.jz-pb-onramp--leaving {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.jz-pb-onramp-or {
+  font-size: var(--jz-text-body-sm-size);
+  color: var(--jz-ink-400);
+}
+.jz-pb-onramp-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--jz-text-body-sm-size);
+  color: var(--jz-ink-500);
+  border: 1px dashed var(--jz-hairline-strong);
+  border-radius: 10px;
+  padding: 5px 11px;
+}
+.jz-pb-onramp-item svg { opacity: 0.85; }
 
 /* Outer card — tall rounded rect, column layout */
 .jz-promptbar {
@@ -3852,6 +4149,39 @@ body,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Drop-to-attach: a file dragged over the composer highlights it as a target,
+ * and the just-dropped file shows an "attaching…" pill until it's readable. */
+.jz-promptbar--drag {
+  border-color: color-mix(in srgb, var(--jz-accent) 55%, var(--jz-hairline));
+  box-shadow: var(--jz-e4), 0 0 0 3px color-mix(in srgb, var(--jz-accent) 20%, transparent);
+}
+/* Attachment pills — context brought into the composer (not a selected card).
+ * A paperclip marks them apart from selection grounds; accent-tinted so they
+ * read as "yours". */
+.jz-pb-ground--attach {
+  gap: 5px;
+  padding-left: 7px;
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  color: color-mix(in srgb, var(--jz-accent) 65%, var(--jz-ink-900));
+}
+.jz-pb-ground-clip { flex: none; opacity: 0.75; }
+.jz-pb-ground--error {
+  background: color-mix(in srgb, var(--jz-danger) 14%, transparent);
+  color: var(--jz-danger);
+}
+.jz-pb-ground-spin {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--jz-ink-500) 35%, transparent);
+  border-top-color: var(--jz-ink-500);
+  animation: jz-pb-spin 0.7s linear infinite;
+}
+@keyframes jz-pb-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .jz-pb-ground-spin { animation: none; }
 }
 
 /* The pinned answer-shape chip (picked with "/") — accent-tinted so it reads

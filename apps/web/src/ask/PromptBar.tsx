@@ -6,9 +6,9 @@
  * the pick pins a mode chip and forces that shape). Footer right: send.
  */
 
-import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue, type Editor, type TLRichText, type TLShape, type TLShapeId } from 'tldraw';
-import { Slash, ArrowUp, Sparkles } from 'lucide-react';
+import { Slash, ArrowUp, Sparkles, FileText, Link2, ClipboardList, Paperclip } from 'lucide-react';
 import type { AnalyzeMode, AskShape } from '@jarwiz/shared';
 import { type ModeShape } from './modeShape';
 import { suggestShape } from './suggestShape';
@@ -24,6 +24,36 @@ import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { isAutopilotRunning, subscribeAutopilot } from '../agents/autopilotStore';
 import { cardSeedKey, ensureCardSeeds, ensureSeedPrompts, getSeedPrompts, subscribeSeed } from './seedPrompts';
 import { getPromptFill, subscribePromptFill } from './promptFill';
+import { getActiveBoard, markBoardUsed, subscribeBoards } from '../boards/boardStore';
+import { isDemo, isEmbed, isUseCases } from '../boards/demo';
+import { setOnboarding, setOnboardingEngaged } from './onboardingStore';
+import { hasIngestibleFile } from '../ingest/registerIngestion';
+import { classifyFile, materializeAttachment, uploadAttachment, type Attachment } from '../ingest/attachments';
+
+// Intent-first onboarding: on a brand-new empty board the composer rises to the
+// centre with a heading and a few starter prompts, then glides down into its
+// dock as the first answer builds. Full example prompts so a first-timer sees
+// what a good ask looks like (and can send or edit).
+// Short labels so the chips sit in one horizontal row; tapping fills the fuller
+// prompt into the composer (editable before send).
+const INTRO_STARTERS: Array<{ label: string; prompt: string }> = [
+  { label: 'Compare a few tools', prompt: 'Compare Notion, Linear and Asana for a small team' },
+  { label: 'Brainstorm a feature', prompt: 'Brainstorm features for a habit-tracking app' },
+  { label: 'Break down a plan', prompt: 'Break down a launch plan for a new product' },
+];
+
+// The empty intent composer types these on its own and previews the shape it'd
+// build a few words in — the box is alive, and Jarwiz shows it understood
+// before you commit. Shapes are real ModeShape values so the preview chip reuses
+// the composer's own suggestion chip.
+const INTRO_ANIM: Array<{ text: string; shape: ModeShape }> = [
+  { text: 'Compare Notion, Linear and Asana for a small team', shape: 'table' },
+  { text: 'Brainstorm features for a habit-tracking app', shape: 'board' },
+  { text: 'Map the onboarding flow end to end', shape: 'diagram' },
+  { text: 'Turn my Q2 numbers into a dashboard', shape: 'dashboard' },
+];
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const clip = (s: string, n = 22) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
@@ -72,6 +102,93 @@ export function PromptBar() {
   const [modeSource, setModeSource] = useState<'user' | 'auto' | null>(null);
   const [modeMenu, setModeMenu] = useState(false);
   const [modeIdx, setModeIdx] = useState(0);
+  // A file dragged over the composer to attach it as context (drop-to-attach).
+  const [dragActive, setDragActive] = useState(false);
+  // Composer attachments — context you attach before it's on the board (see below).
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const attachSeq = useRef(0);
+
+  // ── Intent-first onboarding (a brand-new, empty board) ────────────────────
+  const board = useSyncExternalStore(subscribeBoards, getActiveBoard, getActiveBoard);
+  const boardEmpty = useValue('promptbar-board-empty', () => editor.getCurrentPageShapeIds().size === 0, [editor]);
+  // Let tldraw hydrate from IndexedDB before trusting emptiness, so a returning
+  // board that loads async never flashes the intro for a frame.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    setHydrated(false);
+    const t = setTimeout(() => setHydrated(true), 400);
+    return () => clearTimeout(t);
+  }, [board?.id]);
+  // `leaving` keeps the intro mounted through the glide-down so the composer
+  // reads as one object travelling to its dock, not a hard cut.
+  const [leaving, setLeaving] = useState(false);
+  const introMode =
+    Boolean(board?.isNew) && boardEmpty && hydrated && !leaving && !isDemo() && !isEmbed() && !isUseCases();
+  const introMounted = introMode || leaving;
+  // If the board gains a shape another way (a dropped PDF), retire the intro.
+  useEffect(() => {
+    if (!boardEmpty && board?.isNew) markBoardUsed(board.id);
+  }, [boardEmpty, board]);
+  // Tell the rest of the chrome (tool rail, parked cursor) to step aside while
+  // the intent screen is up, and slide back in as the board opens.
+  useEffect(() => {
+    setOnboarding(introMode);
+    return () => setOnboarding(false);
+  }, [introMode]);
+  // Retire the intro on the first ask: clear isNew (so it never re-arms) and
+  // hold the block for the glide, then unmount.
+  const leaveIntro = () => {
+    if (!board?.isNew) return;
+    markBoardUsed(board.id);
+    setLeaving(true);
+    setTimeout(() => setLeaving(false), 650);
+  };
+  // The empty intent composer types example intents on its own and previews the
+  // shape a few words in, so the box is alive and the intelligence shows before
+  // you commit. Purely a placeholder animation — it never touches the real value
+  // or mode, and it stops the moment you focus or type.
+  const [focused, setFocused] = useState(false);
+  const [introPh, setIntroPh] = useState('');
+  const [introShape, setIntroShape] = useState<ModeShape | null>(null);
+  const introAnim = introMode && !value.trim() && !focused && attachments.length === 0 && !prefersReducedMotion();
+  // The ambient scene stays alive until you actually reach for the composer —
+  // focusing or typing hushes it the moment you engage, before the first send.
+  const introEngaged = introMode && (focused || Boolean(value.trim()) || attachments.length > 0);
+  useEffect(() => {
+    setOnboardingEngaged(introEngaged);
+    return () => setOnboardingEngaged(false);
+  }, [introEngaged]);
+  useEffect(() => {
+    if (!introAnim) { setIntroPh(''); setIntroShape(null); return; }
+    let alive = true;
+    const timers: number[] = [];
+    const wait = (ms: number) => new Promise<void>((res) => { timers.push(window.setTimeout(res, ms) as unknown as number); });
+    void (async () => {
+      let i = 0;
+      while (alive) {
+        const ex = INTRO_ANIM[i % INTRO_ANIM.length]!;
+        setIntroShape(null);
+        const reveal = Math.min(14, Math.max(6, Math.floor(ex.text.length * 0.4)));
+        for (let c = 1; c <= ex.text.length && alive; c++) {
+          setIntroPh(`${ex.text.slice(0, c)} ▏`);
+          if (c === reveal) setIntroShape(ex.shape);
+          await wait(38);
+        }
+        if (!alive) break;
+        setIntroPh(`${ex.text} ▏`);
+        await wait(1900);
+        for (let c = ex.text.length; c >= 0 && alive; c--) {
+          setIntroPh(c > 0 ? `${ex.text.slice(0, c)} ▏` : '');
+          if (c < 8) setIntroShape(null);
+          await wait(16);
+        }
+        await wait(450);
+        i += 1;
+      }
+    })();
+    return () => { alive = false; timers.forEach((t) => window.clearTimeout(t)); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [introAnim]);
   // Inline filtering, Claude-Code style: while the input reads "/que…", the
   // menu narrows to matching modes. Opened from the button, it shows all.
   const modeQuery = value.startsWith('/') ? value.slice(1).trim().toLowerCase() : '';
@@ -92,6 +209,56 @@ export function PromptBar() {
   const dropGround = (id: string) => {
     editor.setSelectedShapes(editor.getSelectedShapeIds().filter((x) => x !== id));
   };
+  // ── Composer attachments ──────────────────────────────────────────────────
+  // Content you attach to the prompt as CONTEXT before it's on the board — a
+  // transcript, a PDF, a screenshot. Distinct from grounding on a SELECTED card:
+  // these persist in the composer regardless of canvas selection, and only
+  // become source cards when you send. Works on the intent screen and in-app.
+  const attachFiles = (files: FileList | File[]) => {
+    for (const file of Array.from(files)) {
+      const kind = classifyFile(file);
+      if (!kind) continue;
+      const key = `att-${attachSeq.current++}`;
+      setAttachments((list) => [...list, { key, kind, name: file.name, status: 'uploading' }]);
+      void uploadAttachment(file, kind)
+        .then((patch) => setAttachments((list) => list.map((a) => (a.key === key ? { ...a, ...patch } : a))))
+        .catch(() => setAttachments((list) => list.map((a) => (a.key === key ? { ...a, status: 'error' } : a))));
+    }
+  };
+  const removeAttachment = (key: string) => setAttachments((list) => list.filter((a) => a.key !== key));
+  const attachUploading = attachments.some((a) => a.status === 'uploading');
+  // Intercept a file drop/paste onto the composer at the document CAPTURE phase,
+  // before tldraw's own canvas drop handler sees it — otherwise the file would
+  // also land as a card on the board. A ref keeps the latest attachFiles without
+  // re-binding the listeners each render.
+  const barRef = useRef<HTMLDivElement>(null);
+  const attachFilesRef = useRef(attachFiles);
+  attachFilesRef.current = attachFiles;
+  useEffect(() => {
+    const inBar = (t: EventTarget | null) => t instanceof Node && Boolean(barRef.current?.contains(t));
+    const hasFiles = (dt: DataTransfer | null) => Boolean(dt && Array.from(dt.types).includes('Files'));
+    const onDragOver = (e: DragEvent) => {
+      if (!inBar(e.target) || !hasFiles(e.dataTransfer)) return;
+      e.preventDefault(); e.stopPropagation();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      setDragActive(true);
+    };
+    const onDrop = (e: DragEvent) => {
+      if (!inBar(e.target) || !hasFiles(e.dataTransfer)) return;
+      e.preventDefault(); e.stopPropagation();
+      setDragActive(false);
+      if (e.dataTransfer) attachFilesRef.current(e.dataTransfer.files);
+    };
+    const onDragLeave = (e: DragEvent) => { if (!inBar(e.relatedTarget)) setDragActive(false); };
+    document.addEventListener('dragover', onDragOver, true);
+    document.addEventListener('drop', onDrop, true);
+    document.addEventListener('dragleave', onDragLeave, true);
+    return () => {
+      document.removeEventListener('dragover', onDragOver, true);
+      document.removeEventListener('drop', onDrop, true);
+      document.removeEventListener('dragleave', onDragLeave, true);
+    };
+  }, []);
   // Gate the board-scan chips on SUBSTANCE, not shape count: the same
   // collector the scans run on must find enough contentful cards — three
   // empty cards, a couple of arrows, or a lone sticky summon nothing.
@@ -230,6 +397,23 @@ export function PromptBar() {
   const submit = () => {
     const q = value.trim();
     if (!q || isAsking || composing || annotating) return;
+    if (attachUploading) return; // wait for attachments to finish uploading
+    // Onboarding: the first ask sends the composer gliding down into its dock.
+    if (introMode) leaveIntro();
+    // Materialize any attachments into their source cards now (they weren't on
+    // the board until send) and ground the ask on them alongside any selection.
+    const attIds: TLShapeId[] = [];
+    if (attachments.length) {
+      const c = editor.getViewportPageBounds().center;
+      attachments
+        .filter((a) => a.status === 'ready')
+        .forEach((a, i) => {
+          const id = materializeAttachment(editor, a, { x: c.x + i * 28, y: c.y + i * 28 });
+          if (id) attIds.push(id);
+        });
+      setAttachments([]);
+    }
+    const grounds = [...groundIds, ...attIds];
     // SHAPE is explicit only — no implicit routing from the prompt text. With no
     // mode selected the answer is always a DOC (the composer's first-class
     // default); Board / Stickies / any other shape require picking the "/" mode
@@ -239,12 +423,12 @@ export function PromptBar() {
       void compose(q);
     } else if (mode === 'affinity') {
       void annotate(q);
-    } else if (!mode && sole && !sole.pdf && INLINE_EDITABLE.has(sole.type)) {
-      // A single artifact card is selected and no mode chosen → let intent decide
-      // edit-in-place vs a new doc (async classify), then dispatch.
+    } else if (!mode && attIds.length === 0 && sole && !sole.pdf && INLINE_EDITABLE.has(sole.type)) {
+      // A single artifact card is selected, no mode, and nothing attached → let
+      // intent decide edit-in-place vs a new doc (async classify), then dispatch.
       void routeSelectedAsk(q, sole.id, sole.type);
     } else {
-      void ask(q, groundIds, { forceShape: (mode as AskShape) ?? 'doc' });
+      void ask(q, grounds, { forceShape: (mode as AskShape) ?? 'doc' });
     }
     setValue('');
     setMode(null); // the mode applies to one ask, like the text it rode with
@@ -304,7 +488,21 @@ export function PromptBar() {
     !runningMode && !isAsking && !soleBusy && !value.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
 
   return (
-    <div className="jz-promptbar-dock" onPointerDown={stopEventPropagation}>
+    <div className={`jz-promptbar-dock${introMode ? ' jz-promptbar-dock--intro' : ''}`} onPointerDown={stopEventPropagation}>
+      {/* Intent-first onboarding: heading + starter prompts above the centred
+          composer, which glides down to its dock as the first answer builds. */}
+      {introMounted ? (
+        <div className={`jz-pb-intro${introMode ? '' : ' jz-pb-intro--leaving'}`}>
+          <span className="jz-pb-intro-spark" aria-hidden>✦</span>
+          <h1 className="jz-pb-intro-head">What are we figuring out?</h1>
+          <p className="jz-pb-intro-sub">Drop in an idea, a document, or your notes. I’ll lay it out as a board you can shape.</p>
+          <div className="jz-pb-intro-chips">
+            {INTRO_STARTERS.map((s) => (
+              <button key={s.label} className="jz-pb-intro-chip" onClick={() => useStarter(s.prompt)} title="Use this prompt (editable)">{s.label}</button>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {/* The coach bubble is gone: it described the two scan chips rendered
           directly beneath it (redundant teaching, permanent until dismissed,
           and part of the bottom-centre chrome pile-up — dogfood finding). */}
@@ -329,8 +527,12 @@ export function PromptBar() {
         </div>
       ) : null}
 
-      <div className="jz-promptbar" style={{ '--pb-max': '560px' } as CSSProperties}>
-        {ground.length > 0 ? (
+      <div
+        ref={barRef}
+        className={`jz-promptbar${dragActive ? ' jz-promptbar--drag' : ''}`}
+        style={{ '--pb-max': '560px' } as CSSProperties}
+      >
+        {ground.length > 0 || attachments.length > 0 ? (
           <div className="jz-pb-grounds">
             {ground.slice(0, 3).map((g) => (
               <span key={g.id} className="jz-pb-ground" title={g.label}>
@@ -339,6 +541,22 @@ export function PromptBar() {
               </span>
             ))}
             {ground.length > 3 ? <span className="jz-pb-ground jz-pb-ground--more">+{ground.length - 3}</span> : null}
+            {/* Attachments — context you brought, not a selected card. */}
+            {attachments.map((a) => (
+              <span
+                key={a.key}
+                className={`jz-pb-ground jz-pb-ground--attach${a.status === 'error' ? ' jz-pb-ground--error' : ''}`}
+                title={a.status === 'error' ? `${a.name} · couldn’t attach` : a.status === 'uploading' ? `${a.name} · attaching…` : a.name}
+              >
+                {a.status === 'uploading' ? (
+                  <span className="jz-pb-ground-spin" aria-hidden />
+                ) : (
+                  <Paperclip className="jz-pb-ground-clip" size={11} strokeWidth={2} aria-hidden />
+                )}
+                {a.name.replace(/\.[^.]+$/, '')}
+                <button className="jz-pb-ground-x" aria-label="Remove attachment" onClick={() => removeAttachment(a.key)}>✕</button>
+              </span>
+            ))}
           </div>
         ) : null}
 
@@ -346,7 +564,15 @@ export function PromptBar() {
           className="jz-promptbar-input"
           value={value}
           rows={2}
-          placeholder={placeholder}
+          placeholder={introAnim && introPh ? introPh : placeholder}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onPaste={(e) => {
+            // A pasted file (a screenshot, a PDF) attaches as context; pasted
+            // text falls through to the input as the prompt.
+            const files = Array.from(e.clipboardData.files);
+            if (files.length && hasIngestibleFile(files)) { e.preventDefault(); attachFiles(files); }
+          }}
           onChange={(e) => {
             const next = e.target.value;
             setValue(next);
@@ -422,6 +648,15 @@ export function PromptBar() {
                   onClick={() => { setMode(null); setModeSource('user'); }}
                 >✕</button>
               </span>
+            ) : introMode ? (
+              // Onboarding: no "/" (Jarwiz suggests the shape for you). While the
+              // composer types its own examples, preview the shape it would build.
+              introAnim && introShape ? (
+                <span className="jz-pb-ground jz-pb-mode jz-pb-mode--auto" aria-hidden>
+                  <Sparkles className="jz-pb-mode-spark" size={11} strokeWidth={2} />
+                  {MODES.find((m) => m.shape === introShape)?.label ?? introShape}
+                </span>
+              ) : null
             ) : (
               <button
                 className={`jz-promptbar-icon-btn${modeMenu ? ' jz-promptbar-icon-btn--active' : ''}`}
@@ -435,9 +670,9 @@ export function PromptBar() {
           </div>
           <button
             className="jz-promptbar-send"
-            disabled={!value.trim() || isAsking || composing || annotating}
+            disabled={!value.trim() || attachUploading || isAsking || composing || annotating}
             onClick={submit}
-            title="Send (Enter)"
+            title={attachUploading ? 'Attaching…' : 'Send (Enter)'}
           >
             {composing ? (
               <span className="jz-promptbar-busy-inline">{composePhase === 'planning' ? 'Planning…' : 'Building…'}</span>
@@ -451,6 +686,18 @@ export function PromptBar() {
           </button>
         </div>
       </div>
+
+      {/* Onboarding on-ramps: bringing your own content is as inviting as
+          typing. Calm hints — the canvas already accepts drops and the composer
+          accepts pastes, so these communicate rather than gate. */}
+      {introMounted ? (
+        <div className={`jz-pb-onramp${introMode ? '' : ' jz-pb-onramp--leaving'}`} aria-hidden>
+          <span className="jz-pb-onramp-or">or</span>
+          <span className="jz-pb-onramp-item"><FileText size={13} strokeWidth={1.9} /> drop a PDF</span>
+          <span className="jz-pb-onramp-item"><Link2 size={13} strokeWidth={1.9} /> paste a link</span>
+          <span className="jz-pb-onramp-item"><ClipboardList size={13} strokeWidth={1.9} /> paste a transcript</span>
+        </div>
+      ) : null}
     </div>
   );
 }

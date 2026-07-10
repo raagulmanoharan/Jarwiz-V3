@@ -25,6 +25,7 @@ const TLDRAW_LICENSE_KEY =
   'tldraw-2026-10-15/WyJxSWVWdzRkOCIsWyIqIl0sMTYsIjIwMjYtMTAtMTUiXQ.kbXeMnnbA7b3yl5tzrPUQFUMHCIAXwux32h1OB1m53DMcWkX5L3g0RRdvbg6cnfDP+ucDho9QfIy/4d3YkDrnA';
 import { useSync } from '@tldraw/sync';
 import { PromptBar } from './ask/PromptBar';
+import { AmbientOnboarding } from './onboarding/AmbientOnboarding';
 import { CardActionBar } from './ask/CardActionBar';
 import { ProvenanceLayer } from './ask/ProvenanceLayer';
 import { ClarifyLayer } from './ask/ClarifyLayer';
@@ -41,7 +42,6 @@ import { registerIngestion } from './ingest/registerIngestion';
 import { AgentCursorLayer } from './agents/AgentCursorLayer';
 import { AgentTaskLayer } from './agents/AgentTaskLayer';
 import { cardShapeUtils } from './shapes';
-import { BoardEntry } from './boards/BoardEntry';
 import { getRestoreError, isRestoring, subscribeRestore } from './boards/backup';
 import { getActiveBoard, getActivePersistenceKey, subscribeBoards } from './boards/boardStore';
 import { isDemo, isEmbed, isUseCases } from './boards/demo';
@@ -75,6 +75,7 @@ function JarwizOverlay() {
       <Safe label="Topbar"><Topbar /></Safe>
       <Safe label="SidePanel"><SidePanel /></Safe>
       <Safe label="ToolRail"><ToolRail /></Safe>
+      <Safe label="AmbientOnboarding"><AmbientOnboarding /></Safe>
       <Safe label="PromptBar"><PromptBar /></Safe>
       <Safe label="AgentCursorLayer"><AgentCursorLayer /></Safe>
       <Safe label="HelpLayer"><HelpLayer /></Safe>
@@ -82,7 +83,6 @@ function JarwizOverlay() {
       {/* Behavioural overlays — the ask/refine loop on cards. (Provenance
           lineage renders in the OnTheCanvas slot below, behind the shapes.) */}
       <Safe label="EmptyState"><EmptyState /></Safe>
-      <Safe label="BoardEntry"><BoardEntry /></Safe>
       <Safe label="CardTitleTag"><CardTitleTag /></Safe>
       <Safe label="CardActionBar"><CardActionBar /></Safe>
       <Safe label="ClarifyLayer"><ClarifyLayer /></Safe>
