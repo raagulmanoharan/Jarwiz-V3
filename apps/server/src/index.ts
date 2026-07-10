@@ -36,6 +36,7 @@ import { annotateBoard } from './annotate.js';
 import { getMachine } from './machines.js';
 import { streamMachineBoard } from './machineBoard.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset, sniffMime } from './assets.js';
+import { cachedImageUrl } from './imageCache.js';
 import { classifyRefineIntent, proposeSeedPrompts, streamAsk, suggestShape } from './ask.js';
 import type { AnalyzeCard, AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ReviseRequest } from '@jarwiz/shared';
 import { streamAgentRun } from './agentRun.js';
@@ -92,6 +93,22 @@ app.get('/api/assets/:id', async (c) => {
   return new Response(new Uint8Array(buf), {
     headers: { 'Content-Type': sniffMime(buf), 'Cache-Control': 'private, max-age=3600' },
   });
+});
+
+/**
+ * Cache-proxy for a web image cited by a generated card (`Image("https://…")`
+ * or `![alt](https://…)`). The browser hotlinking these directly is fragile —
+ * hotlink protection, CORS, expired URLs — so the server fetches the image
+ * once (SSRF-guarded, size/type-validated in imageCache) into the asset store
+ * and redirects to the same-origin copy. Any failure is a plain 404: the rich
+ * card's Image component hides itself rather than showing a broken frame.
+ */
+app.get('/api/image', async (c) => {
+  const src = c.req.query('src') ?? '';
+  if (!/^https?:\/\//i.test(src)) return c.json({ error: 'src must be an http(s) URL' }, 400);
+  const cached = await cachedImageUrl(src);
+  if (!cached) return c.json({ error: 'image unavailable' }, 404);
+  return c.redirect(cached, 302);
 });
 
 /** Parsed grid for a sheet card — the capped rows/sheets it renders. */

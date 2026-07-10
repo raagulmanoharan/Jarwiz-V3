@@ -248,12 +248,17 @@ function renderInline(text: string, onCite?: (page: number) => void): React.Reac
     } else if (match[5]) {
       parts.push(<code key={`code-${pos}`}>{match[5]}</code>);
     } else if (match[8]) {
-      // ![alt](url) — the image itself, bounded to the card's width.
+      // ![alt](url) — the image itself, bounded to the card's width. A remote
+      // URL routes through the server's cache-proxy (/api/image): hotlink
+      // protection, CORS, or the source page dying can't leave a broken frame,
+      // and the bytes are served same-origin from the asset store thereafter.
+      const raw = match[8];
+      const src = /^https?:\/\//i.test(raw) ? `/api/image?src=${encodeURIComponent(raw)}` : raw;
       parts.push(
         <img
           key={`img-${pos}`}
           className="jz-md-img"
-          src={match[8]}
+          src={src}
           alt={match[7] ?? ''}
           draggable={false}
           referrerPolicy="no-referrer"

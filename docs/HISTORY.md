@@ -654,3 +654,56 @@ from it should proactively update themselves, with a visible, undoable receipt.
 - Verified end-to-end in the sandbox browser: table edit → summary card
   rewrote itself with the new numbers → Undo restored the original, no
   runaway re-syncs.
+
+## 2026-07-10 (evening) — Research answers stop being text-only
+
+**Intent:** "don't restrict what comes back from web research to text" —
+a research card should mix prose, tables, charts, images, tabs, whatever the
+content calls for. Owner pointed at the OpenUI plumbing we already use for
+dashboards.
+
+- **The dashboard's generative-UI vocabulary grew up** (`dashboard/library.tsx`):
+  `Markdown(text)` (full rich text via DocMarkdown — headings, bold, citation
+  links, bullets, inline images), `Image(src, caption)` (hides itself on a
+  dead URL — never a broken frame), `Tabs(labels, panels)` (client-side, for
+  parallel angles like Reviews / Specs / Alternatives). One grammar, one
+  renderer, shared by dashboards and research.
+- **Deep research now answers as a rich card.** The dossier prompt was rebuilt
+  on the OpenUI grammar (`RICH_RESEARCH_SYSTEM`): verdict Markdown up top,
+  then per-subject sections mixing components by what each point of content
+  IS; charts only from real gathered numbers; images only from URLs the model
+  actually saw. The markdown-dossier prompt was deleted outright — one
+  research answer shape, not two.
+- **Web images stopped being fragile.** New SSRF-guarded `/api/image`
+  cache-proxy: any remote image a generated card cites is fetched once
+  server-side into the asset store and served same-origin (hotlink
+  protection, CORS, dead URLs all survive). Doc-card markdown images route
+  through it too, and plain web-grounded asks are now invited to embed
+  genuinely illustrative images they saw.
+- Verified with a live model: "research the Hubble Space Telescope" produced
+  a card with a cited verdict, four KPI tiles (36 yrs / 22,000+ papers / 6:1
+  demand / $98M cost), a Hubble-vs-JWST cost chart, and four tabs including a
+  comparison table — and the deliberately dead image hid itself.
+- Gotcha for future evals: Playwright's synthetic click can't reach buttons
+  inside a card (tldraw's background intercepts the pointer pipeline);
+  dispatch DOM `.click()` in an evaluate instead. Also: this sandbox blocks
+  ALL server-side outbound fetches (even link previews 403) — the proxy's
+  fetch leg needs a normal environment to test.
+- **Follow-up (same evening):** owner called out that images were only
+  *possible*, not *reliable* — and that a sparse image floated with dead space.
+  Added `find_image`: a client tool in the research generation loop that
+  searches Wikimedia Commons (relevance-ordered, photo mimes only, license +
+  attribution carried) so the model gets REAL image URLs instead of hoping a
+  page exposed one; the sidecar prompt carries a web-fetch fallback to the
+  same API. Card images became true heroes: full content width, 21/9 crop,
+  caption beneath. Chart width now derives from data density (a slot per
+  bar/point, shrink-only CSS) after "two bars filled the card".
+- **Second follow-up:** "still looks hand-rolled — can we do Google-grade
+  images?" → find_image became a provider chain: Google Programmable Search
+  (image mode, behind GOOGLE_SEARCH_API_KEY + GOOGLE_SEARCH_ENGINE_ID) wins
+  outright; else the keyless open trio in parallel — Wikipedia lead images
+  (the canonical photo of any notable subject), Wikimedia Commons, Openverse
+  (~800M CC images) — merged in that order, de-duped, skip-not-fake on empty.
+  All four parsers fixture-tested; the live round-trip is untestable in this
+  fully-offline sandbox, so the first research ask on a real machine is the
+  acceptance test.
