@@ -23,6 +23,7 @@ import {
   resizeBox,
   stopEventPropagation,
   useEditor,
+  useValue,
   type RecordProps,
   type TLResizeInfo,
   type TLShape,
@@ -111,6 +112,10 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
 
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
   const isStreaming = streamingSet.has(shape.id) || running;
+  // The one shared selected state (the CSS ring) — the sole thing that thickens
+  // a card's edge, identical across every card type.
+  const isSelected = useValue('prototype-selected', () => editor.getSelectedShapeIds().includes(shape.id), [editor]);
+  const sel = isSelected ? ' jz-prototype--selected' : '';
   // Reset counter — bumping it (via the refine menu) remounts the iframe below,
   // reloading the UI to its initial state without regenerating.
   const refreshNonce = useSyncExternalStore(
@@ -147,7 +152,7 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
   // spinner; otherwise (idle/error/empty) → the small prompt composer.
   if (hasDoc) {
     return (
-      <div className={`jz-prototype${interactive ? ' jz-prototype--interactive' : ''}`}>
+      <div className={`jz-prototype${interactive ? ' jz-prototype--interactive' : ''}${sel}`}>
         <iframe
           key={refreshNonce}
           className="jz-prototype-frame"
@@ -163,7 +168,7 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
 
   if (isStreaming) {
     return (
-      <div className="jz-prototype jz-prototype--composer">
+      <div className={`jz-prototype jz-prototype--composer${sel}`}>
         <div className="jz-prototype-loading">
           <Loader2 size={16} className="jz-machine-spin" />
           <span>Generating the UI…</span>
@@ -173,7 +178,7 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
   }
 
   return (
-    <div className="jz-prototype jz-prototype--composer">
+    <div className={`jz-prototype jz-prototype--composer${sel}`}>
       <div className="jz-prototype-head">
         <span className="jz-prototype-badge" aria-hidden>
           <AppWindow size={16} strokeWidth={1.8} />

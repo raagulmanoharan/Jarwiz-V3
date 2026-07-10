@@ -15,6 +15,7 @@ import {
   resizeBox,
   stopEventPropagation,
   useEditor,
+  useValue,
   type RecordProps,
   type TLResizeInfo,
   type TLShape,
@@ -92,6 +93,9 @@ function MachineCardBody({ shape }: { shape: MachineCardShape }) {
   const cardRef = useRef<HTMLDivElement | null>(null);
   const m = MACHINES.find((x) => x.id === shape.props.machineId) ?? MACHINES[0]!;
   const { subject, status } = shape.props;
+  // The one shared selected state (the CSS ring) — the sole thing that thickens
+  // a card's edge, identical across every card type.
+  const isSelected = useValue('machine-selected', () => editor.getSelectedShapeIds().includes(shape.id), [editor]);
   const running = status === 'running';
   const done = status === 'done';
   const options = m.options ?? [];
@@ -131,7 +135,7 @@ function MachineCardBody({ shape }: { shape: MachineCardShape }) {
   };
 
   return (
-    <div ref={cardRef} className={`jz-machine-card${running ? ' jz-machine-card--running' : ''}`}>
+    <div ref={cardRef} className={`jz-machine-card${running ? ' jz-machine-card--running' : ''}${isSelected ? ' jz-machine-card--selected' : ''}`}>
       <div className="jz-machine-card-head">
         <span className="jz-machine-card-badge">{MACHINE_ICONS[m.icon]}</span>
         <span className="jz-machine-card-name">{m.name}</span>

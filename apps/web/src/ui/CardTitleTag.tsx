@@ -3,12 +3,14 @@
  * frame just above its top-left corner. Labels are ALWAYS visible (owner call
  * 2026-07-05): the board reads like a map of named artifacts, not a mystery
  * of identical frames. The sole-selected shape's tag becomes an input for
- * in-place renaming; unselected tags are inert text that lets clicks fall
- * through to the shape. Overlay-rendered (not inside each ShapeUtil) so every
- * primitive gets it uniformly with zero per-shape code.
+ * in-place renaming; every tag is also a HANDLE — dragging the title drags
+ * the card (owner call 2026-07-10), a plain click selects (or, when already
+ * selected, starts a rename). Overlay-rendered (not inside each ShapeUtil) so
+ * every primitive gets it uniformly with zero per-shape code.
  */
 
-import { stopEventPropagation, useEditor, useValue } from 'tldraw';
+import { useRef } from 'react';
+import { useEditor, useValue, type TLShapeId } from 'tldraw';
 import { TITLED, getShapeTitle, setShapeTitle } from '../shapes/shapeTitle';
 
 interface Tag {
@@ -20,8 +22,23 @@ interface Tag {
   editable: boolean;
 }
 
+/** A drag-in-progress from a title tag. `moved` flips once the pointer clears
+ *  the click slop — before that, pointer-up is a click (select / rename). */
+interface TitleDrag {
+  id: TLShapeId;
+  startX: number;
+  startY: number;
+  originX: number;
+  originY: number;
+  moved: boolean;
+}
+
+/** Screen-px of movement that separates a click from a drag. */
+const DRAG_SLOP = 4;
+
 export function CardTitleTag() {
   const editor = useEditor();
+  const drag = useRef<TitleDrag | null>(null);
   const tags = useValue(
     'title-tags',
     () => {
@@ -46,6 +63,57 @@ export function CardTitleTag() {
     [editor],
   );
 
+  // The tag doubles as a drag handle for its card. preventDefault on the down
+  // keeps the input from grabbing focus/starting a text selection mid-drag; a
+  // clean click focuses it on the UP instead. When the input is ALREADY
+  // focused the user is renaming — native caret/selection behaviour wins.
+  const onTagPointerDown = (e: React.PointerEvent<HTMLElement>, id: string) => {
+    e.stopPropagation();
+    if (e.button !== 0) return;
+    if (document.activeElement === e.currentTarget) return;
+    e.preventDefault();
+    const shape = editor.getShape(id as TLShapeId);
+    if (!shape) return;
+    drag.current = { id: id as TLShapeId, startX: e.clientX, startY: e.clientY, originX: shape.x, originY: shape.y, moved: false };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onTagPointerMove = (e: React.PointerEvent<HTMLElement>) => {
+    e.stopPropagation();
+    const d = drag.current;
+    if (!d) return;
+    const dx = e.clientX - d.startX;
+    const dy = e.clientY - d.startY;
+    if (!d.moved) {
+      if (Math.hypot(dx, dy) < DRAG_SLOP) return;
+      d.moved = true;
+      editor.markHistoryStoppingPoint('drag card by title');
+    }
+    const shape = editor.getShape(d.id);
+    if (!shape) return;
+    // Screen delta → page delta; frames don't scale, so parent space matches.
+    const z = editor.getZoomLevel();
+    editor.updateShape({ id: d.id, type: shape.type, x: d.originX + dx / z, y: d.originY + dy / z });
+  };
+  const onTagPointerUp = (e: React.PointerEvent<HTMLElement>, editable: boolean) => {
+    e.stopPropagation();
+    const d = drag.current;
+    drag.current = null;
+    if (!d) return;
+    if (d.moved || !editable) {
+      // A drag lands like a body-drag would — the moved card ends selected.
+      // A plain click on an unselected card's label selects it too.
+      editor.select(d.id);
+    } else {
+      // Plain click on the selected card's tag → rename in place.
+      const el = e.currentTarget as HTMLInputElement;
+      el.focus?.();
+      el.setSelectionRange?.(el.value.length, el.value.length);
+    }
+  };
+  const onTagPointerCancel = () => {
+    drag.current = null;
+  };
+
   if (tags.length === 0) return null;
   return (
     <>
@@ -56,9 +124,17 @@ export function CardTitleTag() {
           width: Math.max(140, Math.min(t.w - 4, 360)),
         };
         if (!t.editable) {
-          // Inert label: clicks pass through and select the shape beneath.
+          // Label as handle: click selects the card, drag moves it.
           return (
-            <div key={t.id} className="jz-title-tag jz-title-tag--label" style={style}>
+            <div
+              key={t.id}
+              className="jz-title-tag jz-title-tag--label"
+              style={style}
+              onPointerDown={(e) => onTagPointerDown(e, t.id)}
+              onPointerMove={onTagPointerMove}
+              onPointerUp={(e) => onTagPointerUp(e, false)}
+              onPointerCancel={onTagPointerCancel}
+            >
               {t.title}
             </div>
           );
@@ -82,9 +158,10 @@ export function CardTitleTag() {
               }
               e.stopPropagation();
             }}
-            onPointerDown={stopEventPropagation}
-            onPointerMove={stopEventPropagation}
-            onPointerUp={stopEventPropagation}
+            onPointerDown={(e) => onTagPointerDown(e, t.id)}
+            onPointerMove={onTagPointerMove}
+            onPointerUp={(e) => onTagPointerUp(e, true)}
+            onPointerCancel={onTagPointerCancel}
           />
         );
       })}

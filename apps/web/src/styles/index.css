@@ -643,7 +643,11 @@ body,
   box-sizing: border-box;
   padding: var(--jz-space-5); /* THE uniform card inset — matches every other card */
   background: var(--jz-card-surface);
-  border: 1.5px solid color-mix(in srgb, var(--jz-accent) 38%, var(--jz-hairline));
+  /* THE uniform card border — one hairline at rest, same as every other card
+     (.jz-doc / .jz-prototype). The only thing that thickens a card's edge is
+     selection; a machine block is not perpetually "emphasised" (owner call
+     2026-07-10 — one border language across all cards). */
+  border: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-lg);
   box-shadow: var(--jz-e2, 0 2px 10px rgba(8, 9, 11, 0.14));
 }
@@ -3001,16 +3005,19 @@ body,
   overflow: hidden;
   text-overflow: ellipsis;
   pointer-events: all;
+  /* The tag is a drag handle (ui/CardTitleTag) — keep touch drags ours. */
+  touch-action: none;
 }
 
 .jz-title-tag::placeholder {
   color: var(--jz-ink-400);
 }
 
-/* Unselected cards show an inert label — clicks fall through to the shape
- * beneath, which selects it and swaps the label for the editable input. */
+/* Unselected cards show a label that doubles as a handle: click selects the
+ * card, drag moves it (owner call 2026-07-10 — the title is part of the
+ * card's grabbable surface, not inert text). */
 .jz-title-tag--label {
-  pointer-events: none;
+  cursor: grab;
 }
 
 .jz-doc-content {
@@ -3032,8 +3039,14 @@ body,
   overflow: visible;
 }
 
-/* Selected state — subtle ring drawn in CSS, bypassing tldraw canvas chrome */
-.jz-doc--selected {
+/* THE one selected state, shared by every card type — a subtle ring drawn in
+   CSS (bypassing tldraw's suppressed canvas chrome) so selection is the ONE
+   place a card's edge thickens, and it looks identical on a doc, a machine
+   block, or a prototype (owner call 2026-07-10 — one selected state, one
+   border language across all cards). */
+.jz-doc--selected,
+.jz-machine-card--selected,
+.jz-prototype--selected {
   box-shadow: var(--jz-e2), 0 0 0 1.5px rgba(255, 255, 255, 0.55);
   border-color: rgba(255, 255, 255, 0.3);
 }
@@ -3542,6 +3555,13 @@ body,
   border-color: var(--jz-hairline-strong);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--jz-ink-900) 8%, transparent), var(--jz-e2);
 }
+/* Selection always wins over the interactive ring — a selected live prototype
+   shows the one shared selected state, same as any other card (this rule
+   follows --interactive so it overrides at equal specificity). */
+.jz-prototype--interactive.jz-prototype--selected {
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: var(--jz-e2), 0 0 0 1.5px rgba(255, 255, 255, 0.55);
+}
 
 /* The UI fills the card edge-to-edge — no inner padding — so the card frame is
    the screen, exactly like the PDF card's page. */
@@ -3560,7 +3580,9 @@ body,
   padding: var(--jz-space-5);
   gap: var(--jz-space-2);
   background: var(--jz-card-surface);
-  border: 1.5px solid var(--jz-hairline-strong);
+  /* Same one-hairline resting border as every other card — .jz-prototype
+     already sets it; the composer just inherits, no heavier override (owner
+     call 2026-07-10 — one border language across all cards). */
 }
 
 /* Header: an icon badge aligned with the card name — mirrors the machine head. */
