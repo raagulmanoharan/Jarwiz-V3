@@ -1,17 +1,23 @@
 /**
  * Real images for generated cards — a `find_image` tool the model can call
- * while composing a rich answer. Searches Wikimedia Commons (free, openly
- * licensed, covers most research subjects: places, products, people, space
- * hardware…) and returns actual image URLs with attribution, so a research
- * card can carry a genuine photo instead of hoping a fetched page happened to
- * expose one. The model never invents an image URL — this tool is where real
- * ones come from; the /api/image cache-proxy then makes them durable at
- * render time.
+ * while composing a rich answer. Provider chain, best first:
+ *
+ *   1. Google Programmable Search (image mode) — Google-Images-grade results
+ *      for ANY subject, including commercial products. Opt-in: set
+ *      GOOGLE_SEARCH_API_KEY + GOOGLE_SEARCH_ENGINE_ID on the server (same
+ *      place as ANTHROPIC_API_KEY; free tier is 100 queries/day).
+ *   2. Wikimedia Commons — free, keyless, openly licensed; strong on
+ *      encyclopedic subjects (places, hardware, people, nature).
+ *   3. Nothing — the model is told to skip the image, never invent a URL.
+ *
+ * The /api/image cache-proxy then makes whichever URL wins durable at render
+ * time (fetched once server-side, served same-origin).
  */
 
 import type Anthropic from '@anthropic-ai/sdk';
 
 const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
+const GOOGLE_API = 'https://www.googleapis.com/customsearch/v1';
 const FETCH_TIMEOUT_MS = 8000;
 /** Rendered width requested from Commons — matches the card's hero size so we
  *  don't pull multi-megabyte originals through the cache-proxy. */
@@ -29,10 +35,11 @@ export interface FoundImage {
 export const FIND_IMAGE_TOOL: Anthropic.Tool = {
   name: 'find_image',
   description:
-    'Find a REAL, freely-licensed photo or illustration of a subject (searches Wikimedia Commons). ' +
-    'Returns image URLs with title, license, and attribution page. Use the returned url verbatim in ' +
-    'Image(src, caption) or ![alt](url) — never alter or invent image URLs. Query with a short, ' +
-    'concrete subject ("Hubble Space Telescope", "Aeron chair"), not a sentence.',
+    'Find a REAL photo or illustration of a subject via image web search. Returns image URLs with ' +
+    'title and an attribution page (license included when known). Use the returned url verbatim in ' +
+    'Image(src, caption) or ![alt](url) — never alter or invent image URLs; caption with the source ' +
+    '(page or license). Query with a short, concrete subject ("Hubble Space Telescope", ' +
+    '"Aeron chair"), not a sentence.',
   input_schema: {
     type: 'object',
     properties: {
@@ -77,6 +84,58 @@ export function parseCommonsResponse(json: unknown): FoundImage[] {
   return out.sort((a, b) => a.index - b.index).map(({ index: _i, ...img }) => img);
 }
 
+/** Parse a Google Programmable Search image response into candidates.
+ *  Pure — exercised directly by tests since the sandbox has no network. */
+export function parseGoogleResponse(json: unknown): FoundImage[] {
+  const items = (json as { items?: unknown[] })?.items;
+  if (!Array.isArray(items)) return [];
+  const out: FoundImage[] = [];
+  for (const item of items) {
+    const it = item as {
+      link?: string;
+      title?: string;
+      mime?: string;
+      image?: { contextLink?: string };
+    };
+    if (!it.link || !/^image\//i.test(it.mime ?? '')) continue;
+    out.push({
+      url: it.link,
+      title: it.title ?? '',
+      page: it.image?.contextLink ?? '',
+      // Google image results carry no license metadata — the caption should
+      // attribute the source page, not claim a license.
+      license: '',
+    });
+  }
+  return out;
+}
+
+/** Google-Images-grade search — only when the operator has configured keys. */
+async function searchGoogleImages(query: string, count: number): Promise<FoundImage[]> {
+  const key = process.env.GOOGLE_SEARCH_API_KEY?.trim();
+  const cx = process.env.GOOGLE_SEARCH_ENGINE_ID?.trim();
+  if (!key || !cx) return [];
+  const params = new URLSearchParams({
+    key,
+    cx,
+    q: query,
+    searchType: 'image',
+    num: String(Math.max(1, Math.min(5, count))),
+    safe: 'active',
+    imgSize: 'large',
+  });
+  try {
+    const res = await fetch(`${GOOGLE_API}?${params}`, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      headers: { 'user-agent': 'JarwizBot/1.0 (+find-image)' },
+    });
+    if (!res.ok) return [];
+    return parseGoogleResponse(await res.json());
+  } catch {
+    return [];
+  }
+}
+
 /** Search Commons for images of `query`. Best-effort: any failure returns []
  *  — the model is told to simply skip images when none come back. */
 export async function searchCommonsImages(query: string, count = 3): Promise<FoundImage[]> {
@@ -104,6 +163,13 @@ export async function searchCommonsImages(query: string, count = 3): Promise<Fou
   }
 }
 
+/** The provider chain: Google (when keys are configured) → Commons → []. */
+export async function searchImages(query: string, count = 3): Promise<FoundImage[]> {
+  const google = await searchGoogleImages(query, count);
+  if (google.length > 0) return google.slice(0, count);
+  return searchCommonsImages(query, count);
+}
+
 /** Execute a find_image tool call; the returned string goes back to the model
  *  as the tool_result. Always valid JSON, never a thrown error — a failed
  *  lookup must read as "no images", not break the generation turn. */
@@ -111,9 +177,9 @@ export async function runFindImage(input: unknown): Promise<string> {
   const { query, count } = (input ?? {}) as { query?: unknown; count?: unknown };
   const q = String(query ?? '').trim();
   if (!q) return JSON.stringify({ images: [], note: 'empty query' });
-  const images = await searchCommonsImages(q, typeof count === 'number' ? count : 3);
+  const images = await searchImages(q, typeof count === 'number' ? count : 3);
   if (images.length === 0) {
-    return JSON.stringify({ images: [], note: 'no freely-licensed image found — skip the image' });
+    return JSON.stringify({ images: [], note: 'no image found — skip the image' });
   }
   return JSON.stringify({ images });
 }
