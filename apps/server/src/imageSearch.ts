@@ -1,13 +1,18 @@
 /**
  * Real images for generated cards — a `find_image` tool the model can call
- * while composing a rich answer. Provider chain, best first:
+ * while composing a rich answer. Providers, best first:
  *
  *   1. Google Programmable Search (image mode) — Google-Images-grade results
  *      for ANY subject, including commercial products. Opt-in: set
  *      GOOGLE_SEARCH_API_KEY + GOOGLE_SEARCH_ENGINE_ID on the server (same
  *      place as ANTHROPIC_API_KEY; free tier is 100 queries/day).
- *   2. Wikimedia Commons — free, keyless, openly licensed; strong on
- *      encyclopedic subjects (places, hardware, people, nature).
+ *   2. The keyless OPEN trio, queried in parallel and merged in this order:
+ *      - Wikipedia lead image — the photo atop the subject's article, usually
+ *        THE canonical picture of any notable thing.
+ *      - Wikimedia Commons search — openly licensed; strong on encyclopedic
+ *        subjects (places, hardware, people, nature).
+ *      - Openverse — the Creative Commons search engine (~800M images from
+ *        Flickr, museums, archives); broadens coverage past encyclopedic.
  *   3. Nothing — the model is told to skip the image, never invent a URL.
  *
  * The /api/image cache-proxy then makes whichever URL wins durable at render
@@ -17,10 +22,12 @@
 import type Anthropic from '@anthropic-ai/sdk';
 
 const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
+const WIKIPEDIA_API = 'https://en.wikipedia.org/w/api.php';
+const OPENVERSE_API = 'https://api.openverse.org/v1/images/';
 const GOOGLE_API = 'https://www.googleapis.com/customsearch/v1';
 const FETCH_TIMEOUT_MS = 8000;
-/** Rendered width requested from Commons — matches the card's hero size so we
- *  don't pull multi-megabyte originals through the cache-proxy. */
+/** Rendered width requested from thumbnail-capable APIs — matches the card's
+ *  hero size so we don't pull multi-megabyte originals through the proxy. */
 const THUMB_WIDTH = 960;
 
 export interface FoundImage {
@@ -35,10 +42,11 @@ export interface FoundImage {
 export const FIND_IMAGE_TOOL: Anthropic.Tool = {
   name: 'find_image',
   description:
-    'Find a REAL photo or illustration of a subject via image web search. Returns image URLs with ' +
-    'title and an attribution page (license included when known). Use the returned url verbatim in ' +
-    'Image(src, caption) or ![alt](url) — never alter or invent image URLs; caption with the source ' +
-    '(page or license). Query with a short, concrete subject ("Hubble Space Telescope", ' +
+    'Find a REAL photo or illustration of a subject via image search (Google Images when configured; ' +
+    'else Wikipedia lead images, Wikimedia Commons, and Openverse in parallel). Returns image URLs ' +
+    'with title and an attribution page (license included when known). Use the returned url verbatim ' +
+    'in Image(src, caption) or ![alt](url) — never alter or invent image URLs; caption with the ' +
+    'source (page or license). Query with a short, concrete subject ("Hubble Space Telescope", ' +
     '"Aeron chair"), not a sentence.',
   input_schema: {
     type: 'object',
@@ -163,11 +171,123 @@ export async function searchCommonsImages(query: string, count = 3): Promise<Fou
   }
 }
 
-/** The provider chain: Google (when keys are configured) → Commons → []. */
+/** Parse a Wikipedia generator=search + pageimages response: the lead image
+ *  of the best-matching article. Pure — tested against a fixture. */
+export function parseWikipediaResponse(json: unknown): FoundImage[] {
+  const pages = (json as { query?: { pages?: Record<string, unknown> } })?.query?.pages;
+  if (!pages || typeof pages !== 'object') return [];
+  const out: Array<FoundImage & { index: number }> = [];
+  for (const page of Object.values(pages)) {
+    const p = page as {
+      title?: string;
+      index?: number;
+      fullurl?: string;
+      thumbnail?: { source?: string };
+    };
+    if (!p.thumbnail?.source) continue;
+    out.push({
+      url: p.thumbnail.source,
+      title: p.title ?? '',
+      page: p.fullurl ?? '',
+      // Lead images are typically free but not uniformly — attribute the
+      // article page rather than asserting a license we didn't read.
+      license: '',
+      index: p.index ?? 0,
+    });
+  }
+  return out.sort((a, b) => a.index - b.index).map(({ index: _i, ...img }) => img);
+}
+
+/** The lead image of the subject's Wikipedia article — one lookup, usually
+ *  THE canonical photo of any notable subject. */
+async function searchWikipediaLead(query: string): Promise<FoundImage[]> {
+  const params = new URLSearchParams({
+    action: 'query',
+    format: 'json',
+    generator: 'search',
+    gsrsearch: query,
+    gsrlimit: '2',
+    prop: 'pageimages|info',
+    piprop: 'thumbnail',
+    pithumbsize: String(THUMB_WIDTH),
+    inprop: 'url',
+  });
+  try {
+    const res = await fetch(`${WIKIPEDIA_API}?${params}`, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      headers: { 'user-agent': 'JarwizBot/1.0 (+find-image)' },
+    });
+    if (!res.ok) return [];
+    return parseWikipediaResponse(await res.json());
+  } catch {
+    return [];
+  }
+}
+
+/** Parse an Openverse /v1/images response. Pure — tested against a fixture. */
+export function parseOpenverseResponse(json: unknown): FoundImage[] {
+  const results = (json as { results?: unknown[] })?.results;
+  if (!Array.isArray(results)) return [];
+  const out: FoundImage[] = [];
+  for (const r of results) {
+    const it = r as {
+      url?: string;
+      thumbnail?: string;
+      title?: string;
+      license?: string;
+      license_version?: string;
+      foreign_landing_url?: string;
+    };
+    const url = it.thumbnail || it.url || '';
+    if (!url) continue;
+    out.push({
+      url,
+      title: it.title ?? '',
+      page: it.foreign_landing_url ?? '',
+      license: it.license ? `${it.license.toUpperCase()}${it.license_version ? ` ${it.license_version}` : ''}` : '',
+    });
+  }
+  return out;
+}
+
+/** Openverse — the Creative Commons search engine. Keyless (anonymous tier). */
+async function searchOpenverse(query: string, count: number): Promise<FoundImage[]> {
+  const params = new URLSearchParams({
+    q: query,
+    page_size: String(Math.max(1, Math.min(5, count))),
+    mature: 'false',
+  });
+  try {
+    const res = await fetch(`${OPENVERSE_API}?${params}`, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      headers: { 'user-agent': 'JarwizBot/1.0 (+find-image)' },
+    });
+    if (!res.ok) return [];
+    return parseOpenverseResponse(await res.json());
+  } catch {
+    return [];
+  }
+}
+
+/** The provider chain: Google (when keys are configured) wins outright; else
+ *  the keyless open trio runs in PARALLEL (latency doesn't stack) and merges
+ *  Wikipedia-lead → Commons → Openverse, de-duped by URL. */
 export async function searchImages(query: string, count = 3): Promise<FoundImage[]> {
   const google = await searchGoogleImages(query, count);
   if (google.length > 0) return google.slice(0, count);
-  return searchCommonsImages(query, count);
+  const [wiki, commons, openverse] = await Promise.all([
+    searchWikipediaLead(query),
+    searchCommonsImages(query, count),
+    searchOpenverse(query, count),
+  ]);
+  const merged: FoundImage[] = [];
+  const seen = new Set<string>();
+  for (const img of [...wiki, ...commons, ...openverse]) {
+    if (seen.has(img.url)) continue;
+    seen.add(img.url);
+    merged.push(img);
+  }
+  return merged.slice(0, count);
 }
 
 /** Execute a find_image tool call; the returned string goes back to the model
