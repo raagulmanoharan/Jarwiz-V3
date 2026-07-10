@@ -3,7 +3,8 @@
  * operations sit visually on the thing they act on (anchored via
  * useCardAnchor, camera-tracked, clamped clear of the topbar). It holds
  * one-tap OPERATIONS on the artifact: the Refine ▾ transforms. Typed/open
- * questions live in the prompt bar; provenance lives in the drawn edges.
+ * questions live in the prompt bar; provenance is revealed on click by
+ * ProvenanceLayer (no persistent edges on the canvas).
  */
 
 import { useRef, useState, type CSSProperties } from 'react';
@@ -303,7 +304,7 @@ export function CardActionBar() {
   );
 
   // Nothing meaningful to offer (e.g. a single empty card) → no bar at all.
-  // Provenance itself needs no button: the drawn edges ARE the lineage.
+  // Provenance itself needs no button: selecting a card reveals its lineage.
   if (transforms.length === 0 && !profileable && !sticky && !formattable && !showMore) return null;
   if (!anchor) return null;
 

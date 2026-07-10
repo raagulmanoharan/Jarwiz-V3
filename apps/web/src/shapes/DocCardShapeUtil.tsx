@@ -21,7 +21,6 @@ import { useAutopilot } from '../agents/useAutopilot';
 import { useTypingPause } from '../agents/useTypingPause';
 import { abortAutopilot, continueProse, isAutopilotReady, isAutopilotRunning, subscribeAutopilot } from '../agents/autopilotStore';
 import { DocMarkdown } from '../ui/DocMarkdown';
-import { getResponsePdfSource } from '../pdf/provenance';
 import { setPdfPage } from '../pdf/pdfView';
 import { toggleInline } from '../ask/textFormat';
 import { deriveTitle, titleIsAuto } from './shapeTitle';
@@ -275,7 +274,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
           <DocMarkdown
             content={text}
             onCite={(page) => {
-              const pdfId = (shape.props.sourcePdfId as TLShapeId) || getResponsePdfSource(shape.id);
+              const pdfId = shape.props.sourcePdfId as TLShapeId;
               if (!pdfId || !editor.getShape(pdfId)) return;
               setPdfPage(pdfId, page);
               editor.select(pdfId);

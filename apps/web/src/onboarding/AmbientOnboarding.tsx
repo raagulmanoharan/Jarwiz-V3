@@ -258,6 +258,10 @@ function AmbientScene({ hushed }: { hushed: boolean }) {
       const el = curEl(curId); const c = CARDS[idx]; if (!el || !c) return;
       const p = px(c.fx, c.fy);
       const tx = c.fx > 0.5 ? p.x - 96 : p.x + 8, ty = p.y + 10;
+      // Re-measure at birth time: the first measure lands while the composer
+      // is still gliding up to centre, so a stale orb puts the ring (and the
+      // newborn cursor's first frame) in empty space above the composer.
+      measureOrb();
       setCur(el, orb.x, orb.y, 0, 0.12); showCur(el, true);
       pulseOrb();
       await sleep(90);

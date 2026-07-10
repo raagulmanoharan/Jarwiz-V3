@@ -37,11 +37,9 @@ import {
 } from '../shapes';
 import { readSSE } from '../agents/sse';
 import { startStreaming, stopStreaming } from '../agents/streaming';
-import { setResponsePdfSource } from '../pdf/provenance';
 import { clearDraft, getDraft, setDraft, updateDraft } from './draft';
 import { clearRegen, setRegen } from './regen';
 import { clearClarify, setClarify } from './clarify';
-import { setProvenance } from './provenance';
 import { logEvent } from '../log/eventLog';
 import { clearAgentTask, setAgentTask } from '../agents/agentTask';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from '../agents/presence';
@@ -67,9 +65,16 @@ export function cancelActiveAsk(): void {
   activeRun?.controller.abort();
 }
 
+/** Is a run in flight or a draft awaiting Keep/Discard? The auto-sync engine
+ *  (sync.ts) waits on this before dispatching a queued update — the same
+ *  condition `ask` itself refuses on, so auto-work queues behind the user. */
+export function isAskBusy(): boolean {
+  return Boolean(activeRun) || Boolean(getDraft());
+}
+
 /** The answer card kinds that can be refined in place, and the AskShape we send
  *  to the server as the "keep this format" hint for each. */
-const REFINABLE: Record<string, AskShape> = {
+export const REFINABLE: Record<string, AskShape> = {
   'doc-card': 'doc',
   'table-card': 'table',
   'diagram-card': 'diagram',
@@ -217,8 +222,9 @@ function toSource(editor: Editor, shape: TLShape): AskSource | null {
   }
 }
 
-/** A short label for an Ask source — its primitive title, else a friendly kind name. */
-function sourceLabel(shape: TLShape): string {
+/** A short label for an Ask source — its primitive title, else a friendly kind
+ *  name. Used by the auto-sync pill ("Updated to match …"). */
+export function sourceLabel(shape: TLShape): string {
   const title = getShapeTitle(shape).trim();
   if (title) return title.length > 28 ? `${title.slice(0, 27)}…` : title;
   const fallback: Record<string, string> = {
@@ -293,11 +299,10 @@ export function useAsk() {
       // invention (dogfood 2026-07-04 finding #1).
       const sources = sourceShapes.map((s) => toSource(editor, s)).filter((s): s is AskSource => Boolean(s));
 
-      // Provenance (edges + "Based on:" labels) tracks the shapes that
-      // actually CONTRIBUTED content — an empty card earns no lineage edge.
+      // Provenance tracks the shapes that actually CONTRIBUTED content — an
+      // empty card earns no lineage.
       const contributingShapes = sourceShapes.filter((s) => toSource(editor, s) !== null);
       const contributingIds = contributingShapes.map((s) => s.id);
-      const sourceLabels = contributingShapes.map((s) => sourceLabel(s));
 
       const pdfSourceId = sourceShapes.find((s) => s.type === 'pdf-card')?.id ?? null;
 
@@ -372,11 +377,10 @@ export function useAsk() {
         createdIds.push(id);
         const d = getDraft();
         if (!d) {
-          recordSources(editor, id, contributingIds);
+          recordSources(editor, id, contributingIds, trimmed);
           setDraft({
             id,
             groupIds: [],
-            arrowIds: [],
             status: 'streaming',
             prompt: trimmed,
             sourceIds,
@@ -522,14 +526,13 @@ export function useAsk() {
                 },
               });
             }
-            if (pdfSourceId) setResponsePdfSource(id, pdfSourceId);
             // Record what this answer was built from (show-your-work, 2.2):
-            // the session store feeds "Based on:" labels, the card meta feeds
-            // the on-click lineage overlay (ProvenanceLayer).
-            setProvenance(id, contributingIds, sourceLabels);
-            recordSources(editor, id, contributingIds);
+            // card meta feeds the on-click lineage overlay (ProvenanceLayer)
+            // and the auto-sync engine (sync.ts) that refreshes this card when
+            // a source it was built from changes.
+            recordSources(editor, id, contributingIds, trimmed);
             startStreaming(id);
-            setDraft({ id, arrowIds: [], status: 'streaming', prompt: trimmed, logLabel: opts?.logLabel, sourceIds, shape: event.shape, pdfSourceId });
+            setDraft({ id, status: 'streaming', prompt: trimmed, logLabel: opts?.logLabel, sourceIds, shape: event.shape, pdfSourceId });
             frameCard(editor, [id], sourceIds);
             // A prototype built FROM a card should show its lineage the moment
             // it lands — select it so the provenance hairline to its source(s)
@@ -727,7 +730,7 @@ export function discardDraft(editor: Editor): void {
   if (!d) return;
   cancelActiveAsk(); // stop the model stream, not just hide the card
   stopStreaming(d.id);
-  editor.deleteShapes([d.id, ...(d.groupIds ?? []), ...d.arrowIds]);
+  editor.deleteShapes([d.id, ...(d.groupIds ?? [])]);
   clearDraft();
 }
 
@@ -809,14 +812,21 @@ export function placeInLane(
 }
 
 /** Record an answer's lineage on the card itself (durable, survives reload):
- *  `meta.jzSources` holds the ids of the cards it was built from. The canvas
- *  no longer carries persistent arrow shapes — ProvenanceLayer draws a subtle
- *  hairline only for the card you click (owner call, 2026-07-05). */
+ *  `meta.jzSources` holds the ids of the cards it was built from, and
+ *  `meta.jzPrompt` the ask that produced it — so the auto-sync engine can
+ *  faithfully re-run the same ask when a source changes. The canvas carries no
+ *  persistent arrow shapes — ProvenanceLayer draws a subtle hairline only for
+ *  the card you click (owner call, 2026-07-05). */
 export const PROV_META_KEY = 'jzSources';
-function recordSources(editor: Editor, cardId: TLShapeId, sourceIds: TLShapeId[]): void {
+export const PROMPT_META_KEY = 'jzPrompt';
+function recordSources(editor: Editor, cardId: TLShapeId, sourceIds: TLShapeId[], prompt: string): void {
   const card = editor.getShape(cardId);
   if (!card) return;
   const ids = sourceIds.filter((id) => id !== cardId && editor.getShape(id));
   if (ids.length === 0) return;
-  editor.updateShape({ id: cardId, type: card.type, meta: { ...card.meta, [PROV_META_KEY]: ids } });
+  editor.updateShape({
+    id: cardId,
+    type: card.type,
+    meta: { ...card.meta, [PROV_META_KEY]: ids, [PROMPT_META_KEY]: prompt },
+  });
 }
