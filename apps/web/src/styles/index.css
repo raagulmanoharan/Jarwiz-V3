@@ -4400,8 +4400,16 @@ body,
   font-weight: 500;
   color: var(--jz-ink-700);
   white-space: nowrap;
+}
+
+/* The label truncates INSIDE the chip (min-width: 0 lets it shrink as a flex
+   item) so a long card title ellipsizes instead of shoving the ✕ dismiss
+   past the chip's clip edge. */
+.jz-pb-ground-label {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Drop-to-attach: a file dragged over the composer highlights it as a target,

@@ -584,7 +584,10 @@ export function PromptBar() {
           <div className="jz-pb-grounds">
             {ground.slice(0, 3).map((g) => (
               <span key={g.id} className="jz-pb-ground" title={g.label}>
-                {g.label}
+                {/* Label gets its own truncating span — ellipsis can't apply to
+                    bare text in a flex row, and without it a long title shoves
+                    the ✕ past the chip's clip edge (owner report, 2026-07-10). */}
+                <span className="jz-pb-ground-label">{g.label}</span>
                 <button className="jz-pb-ground-x" aria-label="Remove from context" onClick={() => dropGround(g.id)}>✕</button>
               </span>
             ))}
@@ -601,7 +604,7 @@ export function PromptBar() {
                 ) : (
                   <Paperclip className="jz-pb-ground-clip" size={11} strokeWidth={2} aria-hidden />
                 )}
-                {a.name.replace(/\.[^.]+$/, '')}
+                <span className="jz-pb-ground-label">{a.name.replace(/\.[^.]+$/, '')}</span>
                 <button className="jz-pb-ground-x" aria-label="Remove attachment" onClick={() => removeAttachment(a.key)}>✕</button>
               </span>
             ))}
