@@ -40,7 +40,7 @@ const RESEARCH_SIDECAR_TIMEOUT_MS = 300_000;
 const PROTOTYPE_SIDECAR_TIMEOUT_MS = 240_000;
 const PER_SOURCE_CHARS = 8_000;
 
-const DOC_SYSTEM = `You answer a question about the provided source document(s) on a canvas, as a clear written card. Use clean markdown: an optional short "# " title line, then tight paragraphs (and sub-headings only if it genuinely helps). A small markdown table (| a | b | rows) or an image (![alt](url) — only a real URL from the sources) is welcome where it genuinely clarifies; "---" on its own line draws a divider. Never include code blocks, fenced code, or Mermaid/diagram source — if a diagram would help, describe the flow in words (the canvas has a separate diagram tool). Ground every claim in the provided content; if the sources don't contain the answer, say so plainly rather than inventing. Be specific and concise — no preamble, no sign-off.`;
+const DOC_SYSTEM = `You answer a question about the provided source document(s) on a canvas, as a clear written card. Use clean markdown: an optional short "# " title line, then tight paragraphs (and sub-headings only if it genuinely helps). A small markdown table (| a | b | rows) or an image (![alt](url) — only a real URL from the sources, a fetched page, or the find_image tool) is welcome where it genuinely clarifies; "---" on its own line draws a divider. Never include code blocks, fenced code, or Mermaid/diagram source — if a diagram would help, describe the flow in words (the canvas has a separate diagram tool). Ground every claim in the provided content; if the sources don't contain the answer, say so plainly rather than inventing. Be specific and concise — no preamble, no sign-off.`;
 
 const LIST_SYSTEM = `You answer a question about the provided source document(s) as a focused markdown list. Optionally one "# " title line, then "- " bullets (or "1." steps if the question implies order). Each item tight and specific, grounded in the content. If the sources don't support an item, omit it. No preamble.`;
 
@@ -517,6 +517,16 @@ interface GenOpts {
   };
 }
 
+/** The find_image bundle offered to every web-enabled answer (research,
+ *  table, doc/list). One shared instance — it's stateless; the prompts gate
+ *  when an image is actually warranted. */
+const FIND_IMAGE_CLIENT: NonNullable<GenOpts['clientTools']> = {
+  tools: [FIND_IMAGE_TOOL],
+  run: (name, input) =>
+    name === 'find_image' ? runFindImage(input) : Promise.resolve('{"error":"unknown tool"}'),
+  status: 'finding a real image…',
+};
+
 /** The per-mode generation budget the two generators share. */
 function genBudget(opts: GenOpts) {
   return {
@@ -958,14 +968,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
       imageData,
       // Rows of visual things earn a thumbnail column — find_image gives the
       // model real image URLs to fill it with (clause-diff stays text-only).
-      clientTools: isDiff
-        ? undefined
-        : {
-            tools: [FIND_IMAGE_TOOL],
-            run: (name, input) =>
-              name === 'find_image' ? runFindImage(input) : Promise.resolve('{"error":"unknown tool"}'),
-            status: 'finding images…',
-          },
+      clientTools: isDiff ? undefined : FIND_IMAGE_CLIENT,
     });
     if (signal.aborted) return;
     let columns: string[] = [];
@@ -1008,7 +1011,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
       return;
     }
     // Not clean JSON — degrade to a written answer.
-    yield* streamDoc('doc', DOC_SYSTEM + WEB_DIRECTIVE, user, signal, images, { web: true, framePaths, imageData });
+    yield* streamDoc('doc', DOC_SYSTEM + WEB_DIRECTIVE, user, signal, images, { web: true, framePaths, imageData, clientTools: FIND_IMAGE_CLIENT });
     return;
   }
 
@@ -1017,7 +1020,9 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   if (linkRefs.length > 0) system += linkCiteDirective(linkRefs);
   if (wantsChecklist(req.prompt)) system += CHECKLIST_DIRECTIVE;
   system += WEB_DIRECTIVE;
-  yield* streamDoc(shape, system, user, signal, images, { web: true, framePaths, imageData });
+  // Everyday doc/list answers carry find_image too — the directive gates it
+  // to answers a real image genuinely lifts (owner call, 2026-07-10).
+  yield* streamDoc(shape, system, user, signal, images, { web: true, framePaths, imageData, clientTools: FIND_IMAGE_CLIENT });
 }
 
 /**
@@ -1187,12 +1192,7 @@ async function* streamRichResearch(
       prototype: true,
       framePaths,
       imageData,
-      clientTools: {
-        tools: [FIND_IMAGE_TOOL],
-        run: (name, input) =>
-          name === 'find_image' ? runFindImage(input) : Promise.resolve('{"error":"unknown tool"}'),
-        status: 'finding a real image…',
-      },
+      clientTools: FIND_IMAGE_CLIENT,
     })) {
       if (signal.aborted) return;
       if (ev.type === 'status') yield { type: 'status', message: ev.message };

@@ -757,3 +757,19 @@ the web, and images in the table if applicable."
   on error — same no-broken-frames rule as the rich card hero.
 - Browser-verified: image column renders thumbnails, a dead web URL degrades
   to an empty cell, link chips intact.
+
+## 2026-07-10 (late night) — Everyday answers earn images too
+
+**Intent:** "extend find_image to everyday doc answers — if the response
+warrants it."
+
+- The find_image bundle became one shared const (`FIND_IMAGE_CLIENT`) offered
+  on every web-enabled path: research, tables, and now plain doc/list asks.
+- WEB_DIRECTIVE gained a judgment gate: ONE image when the answer centres on
+  something visual (place, product, artwork, person); analysis/plans/how-tos
+  skip freely; never invent a URL, ship imageless when nothing real came back.
+- Doc-card markdown images hide on error — same no-broken-frames rule
+  everywhere.
+- Live sidecar test (the Lake Bled ask through the real prompt bar) showed the
+  honesty rule end-to-end: the sandbox blocked the fetch, and the model
+  declined to fake a URL — noting it in the card instead of inventing one.
