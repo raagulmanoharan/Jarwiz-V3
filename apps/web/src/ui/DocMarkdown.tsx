@@ -262,6 +262,11 @@ function renderInline(text: string, onCite?: (page: number) => void): React.Reac
           alt={match[7] ?? ''}
           draggable={false}
           referrerPolicy="no-referrer"
+          // A dead image hides rather than showing a broken frame — the same
+          // degrade-to-nothing rule as rich-card heroes and table thumbnails.
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+          }}
         />,
       );
     } else if (match[9] && match[10]) {
