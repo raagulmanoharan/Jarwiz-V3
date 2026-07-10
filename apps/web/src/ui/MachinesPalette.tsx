@@ -12,6 +12,7 @@ import { MACHINE_CARD_SIZE, type MachineCardShape } from '../shapes';
 import { MACHINES, type Machine } from '../machines/catalog';
 import { MACHINE_ICONS } from '../machines/icons';
 import { getTheme, subscribeTheme } from './theme';
+import { bringIntoView } from './bringIntoView';
 
 /** Drop a machine block near the viewport centre, nudged clear of other shapes,
  *  then select it and put it into edit mode so its input is ready to type. */
@@ -38,7 +39,7 @@ function spawnMachine(editor: Editor, machine: Machine) {
   });
   editor.select(id);
   editor.setEditingShape(id);
-  editor.centerOnPoint({ x: x + w / 2, y: y + h / 2 }, { animation: { duration: 200 } });
+  bringIntoView(editor, id);
 }
 
 /** The Machines rail tool + its flyout submenu. Rendered inside the left ToolRail. */
