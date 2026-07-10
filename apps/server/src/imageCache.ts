@@ -68,6 +68,25 @@ async function fetchAndStore(rawUrl: string, signal?: AbortSignal): Promise<stri
   }
 }
 
+/** On-demand cache for the `/api/image` proxy: one fetch per distinct URL,
+ *  concurrent requests share the in-flight promise, and failures aren't pinned
+ *  (a flaky host can succeed on a later view). Deliberately NOT tied to the
+ *  requester's abort signal — a cancelled first viewer must not poison the
+ *  cache for the next one; fetchAndStore carries its own timeout. */
+const proxyCache = new Map<string, Promise<string | null>>();
+export function cachedImageUrl(rawUrl: string): Promise<string | null> {
+  let inflight = proxyCache.get(rawUrl);
+  if (!inflight) {
+    inflight = fetchAndStore(rawUrl);
+    proxyCache.set(rawUrl, inflight);
+    void inflight.then(
+      (v) => { if (!v) proxyCache.delete(rawUrl); },
+      () => proxyCache.delete(rawUrl),
+    );
+  }
+  return inflight;
+}
+
 /** Collect the external image URLs in a blob of markdown (de-duped). */
 function externalImageUrls(text: string): string[] {
   const urls = new Set<string>();

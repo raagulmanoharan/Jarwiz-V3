@@ -92,7 +92,9 @@ function DashboardBody({ shape }: { shape: DashboardCardShape }) {
       {streaming && !source.trim() ? (
         <div className="jzd-loading">
           <Loader2 size={18} className="jzd-spin" />
-          <span>Building your dashboard…</span>
+          {/* This card hosts dashboards AND rich research answers — keep the
+              wait copy true for both. */}
+          <span>Putting it together…</span>
         </div>
       ) : (
         <div

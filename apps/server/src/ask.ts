@@ -76,18 +76,11 @@ HARD REQUIREMENTS — the document is rendered in a sandboxed iframe with NO net
 
 Output ONLY the raw HTML document — no prose, no explanation, NO \`\`\` code fences before or after.`;
 
-/** An interactive dashboard is expressed in OpenUI Lang — a tiny declarative
- *  grammar our client renders through a fixed monochrome component library
- *  (no HTML/JS, no external service). The model computes the numbers from the
- *  data and lays out KPIs, charts and a table over these components. */
-const DASHBOARD_SYSTEM = `You produce ONE interactive data DASHBOARD, expressed in "OpenUI Lang" — a tiny declarative layout grammar. A separate renderer draws your output through a fixed component library; you never write HTML, CSS, JS, or SVG.
-
-WHERE THE DATA COMES FROM
-- If the request includes data (a CSV, a table, spreadsheet cells, or source cards), derive EVERY KPI and chart value from it — never invent numbers when real ones are given.
-- If the request names a subject with no data attached (e.g. "a dashboard of the 2024 F1 season", "our Q3 sales"), populate it with accurate figures you know, or a clearly representative dataset that fits the subject — enough to make a useful, believable dashboard.
-- If a "Current dashboard (OpenUI Lang spec)" is included, you are REFINING it: re-emit the whole spec with the requested change applied (add/remove a chart, recompute a metric, refocus it), keeping the parts the request doesn't touch.
-
-GRAMMAR
+/** The OpenUI Lang grammar + component vocabulary, shared verbatim by every
+ *  generative-UI answer (dashboards AND rich research cards) so the renderer
+ *  needs exactly one parser and one component library (dashboard/library.tsx —
+ *  keep the component list in sync with DASHBOARD_VOCAB there). */
+const OPENUI_GRAMMAR = `GRAMMAR
 - One statement per line: \`id = Component(arg1, arg2, …)\`. Each \`id\` is a lowercase name you invent (e.g. \`kpis\`, \`bar1\`).
 - Arguments are POSITIONAL, in the exact order listed for each component below. Strings use double quotes. Numbers are bare (e.g. 1204, 23.5). Lists use square brackets: ["NA","EU"] or [120, 80, 50].
 - Children are given as a list of ids that appear as their own statements: \`row = Grid([k1, k2, k3], 3)\` with \`k1 = …\` etc. on their own lines. Forward references are fine (define \`row\` before \`k1\`).
@@ -103,6 +96,22 @@ COMPONENTS (name — positional args)
 - BarChart(title: string, labels: list of strings, values: list of numbers) — a bar per label.
 - LineChart(title: string, labels: list of strings, values: list of numbers) — a trend line over labels.
 - Table(columns: list of strings, rows: list of rows, where each row is a list of cell strings).
+- Markdown(text: string) — a rich text block: markdown with "## " headings, **bold**, [label](url) links, "- " bullets, and ![alt](url) images. Escape newlines as \\n and inner double quotes as \\" inside the quoted string.
+- Image(src: string, caption: string) — one image. \`src\` MUST be a real image URL taken from the sources or a page you actually fetched — NEVER invented. Pass "" for no caption.
+- Tabs(labels: list of strings, panels: list of components) — tabbed sections, one panel per label; for parallel angles that each need room (e.g. ["Reviews","Specs","Alternatives"]).`;
+
+/** An interactive dashboard is expressed in OpenUI Lang — a tiny declarative
+ *  grammar our client renders through a fixed monochrome component library
+ *  (no HTML/JS, no external service). The model computes the numbers from the
+ *  data and lays out KPIs, charts and a table over these components. */
+const DASHBOARD_SYSTEM = `You produce ONE interactive data DASHBOARD, expressed in "OpenUI Lang" — a tiny declarative layout grammar. A separate renderer draws your output through a fixed component library; you never write HTML, CSS, JS, or SVG.
+
+WHERE THE DATA COMES FROM
+- If the request includes data (a CSV, a table, spreadsheet cells, or source cards), derive EVERY KPI and chart value from it — never invent numbers when real ones are given.
+- If the request names a subject with no data attached (e.g. "a dashboard of the 2024 F1 season", "our Q3 sales"), populate it with accurate figures you know, or a clearly representative dataset that fits the subject — enough to make a useful, believable dashboard.
+- If a "Current dashboard (OpenUI Lang spec)" is included, you are REFINING it: re-emit the whole spec with the requested change applied (add/remove a chart, recompute a metric, refocus it), keeping the parts the request doesn't touch.
+
+${OPENUI_GRAMMAR}
 
 DASHBOARD BRIEF
 - Layout top to bottom: a KPI ROW (Grid of 3–5 Kpi tiles) then a Grid of charts, then a Table — all inside one root Stack.
@@ -125,7 +134,13 @@ t1 = Table(["Region","Revenue","Orders"], [["NA","$120k","540"],["EU","$80k","41
 
 const AFFINITY_SYSTEM = `You run an affinity-mapping exercise: turn the request and the source(s) into clustered sticky notes. Return ONLY a JSON object {"clusters": [{"label": string, "notes": string[]}]}. Make 3–6 clusters; each has a short 1–4 word "label" (the theme) and 2–6 short "notes" (each one idea, a few words). Group related ideas under the same theme. Ground notes in the provided content when a source is given; otherwise brainstorm sensible ideas for the request. No prose, no code fences.`;
 
-const RESEARCH_SYSTEM = `You are running a DEEP RESEARCH pass on something the user put on their canvas — any link or card: a venue or rental listing, a product, a company, a repo or tool, an article or paper, a person, an open question. Your job: autonomously find everything a decision-maker would want to know, far beyond what the subject says about itself.
+/** The deep-research dossier as a RICH generative-UI card (OpenUI Lang), so
+ *  it can mix prose, tables, charts, images and tabs — "don't restrict web
+ *  answers to text" (owner call, 2026-07-10). Every live research pass (API
+ *  and sidecar) answers this way; the keyless demo mode never reaches it.
+ *  (This replaced the markdown-dossier RESEARCH_SYSTEM outright — one
+ *  research answer shape, not two.) */
+const RICH_RESEARCH_SYSTEM = `You are running a DEEP RESEARCH pass on something the user put on their canvas — any link or card: a venue or rental listing, a product, a company, a repo or tool, an article or paper, a person, an open question. Your job: autonomously find everything a decision-maker would want to know, far beyond what the subject says about itself.
 
 First decide WHAT the subject is, then work the live web hard on the angles that matter for that kind of subject — for example:
 - venue / listing / product → independent reviews across platforms, current prices and availability, recurring complaints, strong alternatives
@@ -136,7 +151,31 @@ First decide WHAT the subject is, then work the live web hard on the angles that
 - open question / topic → the current state of things, the strongest sources, where informed people disagree
 Fetch the given URL for ground truth when there is one; cross-check what the subject claims about itself against what outsiders say; hunt for red flags (recurring complaints, contradictions, hidden costs, stale/renamed/discontinued).
 
-Then write ONE dossier as clean markdown: a "# " title naming the subject; a one-paragraph verdict up top (what this is and whether it holds up); then tight sections with **bold lead-ins**, chosen to fit the subject — what independent sources actually say (recurring praise AND criticism, with numbers), the facts that matter (prices, ratings, dates, versions), red flags or surprises, and the strongest alternatives or counterpoints if any deserve a look. A small markdown table (| a | b | rows) is welcome where a grid genuinely clarifies (e.g. alternatives side by side); "---" between major sections draws a divider. Be specific and stay compact — a scannable dossier, not an essay. Every externally sourced claim cites its page inline as a markdown link ([source](URL)); end with one "Source: [Title](URL)" line per page used. Never invent a URL or a fact; if an angle came up empty, say so in one honest line. No preamble, no narration of your searching — the card is the finished dossier.`;
+Then compose ONE rich answer card in "OpenUI Lang" — a tiny declarative layout grammar a separate renderer draws through a fixed component library; you never write HTML, CSS, JS, or SVG.
+
+${OPENUI_GRAMMAR}
+
+DOSSIER BRIEF
+- Top to bottom inside one root Stack: open with a Markdown block holding a "# " title and a one-paragraph verdict (what this is and whether it holds up). Then the sections that fit THIS subject, mixing components by what each point of content IS:
+  - Markdown blocks with **bold lead-ins** for the findings and analysis (the backbone of the card).
+  - A Table where a grid genuinely clarifies — alternatives side by side, specs, prices.
+  - A BarChart/LineChart ONLY when you gathered real comparable numbers (ratings across platforms, a price history) — never decorative, never invented.
+  - Image(s) where a page you fetched offered a genuinely illustrative image URL (the product, the place, a diagram). A couple at most; skip entirely if you saw none.
+  - Tabs when several parallel angles each need room (e.g. ["Reviews","Specs","Alternatives"]) — keep the verdict OUTSIDE the tabs so it's always visible.
+  - Kpi tiles for the 2–4 headline figures when the subject has them (price, rating, users) — pass "" for delta unless a real change is known.
+- Every externally sourced claim cites its page inline in Markdown as ([source](URL)); finish with one Markdown block of "Source: [Title](URL)" lines, one per page used.
+- Never invent a URL, an image URL, a number, or a fact. If an angle came up empty, say so in one honest Markdown line. Be specific and compact — a scannable dossier, not an essay. No preamble, no narration of your searching.
+
+EXAMPLE (shape only — a real card derives everything from what you actually found):
+root = Stack([verdict, stats, body, srcs], "column")
+verdict = Markdown("# Acme Standing Desk\\nSolid mid-range pick: praised for stability, dinged for a slow motor ([source](https://example.com/review)).")
+stats = Grid([k1, k2], 2)
+k1 = Kpi("Street price", "$549", "")
+k2 = Kpi("Avg rating", "4.3/5", "")
+body = Tabs(["Reviews", "Alternatives"], [rev, alt])
+rev = Markdown("**What reviewers agree on** — rock-solid at full height...\\n\\n**Recurring complaint** — the motor...")
+alt = Table(["Desk", "Price", "Why consider"], [["Jarvis", "$599", "faster motor"], ["Uplift V2", "$639", "more options"]])
+srcs = Markdown("Source: [Example Review](https://example.com/review)")`;
 
 /** Steers a doc/list answer to render as an interactive markdown checklist. */
 const CHECKLIST_DIRECTIVE =
@@ -468,7 +507,10 @@ interface GenOpts {
 function genBudget(opts: GenOpts) {
   return {
     tools: opts.deep ? researchToolset() : opts.web ? webToolset() : undefined,
-    maxTokens: opts.deep ? RESEARCH_MAX_TOKENS : opts.prototype ? PROTOTYPE_MAX_TOKENS : MAX_TOKENS,
+    // `prototype` outranks `deep` on tokens: a deep+prototype run (the rich
+    // research card) writes a spec with quoted prose blocks and needs the
+    // document-sized ceiling, not the compact dossier one.
+    maxTokens: opts.prototype ? PROTOTYPE_MAX_TOKENS : opts.deep ? RESEARCH_MAX_TOKENS : MAX_TOKENS,
     maxTurns: opts.deep ? RESEARCH_MAX_CONTINUATIONS : WEB_MAX_CONTINUATIONS,
     sidecarTimeoutMs: opts.deep
       ? RESEARCH_SIDECAR_TIMEOUT_MS
@@ -809,7 +851,11 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   if (deep) {
     yield { type: 'status', message: 'researching across the web…' };
     const user = `Research request:\n${req.prompt}\n\n${context || '(No canvas sources — research the request itself.)'}`;
-    yield* streamDoc('doc', RESEARCH_SYSTEM, user, signal, images, { web: true, deep: true, framePaths, imageData });
+    // Rich generative-UI dossier (prose + tables + charts + images + tabs) —
+    // both live paths (API and CLI sidecar) drive the same model, and the
+    // keyless demo mode already exited above, so every real research pass
+    // answers rich.
+    yield* streamRichResearch(user, signal, images, framePaths, imageData);
     return;
   }
 
@@ -1038,6 +1084,42 @@ async function* streamDashboard(
   yield { type: 'card.create', shape: 'dashboard' };
   try {
     for await (const ev of generateStream(DASHBOARD_SYSTEM, user, signal, images, { prototype: true })) {
+      if (signal.aborted) return;
+      if (ev.type === 'status') yield { type: 'status', message: ev.message };
+      else yield { type: 'card.delta', textDelta: ev.text };
+    }
+  } catch (error) {
+    yield { type: 'card.done' };
+    throw error;
+  }
+  yield { type: 'card.done' };
+  yield { type: 'done' };
+}
+
+/**
+ * Stream a RICH research answer — the deep-research pass answering as a
+ * generative-UI card instead of a markdown doc, so the dossier can mix prose,
+ * tables, charts, images and tabs (same OpenUI spec/renderer as dashboards;
+ * the card streams into a dashboard-card shape). Web images the model cites
+ * load through the /api/image cache-proxy client-side, so nothing here blocks
+ * the stream on image fetches.
+ */
+async function* streamRichResearch(
+  user: string,
+  signal: AbortSignal,
+  images: ImageInput[] = [],
+  framePaths: string[] = [],
+  imageData: ImageInput[] = [],
+): AsyncGenerator<AskEvent> {
+  yield { type: 'card.create', shape: 'dashboard' };
+  try {
+    for await (const ev of generateStream(RICH_RESEARCH_SYSTEM, user, signal, images, {
+      web: true,
+      deep: true,
+      prototype: true,
+      framePaths,
+      imageData,
+    })) {
       if (signal.aborted) return;
       if (ev.type === 'status') yield { type: 'status', message: ev.message };
       else yield { type: 'card.delta', textDelta: ev.text };

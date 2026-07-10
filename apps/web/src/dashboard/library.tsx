@@ -12,6 +12,7 @@
 import React from 'react';
 import { z } from 'zod/v4';
 import { createLibrary, defineComponent, type ComponentRenderProps } from '@openuidev/react-lang';
+import { DocMarkdown } from '../ui/DocMarkdown';
 
 /** Render an array of child node values (OpenUI passes raw values; renderNode
  *  turns each into a ReactNode). */
@@ -149,6 +150,99 @@ const LineChart = defineComponent({
   )) as never,
 });
 
+// ─── Rich content (research answers) ─────────────────────────────────────────
+
+/** Route a remote image through the server's SSRF-guarded cache-proxy so
+ *  hotlink protection / CORS / dead URLs can't leave a broken frame. Local
+ *  (`/api/assets`) and data: URLs pass through untouched. */
+function proxied(src: string): string {
+  return /^https?:\/\//i.test(src) ? `/api/image?src=${encodeURIComponent(src)}` : src;
+}
+
+/** Same routing for `![alt](https://…)` images inside a Markdown block. */
+function proxyMarkdownImages(text: string): string {
+  return text.replace(
+    /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g,
+    (_m, alt: string, url: string) => `![${alt}](${proxied(url)})`,
+  );
+}
+
+function MarkdownBody({ props }: ComponentRenderProps<{ text: string }>) {
+  return (
+    <div className="jzd-md">
+      <DocMarkdown content={proxyMarkdownImages(props.text ?? '')} />
+    </div>
+  );
+}
+
+const Markdown = defineComponent({
+  name: 'Markdown',
+  description:
+    'A rich text block. Args: text (string of markdown — headings, **bold**, links, "- " bullets, images; escape newlines as \\n).',
+  props: z.object({ text: z.string().default('') }),
+  component: MarkdownBody as never,
+});
+
+function ImageBody({ props }: ComponentRenderProps<{ src: string; caption: string }>) {
+  // A dead URL hides the whole figure rather than showing a broken frame —
+  // rich cards degrade to "no image", never to visible breakage.
+  const [failed, setFailed] = React.useState(false);
+  if (!props.src || failed) return null;
+  return (
+    <figure className="jzd-figure">
+      <img className="jzd-img" src={proxied(props.src)} alt={props.caption || ''} onError={() => setFailed(true)} />
+      {props.caption ? <figcaption className="jzd-img-caption">{props.caption}</figcaption> : null}
+    </figure>
+  );
+}
+
+const Image = defineComponent({
+  name: 'Image',
+  description: 'An image. Args: src (string — a real image URL), caption (string, "" for none).',
+  props: z.object({ src: z.string().default(''), caption: z.string().default('') }),
+  component: ImageBody as never,
+});
+
+function TabsBody({
+  props,
+  renderNode,
+}: ComponentRenderProps<{ labels: unknown[]; panels: unknown[] }>) {
+  const labels = (props.labels ?? []).map(String);
+  const panels = props.panels ?? [];
+  const count = Math.max(labels.length, panels.length);
+  const [active, setActive] = React.useState(0);
+  if (count === 0) return null;
+  const idx = Math.min(active, count - 1);
+  return (
+    <div className="jzd-tabs">
+      <div className="jzd-tabbar" role="tablist">
+        {Array.from({ length: count }, (_, i) => (
+          <button
+            key={i}
+            role="tab"
+            aria-selected={i === idx}
+            className={`jzd-tab${i === idx ? ' jzd-tab--active' : ''}`}
+            onClick={() => setActive(i)}
+          >
+            {labels[i] ?? `Tab ${i + 1}`}
+          </button>
+        ))}
+      </div>
+      <div className="jzd-tabpanel" role="tabpanel">
+        {panels[idx] != null ? renderNode(panels[idx]) : null}
+      </div>
+    </div>
+  );
+}
+
+const Tabs = defineComponent({
+  name: 'Tabs',
+  description:
+    'Tabbed sections. Args: labels (list of strings), panels (list of components, one per label).',
+  props: z.object({ labels: z.array(z.any()).default([]), panels: z.array(z.any()).default([]) }),
+  component: TabsBody as never,
+});
+
 // ─── Table ───────────────────────────────────────────────────────────────────
 const Table = defineComponent({
   name: 'Table',
@@ -174,9 +268,9 @@ const Table = defineComponent({
 // our specs open with `root = Stack(...)`. Passing a non-component root name
 // throws at module load and takes the whole app down with it.
 export const dashboardLibrary = createLibrary({
-  components: [Stack, Grid, Card, Text, Kpi, BarChart, LineChart, Table],
+  components: [Stack, Grid, Card, Text, Kpi, BarChart, LineChart, Table, Markdown, Image, Tabs],
 });
 
 /** The component names, echoed in the server prompt so Claude emits matching
  *  OpenUI Lang. Keep in sync with the components above. */
-export const DASHBOARD_VOCAB = ['Stack', 'Grid', 'Card', 'Text', 'Kpi', 'BarChart', 'LineChart', 'Table'] as const;
+export const DASHBOARD_VOCAB = ['Stack', 'Grid', 'Card', 'Text', 'Kpi', 'BarChart', 'LineChart', 'Table', 'Markdown', 'Image', 'Tabs'] as const;
