@@ -582,3 +582,45 @@ should be visible: the cursor comes, lands on it, and reads."
   rose to 2.8s so even an instant card gets one joke. Each quip enters with
   a soft rise (`jz-status-swap`, keyed remount; keyframes have no `to` block
   so the text settles at its resting 0.72 opacity).
+
+## 2026-07-10 — Intent-first onboarding becomes a first impression with a pulse
+
+**Intent:** two outside reviewers bounced in a row — Sanchit ("I felt lost
+coming in without a purpose") and a second tester ("couldn't assess the
+audience you have in mind"). Fix the first five seconds: show intelligence
+immediately, let people bring their own content, and learn who's standing at
+the composer. Also: get the demo content off a competitor minefield.
+
+- **Intent-first onboarding shipped (#29).** The "What are you working on?"
+  modal is gone. On a brand-new empty board the composer rises to the centre
+  ("What are we figuring out?"), types example intents on its own with a live
+  shape-preview chip, and glides down into its dock on the first ask while the
+  tool rail slides in.
+- **The ambient scene** (`onboarding/AmbientOnboarding.tsx`): collaborators
+  (PM / Researcher / Designer / Founder) sweep in from the edges *carrying*
+  real-looking mini cards, drop them, and linger; the composer's ✦ orb pulses
+  and **births one Jarwiz cursor per card** — organic bézier flights, verb
+  tooltips stepping through specific actions, subtle in-place drift. Decorative
+  overlay (pointer-events off), hushed the instant you engage the composer.
+  Iterated through ~8 rounds on a concept artifact before touching product
+  code — cheap to steer there, exact to port after.
+- **Composer attachments.** Drop/paste a PDF, image, or sheet straight onto
+  the composer → a persistent paperclip pill (NOT tied to canvas selection);
+  the source card materialises only on send, grounding the ask. Gotcha that
+  cost a round: tldraw's canvas drop handler eats React `onDrop` — intercept
+  at the document **capture phase**.
+- **Demo content neutralised (#30).** The hero/landing demo compared CRMs by
+  name — recommending some vendors and literally advising "skip Salesforce"
+  (Raagul's employer). Whole scenario swapped to PM tools (Notion / Linear /
+  Asana…), "skip" line names no one, evidence sheet + hero/OG images
+  regenerated to match. Lesson: demo content is positioning — keep it off
+  anyone's day job.
+- **Persona modal (#31).** "What brings you here?" — three identity cards
+  (icon + a one-sentence blurb of example asks) over the live ambient scene.
+  One tap re-themes the starters, the self-typing examples, and the ambient
+  cards/verbs in place; every answer (incl. "Just exploring", stored 'none')
+  persists ask-once in `personaStore`. Started as a chip row on the intent
+  screen; Raagul called it to a modal — the veil darkened and bullets became
+  paragraphs in the polish rounds. The pick is the hook for persona-tuned
+  seed pills / Ultra Think later, and a listening post on who actually
+  shows up.
