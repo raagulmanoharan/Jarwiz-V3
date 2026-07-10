@@ -3961,6 +3961,64 @@ body,
   max-width: 46ch;
   margin: 0 0 8px;
 }
+/* Preview notice — the "no AI server here" expectation-setter. A single calm
+ * pill under the topbar in the app's own voice: surface, hairline, caption
+ * ink. It informs; it doesn't alarm. */
+.jz-preview-notice {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 330;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 8px 10px 8px 14px;
+  background: var(--jz-surface-raised);
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-pill);
+  box-shadow: var(--jz-e2);
+  font-size: var(--jz-text-caption-size);
+  line-height: 1.45;
+  color: var(--jz-ink-500);
+  pointer-events: auto;
+  animation: jz-preview-notice-in var(--jz-dur-glide) var(--jz-ease-glide) both;
+}
+@keyframes jz-preview-notice-in {
+  from { opacity: 0; transform: translate(-50%, -6px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+.jz-preview-notice > svg { flex: none; color: var(--jz-ink-400); }
+.jz-preview-notice b { color: var(--jz-ink-700); font-weight: 600; }
+.jz-preview-notice a {
+  color: var(--jz-ink-700);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--jz-hairline-strong);
+}
+.jz-preview-notice a:hover { color: var(--jz-ink-900); }
+.jz-preview-notice-x {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--jz-ink-400);
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-preview-notice-x:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
+  color: var(--jz-ink-900);
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-preview-notice { animation: none; }
+}
+
 /* "What brings you here?" — the ask-once persona modal over the intent
  * screen. Three identity cards (icon + example asks) on a soft backdrop; the
  * live ambient scene stays visible behind the veil, so the room keeps
