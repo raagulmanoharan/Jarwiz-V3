@@ -14,6 +14,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { hasModelKey } from './model.js';
 
 const CLI = process.env.CLAUDE_CLI_PATH || 'claude';
 const DEFAULT_TIMEOUT_MS = 60_000;
@@ -31,7 +32,7 @@ let cached: boolean | null = null;
  * it can't spawn.
  */
 export function sidecarAvailable(): boolean {
-  if (process.env.ANTHROPIC_API_KEY?.trim()) return false; // prefer the real API
+  if (hasModelKey()) return false; // prefer the real API (server env or the request's BYOK key)
   if (process.env.JZ_DISABLE_SIDECAR) return false;
   if (cached !== null) return cached;
   try {

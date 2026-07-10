@@ -21,6 +21,7 @@ import {
 import { AGENT_MODEL } from './agents/runtime.js';
 import { fetchPageText } from './linkPreview.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
+import { anthropic, hasModelKey } from './model.js';
 
 // pdf-parse ships CJS and runs a self-test if imported from its index; load the
 // inner module directly to avoid that.
@@ -38,8 +39,8 @@ const SUGGEST_MAX_TOKENS = 1024;
  * else the CLI sidecar. Both return the same plain-text JSON the parser reads.
  */
 async function generate(system: string, user: string, signal: AbortSignal): Promise<string> {
-  if (process.env.ANTHROPIC_API_KEY?.trim()) {
-    const client = new Anthropic();
+  if (hasModelKey()) {
+    const client = anthropic();
     const msg = await client.messages.create(
       {
         model: AGENT_MODEL,
@@ -154,7 +155,7 @@ export async function proposeSuggestions(
   req: SuggestRequest,
   signal: AbortSignal,
 ): Promise<AgentSuggestion[]> {
-  if (!sidecarAvailable() && !process.env.ANTHROPIC_API_KEY?.trim()) return [];
+  if (!sidecarAvailable() && !hasModelKey()) return [];
   const { title, text } = await extractContent(req);
   if (!title && !text) return []; // nothing to reason about → keep type-based
   const user = `Artifact kind: ${req.kind}\nTitle: ${title || '(none)'}\n\nContent:\n"""\n${text}\n"""`;
@@ -182,7 +183,7 @@ export async function proposeClusterSuggestions(
   req: ClusterSuggestRequest,
   signal: AbortSignal,
 ): Promise<AgentSuggestion[]> {
-  if (!sidecarAvailable() && !process.env.ANTHROPIC_API_KEY?.trim()) return [];
+  if (!sidecarAvailable() && !hasModelKey()) return [];
   const items = req.items.filter((i) => i.title?.trim()).slice(0, 12);
   if (items.length < 2) return [];
   const list = items.map((i) => `- (${i.kind}) ${i.title.trim()}`).join('\n');

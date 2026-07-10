@@ -14,6 +14,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { AskSource, DiagramEdge, DiagramNode, DiagramRequest, DiagramSpec } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
+import { anthropic, hasModelKey } from './model.js';
 
 const DIAGRAM_MAX_NODES = 12;
 const DIAGRAM_MAX_EDGES = 20;
@@ -109,10 +110,10 @@ export async function generateDiagram(
   request: DiagramRequest,
   signal: AbortSignal,
 ): Promise<DiagramSpec> {
-  const hasKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+  const hasKey = Boolean(hasModelKey());
 
   if (hasKey) {
-    const client = new Anthropic();
+    const client = anthropic();
     const message = await client.messages.create(
       {
         model: AGENT_MODEL,

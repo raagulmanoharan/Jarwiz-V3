@@ -13,6 +13,7 @@ import type { AnalyzeCard, AskShape, ComposeEvent, ComposePlanCard, ComposeReque
 import { AGENT_MODEL } from './agents/runtime.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 import { streamAsk } from './ask.js';
+import { anthropic, hasModelKey } from './model.js';
 
 const MAX_BOARD_CARDS = 24;
 const MAX_TEXT_PER_CARD = 700;
@@ -50,8 +51,8 @@ function boardSummary(cards: AnalyzeCard[]): string {
 }
 
 async function planText(user: string, signal: AbortSignal): Promise<string> {
-  if (process.env.ANTHROPIC_API_KEY?.trim()) {
-    const client = new Anthropic();
+  if (hasModelKey()) {
+    const client = anthropic();
     const msg = await client.messages.create(
       { model: AGENT_MODEL, max_tokens: PLAN_TOKENS, system: PLAN_SYSTEM, messages: [{ role: 'user', content: user }] },
       { signal },

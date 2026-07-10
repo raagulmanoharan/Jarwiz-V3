@@ -17,6 +17,7 @@ import { FIND_IMAGE_TOOL, runFindImage } from './imageSearch.js';
 import { extractSheetText } from './sheets.js';
 import { getMachine, type MachineSkill } from './machines.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
+import { anthropic, hasModelKey } from './model.js';
 import {
   RESEARCH_MAX_CONTINUATIONS,
   WEB_DIRECTIVE,
@@ -625,8 +626,8 @@ async function generate(
   opts: GenOpts = {},
 ): Promise<string> {
   const { tools, maxTokens, maxTurns, sidecarTimeoutMs } = genBudget(opts);
-  if (process.env.ANTHROPIC_API_KEY?.trim()) {
-    const client = new Anthropic();
+  if (hasModelKey()) {
+    const client = anthropic();
     const allTools = [...(tools ?? []), ...(opts.clientTools?.tools ?? [])];
     const messages: Anthropic.MessageParam[] = [
       { role: 'user', content: buildContent(user, images) },
@@ -703,8 +704,8 @@ async function* generateStream(
   opts: GenOpts = {},
 ): AsyncGenerator<GenEvent> {
   const { tools, maxTokens, maxTurns, sidecarTimeoutMs } = genBudget(opts);
-  if (process.env.ANTHROPIC_API_KEY?.trim()) {
-    const client = new Anthropic();
+  if (hasModelKey()) {
+    const client = anthropic();
     const allTools = [...(tools ?? []), ...(opts.clientTools?.tools ?? [])];
     const messages: Anthropic.MessageParam[] = [
       { role: 'user', content: buildContent(user, images) },
@@ -822,7 +823,7 @@ async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenera
       'bar = BarChart("By category", ["A", "B", "C", "D"], [8, 6, 4, 3])',
       'line = LineChart("Over time", ["Q1", "Q2", "Q3", "Q4"], [4, 6, 5, 7])',
       'tbl = Card("Set a key for a real dashboard", [t1])',
-      't1 = Table(["Column", "Value"], [["Model", "not configured"], ["Fix", "set ANTHROPIC_API_KEY"]])',
+      't1 = Table(["Column", "Value"], [["Model", "not configured"], ["Fix", "add your Anthropic API key (key button, top right)"]])',
     ].join('\n');
     for (const piece of chunk(spec, 4)) {
       if (signal.aborted) return;
@@ -837,8 +838,8 @@ async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenera
   yield { type: 'card.create', shape: 'doc', title: 'Demo mode' };
   const body =
     `You asked: *${req.prompt.slice(0, 140)}*\n\n` +
-    'Jarwiz is running without a model — set `ANTHROPIC_API_KEY` on the server ' +
-    '(or install the Claude CLI) and real answers will stream onto the board ' +
+    'Jarwiz is running without a model — add your Anthropic API key (key ' +
+    'button, top right) and real answers will stream onto the board ' +
     'exactly like this one, grounded on the cards you selected.';
   for (const piece of chunk(body)) {
     if (signal.aborted) return;
@@ -957,7 +958,7 @@ export async function suggestShape(prompt: string, signal: AbortSignal): Promise
 }
 
 export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGenerator<AskEvent> {
-  if (!process.env.ANTHROPIC_API_KEY?.trim() && !sidecarAvailable()) {
+  if (!hasModelKey() && !sidecarAvailable()) {
     yield* streamDemoAsk(req, signal);
     return;
   }

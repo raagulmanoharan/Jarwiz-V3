@@ -20,6 +20,7 @@ import type {
 import { AGENT_MODEL } from './agents/runtime.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 import { WEB_FILL_DIRECTIVE, WEB_MAX_CONTINUATIONS, webToolset } from './webTools.js';
+import { anthropic, hasModelKey } from './model.js';
 
 /** Enough for 2-3 full paragraphs or a dense bullet list — feels substantial. */
 const AUTOPILOT_MAX_TOKENS = 900;
@@ -105,7 +106,7 @@ export async function* streamAutopilot(
   request: AutopilotRequest,
   signal: AbortSignal,
 ): AsyncGenerator<AutopilotEvent> {
-  const hasKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+  const hasKey = Boolean(hasModelKey());
 
   if (!hasKey) {
     // Real Claude via the CLI sidecar; fall back to the scripted stand-in.
@@ -145,7 +146,7 @@ export async function* streamAutopilot(
 
   const run = (async () => {
     try {
-      const client = new Anthropic();
+      const client = anthropic();
       const stream = client.messages.stream(
         {
           model: AGENT_MODEL,
@@ -215,7 +216,7 @@ async function fetchFilledRows(
   request: TableAutopilotRequest,
   signal: AbortSignal,
 ): Promise<string[][]> {
-  const client = new Anthropic();
+  const client = anthropic();
   const userTurn = JSON.stringify({ columns: request.columns, rows: request.rows });
   const messages: Anthropic.MessageParam[] = [{ role: 'user', content: userTurn }];
   let text = '';
@@ -295,7 +296,7 @@ export async function* streamTableAutopilot(
     return;
   }
 
-  const hasKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+  const hasKey = Boolean(hasModelKey());
   let filled: string[][] | null = null;
   if (!hasKey && sidecarAvailable()) {
     try {

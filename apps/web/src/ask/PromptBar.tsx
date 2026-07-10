@@ -28,6 +28,8 @@ import { getPromptFill, subscribePromptFill } from './promptFill';
 import { getDraft, subscribeDraft } from './draft';
 import { getActiveBoard, markBoardUsed, subscribeBoards } from '../boards/boardStore';
 import { isDemo, isEmbed, isUseCases } from '../boards/demo';
+import { DEMO_NOTICE, getBackendSnapshot, subscribeBackend, PLAYGROUND_NOTICE } from '../lib/backend';
+import { openApiKeySettings } from '../ui/ApiKeySettings';
 import { setOnboarding, setOnboardingEngaged } from './onboardingStore';
 import { hasIngestibleFile } from '../ingest/registerIngestion';
 import { classifyFile, isAttachableText, looksLikeTranscript, makeTextAttachment, materializeAttachment, uploadAttachment, type Attachment } from '../ingest/attachments';
@@ -166,6 +168,14 @@ export function PromptBar() {
 
   // ── Intent-first onboarding (a brand-new, empty board) ────────────────────
   const board = useSyncExternalStore(subscribeBoards, getActiveBoard, getActiveBoard);
+  // Hosted-trial honesty, right where the person is about to ask — never let
+  // the first prompt be the way they find out. Two states: no server at all
+  // (static playground), or a keyless server answering with the scripted mock
+  // (one tap from adding their own key and going live).
+  const backend = useSyncExternalStore(subscribeBackend, getBackendSnapshot, getBackendSnapshot);
+  const chromeVisible = !isEmbed() && !isUseCases();
+  const playground = backend.availability === 'down' && chromeVisible;
+  const demoMode = backend.mode === 'demo' && chromeVisible;
   const boardEmpty = useValue('promptbar-board-empty', () => editor.getCurrentPageShapeIds().size === 0, [editor]);
   // Let tldraw hydrate from IndexedDB before trusting emptiness, so a returning
   // board that loads async never flashes the intro for a frame.
@@ -605,6 +615,17 @@ export function PromptBar() {
       {/* The coach bubble is gone: it described the two scan chips rendered
           directly beneath it (redundant teaching, permanent until dismissed,
           and part of the bottom-centre chrome pile-up — dogfood finding). */}
+      {playground || demoMode ? (
+        <div className="jz-pb-playground" role="status">
+          <span className="jz-pb-playground-dot" aria-hidden />
+          {playground ? PLAYGROUND_NOTICE : DEMO_NOTICE}
+          {demoMode ? (
+            <button className="jz-pb-playground-cta" onClick={() => openApiKeySettings()}>
+              Add your API key
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {showStarters ? (
         <div className="jz-promptbar-chips">
           {starters.map((s) => (

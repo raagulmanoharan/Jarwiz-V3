@@ -4524,6 +4524,180 @@ body,
   color: var(--jz-ink-900);
 }
 
+/* Hosted-trial notice — sits above the composer when there's no agent runtime
+ * behind /api, or the server is keyless and answering with the scripted mock
+ * (lib/backend.ts). Quiet pill, not an alarm: the canvas is fully usable, and
+ * in demo mode the CTA is one tap from going live. */
+.jz-pb-playground {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jz-space-3);
+  max-width: min(640px, calc(100vw - 32px));
+  padding: 6px 14px;
+  border: 1px solid var(--jz-hairline-strong);
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e2);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-700);
+}
+
+.jz-pb-playground-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--jz-spark);
+}
+
+.jz-pb-playground-cta {
+  flex: none;
+  margin-left: var(--jz-space-2);
+  padding: 4px 12px;
+  border: none;
+  border-radius: var(--jz-radius-pill);
+  cursor: pointer;
+  background: var(--jz-accent);
+  color: var(--jz-accent-ink);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  font-weight: 600;
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-pb-playground-cta:hover {
+  transform: translateY(-1px);
+}
+
+/* ── BYOK key settings (Topbar) ─────────────────────────────────────────── */
+
+.jz-key-wrap {
+  position: relative;
+  flex: none;
+}
+
+/* Same round icon-button language as the theme toggle beside it. */
+.jz-key-btn {
+  pointer-events: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--jz-hairline);
+  border-radius: 50%;
+  cursor: pointer;
+  background: var(--jz-surface-raised);
+  color: var(--jz-ink-700);
+  box-shadow: var(--jz-e1);
+  transition: color var(--jz-dur-fast) var(--jz-ease-out), transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-key-btn:hover {
+  color: var(--jz-ink-900);
+  transform: translateY(-1px);
+}
+
+.jz-key-btn--set {
+  color: var(--jz-spark);
+}
+
+.jz-key-pop {
+  pointer-events: auto;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 300px;
+  padding: var(--jz-space-5);
+  border: 1px solid var(--jz-hairline-strong);
+  border-radius: var(--jz-radius-lg);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  font-family: var(--jz-font-ui);
+  z-index: 30;
+}
+
+.jz-key-pop-title {
+  font-size: var(--jz-text-body-size);
+  font-weight: 600;
+  color: var(--jz-ink-900);
+  margin-bottom: var(--jz-space-2);
+}
+
+.jz-key-pop-sub {
+  margin: 0 0 var(--jz-space-4);
+  font-size: var(--jz-text-caption-size);
+  line-height: 1.45;
+  color: var(--jz-ink-700);
+}
+
+.jz-key-row {
+  display: flex;
+  gap: var(--jz-space-2);
+  align-items: center;
+}
+
+.jz-key-input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--jz-hairline-strong);
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface);
+  color: var(--jz-ink-900);
+  font-family: var(--jz-font-mono);
+  font-size: var(--jz-text-caption-size);
+}
+
+.jz-key-masked {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--jz-font-mono);
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-700);
+}
+
+.jz-key-save,
+.jz-key-remove {
+  flex: none;
+  padding: 7px 14px;
+  border: none;
+  border-radius: var(--jz-radius-pill);
+  cursor: pointer;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  font-weight: 600;
+  background: var(--jz-accent);
+  color: var(--jz-accent-ink);
+}
+
+.jz-key-save:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.jz-key-remove {
+  background: transparent;
+  border: 1px solid var(--jz-hairline-strong);
+  color: var(--jz-ink-700);
+}
+
+.jz-key-pop-hint {
+  margin: var(--jz-space-4) 0 0;
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-500);
+}
+
+.jz-key-pop-hint a {
+  color: inherit;
+  text-decoration: underline;
+}
+
 /* One-time coachmark */
 .jz-coach {
   pointer-events: auto;

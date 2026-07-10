@@ -14,6 +14,7 @@ import { Renderer } from '@openuidev/react-lang';
 import { getShapeTitle } from '../shapes/shapeTitle';
 import { dashboardLibrary } from '../dashboard/library';
 import { renderMermaid } from '../lib/mermaid';
+import { apiUrl } from '../lib/api';
 import { closeCardFocus, getCardFocus, subscribeCardFocus } from './focusCard';
 
 /** Card types that open in this presentation overlay (doc-card is handled by
@@ -149,7 +150,7 @@ function ImageFocus({ shape }: { shape: TLShape }) {
 
 function PdfFocus({ shape }: { shape: TLShape }) {
   const { src, assetId } = shape.props as { src: string; assetId: string };
-  const url = src || (assetId ? `/api/assets/${encodeURIComponent(assetId)}` : '');
+  const url = src || (assetId ? apiUrl(`/api/assets/${encodeURIComponent(assetId)}`) : '');
   if (!url) return null;
   return <iframe className="jz-cardfocus-frame" title="PDF" src={`${url}#view=FitH`} />;
 }
