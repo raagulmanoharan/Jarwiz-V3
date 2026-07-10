@@ -7,6 +7,10 @@
  * choreography (Ask/Analyze/Autopilot/Cluster/Diagram write the presence
  * store, which takes absolute priority) whenever a run is in flight.
  *
+ * It's a POLITE collaborator: it never parks on (or rests near) the card you
+ * have selected or are editing, veers off if you grab the card it was flying
+ * toward, and abandons a read the instant you start typing in that card.
+ *
  * Motion is scripted, not CSS-transitioned: a rAF brain drives a Follower
  * (cursorMotion.ts) through human arcs — curved paths, overshoot-and-settle,
  * distance-proportional pace, a faint tremor at rest. Position lives in page
@@ -17,7 +21,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { isOnboarding, subscribeOnboarding } from '../ask/onboardingStore';
-import { useEditor } from 'tldraw';
+import { useEditor, type TLShapeId } from 'tldraw';
 import { JARWIZ } from '@jarwiz/shared';
 import { Follower, scanWaypoints, tremor, type Vec } from './cursorMotion';
 import { readingQuips, takeIngested, type IngestedCard } from './jarwizLife';
@@ -98,11 +102,32 @@ function JarwizEntity() {
     /** Card-corner park point — same spot the ask choreography uses. */
     const parkPoint = (b: { maxX: number; maxY: number }): Vec => ({ x: b.maxX - 14, y: b.maxY - 16 });
 
+    /** What the user is engaged with RIGHT NOW — the shape being edited plus
+     *  the selection. The entity is a polite collaborator: it never parks on
+     *  or rests near the thing you're looking at or typing in. */
+    const engagedIds = (): Set<string> => {
+      const ids = new Set<string>(editor.getSelectedShapeIds());
+      const editing = editor.getEditingShapeId();
+      if (editing) ids.add(editing);
+      return ids;
+    };
+    /** Is this point inside (or within a margin of) an engaged shape? */
+    const nearEngaged = (p: Vec, engaged: Set<string>, margin = 48): boolean => {
+      for (const id of engaged) {
+        const b = editor.getShapePageBounds(id as TLShapeId);
+        if (b && p.x > b.minX - margin && p.x < b.maxX + margin && p.y > b.minY - margin && p.y < b.maxY + margin) {
+          return true;
+        }
+      }
+      return false;
+    };
+
     const pickWanderTarget = (): Vec => {
       const view = editor.getViewportPageBounds();
+      const engaged = engagedIds();
       const candidates: Array<{ id: string; b: { maxX: number; maxY: number } }> = [];
       for (const s of editor.getCurrentPageShapes()) {
-        if (s.id === brain.lastVisited) continue;
+        if (s.id === brain.lastVisited || engaged.has(s.id)) continue;
         const b = editor.getShapePageBounds(s.id);
         if (b && b.midX > view.minX && b.midX < view.maxX && b.midY > view.minY && b.midY < view.maxY) {
           candidates.push({ id: s.id, b });
@@ -116,10 +141,15 @@ function JarwizEntity() {
       brain.lastVisited = null;
       const padX = view.w * 0.14;
       const padY = view.h * 0.16;
-      return {
-        x: view.minX + padX + Math.random() * (view.w - padX * 2),
-        y: view.minY + padY + Math.random() * (view.h - padY * 2),
-      };
+      // A few resamples keep even the random rest stops off the user's card.
+      for (let i = 0; i < 6; i++) {
+        const p = {
+          x: view.minX + padX + Math.random() * (view.w - padX * 2),
+          y: view.minY + padY + Math.random() * (view.h - padY * 2),
+        };
+        if (!nearEngaged(p, engaged)) return p;
+      }
+      return { x: view.minX + padX, y: view.minY + padY };
     };
 
     /** Is the dropped card's own processing finished? */
@@ -181,6 +211,11 @@ function JarwizEntity() {
           const bounds = editor.getShapePageBounds(brain.reading.id);
           if (!bounds) {
             finishReading(now); // deleted or undone mid-read
+          } else if (editor.getEditingShapeId() === brain.reading.id) {
+            // The user started typing in the card being read — step aside
+            // instantly. (Selection alone can't veto: ingestion auto-selects
+            // every fresh drop, and reading those is the whole point.)
+            finishReading(now);
           } else if (
             (processingDone(brain.reading) && now >= brain.reading.minUntil) ||
             now >= brain.reading.capUntil
@@ -220,6 +255,11 @@ function JarwizEntity() {
           if (brain.mode !== 'wander-move' && now >= brain.dwellUntil) {
             follower.moveTo(pickWanderTarget(), now, { zoom, speed: 0.9 });
             brain.mode = 'wander-move';
+          } else if (brain.mode === 'wander-move' && brain.lastVisited && engagedIds().has(brain.lastVisited)) {
+            // The user grabbed the card we were flying toward — veer off to a
+            // different target instead of landing on their selection.
+            brain.lastVisited = null;
+            follower.moveTo(pickWanderTarget(), now, { zoom, speed: 0.9 });
           } else if (brain.mode === 'wander-move' && follower.settled) {
             brain.mode = 'wander-idle';
             brain.dwellUntil = now + DWELL_MS[0] + Math.random() * (DWELL_MS[1] - DWELL_MS[0]);
