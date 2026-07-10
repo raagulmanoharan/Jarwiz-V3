@@ -6,13 +6,14 @@
  */
 
 import { createShapeId, stopEventPropagation, useEditor, useValue } from 'tldraw';
-import { MousePointer2, Hand, Type, StickyNote, Shapes, ArrowUpRight, AppWindow, Upload, Folder, HelpCircle } from 'lucide-react';
+import { MousePointer2, Hand, Type, StickyNote, ArrowUpRight, AppWindow, Upload, Folder, HelpCircle } from 'lucide-react';
 import { DOC_CARD_SIZE, NOTE_CARD_SIZE, NOTE_PAPER, PROTOTYPE_PROMPT_SIZE, type DocCardShape, type NoteCardShape, type PrototypeCardShape } from '../shapes';
 import { toggleSidePanel } from './sidePanelStore';
 import { toggleHelp } from './help';
 import { MachinesRail } from './MachinesPalette';
 import { useSyncExternalStore } from 'react';
 import { isOnboarding, subscribeOnboarding } from '../ask/onboardingStore';
+import { bringIntoView } from './bringIntoView';
 
 /** Open a native file picker and hand the chosen PDFs to the same ingestion
  *  path a drag-and-drop takes (registerIngestion's 'files' handler). */
@@ -62,10 +63,7 @@ function focusNewShape(editor: ReturnType<typeof useEditor>, id: ReturnType<type
   editor.select(id);
   editor.setEditingShape(id);
   editor.setCurrentTool('select');
-  const bounds = editor.getShapePageBounds(id);
-  if (bounds) {
-    editor.centerOnPoint({ x: bounds.midX, y: bounds.midY }, { animation: { duration: 200 } });
-  }
+  bringIntoView(editor, id);
 }
 
 function spawnDocCard(editor: ReturnType<typeof useEditor>) {
@@ -136,9 +134,9 @@ export function ToolRail() {
       <RailTool label="Sticky note" active={false} onClick={() => spawnStickyNote(editor)}>
         <StickyNote {...ICON_PROPS} />
       </RailTool>
-      <RailTool label="Shape (R)" active={toolId === 'geo'} onClick={() => editor.setCurrentTool('geo')}>
-        <Shapes {...ICON_PROPS} />
-      </RailTool>
+      {/* The geo Shape tool is gone (owner call 2026-07-10): it armed a
+          draw-a-shape mode that read as "nothing happened", and raw geo
+          primitives sit outside the card design system anyway. */}
       <RailTool label="Arrow (A)" active={toolId === 'arrow'} onClick={() => editor.setCurrentTool('arrow')}>
         <ArrowUpRight {...ICON_PROPS} />
       </RailTool>
