@@ -5818,7 +5818,10 @@ body,
 .jzd-kpi-delta { font-size: 12px; color: var(--jz-ink-500); margin-top: 2px; }
 
 .jzd-chartcard { background: var(--jz-surface-raised); border: 1px solid var(--jz-hairline); border-radius: 12px; padding: 16px; flex: 1; min-width: 0; }
-.jzd-chart { width: 100%; height: auto; display: block; }
+/* width:100% shrinks a dense chart to fit its panel; the SVG's own inline
+   max-width (derived from its data density in library.tsx) stops a sparse one
+   being stretched into slabs. Centered so a small chart sits balanced. */
+.jzd-chart { width: 100%; height: auto; display: block; margin-inline: auto; }
 .jzd-bar { fill: var(--jz-ink-700); }
 .jzd-line { stroke: var(--jz-ink-800); stroke-width: 2; }
 .jzd-dot { fill: var(--jz-ink-900); }

@@ -83,14 +83,24 @@ const Kpi = defineComponent({
 });
 
 // ─── Charts (inline monochrome SVG, offline) ─────────────────────────────────
+// A chart's natural width comes from its DATA (a fixed slot per bar/point),
+// and the inline max-width caps rendering at that natural size — so CSS's
+// width:100% can shrink a dense chart to fit the card but never stretch a
+// sparse one into slabs (owner call, 2026-07-10: two bars must not fill the
+// card). No per-chart knobs; density is the control.
+const CHART_H = 190;
+const CHART_PAD = 28;
+
 function BarSvg({ labels, values }: { labels: string[]; values: number[] }) {
-  const W = 520, H = 200, PAD = 28, BW = Math.max(6, (W - PAD * 2) / Math.max(1, values.length) - 10);
+  const n = Math.max(1, values.length);
+  const SLOT = 84, BW = 48;
+  const W = CHART_PAD * 2 + n * SLOT, H = CHART_H, PAD = CHART_PAD;
   const max = Math.max(1, ...values.map(Math.abs));
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="jzd-chart" preserveAspectRatio="xMidYMid meet">
+    <svg viewBox={`0 0 ${W} ${H}`} className="jzd-chart" style={{ maxWidth: W }} preserveAspectRatio="xMidYMid meet">
       {values.map((v, i) => {
         const h = (Math.abs(v) / max) * (H - PAD * 2);
-        const x = PAD + i * ((W - PAD * 2) / Math.max(1, values.length)) + 5;
+        const x = PAD + i * SLOT + (SLOT - BW) / 2;
         return (
           <g key={i}>
             <rect x={x} y={H - PAD - h} width={BW} height={h} rx={2} className="jzd-bar" />
@@ -103,7 +113,8 @@ function BarSvg({ labels, values }: { labels: string[]; values: number[] }) {
 }
 
 function LineSvg({ labels, values }: { labels: string[]; values: number[] }) {
-  const W = 520, H = 200, PAD = 28;
+  const n = Math.max(2, values.length);
+  const W = CHART_PAD * 2 + (n - 1) * 72, H = CHART_H, PAD = CHART_PAD;
   // Frame to the data's own range (not a forced zero baseline) so a trend that
   // rides a high floor — e.g. 274k → 324k — still uses the vertical space and
   // reads as movement. A little headroom keeps the peaks off the edges.
@@ -118,7 +129,7 @@ function LineSvg({ labels, values }: { labels: string[]; values: number[] }) {
   });
   const d = pts.map((p, i) => `${i ? 'L' : 'M'} ${p[0]} ${p[1]}`).join(' ');
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="jzd-chart" preserveAspectRatio="xMidYMid meet">
+    <svg viewBox={`0 0 ${W} ${H}`} className="jzd-chart" style={{ maxWidth: W }} preserveAspectRatio="xMidYMid meet">
       <path d={d} className="jzd-line" fill="none" />
       {pts.map((p, i) => <circle key={i} cx={p[0]} cy={p[1]} r={2.5} className="jzd-dot" />)}
       {labels.map((l, i) => pts[i] ? <text key={i} x={pts[i]![0]} y={H - PAD + 14} textAnchor="middle" className="jzd-axis">{l}</text> : null)}
