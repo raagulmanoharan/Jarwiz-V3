@@ -24,7 +24,12 @@ function safeHref(url: string): string | null {
 }
 
 function safeImgSrc(url: string): string | null {
-  return /^(https?:\/\/|data:image\/|\/api\/assets\/)/i.test(url) ? url : null;
+  // A remote URL routes through the server's cache-proxy (/api/image): the
+  // table generator caches images it can reach at build time, but any URL
+  // that slipped through raw (offline build, older card) would hotlink —
+  // fragile against hotlink protection / CORS / the source dying.
+  if (/^https?:\/\//i.test(url)) return `/api/image?src=${encodeURIComponent(url)}`;
+  return /^(data:image\/|\/api\/assets\/)/i.test(url) ? url : null;
 }
 
 function hostLabel(url: string): string {
@@ -70,7 +75,22 @@ function renderLine(line: string, key: number): ReactNode {
     if (imgSrc !== undefined) {
       const src = safeImgSrc(imgSrc);
       parts.push(
-        src ? <img key={n++} className="jz-table-img" src={src} alt={imgAlt ?? ''} loading="lazy" /> : whole,
+        src ? (
+          <img
+            key={n++}
+            className="jz-table-img"
+            src={src}
+            alt={imgAlt ?? ''}
+            loading="lazy"
+            // A dead image hides rather than showing a broken frame — same
+            // degrade-to-nothing rule as the rich card's Image component.
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : (
+          whole
+        ),
       );
     } else if (linkHref !== undefined) {
       const href = safeHref(linkHref);

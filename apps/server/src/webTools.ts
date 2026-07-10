@@ -41,7 +41,9 @@ You can reach the live web: web_search finds current pages, web_fetch reads one 
 /** Appended to the table-answer system when the web is on. */
 export const WEB_TABLE_DIRECTIVE = `
 
-You can reach the live web: web_search finds current pages, web_fetch reads one URL in full. Use them when the grid needs current facts (prices, availability, reviews, ratings) or when a source URL's extract is too thin — fetch it. Finish ALL searching before emitting the JSON, and still return ONLY the JSON object — no prose before, between, or after tool calls. A web-sourced cell may cite its page as [label](url) with the page's real URL.`;
+You can reach the live web: web_search finds current pages, web_fetch reads one URL in full. Use them when the grid needs current facts (prices, availability, reviews, ratings) or when a source URL's extract is too thin — fetch it. Finish ALL searching before emitting the JSON, and still return ONLY the JSON object — no prose before, between, or after tool calls. A web-sourced cell may cite its page as [label](url) with the page's real URL.
+
+IMAGES: when the rows are VISUAL things — products, places, buildings, vehicles, artworks, devices, people — add an "Image" column as the FIRST column, each cell exactly ![name](url), one image per row. Get the URLs with the find_image tool (one short concrete query per row item, e.g. "Aeron chair") or from a page you fetched; use returned URLs VERBATIM and never invent, guess, or alter an image URL. If find_image is not among your tools, you may fetch https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrsearch=ITEM&gsrlimit=2&prop=imageinfo&iiprop=url%7Cmime&iiurlwidth=400 and use a "thumburl" from the response. Leave a row's image cell empty when nothing came back, and skip the column entirely when rows aren't visual (metrics, dates, policies, clauses).`;
 
 /** Appended to the table cell-fill system when the web is on. */
 export const WEB_FILL_DIRECTIVE = `
