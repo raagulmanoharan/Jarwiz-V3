@@ -14,10 +14,18 @@ export type Persona = 'product' | 'research' | 'design';
 const KEY = 'jarwiz-persona';
 
 let _persona: Persona | null = readStored();
-/** Whether the user has actively answered (incl. picking "just exploring"),
- *  so the chips can show a settled state rather than re-prompting. */
-let _chosen = _persona !== null;
+/** Whether the user has actively answered (incl. "just exploring", stored as
+ *  'none') — the ask-once gate for the persona modal. */
+let _chosen = hasStored();
 const _listeners = new Set<() => void>();
+
+function hasStored(): boolean {
+  try {
+    return localStorage.getItem(KEY) !== null;
+  } catch {
+    return false;
+  }
+}
 
 function readStored(): Persona | null {
   try {
@@ -38,14 +46,13 @@ export function hasChosenPersona(): boolean {
 
 export function setPersona(p: Persona | null): void {
   _chosen = true;
-  if (_persona !== p) {
-    _persona = p;
-    try {
-      if (p) localStorage.setItem(KEY, p);
-      else localStorage.removeItem(KEY);
-    } catch {
-      /* private mode — session-only is fine */
-    }
+  _persona = p;
+  try {
+    // 'none' persists the "just exploring" answer, so the ask-once modal
+    // never nags a returning visitor who already skipped it.
+    localStorage.setItem(KEY, p ?? 'none');
+  } catch {
+    /* private mode — session-only is fine */
   }
   _listeners.forEach((cb) => cb());
 }

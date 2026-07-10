@@ -29,7 +29,7 @@ import { isDemo, isEmbed, isUseCases } from '../boards/demo';
 import { setOnboarding, setOnboardingEngaged } from './onboardingStore';
 import { hasIngestibleFile } from '../ingest/registerIngestion';
 import { classifyFile, materializeAttachment, uploadAttachment, type Attachment } from '../ingest/attachments';
-import { getPersona, hasChosenPersona, setPersona, subscribePersona, type Persona } from '../onboarding/personaStore';
+import { getPersona, subscribePersona, type Persona } from '../onboarding/personaStore';
 
 // Intent-first onboarding: on a brand-new empty board the composer rises to the
 // centre with a heading and a few starter prompts, then glides down into its
@@ -38,17 +38,8 @@ import { getPersona, hasChosenPersona, setPersona, subscribePersona, type Person
 // Short labels so the chips sit in one horizontal row; tapping fills the fuller
 // prompt into the composer (editable before send).
 //
-// The intent screen also asks WHO is here ("What brings you here?" — one-tap
-// identity chips, never a gate). The pick re-themes the starters and the
-// composer's self-typing examples in place, and persists (personaStore) so
-// future surfaces speak to the same person. `null` = generic/exploring.
-const WHO_CHIPS: Array<{ persona: Persona | null; label: string }> = [
-  { persona: 'product', label: 'Building a product' },
-  { persona: 'research', label: 'Researching a topic' },
-  { persona: 'design', label: 'Designing an experience' },
-  { persona: null, label: 'Just exploring' },
-];
-
+// The starters and self-typing examples are keyed on WHO is here — the
+// ask-once persona modal's pick (personaStore). `null` = generic/exploring.
 const INTRO_STARTERS: Record<Persona | 'default', Array<{ label: string; prompt: string }>> = {
   default: [
     { label: 'Compare a few tools', prompt: 'Compare Notion, Linear and Asana for a small team' },
@@ -201,10 +192,9 @@ export function PromptBar() {
   const [introPh, setIntroPh] = useState('');
   const [introShape, setIntroShape] = useState<ModeShape | null>(null);
   const introAnim = introMode && !value.trim() && !focused && attachments.length === 0 && !prefersReducedMotion();
-  // Who's here — the one-tap identity pick. Tuning is instant: starters and
-  // the self-typing examples re-theme in place the moment a chip is tapped.
+  // Who's here — the persona modal's one-tap pick. Tuning is instant: starters
+  // and the self-typing examples re-theme in place the moment a card is tapped.
   const persona = useSyncExternalStore(subscribePersona, getPersona, getPersona);
-  const personaChosen = useSyncExternalStore(subscribePersona, hasChosenPersona, hasChosenPersona);
   const introStarters = INTRO_STARTERS[persona ?? 'default'];
   const introExamples = INTRO_ANIM[persona ?? 'default'];
   // The ambient scene stays alive until you actually reach for the composer —
@@ -554,24 +544,6 @@ export function PromptBar() {
           <span className="jz-pb-intro-spark" aria-hidden>✦</span>
           <h1 className="jz-pb-intro-head">What are we figuring out?</h1>
           <p className="jz-pb-intro-sub">Drop in an idea, a document, or your notes. I’ll lay it out as a board you can shape.</p>
-          {/* One-tap identity — tunes the starters + examples in place. Never a
-              gate: skipping (or ignoring it) is the full generic experience. */}
-          <div className="jz-pb-who" role="group" aria-label="What brings you here?">
-            <span className="jz-pb-who-label">What brings you here?</span>
-            {WHO_CHIPS.map((c) => {
-              const selected = personaChosen && persona === c.persona;
-              return (
-                <button
-                  key={c.label}
-                  className={`jz-pb-who-chip${selected ? ' jz-pb-who-chip--on' : ''}`}
-                  aria-pressed={selected}
-                  onClick={() => setPersona(c.persona)}
-                >
-                  {c.label}
-                </button>
-              );
-            })}
-          </div>
           <div className="jz-pb-intro-chips" key={persona ?? 'default'}>
             {introStarters.map((s) => (
               <button key={s.label} className="jz-pb-intro-chip" onClick={() => useStarter(s.prompt)} title="Use this prompt (editable)">{s.label}</button>

@@ -26,6 +26,7 @@ const TLDRAW_LICENSE_KEY =
 import { useSync } from '@tldraw/sync';
 import { PromptBar } from './ask/PromptBar';
 import { AmbientOnboarding } from './onboarding/AmbientOnboarding';
+import { PersonaModal } from './onboarding/PersonaModal';
 import { CardActionBar } from './ask/CardActionBar';
 import { ProvenanceLayer } from './ask/ProvenanceLayer';
 import { ClarifyLayer } from './ask/ClarifyLayer';
@@ -77,6 +78,7 @@ function JarwizOverlay() {
       <Safe label="ToolRail"><ToolRail /></Safe>
       <Safe label="AmbientOnboarding"><AmbientOnboarding /></Safe>
       <Safe label="PromptBar"><PromptBar /></Safe>
+      <Safe label="PersonaModal"><PersonaModal /></Safe>
       <Safe label="AgentCursorLayer"><AgentCursorLayer /></Safe>
       <Safe label="HelpLayer"><HelpLayer /></Safe>
 
