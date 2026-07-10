@@ -54,6 +54,7 @@ import { DocFocusOverlay } from './ui/DocFocusOverlay';
 import { CardFocusOverlay } from './ui/CardFocusOverlay';
 import { EmptyState } from './ui/EmptyState';
 import { Topbar } from './ui/Topbar';
+import { PreviewNotice } from './ui/PreviewNotice';
 import { HelpLayer } from './ui/HelpLayer';
 import { SidePanel } from './ui/SidePanel';
 import { ErrorBoundary, Safe } from './ui/ErrorBoundary';
@@ -74,6 +75,7 @@ function JarwizOverlay() {
     <>
       {/* Chrome — the Flora frame. */}
       <Safe label="Topbar"><Topbar /></Safe>
+      <Safe label="PreviewNotice"><PreviewNotice /></Safe>
       <Safe label="SidePanel"><SidePanel /></Safe>
       <Safe label="ToolRail"><ToolRail /></Safe>
       <Safe label="AmbientOnboarding"><AmbientOnboarding /></Safe>
