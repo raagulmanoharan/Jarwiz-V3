@@ -21,25 +21,25 @@ const CARDS: Array<{
   persona: Persona;
   icon: typeof Rocket;
   title: string;
-  examples: string[];
+  blurb: string;
 }> = [
   {
     persona: 'product',
     icon: Rocket,
     title: 'Building a product',
-    examples: ['Break down a launch plan', 'Compare tools for the team', 'Turn a PRD into a board'],
+    blurb: 'Break down a launch plan, compare tools for the team, or turn a PRD into a board.',
   },
   {
     persona: 'research',
     icon: BookOpen,
     title: 'Researching a topic',
-    examples: ['Map a research area', 'Compare studies in a table', 'Digest a long report'],
+    blurb: 'Map a research area, compare studies in a table, or digest a long report into a page.',
   },
   {
     persona: 'design',
     icon: PenTool,
     title: 'Designing an experience',
-    examples: ['Map a user flow', 'Prototype an idea', 'Cluster notes into personas'],
+    blurb: 'Map a user flow, prototype an idea, or cluster research notes into personas.',
   },
 ];
 
@@ -83,11 +83,7 @@ export function PersonaModal() {
               <button key={c.persona} className="jz-persona-card" onClick={() => setPersona(c.persona)}>
                 <span className="jz-persona-icon"><Icon size={20} strokeWidth={1.8} /></span>
                 <span className="jz-persona-title">{c.title}</span>
-                <span className="jz-persona-examples">
-                  {c.examples.map((ex) => (
-                    <span key={ex} className="jz-persona-example">{ex}</span>
-                  ))}
-                </span>
+                <span className="jz-persona-blurb">{c.blurb}</span>
               </button>
             );
           })}

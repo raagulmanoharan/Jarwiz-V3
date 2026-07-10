@@ -4057,24 +4057,12 @@ body,
    * example list must start on the same y for the row to read aligned. */
   min-height: 2.6em;
 }
-.jz-persona-examples {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 10px;
-}
-/* Hanging bullet: a fixed dot column (flush with the title's left edge) so
- * every example's text starts at the same x and wrapped lines indent cleanly. */
-.jz-persona-example {
-  display: grid;
-  grid-template-columns: 11px 1fr;
+/* The examples read as one quiet sentence, not a list. */
+.jz-persona-blurb {
+  margin-top: 8px;
   font-size: var(--jz-text-caption-size);
-  line-height: 1.45;
+  line-height: 1.55;
   color: var(--jz-ink-500);
-}
-.jz-persona-example::before {
-  content: "·";
-  color: var(--jz-ink-300);
 }
 .jz-persona-skip {
   margin-top: 22px;
