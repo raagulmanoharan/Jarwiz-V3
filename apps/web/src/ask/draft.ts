@@ -15,7 +15,6 @@ export interface Draft {
   /** Other shapes that belong to this artefact (affinity stickies/labels);
    *  kept and discarded together with `id`. */
   groupIds?: TLShapeId[];
-  arrowIds: TLShapeId[];
   status: 'streaming' | 'done' | 'error';
   error?: string;
   prompt: string;
