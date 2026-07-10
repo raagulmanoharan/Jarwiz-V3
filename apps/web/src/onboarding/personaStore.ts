@@ -57,6 +57,20 @@ export function setPersona(p: Persona | null): void {
   _listeners.forEach((cb) => cb());
 }
 
+/** Forget the answer entirely — the fresh-start entry (?start=1) re-arms the
+ *  ask-once modal so "Try it free" always opens with the question, even for a
+ *  visitor who answered (or skipped) it on an earlier visit. */
+export function resetPersona(): void {
+  _chosen = false;
+  _persona = null;
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    /* private mode — session-only is fine */
+  }
+  _listeners.forEach((cb) => cb());
+}
+
 export function subscribePersona(cb: () => void): () => void {
   _listeners.add(cb);
   return () => _listeners.delete(cb);
