@@ -659,3 +659,12 @@ dashboards.
   dispatch DOM `.click()` in an evaluate instead. Also: this sandbox blocks
   ALL server-side outbound fetches (even link previews 403) — the proxy's
   fetch leg needs a normal environment to test.
+- **Follow-up (same evening):** owner called out that images were only
+  *possible*, not *reliable* — and that a sparse image floated with dead space.
+  Added `find_image`: a client tool in the research generation loop that
+  searches Wikimedia Commons (relevance-ordered, photo mimes only, license +
+  attribution carried) so the model gets REAL image URLs instead of hoping a
+  page exposed one; the sidecar prompt carries a web-fetch fallback to the
+  same API. Card images became true heroes: full content width, 21/9 crop,
+  caption beneath. Chart width now derives from data density (a slot per
+  bar/point, shrink-only CSS) after "two bars filled the card".

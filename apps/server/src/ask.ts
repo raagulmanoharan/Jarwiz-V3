@@ -13,6 +13,7 @@ import type { AskEvent, AskRequest, AskShape, AskSource } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
 import { assetPath, extractAssetPages, extractAssetText, getAsset } from './assets.js';
 import { cacheImagesInRows } from './imageCache.js';
+import { FIND_IMAGE_TOOL, runFindImage } from './imageSearch.js';
 import { extractSheetText } from './sheets.js';
 import { getMachine, type MachineSkill } from './machines.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
@@ -151,6 +152,8 @@ First decide WHAT the subject is, then work the live web hard on the angles that
 - open question / topic → the current state of things, the strongest sources, where informed people disagree
 Fetch the given URL for ground truth when there is one; cross-check what the subject claims about itself against what outsiders say; hunt for red flags (recurring complaints, contradictions, hidden costs, stale/renamed/discontinued).
 
+GET A REAL IMAGE. Before writing the card, obtain one genuine illustration of the subject: call the find_image tool with a short concrete query (e.g. "Hubble Space Telescope"). If find_image is not among your tools, fetch https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrsearch=SUBJECT&gsrlimit=3&prop=imageinfo&iiprop=url%7Cmime&iiurlwidth=960 with your web-fetch tool and use a "thumburl" from the response. An image URL you saw on a page you fetched is equally good. Use returned URLs VERBATIM — never construct, guess, or alter an image URL. If every route comes up empty, ship the card without an image.
+
 Then compose ONE rich answer card in "OpenUI Lang" — a tiny declarative layout grammar a separate renderer draws through a fixed component library; you never write HTML, CSS, JS, or SVG.
 
 ${OPENUI_GRAMMAR}
@@ -160,15 +163,16 @@ DOSSIER BRIEF
   - Markdown blocks with **bold lead-ins** for the findings and analysis (the backbone of the card).
   - A Table where a grid genuinely clarifies — alternatives side by side, specs, prices.
   - A BarChart/LineChart ONLY when you gathered real comparable numbers (ratings across platforms, a price history) — never decorative, never invented.
-  - Image(s) where a page you fetched offered a genuinely illustrative image URL (the product, the place, a diagram). A couple at most; skip entirely if you saw none.
+  - ONE Image of the subject right after the verdict (the hero) — the URL from find_image or a fetched page, with a short attribution caption (e.g. "Hubble in orbit — Wikimedia Commons"). At most one more Image deeper in the card where it genuinely illustrates a section. Skip images only if every route came up empty.
   - Tabs when several parallel angles each need room (e.g. ["Reviews","Specs","Alternatives"]) — keep the verdict OUTSIDE the tabs so it's always visible.
   - Kpi tiles for the 2–4 headline figures when the subject has them (price, rating, users) — pass "" for delta unless a real change is known.
 - Every externally sourced claim cites its page inline in Markdown as ([source](URL)); finish with one Markdown block of "Source: [Title](URL)" lines, one per page used.
 - Never invent a URL, an image URL, a number, or a fact. If an angle came up empty, say so in one honest Markdown line. Be specific and compact — a scannable dossier, not an essay. No preamble, no narration of your searching.
 
 EXAMPLE (shape only — a real card derives everything from what you actually found):
-root = Stack([verdict, stats, body, srcs], "column")
+root = Stack([verdict, hero, stats, body, srcs], "column")
 verdict = Markdown("# Acme Standing Desk\\nSolid mid-range pick: praised for stability, dinged for a slow motor ([source](https://example.com/review)).")
+hero = Image("https://upload.wikimedia.org/wikipedia/commons/thumb/…/960px-Standing_desk.jpg", "Acme desk at full height — Wikimedia Commons")
 stats = Grid([k1, k2], 2)
 k1 = Kpi("Street price", "$549", "")
 k2 = Kpi("Avg rating", "4.3/5", "")
@@ -501,6 +505,16 @@ interface GenOpts {
   prototype?: boolean;
   framePaths?: string[];
   imageData?: ImageInput[];
+  /** Client-executed tools (e.g. find_image): offered alongside the server
+   *  web tools; when the model calls one, `run` executes it here and the
+   *  turn continues with its result. API path only — the CLI sidecar can't
+   *  call back into this process (its prompt carries a fallback instead). */
+  clientTools?: {
+    tools: Anthropic.Tool[];
+    run: (name: string, input: unknown) => Promise<string>;
+    /** Presence line shown on the avatar while a call runs. */
+    status: string;
+  };
 }
 
 /** The per-mode generation budget the two generators share. */
@@ -591,11 +605,13 @@ async function* generateStream(
   const { tools, maxTokens, maxTurns, sidecarTimeoutMs } = genBudget(opts);
   if (process.env.ANTHROPIC_API_KEY?.trim()) {
     const client = new Anthropic();
+    const allTools = [...(tools ?? []), ...(opts.clientTools?.tools ?? [])];
     const messages: Anthropic.MessageParam[] = [
       { role: 'user', content: buildContent(user, images) },
     ];
-    // Server tools may pause a long turn (stop_reason "pause_turn"); resume by
-    // replaying the assistant content until the model actually finishes.
+    // Server tools may pause a long turn (stop_reason "pause_turn") and client
+    // tools stop it outright (stop_reason "tool_use"); both resume by replaying
+    // the assistant content (plus tool results) until the model finishes.
     for (let turn = 0; turn <= maxTurns; turn++) {
       const stream = client.messages.stream(
         {
@@ -603,7 +619,7 @@ async function* generateStream(
           max_tokens: maxTokens,
           system,
           messages,
-          ...(tools ? { tools } : {}),
+          ...(allTools.length ? { tools: allTools } : {}),
         },
         { signal },
       );
@@ -623,7 +639,25 @@ async function* generateStream(
         }
       }
       const final = await stream.finalMessage();
-      if (!tools || final.stop_reason !== 'pause_turn') return;
+      if (final.stop_reason === 'tool_use' && opts.clientTools) {
+        const calls = final.content.filter(
+          (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
+        );
+        if (calls.length > 0) {
+          yield { type: 'status', message: opts.clientTools.status };
+          const results = await Promise.all(
+            calls.map(async (c) => ({
+              type: 'tool_result' as const,
+              tool_use_id: c.id,
+              content: await opts.clientTools!.run(c.name, c.input),
+            })),
+          );
+          messages.push({ role: 'assistant', content: final.content });
+          messages.push({ role: 'user', content: results });
+          continue;
+        }
+      }
+      if (!allTools.length || final.stop_reason !== 'pause_turn') return;
       messages.push({ role: 'assistant', content: final.content });
     }
     return;
@@ -1119,6 +1153,12 @@ async function* streamRichResearch(
       prototype: true,
       framePaths,
       imageData,
+      clientTools: {
+        tools: [FIND_IMAGE_TOOL],
+        run: (name, input) =>
+          name === 'find_image' ? runFindImage(input) : Promise.resolve('{"error":"unknown tool"}'),
+        status: 'finding a real image…',
+      },
     })) {
       if (signal.aborted) return;
       if (ev.type === 'status') yield { type: 'status', message: ev.message };

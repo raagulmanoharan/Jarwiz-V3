@@ -5835,9 +5835,13 @@ body,
 .jzd-md .jz-md-h3 { font-size: 13px; margin: 10px 0 4px; }
 
 .jzd-figure { margin: 0; min-width: 0; }
+/* A card image is a HERO: it spans the card's content width edge to edge and
+   crops (object-fit) to a calm banner height, instead of floating at its
+   natural size with dead space beside it (owner call, 2026-07-10). */
 .jzd-img {
   display: block;
-  max-width: 100%;
+  width: 100%;
+  aspect-ratio: 21 / 9;
   max-height: 320px;
   border-radius: 10px;
   border: 1px solid var(--jz-hairline);
