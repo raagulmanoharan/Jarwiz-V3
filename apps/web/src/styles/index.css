@@ -3961,12 +3961,139 @@ body,
   max-width: 46ch;
   margin: 0 0 8px;
 }
+/* "What brings you here?" — the ask-once persona modal over the intent
+ * screen. Three identity cards (icon + example asks) on a soft backdrop; the
+ * live ambient scene stays visible behind the veil, so the room keeps
+ * breathing while you answer. */
+.jz-persona {
+  position: fixed;
+  inset: 0;
+  z-index: 380;                /* above the intro composer, below focus mode */
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  pointer-events: auto;
+  background: color-mix(in srgb, var(--jz-paper-deep) 78%, transparent);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+  animation: jz-persona-in var(--jz-dur-base) var(--jz-ease-out) both;
+  transition: opacity var(--jz-dur-base) var(--jz-ease-out);
+}
+.jz-persona--leaving { opacity: 0; pointer-events: none; }
+@keyframes jz-persona-in { from { opacity: 0; } to { opacity: 1; } }
+.jz-persona-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: min(760px, calc(100vw - 48px));
+  animation: jz-persona-pop var(--jz-dur-glide) var(--jz-ease-glide) both;
+}
+@keyframes jz-persona-pop { from { opacity: 0; transform: translateY(10px) scale(0.985); } to { opacity: 1; transform: none; } }
+.jz-persona-head {
+  margin: 0;
+  font-family: var(--jz-font-display);
+  font-optical-sizing: auto;
+  font-size: 30px;
+  line-height: 1.15;
+  font-weight: 540;
+  letter-spacing: -0.015em;
+  color: var(--jz-ink-900);
+}
+.jz-persona-sub {
+  margin: 10px 0 26px;
+  font-size: var(--jz-text-body-sm-size);
+  color: var(--jz-ink-500);
+  max-width: 46ch;
+}
+.jz-persona-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+@media (max-width: 720px) {
+  .jz-persona-cards { grid-template-columns: 1fr; }
+}
+.jz-persona-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  padding: 20px 20px 18px;
+  font: inherit;
+  background: var(--jz-surface-raised);
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-lg);
+  box-shadow: var(--jz-e3);
+  cursor: pointer;
+  transition:
+    transform var(--jz-dur-fast) var(--jz-ease-out),
+    border-color var(--jz-dur-fast) var(--jz-ease-out),
+    box-shadow var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-persona-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--jz-accent) 45%, var(--jz-hairline));
+  box-shadow: var(--jz-e3), 0 0 0 3px color-mix(in srgb, var(--jz-accent) 14%, transparent);
+}
+.jz-persona-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-accent);
+  color: var(--jz-accent-ink);
+}
+.jz-persona-title {
+  margin-top: 14px;
+  font-size: 15px;
+  line-height: 1.3;
+  font-weight: 600;
+  color: var(--jz-ink-900);
+  letter-spacing: -0.01em;
+  /* Reserve two lines: "Designing an experience" wraps, and every card's
+   * example list must start on the same y for the row to read aligned. */
+  min-height: 2.6em;
+}
+/* The examples read as one quiet sentence, not a list. */
+.jz-persona-blurb {
+  margin-top: 8px;
+  font-size: var(--jz-text-caption-size);
+  line-height: 1.55;
+  color: var(--jz-ink-500);
+}
+.jz-persona-skip {
+  margin-top: 22px;
+  font: inherit;
+  font-size: var(--jz-text-body-sm-size);
+  color: var(--jz-ink-500);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-persona-skip:hover { color: var(--jz-ink-900); }
+@media (prefers-reduced-motion: reduce) {
+  .jz-persona, .jz-persona-panel { animation: none; }
+}
+
 .jz-pb-intro-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
-  margin-top: 22px;
+  margin-top: 16px;
+  /* Replayed when the persona swaps the set (the container is keyed). */
+  animation: jz-who-swap var(--jz-dur-base) var(--jz-ease-out);
+}
+@keyframes jz-who-swap {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-pb-intro-chips { animation: none; }
 }
 .jz-pb-intro-chip {
   pointer-events: auto;

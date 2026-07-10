@@ -24,6 +24,7 @@ import {
   isOnboardingEngaged,
   subscribeOnboarding,
 } from '../ask/onboardingStore';
+import { getPersona, subscribePersona, type Persona } from './personaStore';
 
 interface AmbCard {
   key: string;
@@ -32,16 +33,84 @@ interface AmbCard {
   persona: string;
   personaLabel: string;
   from: (w: number, h: number) => { x: number; y: number };
-  verbs: string[];
 }
 
-// four call-and-response pairs, one per corner, using the top and bottom bands
+// four call-and-response pairs, one per corner, using the top and bottom bands.
+// Geometry + cast only — what the cards SAY (and what Jarwiz does to them)
+// comes from CONTENT, keyed on the visitor's persona pick.
 const CARDS: AmbCard[] = [
-  { key: 'sticky', fx: 0.14, fy: 0.25, persona: 'pm', personaLabel: 'PM', from: (_w, h) => ({ x: -80, y: 0.30 * h }), verbs: ['Reading the note', 'Spotting the real gap', 'Drafting three fixes'] },
-  { key: 'link', fx: 0.86, fy: 0.24, persona: 'research', personaLabel: 'Researcher', from: (w, h) => ({ x: w + 80, y: 0.22 * h }), verbs: ['Opening the link', 'Weighing all three', 'Laying it out as a table'] },
-  { key: 'img', fx: 0.14, fy: 0.77, persona: 'design', personaLabel: 'Designer', from: (_w, h) => ({ x: -80, y: 0.82 * h }), verbs: ['Studying the screen', 'Tracing the flow', 'Redrawing it as a diagram'] },
-  { key: 'doc', fx: 0.86, fy: 0.76, persona: 'founder', personaLabel: 'Founder', from: (w, h) => ({ x: w + 80, y: 0.80 * h }), verbs: ['Skimming the brief', 'Pulling the key points', 'Outlining next steps'] },
+  { key: 'sticky', fx: 0.14, fy: 0.25, persona: 'pm', personaLabel: 'PM', from: (_w, h) => ({ x: -80, y: 0.30 * h }) },
+  { key: 'link', fx: 0.86, fy: 0.24, persona: 'research', personaLabel: 'Researcher', from: (w, h) => ({ x: w + 80, y: 0.22 * h }) },
+  { key: 'img', fx: 0.14, fy: 0.77, persona: 'design', personaLabel: 'Designer', from: (_w, h) => ({ x: -80, y: 0.82 * h }) },
+  { key: 'doc', fx: 0.86, fy: 0.76, persona: 'founder', personaLabel: 'Founder', from: (w, h) => ({ x: w + 80, y: 0.80 * h }) },
 ];
+
+interface AmbContent {
+  note: string;
+  linkTitle: string;
+  linkDomain: string;
+  docTitle: string;
+  docText: string;
+  /** Per card (sticky/link/img/doc), the verb script its Jarwiz steps through. */
+  verbs: [string[], string[], string[], string[]];
+}
+
+// The scene the visitor recognises as their own work. Picking an identity chip
+// re-themes the texts live; the choreography (positions, cast) never changes.
+const CONTENT: Record<Persona | 'default', AmbContent> = {
+  default: {
+    note: 'Onboarding feels empty — there’s no reason to stick around yet',
+    linkTitle: 'Notion vs Linear vs Asana — which fits a small team?',
+    linkDomain: 'toolfinder.co',
+    docTitle: 'Product brief',
+    docText: 'Give people a reason to stay — show intelligence in the first few seconds, before the blank canvas.',
+    verbs: [
+      ['Reading the note', 'Spotting the real gap', 'Drafting three fixes'],
+      ['Opening the link', 'Weighing all three', 'Laying it out as a table'],
+      ['Studying the screen', 'Tracing the flow', 'Redrawing it as a diagram'],
+      ['Skimming the brief', 'Pulling the key points', 'Outlining next steps'],
+    ],
+  },
+  product: {
+    note: 'Launch slipped again — scope keeps growing mid-sprint',
+    linkTitle: 'Notion vs Linear vs Asana — which fits a small team?',
+    linkDomain: 'toolfinder.co',
+    docTitle: 'Launch brief',
+    docText: 'Ship the smallest thing that proves the bet — cut scope, not the deadline.',
+    verbs: [
+      ['Reading the note', 'Spotting the real gap', 'Drafting three fixes'],
+      ['Opening the link', 'Weighing all three', 'Laying it out as a table'],
+      ['Studying the screen', 'Tracing the flow', 'Redrawing it as a diagram'],
+      ['Skimming the brief', 'Cutting it to a plan', 'Outlining next steps'],
+    ],
+  },
+  research: {
+    note: 'Three studies disagree — effect size shrinks with sample size',
+    linkTitle: 'Remote work and productivity — a 2026 meta-analysis',
+    linkDomain: 'journals.example.org',
+    docTitle: 'Reading notes',
+    docText: 'The strongest effects appear in self-reported data — the measured studies tell a quieter story.',
+    verbs: [
+      ['Reading the note', 'Comparing the claims', 'Flagging the outlier'],
+      ['Opening the paper', 'Weighing the evidence', 'Building a comparison table'],
+      ['Studying the figure', 'Tracing the method', 'Redrawing it as a diagram'],
+      ['Skimming the notes', 'Clustering the themes', 'Drafting a summary'],
+    ],
+  },
+  design: {
+    note: 'Users bail on step 3 — the form asks too much too soon',
+    linkTitle: 'Onboarding patterns that actually convert',
+    linkDomain: 'nngroup.com',
+    docTitle: 'Design crit notes',
+    docText: 'The empty state is the first impression — show the product working before asking for anything.',
+    verbs: [
+      ['Reading the note', 'Spotting the friction', 'Sketching two fixes'],
+      ['Opening the link', 'Pulling the patterns', 'Laying them out as a board'],
+      ['Studying the screen', 'Tracing the flow', 'Redrawing it as a diagram'],
+      ['Skimming the notes', 'Grouping the feedback', 'Outlining next steps'],
+    ],
+  },
+};
 
 const reduceMotion = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -65,6 +134,13 @@ function AmbientScene({ hushed }: { hushed: boolean }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const hushedRef = useRef(hushed);
   hushedRef.current = hushed;
+  // A persona pick re-themes the scene LIVE: React swaps the card texts, and
+  // the imperative verb loop reads through this ref on every step — the
+  // choreography itself (positions, cast, timing) never restarts.
+  const persona = useSyncExternalStore(subscribePersona, getPersona, getPersona);
+  const content = CONTENT[persona ?? 'default'];
+  const contentRef = useRef(content);
+  contentRef.current = content;
 
   useEffect(() => {
     const root = rootRef.current;
@@ -175,6 +251,9 @@ function AmbientScene({ hushed }: { hushed: boolean }) {
     // ── one Jarwiz per card: born from the orb, then it stays and works ────
     const litCount: Record<string, number> = {};
     const lit = (key: string, d: number) => { litCount[key] = (litCount[key] || 0) + d; innerEl(key)?.classList.toggle('jz-amb-lit', litCount[key] > 0); };
+    // Verbs are read through contentRef on every step, so a persona pick
+    // swaps what each Jarwiz says mid-loop without restarting the motion.
+    const verbsFor = (idx: number) => contentRef.current.verbs[idx] ?? [];
     const worker = async (curId: string, idx: number) => {
       const el = curEl(curId); const c = CARDS[idx]; if (!el || !c) return;
       const p = px(c.fx, c.fy);
@@ -185,14 +264,15 @@ function AmbientScene({ hushed }: { hushed: boolean }) {
       await fly(el, { x: orb.x, y: orb.y }, { x: tx, y: ty }, 1250, idx % 2 ? 1 : -1, 0.12, 1);
       if (!alive) return;
       lit(c.key, +1);
-      setStatus(el, c.verbs[0]!);
+      setStatus(el, verbsFor(idx)[0] ?? '');
       let vi = 0, hops = 0;
       while (alive) {
         if (hushed()) { await sleep(300); continue; }
         const hx = tx + (Math.random() - 0.5) * 18, hy = ty + (Math.random() - 0.5) * 14;
         await fly(el, { x: trackedX.get(el) ?? tx, y: trackedY.get(el) ?? ty }, { x: hx, y: hy }, 1600 + Math.random() * 700, hops % 2 ? 1 : -1);
         hops++;
-        if (hops % 2 === 0) { vi = (vi % (c.verbs.length - 1)) + 1; if (!hushed()) setStatus(el, c.verbs[vi]!); }
+        const verbs = verbsFor(idx);
+        if (hops % 2 === 0 && verbs.length > 1) { vi = (vi % (verbs.length - 1)) + 1; if (!hushed()) setStatus(el, verbs[vi] ?? ''); }
         await sleep(500 + Math.random() * 400);
       }
     };
@@ -205,7 +285,7 @@ function AmbientScene({ hushed }: { hushed: boolean }) {
         placeCardInstant(c.key, p.x, p.y);
         cardEl(c.key)?.classList.add('jz-amb-in');
         const jz = curEl(`jz${i}`);
-        if (jz) { const tx = c.fx > 0.5 ? p.x - 96 : p.x + 8, ty = p.y + 10; showCur(jz, true); setCur(jz, tx, ty, 0, 1); setStatus(jz, c.verbs[1]!); }
+        if (jz) { const tx = c.fx > 0.5 ? p.x - 96 : p.x + 8, ty = p.y + 10; showCur(jz, true); setCur(jz, tx, ty, 0, 1); setStatus(jz, contentRef.current.verbs[i]?.[1] ?? ''); }
         lit(c.key, +1);
       });
       return () => { alive = false; timers.forEach((t) => window.clearTimeout(t)); };
@@ -230,11 +310,11 @@ function AmbientScene({ hushed }: { hushed: boolean }) {
     <div ref={rootRef} className={`jz-ambient${hushed ? ' jz-ambient--hushed' : ''}`} aria-hidden>
       <span className="jz-amb-ring" data-ring />
 
-      {/* four illustrative "message" cards */}
-      <div className="jz-amb-item" data-card="sticky"><div className="jz-amb-body"><div className="jz-amb-note">Onboarding feels empty — there’s no reason to stick around yet</div></div></div>
-      <div className="jz-amb-item" data-card="link"><div className="jz-amb-body"><div className="jz-amb-card jz-amb-link"><div className="media" /><div className="lbody"><div className="ltitle">Notion vs Linear vs Asana — which fits a small team?</div><div className="lfoot"><span className="fav" /><span className="dom">producthunt.com</span></div></div></div></div></div>
+      {/* four illustrative "message" cards — texts re-theme with the persona */}
+      <div className="jz-amb-item" data-card="sticky"><div className="jz-amb-body"><div className="jz-amb-note">{content.note}</div></div></div>
+      <div className="jz-amb-item" data-card="link"><div className="jz-amb-body"><div className="jz-amb-card jz-amb-link"><div className="media" /><div className="lbody"><div className="ltitle">{content.linkTitle}</div><div className="lfoot"><span className="fav" /><span className="dom">{content.linkDomain}</span></div></div></div></div></div>
       <div className="jz-amb-item" data-card="img"><div className="jz-amb-body"><div className="jz-amb-card jz-amb-img"><div className="pic" /></div></div></div>
-      <div className="jz-amb-item" data-card="doc"><div className="jz-amb-body"><div className="jz-amb-card jz-amb-doc"><div className="dtitle">Product brief</div><div className="dtext">Give people a reason to stay — show intelligence in the first few seconds, before the blank canvas.</div></div></div></div>
+      <div className="jz-amb-item" data-card="doc"><div className="jz-amb-body"><div className="jz-amb-card jz-amb-doc"><div className="dtitle">{content.docTitle}</div><div className="dtext">{content.docText}</div></div></div></div>
 
       {/* collaborator cursors — carry cards in from the edges, then linger */}
       {CARDS.map((c) => (
