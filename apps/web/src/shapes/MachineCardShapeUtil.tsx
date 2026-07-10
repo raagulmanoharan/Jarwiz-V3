@@ -135,7 +135,7 @@ function MachineCardBody({ shape }: { shape: MachineCardShape }) {
   };
 
   return (
-    <div ref={cardRef} className={`jz-machine-card${running ? ' jz-machine-card--running' : ''}${isSelected ? ' jz-machine-card--selected' : ''}`}>
+    <div ref={cardRef} className={`jz-machine-card${running ? ' jz-machine-card--running' : ''}${isSelected ? ' jz-card-selected' : ''}`}>
       <div className="jz-machine-card-head">
         <span className="jz-machine-card-badge">{MACHINE_ICONS[m.icon]}</span>
         <span className="jz-machine-card-name">{m.name}</span>

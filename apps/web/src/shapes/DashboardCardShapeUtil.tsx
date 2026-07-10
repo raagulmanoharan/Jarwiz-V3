@@ -21,6 +21,7 @@ import {
 import { Renderer } from '@openuidev/react-lang';
 import { BarChart3, Loader2 } from 'lucide-react';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
+import { useCardSelected } from './useCardSelected';
 import { dashboardLibrary } from '../dashboard/library';
 
 export interface DashboardCardProps {
@@ -81,6 +82,7 @@ export class DashboardCardShapeUtil extends ShapeUtil<DashboardCardShape> {
 
 function DashboardBody({ shape }: { shape: DashboardCardShape }) {
   const { spec, status } = shape.props;
+  const isSelected = useCardSelected(shape.id);
   // The runner streams the OpenUI Lang spec into props.spec token by token
   // (like the prototype card streams its html), so the shape re-renders as it
   // grows and the Renderer reveals the dashboard progressively.
@@ -88,7 +90,7 @@ function DashboardBody({ shape }: { shape: DashboardCardShape }) {
   const source = spec;
 
   return (
-    <div className="jz-card jzd-root" data-status={status}>
+    <div className={`jz-card jzd-root${isSelected ? ' jz-card-selected' : ''}`} data-status={status}>
       {streaming && !source.trim() ? (
         <div className="jzd-loading">
           <Loader2 size={18} className="jzd-spin" />

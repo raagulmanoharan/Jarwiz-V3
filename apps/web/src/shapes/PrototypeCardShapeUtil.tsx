@@ -115,7 +115,7 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
   // The one shared selected state (the CSS ring) — the sole thing that thickens
   // a card's edge, identical across every card type.
   const isSelected = useValue('prototype-selected', () => editor.getSelectedShapeIds().includes(shape.id), [editor]);
-  const sel = isSelected ? ' jz-prototype--selected' : '';
+  const sel = isSelected ? ' jz-card-selected' : '';
   // Reset counter — bumping it (via the refine menu) remounts the iframe below,
   // reloading the UI to its initial state without regenerating.
   const refreshNonce = useSyncExternalStore(

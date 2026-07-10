@@ -21,6 +21,7 @@ import {
   type TLShape,
 } from 'tldraw';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
+import { useCardSelected } from './useCardSelected';
 import { gridIsDashboardable } from '../lib/dashboardable';
 
 export type SheetStatus = 'uploading' | 'ready' | 'error';
@@ -102,6 +103,7 @@ const MAX_FIT_H = 560;
 
 function SheetCardBody({ shape }: { shape: SheetCardShape }) {
   const editor = useEditor();
+  const isSelected = useCardSelected(shape.id);
   const { assetId, name, status } = shape.props;
   const [sheets, setSheets] = useState<Grid[] | null>(null);
   const [active, setActive] = useState(0);
@@ -156,7 +158,7 @@ function SheetCardBody({ shape }: { shape: SheetCardShape }) {
   }, [grid, editor, shape.id]);
 
   return (
-    <div className="jz-card jz-sheet-card">
+    <div className={`jz-card jz-sheet-card${isSelected ? ' jz-card-selected' : ''}`}>
       <div className="jz-sheet-stage" onPointerDown={status === 'ready' ? stopEventPropagation : undefined}>
         {status === 'uploading' ? (
           <SheetMessage label={`Uploading ${name || 'spreadsheet'}…`} spinner />

@@ -17,6 +17,7 @@ import { continueProse } from '../agents/autopilotStore';
 import { useAutopilot } from '../agents/useAutopilot';
 import { useTypingPause } from '../agents/useTypingPause';
 import { NOTE_RADIUS, roundedRectPath } from './cardGeometry';
+import { useCardSelected } from './useCardSelected';
 
 export interface NoteCardProps {
   w: number;
@@ -98,6 +99,7 @@ export class NoteCardShapeUtil extends ShapeUtil<NoteCardShape> {
 function NoteCardBody({ shape }: { shape: NoteCardShape }) {
   const editor = useEditor();
   const isEditing = useIsEditing(shape.id);
+  const isSelected = useCardSelected(shape.id);
   const { text, color } = shape.props;
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
   const isStreaming = streamingSet.has(shape.id);
@@ -106,7 +108,7 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
   const showNudge = isEditing && paused && !isStreaming;
 
   return (
-    <div className="jz-note" style={{ background: color || NOTE_PAPER }}>
+    <div className={`jz-note${isSelected ? ' jz-card-selected' : ''}`} style={{ background: color || NOTE_PAPER }}>
       {isEditing ? (
         <>
         <textarea

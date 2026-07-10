@@ -341,7 +341,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
       </button>
     ) : null}
     <div
-      className={`jz-table${isFilling ? ' jz-table-filling' : ''}${collapsed ? ' jz-card-collapsed' : ''}${chrome ? ' jz-table--chrome' : ''}`}
+      className={`jz-table${isFilling ? ' jz-table-filling' : ''}${collapsed ? ' jz-card-collapsed' : ''}${chrome ? ' jz-table--chrome' : ''}${isSelected ? ' jz-card-selected' : ''}`}
     >
       {/* Measured wrapper: the frame is height:100% (its scrollHeight always
           equals the CURRENT shape height — the fit-height ratchet), so the

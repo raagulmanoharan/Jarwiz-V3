@@ -9,6 +9,7 @@ import {
   type TLShape,
 } from 'tldraw';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
+import { useCardSelected } from './useCardSelected';
 
 export interface ImageCardProps {
   w: number;
@@ -57,15 +58,22 @@ export class ImageCardShapeUtil extends ShapeUtil<ImageCardShape> {
   }
 
   override component(shape: ImageCardShape) {
-    const { src, name } = shape.props;
-    // The image IS the card face — no mat, no caption (the primitive title
-    // above the card carries the name; the caption doubled it).
     return (
       <HTMLContainer>
-        <div className="jz-card jz-image-card">
-          {src ? <img src={src} alt={name} draggable={false} /> : null}
-        </div>
+        <ImageCardBody shape={shape} />
       </HTMLContainer>
     );
   }
+}
+
+function ImageCardBody({ shape }: { shape: ImageCardShape }) {
+  const { src, name } = shape.props;
+  const isSelected = useCardSelected(shape.id);
+  // The image IS the card face — no mat, no caption (the primitive title
+  // above the card carries the name; the caption doubled it).
+  return (
+    <div className={`jz-card jz-image-card${isSelected ? ' jz-card-selected' : ''}`}>
+      {src ? <img src={src} alt={name} draggable={false} /> : null}
+    </div>
+  );
 }

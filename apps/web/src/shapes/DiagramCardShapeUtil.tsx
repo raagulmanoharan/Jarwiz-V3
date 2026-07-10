@@ -22,6 +22,7 @@ import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { renderMermaid, stripFences } from '../lib/mermaid';
 import { useFitHeight } from './useFitHeight';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
+import { useCardSelected } from './useCardSelected';
 
 export interface DiagramCardProps {
   w: number;
@@ -82,6 +83,7 @@ export class DiagramCardShapeUtil extends ShapeUtil<DiagramCardShape> {
 
 function DiagramCardBody({ shape }: { shape: DiagramCardShape }) {
   const { code } = shape.props;
+  const isSelected = useCardSelected(shape.id);
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
   const isStreaming = streamingSet.has(shape.id);
 
@@ -118,7 +120,7 @@ function DiagramCardBody({ shape }: { shape: DiagramCardShape }) {
   useFitHeight(shape.id, fitRef, [svg, code, isStreaming, failed], { streaming: isStreaming });
 
   return (
-    <div className="jz-diagram" ref={fitRef}>
+    <div className={`jz-diagram${isSelected ? ' jz-card-selected' : ''}`} ref={fitRef}>
       {/* No in-card header: a diagram carries no title chrome (owner call) — the
           shape IS the diagram. `title` stays in props for grounding/search. */}
       <div className="jz-diagram-body">
