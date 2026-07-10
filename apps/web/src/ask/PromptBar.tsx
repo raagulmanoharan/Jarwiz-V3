@@ -29,6 +29,7 @@ import { isDemo, isEmbed, isUseCases } from '../boards/demo';
 import { setOnboarding, setOnboardingEngaged } from './onboardingStore';
 import { hasIngestibleFile } from '../ingest/registerIngestion';
 import { classifyFile, materializeAttachment, uploadAttachment, type Attachment } from '../ingest/attachments';
+import { getPersona, hasChosenPersona, setPersona, subscribePersona, type Persona } from '../onboarding/personaStore';
 
 // Intent-first onboarding: on a brand-new empty board the composer rises to the
 // centre with a heading and a few starter prompts, then glides down into its
@@ -36,22 +37,71 @@ import { classifyFile, materializeAttachment, uploadAttachment, type Attachment 
 // what a good ask looks like (and can send or edit).
 // Short labels so the chips sit in one horizontal row; tapping fills the fuller
 // prompt into the composer (editable before send).
-const INTRO_STARTERS: Array<{ label: string; prompt: string }> = [
-  { label: 'Compare a few tools', prompt: 'Compare Notion, Linear and Asana for a small team' },
-  { label: 'Brainstorm a feature', prompt: 'Brainstorm features for a habit-tracking app' },
-  { label: 'Break down a plan', prompt: 'Break down a launch plan for a new product' },
+//
+// The intent screen also asks WHO is here ("What brings you here?" — one-tap
+// identity chips, never a gate). The pick re-themes the starters and the
+// composer's self-typing examples in place, and persists (personaStore) so
+// future surfaces speak to the same person. `null` = generic/exploring.
+const WHO_CHIPS: Array<{ persona: Persona | null; label: string }> = [
+  { persona: 'product', label: 'Building a product' },
+  { persona: 'research', label: 'Researching a topic' },
+  { persona: 'design', label: 'Designing an experience' },
+  { persona: null, label: 'Just exploring' },
 ];
+
+const INTRO_STARTERS: Record<Persona | 'default', Array<{ label: string; prompt: string }>> = {
+  default: [
+    { label: 'Compare a few tools', prompt: 'Compare Notion, Linear and Asana for a small team' },
+    { label: 'Brainstorm a feature', prompt: 'Brainstorm features for a habit-tracking app' },
+    { label: 'Break down a plan', prompt: 'Break down a launch plan for a new product' },
+  ],
+  product: [
+    { label: 'Break down a launch', prompt: 'Break down a launch plan for a new product' },
+    { label: 'Brainstorm a feature', prompt: 'Brainstorm features for a habit-tracking app' },
+    { label: 'Compare a few tools', prompt: 'Compare Notion, Linear and Asana for a small team' },
+  ],
+  research: [
+    { label: 'Map a topic', prompt: 'Map the research landscape around habit formation' },
+    { label: 'Compare findings', prompt: 'Compare the main studies on remote work productivity in a table' },
+    { label: 'Digest a long read', prompt: 'Summarize the key arguments of a long report into one page' },
+  ],
+  design: [
+    { label: 'Map a user flow', prompt: 'Map the onboarding flow for a mobile app end to end' },
+    { label: 'Prototype an idea', prompt: 'Prototype a focus-timer app I can click through' },
+    { label: 'Explore concepts', prompt: 'Brainstorm three directions for a pricing page' },
+  ],
+};
 
 // The empty intent composer types these on its own and previews the shape it'd
 // build a few words in — the box is alive, and Jarwiz shows it understood
 // before you commit. Shapes are real ModeShape values so the preview chip reuses
-// the composer's own suggestion chip.
-const INTRO_ANIM: Array<{ text: string; shape: ModeShape }> = [
-  { text: 'Compare Notion, Linear and Asana for a small team', shape: 'table' },
-  { text: 'Brainstorm features for a habit-tracking app', shape: 'board' },
-  { text: 'Map the onboarding flow end to end', shape: 'diagram' },
-  { text: 'Turn my Q2 numbers into a dashboard', shape: 'dashboard' },
-];
+// the composer's own suggestion chip. Per-persona, same reason as the starters.
+const INTRO_ANIM: Record<Persona | 'default', Array<{ text: string; shape: ModeShape }>> = {
+  default: [
+    { text: 'Compare Notion, Linear and Asana for a small team', shape: 'table' },
+    { text: 'Brainstorm features for a habit-tracking app', shape: 'board' },
+    { text: 'Map the onboarding flow end to end', shape: 'diagram' },
+    { text: 'Turn my Q2 numbers into a dashboard', shape: 'dashboard' },
+  ],
+  product: [
+    { text: 'Break down a launch plan for a new product', shape: 'board' },
+    { text: 'Compare Notion, Linear and Asana for a small team', shape: 'table' },
+    { text: 'Map the signup flow end to end', shape: 'diagram' },
+    { text: 'Turn my Q2 numbers into a dashboard', shape: 'dashboard' },
+  ],
+  research: [
+    { text: 'Compare the main studies on remote work', shape: 'table' },
+    { text: 'Map the literature around habit formation', shape: 'diagram' },
+    { text: 'Cluster my reading notes by theme', shape: 'board' },
+    { text: 'Turn these survey results into a dashboard', shape: 'dashboard' },
+  ],
+  design: [
+    { text: 'Map the onboarding flow end to end', shape: 'diagram' },
+    { text: 'Prototype a focus-timer app', shape: 'prototype' },
+    { text: 'Compare three pricing-page layouts', shape: 'table' },
+    { text: 'Turn my research notes into personas', shape: 'board' },
+  ],
+};
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -151,6 +201,12 @@ export function PromptBar() {
   const [introPh, setIntroPh] = useState('');
   const [introShape, setIntroShape] = useState<ModeShape | null>(null);
   const introAnim = introMode && !value.trim() && !focused && attachments.length === 0 && !prefersReducedMotion();
+  // Who's here — the one-tap identity pick. Tuning is instant: starters and
+  // the self-typing examples re-theme in place the moment a chip is tapped.
+  const persona = useSyncExternalStore(subscribePersona, getPersona, getPersona);
+  const personaChosen = useSyncExternalStore(subscribePersona, hasChosenPersona, hasChosenPersona);
+  const introStarters = INTRO_STARTERS[persona ?? 'default'];
+  const introExamples = INTRO_ANIM[persona ?? 'default'];
   // The ambient scene stays alive until you actually reach for the composer —
   // focusing or typing hushes it the moment you engage, before the first send.
   const introEngaged = introMode && (focused || Boolean(value.trim()) || attachments.length > 0);
@@ -166,7 +222,7 @@ export function PromptBar() {
     void (async () => {
       let i = 0;
       while (alive) {
-        const ex = INTRO_ANIM[i % INTRO_ANIM.length]!;
+        const ex = introExamples[i % introExamples.length]!;
         setIntroShape(null);
         const reveal = Math.min(14, Math.max(6, Math.floor(ex.text.length * 0.4)));
         for (let c = 1; c <= ex.text.length && alive; c++) {
@@ -187,8 +243,10 @@ export function PromptBar() {
       }
     })();
     return () => { alive = false; timers.forEach((t) => window.clearTimeout(t)); };
+    // Keyed on the persona too: a chip tap restarts the loop on that person's
+    // examples immediately — the screen visibly reacts to the pick.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [introAnim]);
+  }, [introAnim, persona]);
   // Inline filtering, Claude-Code style: while the input reads "/que…", the
   // menu narrows to matching modes. Opened from the button, it shows all.
   const modeQuery = value.startsWith('/') ? value.slice(1).trim().toLowerCase() : '';
@@ -496,8 +554,26 @@ export function PromptBar() {
           <span className="jz-pb-intro-spark" aria-hidden>✦</span>
           <h1 className="jz-pb-intro-head">What are we figuring out?</h1>
           <p className="jz-pb-intro-sub">Drop in an idea, a document, or your notes. I’ll lay it out as a board you can shape.</p>
-          <div className="jz-pb-intro-chips">
-            {INTRO_STARTERS.map((s) => (
+          {/* One-tap identity — tunes the starters + examples in place. Never a
+              gate: skipping (or ignoring it) is the full generic experience. */}
+          <div className="jz-pb-who" role="group" aria-label="What brings you here?">
+            <span className="jz-pb-who-label">What brings you here?</span>
+            {WHO_CHIPS.map((c) => {
+              const selected = personaChosen && persona === c.persona;
+              return (
+                <button
+                  key={c.label}
+                  className={`jz-pb-who-chip${selected ? ' jz-pb-who-chip--on' : ''}`}
+                  aria-pressed={selected}
+                  onClick={() => setPersona(c.persona)}
+                >
+                  {c.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="jz-pb-intro-chips" key={persona ?? 'default'}>
+            {introStarters.map((s) => (
               <button key={s.label} className="jz-pb-intro-chip" onClick={() => useStarter(s.prompt)} title="Use this prompt (editable)">{s.label}</button>
             ))}
           </div>

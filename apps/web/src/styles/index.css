@@ -3961,12 +3961,65 @@ body,
   max-width: 46ch;
   margin: 0 0 8px;
 }
+/* "What brings you here?" — one-tap identity chips on the intent screen.
+ * Quieter than the starter chips (they're a question, not an action): a
+ * caption-weight label and small pills; the pick fills to accent ink. */
+.jz-pb-who {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 18px;
+}
+.jz-pb-who-label {
+  /* The question takes its own line so the four chips sit as one row. */
+  flex-basis: 100%;
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-400);
+  margin-bottom: 1px;
+}
+.jz-pb-who-chip {
+  font: inherit;
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-500);
+  background: transparent;
+  border: 1px solid var(--jz-hairline);
+  border-radius: 999px;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition:
+    border-color var(--jz-dur-fast) var(--jz-ease-out),
+    color var(--jz-dur-fast) var(--jz-ease-out),
+    background var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-pb-who-chip:hover {
+  border-color: var(--jz-hairline-strong);
+  color: var(--jz-ink-900);
+}
+.jz-pb-who-chip--on {
+  background: var(--jz-accent);
+  border-color: transparent;
+  color: var(--jz-accent-ink);
+  font-weight: 600;
+}
+
 .jz-pb-intro-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
-  margin-top: 22px;
+  margin-top: 16px;
+  /* Replayed when the persona swaps the set (the container is keyed). */
+  animation: jz-who-swap var(--jz-dur-base) var(--jz-ease-out);
+}
+@keyframes jz-who-swap {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-pb-intro-chips { animation: none; }
 }
 .jz-pb-intro-chip {
   pointer-events: auto;
