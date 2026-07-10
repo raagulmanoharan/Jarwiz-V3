@@ -23,6 +23,14 @@ export function isUseCases(): boolean {
   return hasParam('usecases');
 }
 
+/** Fresh-start entry (?start=1) — the marketing site's "Try it free" door.
+ *  Lands the visitor on the intent-first onboarding (the "What brings you
+ *  here?" ask over the ambient scene), never a pre-filled board. See
+ *  boards/freshStart.ts for what it does to board + persona state. */
+export function isFreshStart(): boolean {
+  return hasParam('start');
+}
+
 function hasParam(key: string): boolean {
   if (typeof window === 'undefined') return false;
   try {

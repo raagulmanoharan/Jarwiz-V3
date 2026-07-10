@@ -707,3 +707,33 @@ dashboards.
   All four parsers fixture-tested; the live round-trip is untestable in this
   fully-offline sandbox, so the first research ask on a real machine is the
   acceptance test.
+
+## 2026-07-10 (night) — "Try it free" opens with the question, not a finished board
+
+**Intent:** the owner clicked "Try it free" on the marketing site and landed on
+the pre-seeded demo board — "what happened to the flow where it asks what
+you're using it for, and the cards disappear as I type?" Nothing had been
+removed: the intent-first onboarding (persona ask + ambient scene) shipped in
+#29/#31 and was live, but the CTA linked to `?demo=1`, which deliberately
+suppresses onboarding, and the persona ask is ask-once per browser. The owner
+called it: the CTA should land in the "What brings you here?" flow.
+
+- Added a **fresh-start entry, `?start=1`** (`boards/freshStart.ts`), and
+  pointed all three "Try it free" buttons at it. It guarantees the first-run
+  experience for *everyone*: re-arms the ask-once persona question
+  (`resetPersona()`), and if the visitor's active board is already in use,
+  quietly creates a brand-new board — existing boards stay untouched in the
+  switcher. Runs pre-mount (main.tsx) because the active board decides
+  tldraw's persistenceKey at first paint; the param is then stripped from the
+  URL so a refresh doesn't stack a board per reload.
+- `?demo=1` itself is unchanged — the seeded SWOT board remains available for
+  anything that still links to it; it's just no longer the front door.
+- Verified end-to-end in the sandbox (production build + Playwright): first
+  visit shows the modal over the live ambient scene; a persona pick re-themes
+  the starters; typing hushes the ambient cards; and — the case that prompted
+  this — a browser that had already explored the demo board still gets the
+  full onboarding through the new door.
+- Trade-off noted: first-time visitors no longer see finished artifacts
+  instantly; the ambient scene + self-typing composer now carry the "show
+  intelligence early" job. If that proves too subtle, a themed seed *after*
+  the persona pick is the natural follow-up.
