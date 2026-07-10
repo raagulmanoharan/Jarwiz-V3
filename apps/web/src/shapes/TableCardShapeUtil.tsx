@@ -21,6 +21,7 @@ import { useAutopilot } from '../agents/useAutopilot';
 import { useFitHeight } from './useFitHeight';
 import { isExpanded, subscribeExpand } from './cardExpand';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
+import { useCardSelected } from './useCardSelected';
 import { renderRichCell } from './tableRich';
 
 export type ColumnType = 'text' | 'link' | 'photo';
@@ -119,6 +120,10 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
     () => editor.getOnlySelectedShapeId() === shape.id,
     [editor, shape.id],
   );
+  // The selected RING follows normal selection (single OR part of a multi-
+  // select), like every other card — separate from `isSelected` above, which
+  // is the only-selected gate for the "+" column affordance/chrome.
+  const ringSelected = useCardSelected(shape.id);
   const { columns, rows } = shape.props;
   // Optional [row, col] to visually highlight (e.g. the hero showreel flags the
   // stale cell while its value regenerates). Drawn on the real cell, so it's
@@ -341,7 +346,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
       </button>
     ) : null}
     <div
-      className={`jz-table${isFilling ? ' jz-table-filling' : ''}${collapsed ? ' jz-card-collapsed' : ''}${chrome ? ' jz-table--chrome' : ''}`}
+      className={`jz-table${isFilling ? ' jz-table-filling' : ''}${collapsed ? ' jz-card-collapsed' : ''}${chrome ? ' jz-table--chrome' : ''}${ringSelected ? ' jz-card-selected' : ''}`}
     >
       {/* Measured wrapper: the frame is height:100% (its scrollHeight always
           equals the CURRENT shape height — the fit-height ratchet), so the

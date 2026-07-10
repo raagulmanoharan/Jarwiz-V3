@@ -643,7 +643,11 @@ body,
   box-sizing: border-box;
   padding: var(--jz-space-5); /* THE uniform card inset — matches every other card */
   background: var(--jz-card-surface);
-  border: 1.5px solid color-mix(in srgb, var(--jz-accent) 38%, var(--jz-hairline));
+  /* THE uniform card border — one hairline at rest, same as every other card
+     (.jz-doc / .jz-prototype). The only thing that thickens a card's edge is
+     selection; a machine block is not perpetually "emphasised" (owner call
+     2026-07-10 — one border language across all cards). */
+  border: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-lg);
   box-shadow: var(--jz-e2, 0 2px 10px rgba(8, 9, 11, 0.14));
 }
@@ -3047,16 +3051,19 @@ body,
   overflow: hidden;
   text-overflow: ellipsis;
   pointer-events: all;
+  /* The tag is a drag handle (ui/CardTitleTag) — keep touch drags ours. */
+  touch-action: none;
 }
 
 .jz-title-tag::placeholder {
   color: var(--jz-ink-400);
 }
 
-/* Unselected cards show an inert label — clicks fall through to the shape
- * beneath, which selects it and swaps the label for the editable input. */
+/* Unselected cards show a label that doubles as a handle: click selects the
+ * card, drag moves it (owner call 2026-07-10 — the title is part of the
+ * card's grabbable surface, not inert text). */
 .jz-title-tag--label {
-  pointer-events: none;
+  cursor: grab;
 }
 
 .jz-doc-content {
@@ -3078,11 +3085,10 @@ body,
   overflow: visible;
 }
 
-/* Selected state — subtle ring drawn in CSS, bypassing tldraw canvas chrome */
-.jz-doc--selected {
-  box-shadow: var(--jz-e2), 0 0 0 1.5px rgba(255, 255, 255, 0.55);
-  border-color: rgba(255, 255, 255, 0.3);
-}
+/* The one shared selected state lives in a single `.jz-card-selected` rule
+   placed after every card's base styles (search "jz-card-selected"); it can't
+   sit here because later base rules (.jz-diagram, .jz-prototype) would
+   override its box-shadow. */
 
 /* Edit mode — same surface as read, border just slightly more visible on focus */
 .jz-doc-editing {
@@ -3606,7 +3612,9 @@ body,
   padding: var(--jz-space-5);
   gap: var(--jz-space-2);
   background: var(--jz-card-surface);
-  border: 1.5px solid var(--jz-hairline-strong);
+  /* Same one-hairline resting border as every other card — .jz-prototype
+     already sets it; the composer just inherits, no heavier override (owner
+     call 2026-07-10 — one border language across all cards). */
 }
 
 /* Header: an icon badge aligned with the card name — mirrors the machine head. */
@@ -3702,6 +3710,20 @@ body,
 }
 @media (prefers-reduced-motion: reduce) {
   .jz-prototype-run { transition: none; }
+}
+
+/* ─── THE one selected state, shared by EVERY card ────────────────────────── */
+/* A subtle white ring drawn in CSS (tldraw's own canvas selection chrome is
+   suppressed — see the --tl-color-selection-* overrides up top). Selection is
+   the ONE thing that thickens a card's edge, and it looks identical on every
+   card type — doc, note, table, image, link, video, pdf, sheet, diagram,
+   dashboard, machine, prototype (owner call 2026-07-10 — one selected state,
+   one border language across all cards). Every card body adds this class via
+   useCardSelected(). Placed AFTER all card base rules so it wins the box-shadow
+   at equal specificity. */
+.jz-card-selected {
+  box-shadow: var(--jz-e2), 0 0 0 1.5px rgba(255, 255, 255, 0.55) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
 /* ─── Agent task control (cancel while running, error + retry) ────────────── */

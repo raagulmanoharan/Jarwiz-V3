@@ -24,6 +24,7 @@ import { getPdfPage, setPdfPage, subscribePdfView } from '../pdf/pdfView';
 import { setPdfSelection } from '../pdf/pdfSelection';
 import { getPdfHighlight, subscribePdfHighlight } from '../pdf/pdfHighlight';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
+import { useCardSelected } from './useCardSelected';
 
 export type PdfStatus = 'uploading' | 'ready' | 'error';
 
@@ -116,6 +117,7 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
   // the render effect (gated on docRef) can use it synchronously.
   const libRef = useRef<Awaited<ReturnType<typeof getPdfjs>> | null>(null);
   const selectText = useIsEditing(shape.id);
+  const isSelected = useCardSelected(shape.id);
   const highlight = useSyncExternalStore(
     subscribePdfHighlight,
     () => getPdfHighlight(shape.id),
@@ -272,7 +274,7 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
   };
 
   return (
-    <div className="jz-card jz-pdf-card">
+    <div className={`jz-card jz-pdf-card${isSelected ? ' jz-card-selected' : ''}`}>
       <div className="jz-pdf-stage">
         {status === 'uploading' ? (
           <PdfMessage label={`Uploading ${name || 'PDF'}…`} spinner />

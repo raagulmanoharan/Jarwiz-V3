@@ -13,6 +13,7 @@ import {
 } from 'tldraw';
 import { domainInitial, domainOf } from '../lib/url';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
+import { useCardSelected } from './useCardSelected';
 
 export interface LinkCardProps {
   w: number;
@@ -102,6 +103,7 @@ export class LinkCardShapeUtil extends ShapeUtil<LinkCardShape> {
 function LinkCardAuto({ shape }: { shape: LinkCardShape }) {
   const editor = useEditor();
   const fitRef = useRef<HTMLDivElement | null>(null);
+  const isSelected = useCardSelected(shape.id);
   const { loading, title, description, image, url, w, h } = shape.props;
   useLayoutEffect(() => {
     const el = fitRef.current;
@@ -113,14 +115,14 @@ function LinkCardAuto({ shape }: { shape: LinkCardShape }) {
   }, [editor, shape.id, loading, title, description, image, url, w, h]);
   return (
     <div ref={fitRef} className="jz-link-fit">
-      {loading ? <LinkCardSkeleton /> : <LinkCardBody {...shape.props} />}
+      {loading ? <LinkCardSkeleton selected={isSelected} /> : <LinkCardBody {...shape.props} selected={isSelected} />}
     </div>
   );
 }
 
-function LinkCardSkeleton() {
+function LinkCardSkeleton({ selected }: { selected?: boolean }) {
   return (
-    <div className="jz-card">
+    <div className={`jz-card${selected ? ' jz-card-selected' : ''}`}>
       <div className="jz-link-media">
         <div className="jz-skeleton" style={{ position: 'absolute', inset: 0, borderRadius: 0 }} />
       </div>
@@ -137,12 +139,12 @@ function LinkCardSkeleton() {
   );
 }
 
-function LinkCardBody(props: LinkCardShape['props']) {
-  const { url, title, description, image, favicon, themeColor, siteName } = props;
+function LinkCardBody(props: LinkCardShape['props'] & { selected?: boolean }) {
+  const { url, title, description, image, favicon, themeColor, siteName, selected } = props;
   const domain = domainOf(url);
 
   return (
-    <div className="jz-card">
+    <div className={`jz-card${selected ? ' jz-card-selected' : ''}`}>
       {/* Only show the media band when there's a real thumbnail — an empty
           placeholder band is just noise, so a preview with no image reads as a
           clean, compact link (owner call, 2026-07-07). */}

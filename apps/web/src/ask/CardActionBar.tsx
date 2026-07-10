@@ -284,9 +284,9 @@ export function CardActionBar() {
   const formattable = !sel.multi && (sel.type === 'doc-card' || sel.type === 'table-card');
   const visibleFormats = sel.type === 'table-card' ? FORMATS.filter((f) => TABLE_FORMAT_KEYS.has(f.key)) : FORMATS;
 
-  // The ⋯ overflow menu (Duplicate / Delete, plus Edit prompt for a prototype)
-  // is offered on every single selected card — so a card always has at least
-  // this menu, even when it has no refine transforms.
+  // The ⋯ overflow menu (Duplicate / Delete, plus Edit prompt for a BUILT
+  // prototype) is offered on every single selected card — so a card always
+  // has at least this menu, even when it has no refine transforms.
   const showMore = !sel.multi;
   const editPrototypePrompt = () => {
     const s = editor.getShape(id);
@@ -297,7 +297,9 @@ export function CardActionBar() {
     editor.select(id);
   };
   const moreActions: Transform[] = [];
-  if (sel.type === 'prototype-card') moreActions.push({ label: '✎ Edit prompt', run: editPrototypePrompt });
+  // Only once the UI exists — while the card is still the prompt composer,
+  // the prompt is ALREADY editable in place, so the action would be noise.
+  if (sel.type === 'prototype-card' && hasContent) moreActions.push({ label: '✎ Edit prompt', run: editPrototypePrompt });
   moreActions.push(
     { label: '⧉ Duplicate', run: () => editor.duplicateShapes([id], { x: 32, y: 32 }) },
     { label: '🗑 Delete', run: () => editor.deleteShapes([id]) },

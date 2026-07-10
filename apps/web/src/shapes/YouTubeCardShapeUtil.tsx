@@ -10,6 +10,7 @@ import {
   type TLShape,
 } from 'tldraw';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
+import { useCardSelected } from './useCardSelected';
 
 export interface YouTubeCardProps {
   w: number;
@@ -87,6 +88,7 @@ export class YouTubeCardShapeUtil extends ShapeUtil<YouTubeCardShape> {
 
 function YouTubeCardBody({ shape }: { shape: YouTubeCardShape }) {
   const isEditing = useIsEditing(shape.id);
+  const isSelected = useCardSelected(shape.id);
   const { videoId, url, title, hasTranscript, frames } = shape.props;
   // Direct media URLs (no YouTube id) play in a native <video> and wear the
   // first WATCHED frame as their poster — the pipeline's stills do the job
@@ -98,7 +100,7 @@ function YouTubeCardBody({ shape }: { shape: YouTubeCardShape }) {
       : '';
 
   return (
-    <div className="jz-card">
+    <div className={`jz-card${isSelected ? ' jz-card-selected' : ''}`}>
       {/* The header is the drag bar: pointer events fall through to the canvas.
           It carries the video's title (no external tag — the header IS the
           title, like a PDF's footer). */}

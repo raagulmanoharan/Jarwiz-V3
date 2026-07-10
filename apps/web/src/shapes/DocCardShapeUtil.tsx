@@ -266,7 +266,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
 
   return (
     <div
-      className={`jz-doc jz-doc-auto${collapsed ? ' jz-card-collapsed' : ''}${isSelected ? ' jz-doc--selected' : ''}`}
+      className={`jz-doc jz-doc-auto${collapsed ? ' jz-card-collapsed' : ''}${isSelected ? ' jz-card-selected' : ''}`}
       ref={fitRef}
     >
       <div className="jz-doc-content">
