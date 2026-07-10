@@ -31,70 +31,72 @@ import { TABLE_HEADER_H } from '../shapes/TableCardShapeUtil';
 import { PROV_META_KEY } from '../ask/useAsk';
 
 // ── The canned research board ──────────────────────────────────────────────
-// One stale cell (`STALE`) is the whole story: the table quotes last year's
-// Pipedrive price; the evidence sheet says otherwise; the fix streams it to `TRUE`.
-const STALE = '$14';
-const TRUE = '$19';
+// A project-tool comparison (deliberately far from anyone's day job — no CRM,
+// no sales stack). One stale cell (`STALE`) is the whole story: the table
+// quotes last year's Linear price; the evidence sheet says otherwise; the fix
+// streams it to `TRUE`.
+const STALE = '$8';
+const TRUE = '$10';
 
 const LINKS = [
-  { url: 'https://www.g2.com/categories/crm', siteName: 'G2', title: 'Best CRM Software in 2026', description: 'Ranked across 180 products.' },
-  { url: 'https://saasledger.com/crm-pricing-2026', siteName: 'SaaS Ledger', title: 'The 2026 CRM Pricing Teardown', description: 'Per-seat list prices for 2026.' },
-  { url: 'https://kalungi.com/pipedrive-vs-attio', siteName: 'Kalungi', title: 'Pipedrive vs. Attio vs. HubSpot', description: 'A comparison for small teams.' },
-  { url: 'https://nutshell.com/crm-buyers-guide', siteName: 'Nutshell', title: 'CRM Buyer’s Guide (2026)', description: 'How to choose without overpaying.' },
+  { url: 'https://www.g2.com/categories/project-management', siteName: 'G2', title: 'Best Project Management Software in 2026', description: 'Ranked across 180 products.' },
+  { url: 'https://saasledger.com/pm-pricing-2026', siteName: 'SaaS Ledger', title: 'The 2026 PM Tool Pricing Teardown', description: 'Per-seat list prices for 2026.' },
+  { url: 'https://toolfinder.co/linear-vs-asana-vs-notion', siteName: 'Toolfinder', title: 'Linear vs. Asana vs. Notion', description: 'A comparison for small teams.' },
+  { url: 'https://thedigitalprojectmanager.com/tools-buyers-guide', siteName: 'The Digital PM', title: 'PM Tool Buyer’s Guide (2026)', description: 'How to choose without overpaying.' },
 ];
 
 const TABLE = {
-  columns: ['CRM', 'Plan', 'Price / seat', 'Best for', 'G2'],
+  columns: ['Tool', 'Plan', 'Price / seat', 'Best for', 'G2'],
   baseRows: [
-    ['HubSpot', 'Free CRM', '$0', 'All-in-one', '4.4'],
-    ['Pipedrive', 'Essential', STALE, 'Small teams', '4.5'],
-    ['Attio', 'Plus', '$29', 'Startups', '4.6'],
-    ['Salesforce', 'Starter', '$25', 'Enterprise', '4.3'],
-    ['Zoho', 'Standard', '$18', 'Budget', '4.1'],
-    ['Folk', 'Pro', '$20', 'Networkers', '4.2'],
+    ['Notion', 'Plus', '$10', 'Docs + wiki', '4.7'],
+    ['Linear', 'Basic', STALE, 'Product teams', '4.6'],
+    ['Asana', 'Starter', '$11', 'Task tracking', '4.4'],
+    ['ClickUp', 'Unlimited', '$7', 'Budget', '4.3'],
+    ['Monday', 'Standard', '$12', 'Dashboards', '4.2'],
+    ['Airtable', 'Team', '$20', 'Databases', '4.3'],
   ],
 };
 
 const TABLE2 = {
-  columns: ['Feature', 'HubSpot', 'Pipedrive', 'Attio'],
+  columns: ['Feature', 'Notion', 'Linear', 'Asana'],
   rows: [
-    ['Free tier', 'Yes', 'No', 'No'],
-    ['Open API', 'Paid', 'Yes', 'Yes'],
-    ['Custom objects', 'Paid', 'No', 'Yes'],
-    ['Email sync', 'Yes', 'Yes', 'Yes'],
+    ['Docs & wiki', 'Yes', 'No', 'Basic'],
+    ['Issue tracking', 'Basic', 'Yes', 'Yes'],
+    ['Timeline view', 'Paid', 'Yes', 'Paid'],
+    ['Open API', 'Yes', 'Yes', 'Yes'],
   ],
 };
 
 const DOC_TEXT =
   '## Recommendation\n\n' +
-  '**Pipedrive** is the pick for a small, growing sales team — it scales from a single seat with no tier wall, and its pipeline view is the cleanest of the shortlist.\n\n' +
-  '- **Runner-up — Attio.** A modern data model and slick automations, if the price fits.\n' +
-  '- **Skip for now — Salesforce.** Powerful, but heavy for a team under ten.\n\n' +
-  '_Revisit once you cross ~15 seats or need marketing automation._';
+  '**Linear** is the pick for a small product team — fast, opinionated issue tracking that scales from a single seat with no tier wall.\n\n' +
+  '- **Runner-up — Notion.** One home for docs and lightweight tasks, if the team lives in documents.\n' +
+  '- **Hold off on the heavier suites.** Powerful, but more setup than a team under ten will recoup.\n\n' +
+  '_Revisit once you cross ~15 seats or need cross-team roadmaps._';
 
 const NOTES_DOC =
   '## Research notes\n\n' +
   '**Sources reviewed**\n' +
-  '- G2 — *Best CRM Software 2026*, 1,400+ reviews [1]\n' +
+  '- G2 — *Best PM Software 2026*, 1,400+ reviews [1]\n' +
   '- SaaS Ledger — *2026 Pricing Teardown* [2]\n' +
-  '- Kalungi — *Pipedrive vs. Attio vs. HubSpot* [3]\n' +
-  '- Nutshell — *CRM Buyer’s Guide* [4]\n\n' +
+  '- Toolfinder — *Linear vs. Asana vs. Notion* [3]\n' +
+  '- The Digital PM — *Tool Buyer’s Guide* [4]\n\n' +
   '**Requirements**\n' +
   '- Team: 4 seats today → ~12 by Q4.\n' +
-  '- Must-have: clean pipeline view + open API.\n' +
-  '- Budget ceiling: **$25 / seat / mo**.\n\n' +
+  '- Must-have: fast issue tracking + open API.\n' +
+  '- Budget ceiling: **$12 / seat / mo**.\n\n' +
   '**Open questions**\n' +
-  '- Pipedrive 2026 list price — confirm vs. teardown [2].\n' +
+  '- Linear 2026 list price — confirm vs. teardown [2].\n' +
   '- Seat floors on annual plans — ask sales.\n\n' +
   '_Last updated 4 Jan 2026 · 6 sources cited_';
 
 const DIAGRAM = `flowchart TD
-  A[Shortlist CRMs] --> B{Free tier?}
-  B -->|Yes| C[Trial HubSpot]
-  B -->|No| D[Trial Pipedrive]
+  A[Shortlist tools] --> B{Free tier?}
+  B -->|Yes| C[Trial Notion]
+  B -->|No| D[Trial Linear]
   C --> E[Compare pricing]
   D --> E
-  E --> F{Under $25/seat?}
+  E --> F{Under $12/seat?}
   F -->|No| G[Negotiate]
   G --> D
   F -->|Yes| H{Open API?}
@@ -109,7 +111,7 @@ const DIAGRAM = `flowchart TD
 
 const STICKIES = ['Double-check the 2026 pricing, sheet due Friday', 'Ask sales about seat floors before we commit'];
 
-const COMMENT_BODY = `The 2026 pricing sheet lists Pipedrive Essential at ${TRUE}/seat. This row still shows ${STALE}, last year's price.`;
+const COMMENT_BODY = `The 2026 pricing sheet lists Linear Basic at ${TRUE}/seat. This row still shows ${STALE}, last year's price.`;
 
 // Fixed page-space layout — a sprawling workspace. The board is built ONCE; the
 // loop only drops/removes the evidence card and streams the one cell.
@@ -270,7 +272,7 @@ export function EmbedShowreel() {
 
     const rowsWith = (price: string): string[][] =>
       TABLE.baseRows.map((r) => {
-        if (r[0] !== 'Pipedrive') return r;
+        if (r[0] !== 'Linear') return r;
         const copy = [...r];
         copy[2] = price;
         return copy;
@@ -312,7 +314,7 @@ export function EmbedShowreel() {
       editor.createShape({ id: sketch, type: 'image-card', x: L.sketch.x, y: L.sketch.y, props: { w: L.sketch.w, h: L.sketch.h, src: SKETCH_URL, name: 'Whiteboard sketch' } });
 
       const t = editor.getShape(table);
-      if (t) setShapeTitle(editor, t, 'CRM shortlist');
+      if (t) setShapeTitle(editor, t, 'Tool shortlist');
       const t2 = editor.getShape(table2);
       if (t2) setShapeTitle(editor, t2, 'Feature matrix');
 
@@ -371,7 +373,7 @@ export function EmbedShowreel() {
       if (!ids.current) return;
       editor.updateShape({ id: ids.current.table, type: 'table-card', props: { rows: rowsWith(price) } });
     };
-    // Flag/unflag the stale price cell ON the real table shape (Pipedrive row,
+    // Flag/unflag the stale price cell ON the real table shape (Linear row,
     // Price/seat column) via meta — the highlight rides the actual cell.
     const flashCell = (on: boolean) => {
       if (!ids.current) return;
@@ -389,7 +391,7 @@ export function EmbedShowreel() {
     const stickyCenter = (i: number) => ({ x: L.stickies[i]!.x + L.stickies[i]!.w * 0.5, y: L.stickies[i]!.y + L.stickies[i]!.h * 0.5 });
     const STICKY_A = stickyCenter(0);
     const STICKY_B = stickyCenter(1);
-    // The comment pin sits on the RIGHT side of the flagged cell (Pipedrive,
+    // The comment pin sits on the RIGHT side of the flagged cell (Linear,
     // Price/seat), vertically centered on that row — computed from the table's
     // LIVE page bounds so it lands exactly on the cell no matter how the
     // fit-height card settled (a fixed fraction drifted when the table shrank).
