@@ -818,3 +818,23 @@ focus mode, and lineage links only what a generation *actually used*
   prunes `meta.jzSources` to just the declared-used cards — including down to
   empty (attach transcript, ask about OKRs → source card on board, no
   hairline). Verified live end-to-end, positive and negative cases.
+
+## 2026-07-11 (later) — First-touch entry points (G1)
+
+**Intent:** the review's first-five-minutes fixes, with the owner's mode-pill
+calls: one chip behaviour (no "Suggested:" label split), tappable body,
+narration-style intro preview, cadence untouched.
+
+- **On-ramps are real buttons.** "drop a PDF / paste a link / paste a
+  transcript" were `pointer-events: none` decoration styled as pills — every
+  new user's first click was dead. Now: PDF opens a file picker into the
+  composer-attachment pipeline; the paste on-ramps focus the composer with a
+  transient placeholder hint ("Paste your transcript here (⌘V)…").
+- **The mode chip has ONE behaviour** whoever pinned it: clicking the body
+  opens the "/" picker (the natural gesture on a wrong guess), ✕ clears to a
+  doc. No label distinction between guess and pick (owner call).
+- **The intro preview reads as narration** — the self-typing placeholder's
+  shape preview renders ghosted/dashed as "→ Table", visibly part of the
+  animation, so the first solid chip a user sees is a real control.
+- **Boards panel paints above the ambient vignettes** (panel joined the
+  chrome layer, z 160 over the scene's 150).
