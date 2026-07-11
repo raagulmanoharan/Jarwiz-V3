@@ -8,7 +8,8 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue, type Editor, type TLRichText, type TLShape, type TLShapeId } from 'tldraw';
-import { Slash, ArrowUp, Sparkles, FileText, Link2, ClipboardList, Paperclip } from 'lucide-react';
+import { Slash, ArrowUp, FileText, Link2, ClipboardList, Paperclip } from 'lucide-react';
+import { JarwizSpark } from '../ui/JarwizSpark';
 import type { AnalyzeMode, AskShape } from '@jarwiz/shared';
 import { type ModeShape } from './modeShape';
 import { suggestShape } from './suggestShape';
@@ -701,7 +702,7 @@ export function PromptBar() {
                 className={`jz-pb-ground jz-pb-mode${modeSource === 'auto' ? ' jz-pb-mode--auto' : ''}`}
                 title={modeSource === 'auto' ? 'Suggested answer shape — change it with / or dismiss to write a doc' : 'Answer shape — picked with /'}
               >
-                {modeSource === 'auto' ? <Sparkles className="jz-pb-mode-spark" size={11} strokeWidth={2} aria-hidden /> : null}
+                {modeSource === 'auto' ? <JarwizSpark className="jz-pb-mode-spark" size={11} aria-hidden /> : null}
                 {MODES.find((m) => m.shape === mode)?.label ?? mode}
                 <button
                   className="jz-pb-ground-x"
@@ -714,7 +715,7 @@ export function PromptBar() {
               // composer types its own examples, preview the shape it would build.
               introAnim && introShape ? (
                 <span className="jz-pb-ground jz-pb-mode jz-pb-mode--auto" aria-hidden>
-                  <Sparkles className="jz-pb-mode-spark" size={11} strokeWidth={2} />
+                  <JarwizSpark className="jz-pb-mode-spark" size={11} />
                   {MODES.find((m) => m.shape === introShape)?.label ?? introShape}
                 </span>
               ) : null
