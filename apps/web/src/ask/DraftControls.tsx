@@ -15,7 +15,9 @@ import { JarwizSpark } from '../ui/JarwizSpark';
 export function DraftControls() {
   const editor = useEditor();
   const draft = useSyncExternalStore(subscribeDraft, getDraft, getDraft);
-  const anchor = useCardAnchor(draft?.id ?? null);
+  // Never over the artefact's own text: a tall card would otherwise get the
+  // bar clamped up over its content — flip above the card instead (G4.1).
+  const anchor = useCardAnchor(draft?.id ?? null, { flipWhenCovered: true });
 
   if (!draft || !anchor) return null;
   const style = { left: anchor.x, top: anchor.y } as CSSProperties;

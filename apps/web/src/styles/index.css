@@ -5215,6 +5215,14 @@ body,
   white-space: nowrap;
 }
 
+/* Carrying a busy label, the send circle relaxes into a pill so the text fits
+   instead of spilling over the 30px round button (G4.5). */
+.jz-promptbar-send--busy {
+  width: auto;
+  min-width: 30px;
+  padding: 0 12px;
+}
+
 /* ─── Board entry — "What are you working on?" onboarding dialog ─────────── */
 
 .jz-boardentry-scrim {

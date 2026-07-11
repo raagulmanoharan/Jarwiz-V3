@@ -861,3 +861,25 @@ narration-style intro preview, cadence untouched.
   animation, so the first solid chip a user sees is a real control.
 - **Boards panel paints above the ambient vignettes** (panel joined the
   chrome layer, z 160 over the scene's 150).
+
+## 2026-07-11 (evening) — Chrome overlap polish (G4)
+
+**Intent:** the review's five overlap paper cuts, taken one by one — each
+reproduced on current main before fixing, each re-verified after.
+
+- **Keep/Discard never covers content.** The draft bar's dock clamp used to
+  pull it up over a tall card's body. `useCardAnchor` grew `flipWhenCovered`:
+  when the clamp engages the bar flips above the card's top edge, and for a
+  card taller than the viewport it pins to the top strip (44) over the card's
+  padding band — never mid-content. Verified across a full streaming run
+  (14 samples, zero content overlaps).
+- **Dock pills stand down while a draft exists** (streaming or Keep-pending)
+  — they describe the previous card and floated over the fresh artefact.
+- **The card bar's menu is scoped to the selection moment.** The bar stays
+  mounted across selections, so an open menu used to resurrect over whatever
+  card got selected next (including auto-selected generations). Now it resets
+  on selection change and closes on Escape / outside pointer-down.
+- **The avatar clamps to the viewport** — badge included — so it can't park
+  half off-screen at an edge.
+- **The send button relaxes into a pill when busy** ("Planning…",
+  "Scanning…") instead of spilling its label out of the 30px circle.
