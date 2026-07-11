@@ -37,7 +37,6 @@ import {
   RotateCcw,
   Scale,
   ScanText,
-  Sparkles,
   Strikethrough,
   Table2,
   Trash2,
@@ -60,6 +59,7 @@ import { refreshPrototype } from '../agents/prototypeRefresh';
 import { useTidy, canTidy } from '../agents/useTidy';
 import { useCluster, canCluster } from '../agents/useCluster';
 import { useCardAnchor } from './useCardAnchor';
+import { JarwizSpark } from '../ui/JarwizSpark';
 
 const ANSWER = new Set(['doc-card', 'table-card', 'diagram-card']);
 /** Every Actions-menu entry leads with an icon — one visual system, no mixed
@@ -204,7 +204,7 @@ export function CardActionBar() {
     const pageText = String((editor.getShape(id)?.props as Record<string, unknown>)?.text ?? '');
     if (pageText.trim()) {
       transforms.push(
-        { label: 'Summarise the page', icon: <Sparkles {...ACT_ICON} />, run: () => ask('Summarise this page — what it is, the key points, and anything actionable.', [id], { skipClarify: true, logLabel: 'Summarized the page' }) },
+        { label: 'Summarise the page', icon: <JarwizSpark size={13} />, run: () => ask('Summarise this page — what it is, the key points, and anything actionable.', [id], { skipClarify: true, logLabel: 'Summarized the page' }) },
         { label: 'Key takeaways', icon: <ListChecks {...ACT_ICON} />, run: () => ask('Extract the key takeaways from this page as a short, specific list.', [id], { skipClarify: true }) },
       );
     }
@@ -227,7 +227,7 @@ export function CardActionBar() {
   // 2026-07-07); the dashboard's own spec grounds each refinement via toSource.
   if (!sel.multi && hasContent && sel.type === 'dashboard-card') {
     transforms.push(
-      { label: 'Summarise the data', icon: <Sparkles {...ACT_ICON} />, run: () => ask('Summarise the story in this dashboard — the headline numbers, the trend, and any outliers.', [id], { skipClarify: true, logLabel: 'Summarised the dashboard' }) },
+      { label: 'Summarise the data', icon: <JarwizSpark size={13} />, run: () => ask('Summarise the story in this dashboard — the headline numbers, the trend, and any outliers.', [id], { skipClarify: true, logLabel: 'Summarised the dashboard' }) },
       { label: 'Regenerate', icon: <RefreshCw {...ACT_ICON} />, run: () => ask('Regenerate this dashboard, same data, fresh take.', [id], { targetId: id }) },
     );
   }
@@ -245,7 +245,7 @@ export function CardActionBar() {
     const processed = vp?.hasTranscript === true || (Array.isArray(vp?.frames) && vp!.frames.length > 0);
     if (processed) {
       transforms.push(
-        { label: 'Summarise the video', icon: <Sparkles {...ACT_ICON} />, run: () => ask('Summarise this video — what it covers and the key points, in order.', [id], { skipClarify: true, logLabel: 'Summarised the video' }) },
+        { label: 'Summarise the video', icon: <JarwizSpark size={13} />, run: () => ask('Summarise this video — what it covers and the key points, in order.', [id], { skipClarify: true, logLabel: 'Summarised the video' }) },
         { label: 'Key moments', icon: <Clock {...ACT_ICON} />, run: () => ask('List the key moments of this video with their timestamps.', [id], { skipClarify: true }) },
         { label: 'Dissect the style', icon: <Film {...ACT_ICON} />, run: () => ask('Dissect this video’s editing and narration style: hook, pacing, cut rhythm, tone, and how it closes.', [id], { skipClarify: true }) },
       );
@@ -306,7 +306,7 @@ export function CardActionBar() {
     // Multi-select gets the same bar, with cross-selection transforms —
     // as long as at least one selected card actually holds content.
     transforms.push(
-      { label: 'Summarise the selection', icon: <Sparkles {...ACT_ICON} />, run: () => ask('Summarise the selected cards together into one concise doc.', ids, { skipClarify: true }) },
+      { label: 'Summarise the selection', icon: <JarwizSpark size={13} />, run: () => ask('Summarise the selected cards together into one concise doc.', ids, { skipClarify: true }) },
       { label: 'Combine into a doc', icon: <Combine {...ACT_ICON} />, run: () => ask('Combine the selected cards into one structured document.', ids, { skipClarify: true }) },
     );
     if (sel.pdfCount >= 2) {
@@ -391,7 +391,7 @@ export function CardActionBar() {
           title="A one-glance summary: what this is, who wrote it, red flags, where to start"
           onClick={() => ask(PROFILE_PROMPT, [id], { skipClarify: true, logLabel: 'Summarized the document' })}
         >
-          <Sparkles {...ACT_ICON} aria-hidden /> Summary
+          <JarwizSpark size={13} aria-hidden /> Summary
         </button>
       ) : null}
       {formattable ? (
@@ -479,7 +479,7 @@ export function CardActionBar() {
       {transforms.length > 0 ? (
         <div className="jz-cardbar-group">
           <button className={`jz-cardbar-btn${menu === 'refine' ? ' jz-cardbar-btn--open' : ''}`} onClick={() => setMenu(menu === 'refine' ? null : 'refine')}>
-            <Sparkles {...ACT_ICON} aria-hidden /> Actions <span className="jz-cardbar-caret" aria-hidden>▾</span>
+            <JarwizSpark size={13} aria-hidden /> Actions <span className="jz-cardbar-caret" aria-hidden>▾</span>
           </button>
           {menu === 'refine' ? (
             <div className="jz-cardbar-menu" role="menu">
