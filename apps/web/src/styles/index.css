@@ -3116,6 +3116,41 @@ body,
   overflow: visible;
 }
 
+/* Source-doc preview (a pasted transcript/notes card): the body truncates and
+   this row opens the full text in focus mode. A soft fade above the row says
+   "there's more" without a hard cut. */
+.jz-doc-viewmore {
+  display: block;
+  width: 100%;
+  margin-top: var(--jz-space-2);
+  padding: var(--jz-space-2) 0 0;
+  border: none;
+  border-top: 1px solid var(--jz-hairline);
+  background: none;
+  text-align: left;
+  font: inherit;
+  font-size: var(--jz-text-caption-size);
+  line-height: var(--jz-text-caption-lh);
+  color: var(--jz-ink-500);
+  cursor: pointer;
+  position: relative;
+  transition: color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-doc-viewmore::before {
+  /* the fade — content dissolving into the cut, drawn above the divider */
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 28px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--jz-card-surface));
+}
+.jz-doc-viewmore:hover {
+  color: var(--jz-ink-900);
+}
+
 /* The one shared selected state lives in a single `.jz-card-selected` rule
    placed after every card's base styles (search "jz-card-selected"); it can't
    sit here because later base rules (.jz-diagram, .jz-prototype) would

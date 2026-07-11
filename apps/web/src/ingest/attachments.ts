@@ -15,14 +15,16 @@ import { createShapeId, type Editor, type TLShapeId, type VecLike } from 'tldraw
 import { uploadAsset } from '../lib/uploadAsset';
 import { logEvent } from '../log/eventLog';
 import {
+  DOC_CARD_SIZE,
   PDF_CARD_SIZE,
   SHEET_CARD_SIZE,
+  type DocCardShape,
   type ImageCardShape,
   type PdfCardShape,
   type SheetCardShape,
 } from '../shapes';
 
-export type AttachmentKind = 'pdf' | 'image' | 'sheet';
+export type AttachmentKind = 'pdf' | 'image' | 'sheet' | 'text';
 
 export interface Attachment {
   key: string;
@@ -33,6 +35,27 @@ export interface Attachment {
   src?: string;
   w?: number;
   h?: number;
+  /** Pasted text content ('text' attachments) — held locally until send. */
+  text?: string;
+}
+
+/** A pasted blob of text reads as CONTENT to ground on (a transcript, notes,
+ *  a doc) rather than the prompt itself once it's long AND multi-line — a long
+ *  single-line paste is more likely an instruction and stays in the input. */
+export function isAttachableText(text: string): boolean {
+  const t = text.trim();
+  return t.length >= 400 && t.includes('\n');
+}
+
+/** Build a ready 'text' attachment from a paste — no upload, content is local.
+ *  The name is the first non-empty line (sans markdown heading), clipped. */
+export function makeTextAttachment(key: string, text: string): Attachment {
+  const first = text
+    .split('\n')
+    .map((l) => l.replace(/^#+\s*/, '').trim())
+    .find(Boolean);
+  const name = (first ?? 'Pasted text').slice(0, 60);
+  return { key, kind: 'text', name, status: 'ready', text };
 }
 
 /** Which attachment kind (if any) a dropped/pasted file is. */
@@ -79,6 +102,19 @@ export async function uploadAttachment(file: File, kind: AttachmentKind): Promis
 export function materializeAttachment(editor: Editor, att: Attachment, at: VecLike): TLShapeId | null {
   if (att.status !== 'ready') return null;
   const id = createShapeId();
+  if (att.kind === 'text') {
+    // A pasted transcript/notes lands as a plain doc card, flagged as a
+    // SOURCE (meta.jzSourceDoc) so the card renders a truncated preview with
+    // "View more" instead of growing to its full multi-thousand-char height.
+    const { w, h } = DOC_CARD_SIZE;
+    editor.createShape<DocCardShape>({
+      id, type: 'doc-card', x: at.x - w / 2, y: at.y - h / 2,
+      props: { w, h, text: att.text ?? '', title: att.name, sourcePdfId: '' },
+      meta: { jzSourceDoc: true },
+    });
+    logEvent(editor, { kind: 'artefact', label: `Added "${att.name}"`, detail: 'Pasted text', shapeIds: [id] });
+    return id;
+  }
   if (att.kind === 'pdf') {
     const { w, h } = PDF_CARD_SIZE;
     editor.createShape<PdfCardShape>({
