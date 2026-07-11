@@ -928,3 +928,10 @@ there a smart way to do this without hardcoding this logic?"
   186 N; switching to the van at 130 km/h reads 1032 N, which hand-checks
   against ½·ρ·Cd·A·v² exactly. Playwright drove the slider/toggle inside
   the sandboxed iframe.
+- **Real-sidecar verification (same day):** ran the whole flow on the live
+  CLI sidecar (no key, no canned content). The model wrote a full doc
+  ("Drag Dynamics: Sedan vs. Van" — formula, C_d/frontal-area sections, a
+  comparison table) AND authored its own widget from the brief: speed
+  slider, Sedan/Van toggle, labeled axes, live readout (v=45 m/s → 1555 N,
+  consistent with the constants it chose). Playwright drove the slider and
+  toggle inside the sandboxed iframe. QA: docs/assets/qa/widget-real-sidecar.png.
