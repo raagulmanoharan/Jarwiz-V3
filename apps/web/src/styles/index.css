@@ -3935,8 +3935,13 @@ body,
  * in from the edges; the orb births one Jarwiz per card. Pure illustration —
  * pointer-events off, so the canvas beneath stays fully interactive. */
 .jz-ambient {
-  position: fixed;
+  /* Absolute (not fixed) + clipped: the scene lives INSIDE the canvas area,
+     so when the docked Boards panel pushes the canvas, the scenery reflows
+     with it instead of painting over the panel (owner report, 2026-07-11 —
+     a scene card sat on top of the open panel). */
+  position: absolute;
   inset: 0;
+  overflow: hidden;
   z-index: 150;                 /* above the empty canvas, below the chrome + composer */
   pointer-events: none;
   transition: opacity 0.8s var(--jz-ease-glide), filter 0.8s ease, transform 0.8s ease;
