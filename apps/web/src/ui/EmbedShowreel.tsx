@@ -25,7 +25,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Box, createShapeId, useEditor, type TLShapeId } from 'tldraw';
-import { Sparkles, Wand2, Scale, FileText } from 'lucide-react';
+import { Wand2, Scale, FileText } from 'lucide-react';
+import { JarwizSpark } from './JarwizSpark';
 import { setShapeTitle } from '../shapes/shapeTitle';
 import { TABLE_HEADER_H } from '../shapes/TableCardShapeUtil';
 import { PROV_META_KEY } from '../ask/useAsk';
@@ -520,12 +521,12 @@ export function EmbedShowreel() {
         style={{ position: 'absolute', left: 0, top: 0, display: comment.visible ? 'block' : 'none' }}
       >
         <button className={`jz-comment-pin jz-comment-pin--tension${comment.open ? ' jz-comment-pin--open' : ''}`}>
-          <Sparkles size={12} />
+          <JarwizSpark size={12} />
         </button>
         {comment.open ? (
           <div className="jz-comment-pop">
             <div className="jz-comment-head">
-              <span className="jz-comment-avatar"><Sparkles size={12} /></span>
+              <span className="jz-comment-avatar"><JarwizSpark size={12} /></span>
               <span className="jz-comment-name">Jarwiz</span>
               <span className="jz-comment-kind jz-comment-kind--tension"><Scale size={12} />Tension</span>
             </div>

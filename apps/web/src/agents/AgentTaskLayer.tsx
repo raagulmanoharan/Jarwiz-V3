@@ -52,7 +52,6 @@ export function AgentTaskLayer() {
         }
         return (
           <div key={task.id} className="jz-task" style={style} onPointerDown={stopEventPropagation}>
-            <span className="jz-task-dot" aria-hidden />
             <span className="jz-task-label">{task.label}</span>
             {task.onCancel ? <button className="jz-task-btn jz-task-cancel" onClick={task.onCancel}>Cancel</button> : null}
           </div>

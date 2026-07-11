@@ -9,7 +9,8 @@
 
 import { useSyncExternalStore } from 'react';
 import { stopEventPropagation, useEditor, useValue, type TLShapeId } from 'tldraw';
-import { Sparkles, X, Wand2, AlertTriangle, Scale, HelpCircle, Lightbulb } from 'lucide-react';
+import { X, Wand2, AlertTriangle, Scale, HelpCircle, Lightbulb } from 'lucide-react';
+import { JarwizSpark } from '../ui/JarwizSpark';
 import type { NoticeKind } from '@jarwiz/shared';
 import { getTheme, subscribeTheme } from '../ui/theme';
 import { requestPromptFill } from './promptFill';
@@ -69,12 +70,12 @@ function CommentPin({ comment, open }: { comment: BoardComment; open: boolean })
         title="Jarwiz left a comment"
         aria-label="Open Jarwiz's comment"
       >
-        <Sparkles size={12} />
+        <JarwizSpark size={12} />
       </button>
       {open ? (
         <div className="jz-comment-pop">
           <div className="jz-comment-head">
-            <span className="jz-comment-avatar"><Sparkles size={12} /></span>
+            <span className="jz-comment-avatar"><JarwizSpark size={12} /></span>
             <span className="jz-comment-name">Jarwiz</span>
             <span className={`jz-comment-kind jz-comment-kind--${comment.kind}`}>{k.icon}{k.label}</span>
             <button className="jz-comment-x" aria-label="Close" onClick={() => closeComments()}><X size={14} /></button>

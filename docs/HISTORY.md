@@ -773,3 +773,24 @@ warrants it."
 - Live sidecar test (the Lake Bled ask through the real prompt bar) showed the
   honesty rule end-to-end: the sandbox blocked the fetch, and the model
   declined to fake a URL — noting it in the card instead of inventing one.
+
+## 2026-07-11 — Card actions audit: real icons, honest Regenerate
+
+**Intent:** "audit all the actions shown on the card types — is Regenerate on
+a doc card valid? And give every action a proper icon; only the flowchart had
+one and it looked generic."
+
+- Every entry in the card bar's Actions and ⋯ menus now leads with a lucide
+  icon (14px, muted `--jz-ink-500` in a fixed 16px column, same sizing as the
+  format row) — replacing the mixed text glyphs (✦ ◇ ⤢ ↻ ✎ ⧉ 🗑) that only
+  some actions carried. The ✦ Actions / ✦ Summary bar buttons use the
+  Sparkles icon proper. Flowchart got `Workflow` (a real flowchart glyph).
+- Regenerate audit verdict: valid only on cards **Jarwiz generated** — it
+  re-runs the ask in place, so on a hand-typed doc it read as "the AI will
+  overwrite my writing". Now gated on the card's recorded lineage
+  (`meta.jzPrompt`/`meta.jzSources`, the same provenance auto-sync uses).
+  Prototype and dashboard cards keep it unconditionally (they're always
+  generated). Known gap for a follow-up: the Analyze/Cluster paths don't
+  record provenance yet, so their docs won't offer Regenerate until they do.
+- Browser-verified both ways: generated doc shows the full menu with icons
+  incl. Regenerate; hand-written doc shows the same menu without it.

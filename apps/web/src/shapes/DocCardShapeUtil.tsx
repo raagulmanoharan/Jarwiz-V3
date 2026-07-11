@@ -15,7 +15,7 @@ import {
   type TLShape,
   type TLShapeId,
 } from 'tldraw';
-import { Sparkle } from 'lucide-react';
+import { JarwizSpark } from '../ui/JarwizSpark';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { useAutopilot } from '../agents/useAutopilot';
 import { useTypingPause } from '../agents/useTypingPause';
@@ -231,7 +231,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
           <div className="jz-autopilot-mirror" aria-hidden>
             {text}
             <span className="jz-autopilot-cursor">
-              <Sparkle size={11} strokeWidth={1.5} fill="currentColor" />
+              <JarwizSpark size={11} />
             </span>
           </div>
         )}
@@ -243,7 +243,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
             onPointerDown={stopEventPropagation}
             onClick={() => abortAutopilot(shape.id)}
           >
-            <Sparkle size={12} strokeWidth={1.7} color="white" fill="white" />
+            <JarwizSpark size={12} style={{ color: 'white' }} />
             Writing — click (or type) to take over
           </button>
         ) : showNudge ? (

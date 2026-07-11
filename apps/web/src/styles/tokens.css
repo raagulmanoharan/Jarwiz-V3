@@ -57,6 +57,9 @@
 
   /* ─── Semantic ────────────────────────────────────────────────────────── */
   --jz-danger: #c2410c;
+  /* Danger legible on INVERTED (accent-ground) chrome — the on-card pills sit
+   * on --jz-accent, so danger text there needs the opposite theme's weight. */
+  --jz-danger-inverse: #fb923c;
   --jz-focus: var(--jz-ink-700);
 
   /* Accent — monochrome. The Jarwiz identity mark (✦ spark), primary actions,
@@ -155,6 +158,7 @@
   --jz-shadow-rgb: 0, 0, 0;
 
   --jz-danger: #f97316;
+  --jz-danger-inverse: #c2410c;
   --jz-focus: var(--jz-ink-700);
 
   --jz-accent: #ffffff;
