@@ -6507,20 +6507,47 @@ body,
 
 .jz-widget-block {
   margin: var(--jz-space-3) 0 var(--jz-space-2);
-  height: 320px;
+  /* ONE frame: a single hairline + radius, the ONLY surface. The widget fills
+   * it edge to edge and must NOT draw its own outer card (WIDGET_SYSTEM), so
+   * there's never a card-within-a-card. Height is RESPONSIVE — it tracks the
+   * card's width by aspect ratio, clamped so a narrow card doesn't get a
+   * sliver and a wide one doesn't get a billboard. */
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  height: auto;
+  min-height: 200px;
+  max-height: 420px;
   border: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-md);
   overflow: hidden;
-  background: var(--jz-card-surface);
 }
 
 .jz-widget-block--pending {
+  /* pending has no fixed aspect — a slim honest band, not a big empty box. */
+  aspect-ratio: auto;
+  min-height: 0;
   display: flex;
+  flex-direction: column;
+  gap: 2px;
   align-items: center;
   justify-content: center;
+  padding: 18px;
   font-size: var(--jz-text-caption-size);
   color: var(--jz-ink-400);
   background: var(--jz-surface);
+}
+
+.jz-widget-pending-title {
+  font-weight: 600;
+  color: var(--jz-ink-500);
+}
+
+.jz-widget-pending-sub {
+  max-width: 46ch;
+  text-align: center;
+  color: var(--jz-ink-400);
+  font-size: var(--jz-text-micro-size);
+  line-height: var(--jz-text-micro-lh);
 }
 
 .jz-widget-frame {
@@ -6528,5 +6555,8 @@ body,
   width: 100%;
   height: 100%;
   border: none;
-  background: #fafafa; /* widgets author their own light surface, like prototypes */
+  /* Token-aware, not a hardcoded light patch — the widget's injected
+   * --jzw-surface paints over this, and until it does the card surface shows
+   * (right in both themes). */
+  background: var(--jz-card-surface);
 }

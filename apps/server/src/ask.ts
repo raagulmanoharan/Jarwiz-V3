@@ -186,7 +186,8 @@ const WIDGET_SYSTEM = `You build ONE small interactive teaching widget as a self
 
 HARD REQUIREMENTS — rendered in a sandboxed iframe with NO network access:
 - Full document starting <!doctype html>; ALL CSS in one inline <style>, ALL JS in one inline <script>. No external resources of any kind.
-- System font stack. Fill the frame: html,body{margin:0}; design for roughly 460×320 (it may be a little wider — use flexible layout). Breathing room INSIDE, no dead outer margin.
+- System font stack.
+- FILL THE FRAME, RESPONSIVELY. The host already provides the ONE frame (a bordered, rounded panel) — do NOT draw your own outer card, border, or drop-shadow around everything; that makes an ugly card-within-a-card. Set html,body{margin:0;height:100%} and make your root fill 100% width AND 100% height with flexbox (display:flex;flex-direction:column). The frame size is VARIABLE (roughly 3:2, but it ranges from ~300px to ~900px wide) — never assume a fixed pixel size and never center a small fixed-size box in a large frame. Any canvas/SVG must stretch to its container (width:100%;height:100%, flex:1) and REDRAW on resize (a ResizeObserver on the canvas, or a window 'resize' listener) so it always fills, crisp, at any size. Breathing room comes from INTERNAL padding, not a dead outer margin.
 - THEME: the host injects CSS custom properties — use them WITH fallbacks and invent no other colors:
   background: var(--jzw-surface, #fafafa); primary text/lines: var(--jzw-ink, #1a1a1a); secondary text: var(--jzw-muted, #6a6a6a); hairlines: var(--jzw-line, #d4d4d4); the ONE accent: var(--jzw-accent, #0f0f0f) with var(--jzw-accent-ink, #ffffff) on top.
 - The interaction must actually drive the visual — canvas or SVG redrawn live. Use the REAL relationship (the brief's note pins formulas/values/sequences); label axes/stages and show a live readout. Never fake the shape of a curve.
