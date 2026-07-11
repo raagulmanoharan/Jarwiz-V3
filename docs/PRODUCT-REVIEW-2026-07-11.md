@@ -66,10 +66,13 @@ risk-annotated plan, and a critique of that plan.
    You can't re-ask "what exactly did Marco say about the renderer?" — the
    raw material is gone. The transcript should land as its own (collapsed)
    card, wired to what was made from it.
-2. **No visible provenance.** Zero edges were drawn between checklist → plan →
-   tensions, even though the live-link cascade proves the relationships exist
-   internally. The board is supposed to *be* the memory; today the wiring is
-   invisible. Draw the edges the system already knows about.
+2. **Provenance is invisible in practice.** *(Corrected after a code read:
+   lineage exists — select a card and hairlines reach back to its sources
+   (`ProvenanceLayer.tsx`, `meta.jzSources`); persistent arrows were removed
+   by owner call on 2026-07-05.)* The finding stands as a discoverability
+   problem: in a full session I never noticed the hairlines and concluded the
+   feature didn't exist. Cards need a visible "built from N sources"
+   affordance that reveals the lineage on demand.
 3. **Dead-click onramps.** *drop a PDF / paste a link / paste a transcript*
    are styled as buttons but are `pointer-events: none` decoration. Every new
    user who arrives holding a transcript will click "paste a transcript" and
@@ -109,6 +112,9 @@ risk-annotated plan, and a critique of that plan.
   exists, but nothing points there from the artifact.
 - History log exists (counter ticks up) but is easy to miss; the live-link
   cascade makes an inspectable "what changed and why" log more important.
+
+> **Follow-up:** every finding here is grouped into PR-sized, agent-ready
+> work items in [`docs/REVIEW-BACKLOG-2026-07-11.md`](REVIEW-BACKLOG-2026-07-11.md).
 
 ## Docs drift noted
 
