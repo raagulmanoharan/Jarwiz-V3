@@ -104,6 +104,16 @@ rule (the shape is still a doc).
   an answer; the standalone `/Map` card is for when the map *is* the
   artifact. "⤢ expand map" promotes the block into a full map card wired
   back to the doc with an edge.
+- **Two modes, one block.** Stops that carry an order (a trip) render in
+  *route mode*: numbered pins, dashed arcs (P2: real polylines), an "Open
+  route" multi-waypoint deep link. A single pick or a shortlist ("good
+  temple near Bengaluru", "3 cafés worth the drive") renders in *places
+  mode*: plain unnumbered pins, **no route line**, and per-place "Open in
+  Google Maps" links — options, not an itinerary. The stop JSON decides:
+  `legs`/`time` exist only when order matters; the renderer keys on that,
+  it never invents a route between unordered options. The focus view's
+  rail follows suit: a timed plan in route mode, a places list in places
+  mode (day/time group headers only when days/times exist).
 - Plumbing: MAP_SYSTEM's stop-JSON grammar is shared; `DOC_SYSTEM` gains a
   short "when the answer is places, include a map fence" directive + the
   grammar. Pins geocode through a small `POST /api/geo/stops` endpoint
