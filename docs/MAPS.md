@@ -83,6 +83,35 @@ use `--jz-accent` with `--jz-accent-ink` numerals; the rail is typeset like
 the doc card, not like Google. No tldraw style panel (the `map-card` name
 suffix hides it automatically).
 
+### The inline map block (owner direction, 2026-07-11)
+
+The standalone card is not the only home. When the user asks **normally** —
+no `/Map` mode, "suggest a nature day trip from Bengaluru" — the answer is a
+doc, as always; when the content is places, **the doc carries an inline map
+block**: a fenced ` ```map ` block in the doc's markdown holding the stops
+JSON, rendered inline by `DocMarkdown` the way mermaid diagrams already
+lazy-render. This follows the exact doctrine of web-found images, which
+already land in doc answers "when warranted" (2026-07-08) — the model
+decides the *content* includes a map; it never overrides the explicit-shape
+rule (the shape is still a doc).
+
+- Anatomy: prose → map block (pins + dashed arcs + attribution, ~210px,
+  `--jz-radius-md`) → a quiet toolbar line ("➤ Open route · ⤢ expand map")
+  → the timed plan. **Numbered chips in the prose are the pins** — hover ①
+  in the text and pin 1 lifts; the map assembles while the plan streams
+  past it.
+- Division of labour: the inline block is for when the map *illustrates*
+  an answer; the standalone `/Map` card is for when the map *is* the
+  artifact. "⤢ expand map" promotes the block into a full map card wired
+  back to the doc with an edge.
+- Plumbing: MAP_SYSTEM's stop-JSON grammar is shared; `DOC_SYSTEM` gains a
+  short "when the answer is places, include a map fence" directive + the
+  grammar. Pins geocode through a small `POST /api/geo/stops` endpoint
+  (the same cached Nominatim helper — this pulls the public endpoint
+  forward from P3), so a doc fence hydrates client-side without changing
+  the doc streaming path at all: the fence is just markdown text until
+  `card.done`, exactly like mermaid.
+
 ## Technology decisions (recommended, with alternatives)
 
 | Decision | Recommendation | Why | Alternatives considered |
@@ -236,8 +265,13 @@ The card exists and the Ask pipeline can produce it.
 - "Open route" (multi-waypoint Google Maps deep link) on card + rail.
 - Refine loop: map grounds asks (`toSource`), in-place regenerate, action
   bar block (Add a stop · Reorder · Regenerate).
+- **The inline map block in doc answers** (see anatomy above): the
+  ` ```map ` fence in `DocMarkdown`, the `DOC_SYSTEM` when-warranted
+  directive, `POST /api/geo/stops`, chip↔pin hover, "⤢ expand map"
+  promotion to a full map card.
 - **Exit:** the expanded card reads like the reference image (minus
-  ratings); "add a lunch stop" regenerates in place with the new pin.
+  ratings); "add a lunch stop" regenerates in place with the new pin; a
+  plain "suggest a day trip" ask answers as a doc that carries its map.
 
 ### P2 — Trips are a board thing `M`
 - Compose fan-out can plan a map slot (trip intents → map + day docs +
