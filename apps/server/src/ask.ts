@@ -476,6 +476,77 @@ async function gatherContext(
 const CITE_DIRECTIVE =
   '\n\nThe source text is tagged with [p.N] page markers. When a statement draws on a specific page, cite it inline as [p.N] (use the marker from the text). Cite the page where the fact actually appears; do not invent page numbers.';
 
+/* ─── Honest provenance: which sources were ACTUALLY used ────────────────────
+ * Attaching context is not the same as the answer drawing on it — a user can
+ * attach a transcript and ask an unrelated question (owner call, 2026-07-11).
+ * The model declares which numbered sources it drew on via one trailing
+ * machine-read line; the server strips it from the stream and re-emits it as
+ * a `sources.used` event so the client links only real lineage. */
+
+const SOURCES_USED_MARKER = 'SOURCES_USED:';
+
+const SOURCES_USED_DIRECTIVE =
+  `\n\nProvenance (machine-read): after the answer's final line, add ONE last line of exactly the form "${SOURCES_USED_MARKER} 1, 3" — the numbers of the numbered Sources above whose content you actually drew on. Count a source only if the answer genuinely uses its content; a source you read but ignored, and anything found on the live web, does not count. If you drew on none of them, write "${SOURCES_USED_MARKER} none". This line is removed before display — never mention it in the answer itself.`;
+
+/** Parse the indices out of a captured marker line ("SOURCES_USED: 1, 3"). */
+function parseUsedSources(line: string, sourceCount: number): number[] {
+  const body = line.slice(SOURCES_USED_MARKER.length);
+  const seen = new Set<number>();
+  for (const m of body.matchAll(/\d+/g)) {
+    const n = Number(m[0]);
+    if (n >= 1 && n <= sourceCount) seen.add(n);
+  }
+  return [...seen].sort((a, b) => a - b);
+}
+
+/** Streaming filter that withholds the trailing SOURCES_USED line from the
+ *  emitted text. Prose streams through untouched — only a line that is (so
+ *  far) a prefix of the marker is held back, and it flushes the moment it
+ *  diverges, so the hold is invisible at word-delta granularity. */
+function createMarkerFilter() {
+  let cur = ''; // the current line so far
+  let held = true; // whole current line withheld (still a marker candidate)
+  let markerLine: string | null = null;
+  const isCandidate = (s: string) =>
+    s.length <= SOURCES_USED_MARKER.length ? SOURCES_USED_MARKER.startsWith(s) : s.startsWith(SOURCES_USED_MARKER);
+  return {
+    process(delta: string): string {
+      let out = '';
+      for (const ch of delta) {
+        if (ch === '\n') {
+          if (held) {
+            if (cur.startsWith(SOURCES_USED_MARKER)) markerLine = cur; // swallow line + newline
+            else out += cur + '\n';
+          } else out += '\n';
+          cur = '';
+          held = true;
+          continue;
+        }
+        cur += ch;
+        if (held) {
+          if (!isCandidate(cur)) {
+            out += cur; // diverged from the marker — flush and stream normally
+            held = false;
+          }
+        } else out += ch;
+      }
+      return out;
+    },
+    /** End of stream: capture a final (newline-less) marker, flush anything else. */
+    flush(): string {
+      if (held && cur.startsWith(SOURCES_USED_MARKER)) {
+        markerLine = cur;
+        cur = '';
+        return '';
+      }
+      const rest = held ? cur : '';
+      cur = '';
+      return rest;
+    },
+    marker: () => markerLine,
+  };
+}
+
 /** Web-page sources get link citations — the parallel of [p.N] for PDFs.
  *  With ONE source, inline cites are pure repetition (the same URL after
  *  every line) — a single closing Source line covers the whole answer.
@@ -1017,7 +1088,13 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
     // Cross-document conflict requests get the clause-diff table treatment
     // (purely extractive across the given documents — no web there).
     const isDiff = looksLikeDiff(req.prompt) && req.sources.filter((s) => s.assetId).length >= 2;
-    const tableSystem = isDiff ? CLAUSE_DIFF_SYSTEM : TABLE_SYSTEM + WEB_TABLE_DIRECTIVE;
+    // Tables return JSON, so the used-sources declaration rides as one more
+    // key instead of the trailing marker line the doc stream uses.
+    const tableUsedDirective =
+      req.sources.length > 0
+        ? '\nAlso include a "usedSources": number[] key — the numbers of the numbered Sources whose content the table actually drew on (a source you ignored, and web results, do not count; [] if none).'
+        : '';
+    const tableSystem = (isDiff ? CLAUSE_DIFF_SYSTEM : TABLE_SYSTEM + WEB_TABLE_DIRECTIVE) + tableUsedDirective;
     const raw = await generate(tableSystem, user, signal, images, {
       web: !isDiff,
       framePaths,
@@ -1029,6 +1106,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
     if (signal.aborted) return;
     let columns: string[] = [];
     let rows: string[][] = [];
+    let usedSources: number[] | null = null;
     // A cell holding an image/link token needs URL headroom — the plain-text
     // cap would slice the URL mid-way and leave broken literal markdown.
     const cellCap = (s: string) => s.slice(0, /!\[|\]\(/.test(s) ? 500 : 200);
@@ -1036,11 +1114,15 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
       const json = JSON.parse(raw.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()) as {
         columns?: unknown;
         rows?: unknown;
+        usedSources?: unknown;
       };
       columns = Array.isArray(json.columns) ? json.columns.map((c) => String(c).slice(0, 60)) : [];
       rows = Array.isArray(json.rows)
         ? json.rows.map((r) => (Array.isArray(r) ? r.map((c) => cellCap(String(c ?? ''))) : []))
         : [];
+      if (Array.isArray(json.usedSources)) {
+        usedSources = [...new Set(json.usedSources.map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= req.sources.length))].sort((a, b) => a - b);
+      }
     } catch {
       /* fall through to a doc if the model didn't return clean JSON */
     }
@@ -1062,6 +1144,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
           await sleep(28, signal);
         }
       }
+      if (usedSources) yield { type: 'sources.used', indices: usedSources };
       yield { type: 'card.done' };
       yield { type: 'done' };
       return;
@@ -1076,9 +1159,12 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   if (linkRefs.length > 0) system += linkCiteDirective(linkRefs);
   if (wantsChecklist(req.prompt)) system += CHECKLIST_DIRECTIVE;
   system += WEB_DIRECTIVE;
+  // With canvas sources riding along, the model declares which it actually
+  // drew on — attached ≠ used, and lineage links only real use.
+  if (req.sources.length > 0) system += SOURCES_USED_DIRECTIVE;
   // Everyday doc/list answers carry find_image too — the directive gates it
   // to answers a real image genuinely lifts (owner call, 2026-07-10).
-  yield* streamDoc(shape, system, user, signal, images, { web: true, framePaths, imageData, clientTools: FIND_IMAGE_CLIENT });
+  yield* streamDoc(shape, system, user, signal, images, { web: true, framePaths, imageData, clientTools: FIND_IMAGE_CLIENT }, req.sources.length);
 }
 
 /**
@@ -1449,6 +1535,10 @@ async function* streamDoc(
   signal: AbortSignal,
   images: ImageInput[] = [],
   opts: GenOpts = {},
+  /** How many numbered sources rode with the prompt — >0 means the system
+   *  prompt carried SOURCES_USED_DIRECTIVE and the trailing marker line must
+   *  be stripped from the stream and re-emitted as a `sources.used` event. */
+  trackSources = 0,
 ): AsyncGenerator<AskEvent> {
   yield { type: 'card.create', shape };
   // Buffer only until the first line resolves (a "# Title" goes to the card's
@@ -1458,7 +1548,9 @@ async function* streamDoc(
   let buf = '';
   let titleResolved = false;
   let bodyStarted = false;
-  function* bodyDelta(text: string): Generator<AskEvent> {
+  const markerFilter = trackSources > 0 ? createMarkerFilter() : null;
+  function* bodyDelta(raw: string): Generator<AskEvent> {
+    const text = markerFilter ? markerFilter.process(raw) : raw;
     const t = bodyStarted ? text : text.replace(/^\n+/, '');
     if (!t) return;
     bodyStarted = true;
@@ -1507,6 +1599,12 @@ async function* streamDoc(
   if (!titleResolved && buf) {
     if (buf.startsWith('# ')) yield { type: 'card.title', title: buf.replace(/^#\s+/, '').slice(0, 80) };
     else yield* bodyDelta(buf);
+  }
+  if (markerFilter) {
+    const tail = markerFilter.flush();
+    if (tail && bodyStarted) yield { type: 'card.delta', textDelta: tail };
+    const marker = markerFilter.marker();
+    if (marker) yield { type: 'sources.used', indices: parseUsedSources(marker, trackSources) };
   }
   yield { type: 'card.done' };
   yield { type: 'done' };
