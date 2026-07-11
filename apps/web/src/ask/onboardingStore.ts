@@ -8,10 +8,16 @@
  *   tool rail / parked cursor stepping aside, and mounts the ambient scene.
  * - `engaged` — the user has focused or started typing in the composer. The
  *   ambient scene hushes on this the MOMENT you engage, before the first send.
+ * - `canvasEngaged` — the user clicked or dragged on the BOARD itself. Sticky
+ *   for the life of the intent screen: the scene's illustrative cards look
+ *   real enough to try to select (owner hit this — a marquee around them
+ *   selects nothing), so the first touch of the canvas retires the movie
+ *   rather than letting it drift back and mislead again.
  */
 
 let _active = false;
 let _engaged = false;
+let _canvasEngaged = false;
 const _listeners = new Set<() => void>();
 
 export function isOnboarding(): boolean {
@@ -21,11 +27,19 @@ export function isOnboarding(): boolean {
 export function setOnboarding(v: boolean): void {
   if (_active === v) return;
   _active = v;
+  // A future brand-new board gets its welcome scene back.
+  if (!v) _canvasEngaged = false;
   _listeners.forEach((cb) => cb());
 }
 
 export function isOnboardingEngaged(): boolean {
-  return _engaged;
+  return _engaged || _canvasEngaged;
+}
+
+export function setOnboardingCanvasEngaged(): void {
+  if (_canvasEngaged) return;
+  _canvasEngaged = true;
+  _listeners.forEach((cb) => cb());
 }
 
 export function setOnboardingEngaged(v: boolean): void {

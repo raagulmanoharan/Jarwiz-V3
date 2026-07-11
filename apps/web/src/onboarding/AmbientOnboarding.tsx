@@ -22,6 +22,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import {
   isOnboarding,
   isOnboardingEngaged,
+  setOnboardingCanvasEngaged,
   subscribeOnboarding,
 } from '../ask/onboardingStore';
 import { getPersona, subscribePersona, type Persona } from './personaStore';
@@ -125,6 +126,20 @@ export function AmbientOnboarding() {
     if (active) { setMounted(true); return; }
     const t = window.setTimeout(() => setMounted(false), 900);
     return () => window.clearTimeout(t);
+  }, [active]);
+  // A press on the BOARD retires the scene, same as reaching for the composer.
+  // The scene's cards are believable enough that visitors marquee-select them
+  // and get nothing (they're scenery, not shapes) — the first real canvas
+  // touch must clear the stage. Capture phase, and the overlay itself is
+  // pointer-events:none, so the target is whatever the press actually hits:
+  // only presses landing on the canvas count (composer/rail/topbar don't).
+  useEffect(() => {
+    if (!active) return;
+    const onPress = (e: PointerEvent) => {
+      if (e.target instanceof Element && e.target.closest('.tl-canvas')) setOnboardingCanvasEngaged();
+    };
+    window.addEventListener('pointerdown', onPress, { capture: true });
+    return () => window.removeEventListener('pointerdown', onPress, { capture: true });
   }, [active]);
   if (!mounted) return null;
   return <AmbientScene hushed={!active || engaged} />;

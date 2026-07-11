@@ -773,3 +773,20 @@ warrants it."
 - Live sidecar test (the Lake Bled ask through the real prompt bar) showed the
   honesty rule end-to-end: the sandbox blocked the fetch, and the model
   declined to fake a URL — noting it in the card instead of inventing one.
+
+## 2026-07-11 — The welcome scene stops posing as real cards
+
+**Intent:** owner on the Try-it-free page: "clicking and dragging is not
+selecting multiple cards." The marquee was fine — the "cards" weren't real.
+The ambient onboarding scene's illustrative cards (DOM decorations carried in
+by the fake collaborators) are believable enough to marquee-select, and the
+board underneath holds zero shapes, so the drag selects nothing.
+
+- The scene already hushed when you reached for the composer; now the first
+  press on the BOARD retires it too — sticky for the life of the intent
+  screen (`canvasEngaged` in onboardingStore, a capture-phase pointerdown
+  listener in AmbientOnboarding gated to targets inside `.tl-canvas`).
+- Verified in the browser on ?start=1: persona pick → scene runs → one drag
+  on open canvas → scene hushed, still hushed 3s later. Real boards
+  (fresh, ?demo=1, card-selected states) all brush-select correctly — five
+  scenarios probed before the ambient scene turned out to be the culprit.
