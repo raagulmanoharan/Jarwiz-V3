@@ -153,7 +153,7 @@ export function PromptBar() {
   // there is a broken promise; owner call, 2026-07-11). "Drop a PDF" opens a
   // file picker into the attachment pipeline; the paste on-ramps focus the
   // composer with a transient how-to hint as its placeholder.
-  const onrampFileRef = useRef<HTMLInputElement>(null);
+  const attachFileRef = useRef<HTMLInputElement>(null);
   const [onrampHint, setOnrampHint] = useState<string | null>(null);
   const focusComposerWithHint = (hint: string) => {
     setOnrampHint(hint);
@@ -695,6 +695,17 @@ export function PromptBar() {
 
         <div className="jz-promptbar-footer">
           <div className="jz-promptbar-footer-left">
+            {/* Attach — always available: drag/drop and paste attach too, but
+                a visible button is the discoverable path (owner ask,
+                2026-07-11). Opens the same picker the intro on-ramp uses. */}
+            <button
+              className="jz-promptbar-icon-btn"
+              title="Attach a file — PDF, image, or spreadsheet"
+              aria-label="Attach a file"
+              onClick={() => attachFileRef.current?.click()}
+            >
+              <Paperclip size={15} strokeWidth={1.8} />
+            </button>
             {/* The / button IS the mode selector; once a shape is picked the
                 chip takes its place (dismiss to hand the choice back to the
                 model). Same menu as typing "/" in the input. */}
@@ -770,7 +781,7 @@ export function PromptBar() {
           <span className="jz-pb-onramp-or">or</span>
           <button
             className="jz-pb-onramp-item"
-            onClick={() => onrampFileRef.current?.click()}
+            onClick={() => attachFileRef.current?.click()}
           >
             <FileText size={13} strokeWidth={1.9} /> drop a PDF
           </button>
@@ -786,19 +797,22 @@ export function PromptBar() {
           >
             <ClipboardList size={13} strokeWidth={1.9} /> paste a transcript
           </button>
-          <input
-            ref={onrampFileRef}
-            type="file"
-            accept="application/pdf,.pdf,image/png,image/jpeg,image/gif,image/webp,.xlsx,.xls,.csv,.tsv"
-            multiple
-            hidden
-            onChange={(e) => {
-              if (e.currentTarget.files?.length) attachFiles(e.currentTarget.files);
-              e.currentTarget.value = ''; // same file can be picked again
-            }}
-          />
         </div>
       ) : null}
+
+      {/* One hidden picker serves both attach entry points (the footer
+          paperclip and the intro on-ramp) — always mounted. */}
+      <input
+        ref={attachFileRef}
+        type="file"
+        accept="application/pdf,.pdf,image/png,image/jpeg,image/gif,image/webp,.xlsx,.xls,.csv,.tsv"
+        multiple
+        hidden
+        onChange={(e) => {
+          if (e.currentTarget.files?.length) attachFiles(e.currentTarget.files);
+          e.currentTarget.value = ''; // same file can be picked again
+        }}
+      />
     </div>
   );
 }
