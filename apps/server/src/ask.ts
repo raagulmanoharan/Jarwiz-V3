@@ -173,23 +173,25 @@ Rules: 1–8 REAL places only (never invent one); "query" must be region-qualifi
  *  /api/widget). Content-level like find_image/map — the shape stays a doc. */
 const WIDGET_BLOCK_DIRECTIVE = `
 
-WIDGET BLOCK — when (and ONLY when) the concept being explained genuinely becomes clearer by letting the reader VARY something (a force curve against speed, compounding against rate, a threshold effect), include ONE widget block where the concept appears:
+WIDGET BLOCK — when (and ONLY when) the concept being explained genuinely becomes clearer through INTERACTION — varying a parameter, stepping through stages, dragging something, comparing two states, watching a small simulation — include ONE widget block where the concept appears:
 \`\`\`widget
-{"concept": "drag force vs speed for different body shapes", "controls": ["speed", "body shape: sedan / van"], "note": "F = 1/2 * rho * Cd * A * v^2; van Cd ~0.38 vs sedan ~0.28"}
+{"concept": "drag force vs speed for different body shapes", "interaction": "speed slider + sedan/van toggle drive the force curve", "note": "F = 1/2 * rho * Cd * A * v^2; van Cd ~0.38 vs sedan ~0.28"}
 \`\`\`
-"concept" names exactly ONE idea to make interactive; "controls" lists the 1–3 things the reader varies; "note" (optional) pins the real formula/values so the widget is honest. A separate pass builds the widget from this brief — you only write the brief. At most one per answer; only when interaction genuinely teaches (never decoration, never a chart of static facts); MOST answers have none.`;
+"concept" names exactly ONE idea to make interactive; "interaction" describes the form that best teaches it (sliders, a step-through of stages, drag-to-explore, a compare toggle, a run/pause simulation — your call); "note" (optional) pins the real formula/values/sequence so the widget is honest. A separate pass builds the widget from this brief — you only write the brief. At most one per answer; only when interaction genuinely teaches (never decoration, never a chart of static facts); MOST answers have none.`;
 
 /** How the widget itself is authored — the prototype card's rules shrunk to a
  *  single-concept teaching block (~460×320, rendered in a sandboxed iframe
  *  with no network). */
-const WIDGET_SYSTEM = `You build ONE small interactive teaching widget as a self-contained HTML document. It illustrates exactly one concept, with the given controls, honestly.
+const WIDGET_SYSTEM = `You build ONE small interactive teaching widget as a self-contained HTML document. It illustrates exactly one concept, honestly, in whatever interaction form BEST TEACHES it: parameter sliders, a step-through of stages (Next/Play), drag-to-explore, a compare toggle, or a small run/pause simulation. The brief's "interaction" field is your starting point — improve on it if a better form teaches better.
 
 HARD REQUIREMENTS — rendered in a sandboxed iframe with NO network access:
 - Full document starting <!doctype html>; ALL CSS in one inline <style>, ALL JS in one inline <script>. No external resources of any kind.
 - System font stack. Fill the frame: html,body{margin:0}; design for roughly 460×320 (it may be a little wider — use flexible layout). Breathing room INSIDE, no dead outer margin.
-- Quiet, near-monochrome look: white/neutral surface, dark ink, ONE accent at most. Small labels, real units.
-- The controls listed in the brief (sliders/toggles/buttons) must actually drive the visual — canvas or SVG redrawn live. Use the REAL relationship (the brief's note pins formulas/values); label axes and show a live readout. Never fake the shape of the curve.
-- Keep it small and instant: no libraries, no images, under ~150 lines.
+- THEME: the host injects CSS custom properties — use them WITH fallbacks and invent no other colors:
+  background: var(--jzw-surface, #fafafa); primary text/lines: var(--jzw-ink, #1a1a1a); secondary text: var(--jzw-muted, #6a6a6a); hairlines: var(--jzw-line, #d4d4d4); the ONE accent: var(--jzw-accent, #0f0f0f) with var(--jzw-accent-ink, #ffffff) on top.
+- The interaction must actually drive the visual — canvas or SVG redrawn live. Use the REAL relationship (the brief's note pins formulas/values/sequences); label axes/stages and show a live readout. Never fake the shape of a curve.
+- THE WIDGET INTRODUCES ITSELF: on load, run ONE brief (~1.2s) demonstration — animate the primary control/state through its range so the reader sees it is alive, then settle at the default. If matchMedia('(prefers-reduced-motion: reduce)') matches, skip the animation and show a small quiet "try it" hint instead.
+- Keep it small and instant: no libraries, no images, under ~160 lines.
 
 Output ONLY the raw HTML document — no prose, NO \`\`\` fences.`;
 
@@ -204,16 +206,16 @@ function demoWidgetHtml(concept: string): string {
     return '<!doctype html><html><body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui,sans-serif;background:#fafafa;color:#8a8a8a;font-size:13px">Set ANTHROPIC_API_KEY to generate this widget.</body></html>';
   }
   return `<!doctype html><html><head><style>
-html,body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#fafafa;color:#1a1a1a}
+html,body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:var(--jzw-surface,#fafafa);color:var(--jzw-ink,#1a1a1a)}
 .wrap{padding:14px 16px;display:flex;flex-direction:column;gap:10px;height:100vh;box-sizing:border-box}
 .row{display:flex;gap:14px;align-items:center;font-size:12px}
-.row label{color:#5a5a5a;font-weight:600}
-.seg{display:flex;border:1px solid #d4d4d4;border-radius:999px;overflow:hidden}
-.seg button{border:none;background:#fff;padding:4px 12px;font:600 11px system-ui;cursor:pointer;color:#5a5a5a}
-.seg button.on{background:#0f0f0f;color:#fff}
+.row label{color:var(--jzw-muted,#5a5a5a);font-weight:600}
+.seg{display:flex;border:1px solid var(--jzw-line,#d4d4d4);border-radius:999px;overflow:hidden}
+.seg button{border:none;background:transparent;padding:4px 12px;font:600 11px system-ui;cursor:pointer;color:var(--jzw-muted,#5a5a5a)}
+.seg button.on{background:var(--jzw-accent,#0f0f0f);color:var(--jzw-accent-ink,#fff)}
 canvas{flex:1;min-height:0;width:100%}
-.read{font-size:12px;color:#5a5a5a}.read b{color:#0f0f0f;font-variant-numeric:tabular-nums}
-input[type=range]{accent-color:#0f0f0f;flex:1}
+.read{font-size:12px;color:var(--jzw-muted,#5a5a5a)}.read b{color:var(--jzw-ink,#0f0f0f);font-variant-numeric:tabular-nums}
+input[type=range]{accent-color:var(--jzw-accent,#0f0f0f);flex:1}
 </style></head><body><div class="wrap">
 <div class="row"><label>Speed</label><input id="v" type="range" min="10" max="140" value="80"><span class="read"><b id="vr">80</b> km/h</span></div>
 <div class="row"><label>Body</label><div class="seg"><button id="sedan" class="on">Sedan (Cd 0.28)</button><button id="van">Van (Cd 0.38)</button></div><span class="read">Drag: <b id="fr">—</b> N</span></div>
@@ -224,16 +226,23 @@ const v=document.getElementById('v'),vr=document.getElementById('vr'),fr=documen
 function F(kmh,b){const ms=kmh/3.6;return .5*rho*Cd[b]*A[b]*ms*ms}
 function draw(){const W=c.width=c.clientWidth*2,H=c.height=c.clientHeight*2;x.scale(1,1);
 x.clearRect(0,0,W,H);const pad=56,maxV=140,maxF=F(maxV,'van')*1.05;
-x.strokeStyle='#d4d4d4';x.lineWidth=2;x.beginPath();x.moveTo(pad,10);x.lineTo(pad,H-pad);x.lineTo(W-10,H-pad);x.stroke();
-x.fillStyle='#8a8a8a';x.font='20px system-ui';x.fillText('drag force (N)',pad+8,28);x.fillText('speed (km/h)',W-150,H-pad+34);
+const cs=getComputedStyle(document.documentElement),C={ink:cs.getPropertyValue('--jzw-ink').trim()||'#1a1a1a',muted:cs.getPropertyValue('--jzw-muted').trim()||'#8a8a8a',line:cs.getPropertyValue('--jzw-line').trim()||'#d4d4d4',accent:cs.getPropertyValue('--jzw-accent').trim()||'#0f0f0f'};x.strokeStyle=C.line;x.lineWidth=2;x.beginPath();x.moveTo(pad,10);x.lineTo(pad,H-pad);x.lineTo(W-10,H-pad);x.stroke();
+x.fillStyle=C.muted;x.font='20px system-ui';x.fillText('drag force (N)',pad+8,28);x.fillText('speed (km/h)',W-150,H-pad+34);
 const px=k=>pad+(W-pad-20)*k/maxV, py=f=>H-pad-(H-pad-20)*f/maxF;
-for(const b of['sedan','van']){x.strokeStyle=b===body?'#0f0f0f':'#b8b8b8';x.lineWidth=b===body?4:2;x.beginPath();
+for(const b of['sedan','van']){x.strokeStyle=b===body?C.accent:C.line;x.lineWidth=b===body?4:2;x.beginPath();
 for(let k=0;k<=maxV;k+=2){const X=px(k),Y=py(F(k,b));k?x.lineTo(X,Y):x.moveTo(X,Y)}x.stroke();}
-const kv=+v.value,Y=py(F(kv,body)),X=px(kv);x.fillStyle='#0f0f0f';x.beginPath();x.arc(X,Y,7,0,7);x.fill();
+const kv=+v.value,Y=py(F(kv,body)),X=px(kv);x.fillStyle=C.accent;x.beginPath();x.arc(X,Y,7,0,7);x.fill();
 vr.textContent=kv;fr.textContent=F(kv,body).toFixed(0);}
 v.oninput=draw;for(const id of['sedan','van'])document.getElementById(id).onclick=e=>{body=id;
 document.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on',b.id===id));draw()};
 new ResizeObserver(draw).observe(c);draw();
+// The widget introduces itself: one ~1.2s sweep of the speed slider, then
+// settle at the default. Reduced motion skips it.
+if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
+const t0=performance.now(),from=15,peak=140,home=80;
+(function sweep(now){const k=Math.min(1,(now-t0)/1200);
+v.value=Math.round(k<.7?from+(peak-from)*(k/.7):peak+(home-peak)*((k-.7)/.3));draw();
+if(k<1)requestAnimationFrame(sweep)})(t0);}
 </script></body></html>`;
 }
 
@@ -1014,7 +1023,7 @@ async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenera
       '```widget',
       JSON.stringify({
         concept: 'drag force vs speed for different body shapes',
-        controls: ['speed', 'body shape: sedan / van'],
+        interaction: 'speed slider + sedan/van toggle drive the force curve',
         note: 'F = 1/2 * rho * Cd * A * v^2; van Cd ~0.38 A ~3.4, sedan Cd ~0.28 A ~2.2',
       }),
       '```',

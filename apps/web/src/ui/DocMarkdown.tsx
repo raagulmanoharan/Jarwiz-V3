@@ -68,7 +68,7 @@ export function DocMarkdown({ content, onCite, onToggleTask, sourceId }: DocMark
             fenceKind === 'map' ? (
               <DocMapBlock key={`map-${i}`} raw={body.join('\n')} sourceId={sourceId} />
             ) : (
-              <DocWidgetBlock key={`widget-${i}`} raw={body.join('\n')} />
+              <DocWidgetBlock key={`widget-${i}`} raw={body.join('\n')} sourceId={sourceId} />
             ),
           );
           i = j + 1;

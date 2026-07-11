@@ -935,3 +935,28 @@ there a smart way to do this without hardcoding this logic?"
   slider, Sedan/Van toggle, labeled axes, live readout (v=45 m/s → 1555 N,
   consistent with the constants it chose). Playwright drove the slider and
   toggle inside the sandboxed iframe. QA: docs/assets/qa/widget-real-sidecar.png.
+
+## 2026-07-11 (evening) — Widget delight pass: honest wait, token dress, any form
+
+**Intent:** owner: "how can we make it smart and dynamic and delightful… it
+can be any kind of widget to best explain the concept."
+
+- **Any interaction form:** WIDGET_BLOCK_DIRECTIVE/WIDGET_SYSTEM loosened
+  from parameter-sliders to whatever teaches — step-throughs, drag,
+  compare toggles, run/pause simulations. Verified live: asked about the
+  four-stroke cycle and the model chose (unprompted) a step-through piston
+  simulator — stage buttons, Play, a 0–720° crank scrubber, live valve/
+  spark readouts.
+- **The honest wait:** the pending block shows the BRIEF itself ("building:
+  four-stroke engine cycle… step-through slider cycles the piston…") — the
+  wait reads as intent, not a spinner. The Jarwiz avatar parks beside the
+  doc while the widget builds (WidgetPresenceLayer ← hydration events).
+- **Token dress:** the current theme's tokens are injected into the widget
+  as --jzw-* custom properties (and WIDGET_SYSTEM teaches the model to use
+  them with fallbacks); a theme flip re-dresses the widget live. Verified
+  dark AND light on the same model-authored widget.
+- **The widget introduces itself:** WIDGET_SYSTEM has widgets run one
+  ~1.2s authored demo sweep on load, then settle (reduced-motion gets a
+  quiet "try it" hint instead). Canned demo widget updated to match.
+- Observed variance to watch: the model missed accent-color on its range
+  slider (browser blue) — prompt tightening candidate if it recurs.
