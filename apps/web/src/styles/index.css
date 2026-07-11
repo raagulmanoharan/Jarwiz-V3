@@ -6502,3 +6502,31 @@ body,
     border-top: 1px solid var(--jz-hairline);
   }
 }
+
+/* ─── Inline widget block (a ```widget fence inside a doc — docs/MAPS.md) ── */
+
+.jz-widget-block {
+  margin: var(--jz-space-3) 0 var(--jz-space-2);
+  height: 320px;
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-md);
+  overflow: hidden;
+  background: var(--jz-card-surface);
+}
+
+.jz-widget-block--pending {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-400);
+  background: var(--jz-surface);
+}
+
+.jz-widget-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #fafafa; /* widgets author their own light surface, like prototypes */
+}

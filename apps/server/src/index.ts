@@ -38,7 +38,7 @@ import { streamMachineBoard } from './machineBoard.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset, sniffMime } from './assets.js';
 import { cachedImageUrl } from './imageCache.js';
 import { locateStops, type ProposedStop } from './geo.js';
-import { classifyRefineIntent, proposeSeedPrompts, streamAsk, suggestShape } from './ask.js';
+import { classifyRefineIntent, generateWidgetHtml, proposeSeedPrompts, streamAsk, suggestShape } from './ask.js';
 import type { AnalyzeCard, AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ReviseRequest } from '@jarwiz/shared';
 import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
@@ -140,6 +140,23 @@ app.post('/api/geo/stops', async (c) => {
     .slice(0, 12);
   const stops = await locateStops(proposed, c.req.raw.signal);
   return c.json({ stops });
+});
+
+/** Build the interactive widget for an inline doc ```widget brief
+ *  (docs/MAPS.md fence architecture: the fence carries intent, this hydrator
+ *  produces the widget on the prototype budget — cached per brief). */
+app.post('/api/widget', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected JSON: { brief: "…" }' }, 400);
+  }
+  const brief = (body as { brief?: unknown }).brief;
+  if (typeof brief !== 'string' || !brief.trim()) return c.json({ error: 'brief is required' }, 400);
+  const html = await generateWidgetHtml(brief.slice(0, 2000), c.req.raw.signal);
+  if (!html) return c.json({ error: 'widget unavailable' }, 422);
+  return c.json({ html });
 });
 
 /** Parsed grid for a sheet card — the capped rows/sheets it renders. */

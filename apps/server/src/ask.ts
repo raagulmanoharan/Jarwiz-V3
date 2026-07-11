@@ -166,6 +166,110 @@ MAP BLOCK — when (and ONLY when) the substance of the answer is real places th
 \`\`\`
 Rules: 1–8 REAL places only (never invent one); "query" must be region-qualified (place, locality, state, country) so a geocoder's first hit is the right place; "ordered" true only when the stops form a visiting order (an itinerary) — false for options/a single place; "day"/"time" only for itineraries; "note" one tight line or omitted; "lat"/"lng" your best guess as a fallback, omit when unsure. Then write the plan/answer as normal prose or bullets whose numbering follows the stop order. Never use a map block for anything that is not a visitable place; most answers have none.`;
 
+/** The inline widget block — a doc answer carries a SMALL model-authored
+ *  interactive when varying a parameter genuinely explains the concept
+ *  (docs/MAPS.md's fence architecture, second instance: the fence carries the
+ *  BRIEF, hydration generates the widget on the prototype budget via
+ *  /api/widget). Content-level like find_image/map — the shape stays a doc. */
+const WIDGET_BLOCK_DIRECTIVE = `
+
+WIDGET BLOCK — when (and ONLY when) the concept being explained genuinely becomes clearer by letting the reader VARY something (a force curve against speed, compounding against rate, a threshold effect), include ONE widget block where the concept appears:
+\`\`\`widget
+{"concept": "drag force vs speed for different body shapes", "controls": ["speed", "body shape: sedan / van"], "note": "F = 1/2 * rho * Cd * A * v^2; van Cd ~0.38 vs sedan ~0.28"}
+\`\`\`
+"concept" names exactly ONE idea to make interactive; "controls" lists the 1–3 things the reader varies; "note" (optional) pins the real formula/values so the widget is honest. A separate pass builds the widget from this brief — you only write the brief. At most one per answer; only when interaction genuinely teaches (never decoration, never a chart of static facts); MOST answers have none.`;
+
+/** How the widget itself is authored — the prototype card's rules shrunk to a
+ *  single-concept teaching block (~460×320, rendered in a sandboxed iframe
+ *  with no network). */
+const WIDGET_SYSTEM = `You build ONE small interactive teaching widget as a self-contained HTML document. It illustrates exactly one concept, with the given controls, honestly.
+
+HARD REQUIREMENTS — rendered in a sandboxed iframe with NO network access:
+- Full document starting <!doctype html>; ALL CSS in one inline <style>, ALL JS in one inline <script>. No external resources of any kind.
+- System font stack. Fill the frame: html,body{margin:0}; design for roughly 460×320 (it may be a little wider — use flexible layout). Breathing room INSIDE, no dead outer margin.
+- Quiet, near-monochrome look: white/neutral surface, dark ink, ONE accent at most. Small labels, real units.
+- The controls listed in the brief (sliders/toggles/buttons) must actually drive the visual — canvas or SVG redrawn live. Use the REAL relationship (the brief's note pins formulas/values); label axes and show a live readout. Never fake the shape of the curve.
+- Keep it small and instant: no libraries, no images, under ~150 lines.
+
+Output ONLY the raw HTML document — no prose, NO \`\`\` fences.`;
+
+/** One widget per distinct brief per process — hydrations are cached so a doc
+ *  re-render (or several viewers of the same card) never regenerates. */
+const widgetCache = new Map<string, Promise<string | null>>();
+
+/** The keyless demo widget: an honest drag-vs-speed interactive for
+ *  aero-flavoured briefs, a designed "set a key" block for anything else. */
+function demoWidgetHtml(concept: string): string {
+  if (!/drag|aero|speed|force/i.test(concept)) {
+    return '<!doctype html><html><body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui,sans-serif;background:#fafafa;color:#8a8a8a;font-size:13px">Set ANTHROPIC_API_KEY to generate this widget.</body></html>';
+  }
+  return `<!doctype html><html><head><style>
+html,body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#fafafa;color:#1a1a1a}
+.wrap{padding:14px 16px;display:flex;flex-direction:column;gap:10px;height:100vh;box-sizing:border-box}
+.row{display:flex;gap:14px;align-items:center;font-size:12px}
+.row label{color:#5a5a5a;font-weight:600}
+.seg{display:flex;border:1px solid #d4d4d4;border-radius:999px;overflow:hidden}
+.seg button{border:none;background:#fff;padding:4px 12px;font:600 11px system-ui;cursor:pointer;color:#5a5a5a}
+.seg button.on{background:#0f0f0f;color:#fff}
+canvas{flex:1;min-height:0;width:100%}
+.read{font-size:12px;color:#5a5a5a}.read b{color:#0f0f0f;font-variant-numeric:tabular-nums}
+input[type=range]{accent-color:#0f0f0f;flex:1}
+</style></head><body><div class="wrap">
+<div class="row"><label>Speed</label><input id="v" type="range" min="10" max="140" value="80"><span class="read"><b id="vr">80</b> km/h</span></div>
+<div class="row"><label>Body</label><div class="seg"><button id="sedan" class="on">Sedan (Cd 0.28)</button><button id="van">Van (Cd 0.38)</button></div><span class="read">Drag: <b id="fr">—</b> N</span></div>
+<canvas id="c"></canvas></div><script>
+const rho=1.225,A={sedan:2.2,van:3.4},Cd={sedan:0.28,van:0.38};let body='sedan';
+const c=document.getElementById('c'),x=c.getContext('2d');
+const v=document.getElementById('v'),vr=document.getElementById('vr'),fr=document.getElementById('fr');
+function F(kmh,b){const ms=kmh/3.6;return .5*rho*Cd[b]*A[b]*ms*ms}
+function draw(){const W=c.width=c.clientWidth*2,H=c.height=c.clientHeight*2;x.scale(1,1);
+x.clearRect(0,0,W,H);const pad=56,maxV=140,maxF=F(maxV,'van')*1.05;
+x.strokeStyle='#d4d4d4';x.lineWidth=2;x.beginPath();x.moveTo(pad,10);x.lineTo(pad,H-pad);x.lineTo(W-10,H-pad);x.stroke();
+x.fillStyle='#8a8a8a';x.font='20px system-ui';x.fillText('drag force (N)',pad+8,28);x.fillText('speed (km/h)',W-150,H-pad+34);
+const px=k=>pad+(W-pad-20)*k/maxV, py=f=>H-pad-(H-pad-20)*f/maxF;
+for(const b of['sedan','van']){x.strokeStyle=b===body?'#0f0f0f':'#b8b8b8';x.lineWidth=b===body?4:2;x.beginPath();
+for(let k=0;k<=maxV;k+=2){const X=px(k),Y=py(F(k,b));k?x.lineTo(X,Y):x.moveTo(X,Y)}x.stroke();}
+const kv=+v.value,Y=py(F(kv,body)),X=px(kv);x.fillStyle='#0f0f0f';x.beginPath();x.arc(X,Y,7,0,7);x.fill();
+vr.textContent=kv;fr.textContent=F(kv,body).toFixed(0);}
+v.oninput=draw;for(const id of['sedan','van'])document.getElementById(id).onclick=e=>{body=id;
+document.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on',b.id===id));draw()};
+new ResizeObserver(draw).observe(c);draw();
+</script></body></html>`;
+}
+
+/** Build (or replay) the widget for a doc's \`\`\`widget brief. Cached per
+ *  brief; strips stray fences; null on failure (the block degrades). */
+export async function generateWidgetHtml(briefRaw: string, signal: AbortSignal): Promise<string | null> {
+  const key = briefRaw.trim();
+  let inflight = widgetCache.get(key);
+  if (!inflight) {
+    inflight = (async () => {
+      let concept = '';
+      let controls: string[] = [];
+      let note = '';
+      try {
+        const json = JSON.parse(key) as { concept?: unknown; controls?: unknown; note?: unknown };
+        concept = typeof json.concept === 'string' ? json.concept.slice(0, 200) : '';
+        controls = Array.isArray(json.controls) ? json.controls.map((c) => String(c).slice(0, 80)).slice(0, 3) : [];
+        note = typeof json.note === 'string' ? json.note.slice(0, 300) : '';
+      } catch {
+        return null;
+      }
+      if (!concept.trim()) return null;
+      if (!process.env.ANTHROPIC_API_KEY?.trim() && !sidecarAvailable()) return demoWidgetHtml(concept);
+      const user = `Concept: ${concept}\nControls: ${controls.join('; ') || 'your call — the fewest that teach it'}${note ? `\nGround truth: ${note}` : ''}`;
+      const raw = await generate(WIDGET_SYSTEM, user, signal, [], { prototype: true });
+      const html = raw.replace(/^\s*```(?:html)?\s*/i, '').replace(/```\s*$/i, '').trim();
+      return html.toLowerCase().includes('<html') || html.toLowerCase().startsWith('<!doctype') ? html.slice(0, 60_000) : null;
+    })().catch(() => null);
+    widgetCache.set(key, inflight);
+    void inflight.then((v) => {
+      if (!v) widgetCache.delete(key); // a transient failure may succeed later
+    });
+  }
+  return inflight;
+}
+
 const AFFINITY_SYSTEM = `You run an affinity-mapping exercise: turn the request and the source(s) into clustered sticky notes. Return ONLY a JSON object {"clusters": [{"label": string, "notes": string[]}]}. Make 3–6 clusters; each has a short 1–4 word "label" (the theme) and 2–6 short "notes" (each one idea, a few words). Group related ideas under the same theme. Ground notes in the provided content when a source is given; otherwise brainstorm sensible ideas for the request. No prose, no code fences.`;
 
 /** The deep-research dossier as a RICH generative-UI card (OpenUI Lang), so
@@ -896,7 +1000,35 @@ async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenera
   // path (DocMarkdown → DocMapBlock) is demoable with zero keys and no
   // geocoder. Any other prompt gets the plain explainer doc.
   const placey = /\b(trip|itinerar|travel|visit|places?|near|temple|restaurant|caf[eé]|beach|trek|route|weekend)\b/i.test(req.prompt);
-  yield { type: 'card.create', shape: 'doc', title: placey ? 'Day trip — Savandurga + Manchanabele (demo)' : 'Demo mode' };
+  // A concept-flavoured prompt demos the inline WIDGET block the same way a
+  // places prompt demos the map block — the fence carries the brief and the
+  // /api/widget hydrator returns the canned keyless interactive.
+  const concepty = !placey && /\b(drag|aerodynamic|physics|force|explain|why|how does|dynamics)\b/i.test(req.prompt);
+  yield {
+    type: 'card.create',
+    shape: 'doc',
+    title: placey ? 'Day trip — Savandurga + Manchanabele (demo)' : concepty ? 'Drag: why the van loses (demo)' : 'Demo mode',
+  };
+  if (concepty) {
+    const widgetFence = [
+      '```widget',
+      JSON.stringify({
+        concept: 'drag force vs speed for different body shapes',
+        controls: ['speed', 'body shape: sedan / van'],
+        note: 'F = 1/2 * rho * Cd * A * v^2; van Cd ~0.38 A ~3.4, sedan Cd ~0.28 A ~2.2',
+      }),
+      '```',
+    ].join('\n');
+    const conceptBody = `Drag force grows with the **square** of speed — double your speed and the air pushes back four times as hard. *(Demo mode — set a key for a real, grounded answer.)*\n\n${widgetFence}\n\nA van suffers twice: its drag coefficient is higher (boxy nose, hard edges — Cd ≈ 0.38 vs a sedan's ≈ 0.28) **and** its frontal area is bigger (≈ 3.4 m² vs ≈ 2.2 m²). Multiply those through F = ½ρC_dAv² and at highway speed the van is fighting roughly **twice the drag force** — which is why its fuel economy falls off a cliff above 90 km/h while the sedan's merely sags.`;
+    for (const piece of chunk(conceptBody)) {
+      if (signal.aborted) return;
+      yield { type: 'card.delta', textDelta: piece };
+      await sleep(24, signal);
+    }
+    yield { type: 'card.done' };
+    yield { type: 'done' };
+    return;
+  }
   const mapFence = [
     '```map',
     JSON.stringify({
@@ -1189,9 +1321,11 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   if (linkRefs.length > 0) system += linkCiteDirective(linkRefs);
   if (wantsChecklist(req.prompt)) system += CHECKLIST_DIRECTIVE;
   system += WEB_DIRECTIVE;
-  // Docs carry their map when the content is places — same "when warranted"
-  // doctrine as find_image; static text, so prompt caching still holds.
+  // Docs carry their map when the content is places, and a small interactive
+  // widget when varying a parameter teaches the concept — the same "when
+  // warranted" doctrine as find_image; static text, so prompt caching holds.
   system += MAP_BLOCK_DIRECTIVE;
+  system += WIDGET_BLOCK_DIRECTIVE;
   // With canvas sources riding along, the model declares which it actually
   // drew on — attached ≠ used, and lineage links only real use.
   if (req.sources.length > 0) system += SOURCES_USED_DIRECTIVE;

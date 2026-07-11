@@ -900,3 +900,31 @@ delivered: doc answers carry their map.
   real map fence, so the whole inline flow is testable with zero keys.
 - Deferred to P3 polish: rail thumbnails (find_image per stop) and
   chip↔pin hover inside the prose.
+
+## 2026-07-11 (later still) — Inline widget blocks: the fence architecture generalizes
+
+**Intent:** owner: "the rich card should also show small interactive widgets
+(prototype) inline… e.g. explaining drag dynamics in car aerodynamics — is
+there a smart way to do this without hardcoding this logic?"
+
+- The smart way was already on the branch: the map block's **fence
+  architecture** — DocMarkdown dispatches on fence language; each kind gets
+  a renderer; hydrators produce reality. Two tiers: STRUCTURED blocks
+  (```map — data verified server-side) and GENERATIVE blocks (```widget —
+  the model AUTHORS the interactive; zero per-concept code, ever).
+- **The fence carries the brief, not the widget** ({concept, controls,
+  note}) so doc streaming stays fast on the small budget; `POST /api/widget`
+  hydrates it on the prototype budget (WIDGET_SYSTEM: one concept, real
+  formulas, labeled axes, ≤~150 lines, self-contained), cached per brief on
+  both sides. Pending state "building the widget…"; failure degrades to
+  nothing.
+- Rendering = the prototype card's contract exactly: sandboxed iframe
+  (allow-scripts only — opaque origin, no network), fixed 320px block,
+  pointer ownership like checkboxes/links.
+- `WIDGET_BLOCK_DIRECTIVE` rides doc answers with the find_image
+  "when warranted" doctrine: at most one, only when varying a parameter
+  genuinely teaches, most answers have none.
+- Verified live: the demo drag widget is real physics — sedan @80 km/h reads
+  186 N; switching to the van at 130 km/h reads 1032 N, which hand-checks
+  against ½·ρ·Cd·A·v² exactly. Playwright drove the slider/toggle inside
+  the sandboxed iframe.

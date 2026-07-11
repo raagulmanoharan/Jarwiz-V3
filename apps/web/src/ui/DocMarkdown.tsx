@@ -10,6 +10,7 @@
 
 import { stopEventPropagation } from 'tldraw';
 import { DocMapBlock } from './DocMapBlock';
+import { DocWidgetBlock } from './DocWidgetBlock';
 
 interface DocMarkdownProps {
   content: string;
@@ -49,28 +50,41 @@ export function DocMarkdown({ content, onCite, onToggleTask, sourceId }: DocMark
   while (i < lines.length) {
     const line = lines[i] ?? '';
 
-    // The inline map block — a ```map fence holding the answer's stops
-    // (docs/MAPS.md). Rendered like diagrams: the fence is just text until it
-    // CLOSES; mid-stream (no closing fence yet) shows a quiet pending state.
-    if (line.trim() === '```map') {
-      const body: string[] = [];
-      let j = i + 1;
-      while (j < lines.length && (lines[j] ?? '').trim() !== '```') {
-        body.push(lines[j] ?? '');
-        j++;
+    // Inline blocks — the doc's fence architecture (docs/MAPS.md): a ```map
+    // fence holds the answer's stops, a ```widget fence a small interactive's
+    // brief. The fence is just text until it CLOSES; mid-stream (no closing
+    // fence yet) shows a quiet pending state.
+    {
+      const fenceKind = line.trim() === '```map' ? 'map' : line.trim() === '```widget' ? 'widget' : null;
+      if (fenceKind) {
+        const body: string[] = [];
+        let j = i + 1;
+        while (j < lines.length && (lines[j] ?? '').trim() !== '```') {
+          body.push(lines[j] ?? '');
+          j++;
+        }
+        if (j < lines.length) {
+          elements.push(
+            fenceKind === 'map' ? (
+              <DocMapBlock key={`map-${i}`} raw={body.join('\n')} sourceId={sourceId} />
+            ) : (
+              <DocWidgetBlock key={`widget-${i}`} raw={body.join('\n')} />
+            ),
+          );
+          i = j + 1;
+        } else {
+          elements.push(
+            <div
+              key={`block-pending-${i}`}
+              className={fenceKind === 'map' ? 'jz-map-block jz-map-block--pending' : 'jz-widget-block jz-widget-block--pending'}
+            >
+              {fenceKind === 'map' ? 'placing the stops…' : 'building the widget…'}
+            </div>,
+          );
+          i = lines.length;
+        }
+        continue;
       }
-      if (j < lines.length) {
-        elements.push(<DocMapBlock key={`map-${i}`} raw={body.join('\n')} sourceId={sourceId} />);
-        i = j + 1;
-      } else {
-        elements.push(
-          <div key={`map-pending-${i}`} className="jz-map-block jz-map-block--pending">
-            placing the stops…
-          </div>,
-        );
-        i = lines.length;
-      }
-      continue;
     }
 
     // Headings
