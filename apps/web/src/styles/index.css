@@ -18,9 +18,20 @@ body,
   text-rendering: optimizeLegibility;
 }
 
+/* Flex row: the canvas area yields when the Boards panel docks on the right
+   (push, not float — owner call 2026-07-11). */
 .jarwiz-app {
   position: fixed;
   inset: 0;
+  display: flex;
+}
+
+/* Everything board-shaped (tldraw + its overlays + splashes) lives in here;
+   min-width:0 lets it actually shrink when the panel takes its 300px. */
+.jz-canvas-area {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 /* Keyboard focus: a visible ring on our interactive overlays. Individual rules
@@ -5545,37 +5556,37 @@ body,
 
 /* ─── Side panel (workspace + boards) ───────────────────────────────────── */
 
-.jz-side-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 320;
-  background: transparent;
-  pointer-events: auto;
+/* Docked right column, flex sibling of the canvas area — opening animates the
+   WIDTH so the canvas is pushed aside (tldraw re-measures live) instead of
+   being covered by a floating drawer (owner call, 2026-07-11). Closed = zero
+   width and dropped from the tab order; the fixed-width inner keeps the
+   content from reflowing mid-slide. */
+.jz-side {
+  flex: 0 0 auto;
+  width: 0;
+  overflow: hidden;
+  visibility: hidden;
+  background: var(--jz-surface-raised);
+  transition:
+    width var(--jz-dur-base) var(--jz-ease-out),
+    visibility 0s var(--jz-dur-base);
 }
 
-.jz-side {
-  position: absolute;
-  /* Slot beneath the hamburger logo, flush to the left edge of the canvas. */
-  left: 60px;
-  top: 14px;
-  z-index: 330;
-  width: 280px;
-  max-height: calc(100vh - 28px);
+.jz-side--open {
+  width: 300px;
+  visibility: visible;
+  border-left: 1px solid var(--jz-hairline);
+  transition: width var(--jz-dur-base) var(--jz-ease-out);
+}
+
+.jz-side-inner {
+  width: 300px;
+  height: 100%;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  padding: 8px;
-  border-radius: var(--jz-radius-lg);
-  background: var(--jz-surface-raised);
-  box-shadow: var(--jz-e3);
-  border: 1px solid var(--jz-hairline);
-  pointer-events: auto;
-  animation: jz-side-in var(--jz-dur-base) var(--jz-ease-spring) both;
-}
-
-@keyframes jz-side-in {
-  from { opacity: 0; transform: translateX(-4px); }
-  to   { opacity: 1; transform: translateX(0); }
+  padding: 14px 10px;
+  box-sizing: border-box;
 }
 
 .jz-side-section { display: flex; flex-direction: column; gap: 2px; padding: 4px 2px; }
@@ -5878,7 +5889,7 @@ body,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .jz-side { animation: none; }
+  .jz-side { transition: none; }
 }
 
 /* ─── Rail spacer ─────────────────────────────────────────────────────────── */

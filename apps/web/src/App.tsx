@@ -74,10 +74,11 @@ function JarwizOverlay() {
   // a single broken card or layer can't take down the whole surface.
   return (
     <>
-      {/* Chrome — the Flora frame. */}
+      {/* Chrome — the Flora frame. (The Boards side panel is NOT here: it
+          docks to the app shell's right edge and pushes the canvas, so it
+          lives beside the Tldraw tree in App, not over it.) */}
       <Safe label="Topbar"><Topbar /></Safe>
       <Safe label="PreviewNotice"><PreviewNotice /></Safe>
-      <Safe label="SidePanel"><SidePanel /></Safe>
       <Safe label="ToolRail"><ToolRail /></Safe>
       <Safe label="AmbientOnboarding"><AmbientOnboarding /></Safe>
       <Safe label="PromptBar"><PromptBar /></Safe>
@@ -365,7 +366,13 @@ export function App() {
        *  itself, a shape render, restore) lands on a branded reload screen
        *  instead of a white page. */}
       <ErrorBoundary variant="app" label="App">
-        {restoring ? <RestoreSplash /> : room ? <SyncedBoard room={room} /> : <LocalBoard />}
+        {/* Flex row: the canvas area gives way when the Boards panel docks on
+            the right (owner call, 2026-07-11 — push, don't float). tldraw
+            re-measures on container resize, so the board reflows live. */}
+        <div className="jz-canvas-area">
+          {restoring ? <RestoreSplash /> : room ? <SyncedBoard room={room} /> : <LocalBoard />}
+        </div>
+        <Safe label="SidePanel"><SidePanel /></Safe>
       </ErrorBoundary>
     </div>
   );

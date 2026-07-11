@@ -1,11 +1,14 @@
 /**
- * Left-edge side panel (Flora / Figma-style drawer). Hosts the workspace
- * switcher and the board list — opened by the hamburger logo or the title
- * caret. Click-outside or Escape closes.
+ * Boards side panel — DOCKED to the app shell's right edge, pushing the canvas
+ * aside rather than floating over it (owner call, 2026-07-11; it used to be a
+ * floating left drawer). Hosts the workspace switcher, the board list, and
+ * backup/restore — opened by the hamburger logo or the title caret, closed by
+ * the same toggle or Escape. Lives beside the Tldraw tree in App (not in the
+ * overlay slot): the app shell is a flex row and tldraw re-measures as the
+ * panel's width animates in.
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { stopEventPropagation } from 'tldraw';
 import {
   createBoard,
   deleteBoard,
@@ -21,9 +24,9 @@ import { closeSidePanel, isSidePanelOpen, subscribeSidePanel } from './sidePanel
 
 export function SidePanel() {
   const open = useSyncExternalStore(subscribeSidePanel, isSidePanelOpen, isSidePanelOpen);
-  const panelRef = useRef<HTMLDivElement | null>(null);
 
-  // Escape closes.
+  // Escape closes. (No click-outside/scrim: a docked panel is a workspace
+  // column, not a popover — it holds its ground until toggled away.)
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -33,40 +36,23 @@ export function SidePanel() {
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
-  // Click-outside closes. Don't close if the user clicks the hamburger itself
-  // — that button toggles, and we'd race with its handler.
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      const t = e.target as HTMLElement;
-      if (!t) return;
-      if (panelRef.current?.contains(t)) return;
-      if (t.closest('.jz-logo-btn')) return;
-      closeSidePanel();
-    };
-    window.addEventListener('mousedown', onDown);
-    return () => window.removeEventListener('mousedown', onDown);
-  }, [open]);
-
-  if (!open) return null;
-
+  // Always mounted: the container's width animates 0 ↔ 300px so the canvas is
+  // pushed smoothly; visibility (in CSS) drops closed content from tab order.
   return (
-    <>
-      <div className="jz-side-scrim" onMouseDown={() => closeSidePanel()} aria-hidden />
-      <aside
-        ref={panelRef}
-        className="jz-side"
-        role="dialog"
-        aria-label="Workspace & boards"
-        onPointerDown={stopEventPropagation}
-      >
+    <aside
+      className={`jz-side${open ? ' jz-side--open' : ''}`}
+      role="complementary"
+      aria-label="Workspace & boards"
+      aria-hidden={!open}
+    >
+      <div className="jz-side-inner">
         <WorkspaceSection />
         <div className="jz-side-divider" aria-hidden />
         <BoardsSection />
         <div className="jz-side-divider" aria-hidden />
         <BackupSection />
-      </aside>
-    </>
+      </div>
+    </aside>
   );
 }
 
