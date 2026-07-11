@@ -68,6 +68,8 @@ export function MachinesRail() {
   };
 
   return (
+    // No position:relative here — the flyout anchors to the rail itself so it
+    // opens vertically centred on screen (see .jz-machines-panel in index.css).
     <div className="jz-machines" onPointerDown={stopEventPropagation}>
       <button
         className={`jz-rail-tool jz-machines-tool${open ? ' jz-rail-tool--active' : ''}`}

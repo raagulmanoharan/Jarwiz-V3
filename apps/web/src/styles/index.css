@@ -580,19 +580,41 @@ body,
 .jz-comment-dismiss:hover { color: var(--jz-ink-900); }
 
 /* ── Thinking Machines — rail tool flyout + on-canvas machine block ────────── */
-.jz-machines { position: relative; }
+/* .jz-machines is deliberately NOT position:relative: the flyout anchors to
+   the RAIL (the nearest positioned ancestor), whose middle sits at the
+   viewport's vertical centre — so the panel opens screen-centred beside the
+   rail instead of hanging off the button toward the bottom edge (owner call,
+   2026-07-11). position:fixed can't do this: the rail's own transform makes
+   fixed resolve against the rail, not the viewport. */
 .jz-machines-panel {
   position: absolute;
   left: calc(100% + 12px);
-  top: 0;
+  top: 50%;
+  transform: translateY(-50%);
   width: 268px;
+  max-height: min(78vh, 640px);
+  overflow-y: auto;
   background: var(--jz-card);
   border: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-lg);
   box-shadow: var(--jz-e3);
   padding: 6px;
   z-index: 60;
-  animation: jz-tl-in var(--jz-dur-base) var(--jz-ease-out, ease);
+  /* Own entrance keyframes — jz-tl-in would stomp the -50% centring. */
+  animation: jz-machines-in var(--jz-dur-base) var(--jz-ease-out, ease);
+}
+
+@keyframes jz-machines-in {
+  from {
+    opacity: 0;
+    transform: translate(8px, -50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jz-machines-panel {
+    animation: none;
+  }
 }
 .jz-machines-title {
   display: flex;
