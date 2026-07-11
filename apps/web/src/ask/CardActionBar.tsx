@@ -7,7 +7,7 @@
  * ProvenanceLayer (no persistent edges on the canvas).
  */
 
-import { useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { stopEventPropagation, useEditor, useValue, type Editor, type TLShapeId } from 'tldraw';
 import {
   AlertTriangle,
@@ -156,6 +156,33 @@ export function CardActionBar() {
   // dy clears the card's OUTSIDE title tag (doc/table titles render above the
   // card's top edge) — at -10 the bar sat on top of them.
   const anchor = useCardAnchor((sel?.ids ?? null) as TLShapeId[] | null, { edge: 'top', dy: -34 });
+
+  // An open menu is scoped to THIS selection moment. The bar component stays
+  // mounted across selections (sel just goes null), so without an explicit
+  // reset a menu left open re-appears over whatever card is selected next —
+  // including cards auto-selected by a later generation (G4.3). Escape and
+  // any pointer-down outside the bar also close it.
+  const selKey = sel ? sel.ids.join(',') : '';
+  const barRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    setMenu(null);
+  }, [selKey]);
+  useEffect(() => {
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenu(null);
+    };
+    const onPointer = (e: PointerEvent) => {
+      if (e.target instanceof Node && barRef.current?.contains(e.target)) return;
+      setMenu(null);
+    };
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('pointerdown', onPointer, true);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('pointerdown', onPointer, true);
+    };
+  }, [menu]);
 
   // The selected sticky's current tint (drives the palette's "on" dot).
   const stickyColor = useValue(
@@ -372,7 +399,7 @@ export function CardActionBar() {
     transform: below ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
   };
   return (
-    <div className={`jz-cardbar${below ? ' jz-cardbar--below' : ''}`} style={style} onPointerDown={stopEventPropagation}>
+    <div ref={barRef} className={`jz-cardbar${below ? ' jz-cardbar--below' : ''}`} style={style} onPointerDown={stopEventPropagation}>
       <input
         ref={imageInputRef}
         type="file"

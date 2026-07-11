@@ -280,8 +280,18 @@ function JarwizEntity() {
       if (wrapRef.current) {
         const screen = editor.pageToViewport(follower.pos);
         const j = reduce ? { x: 0, y: 0 } : tremor(now);
+        // Keep the whole entity readable: the name/quip badge extends right
+        // of the cursor tip, so a point near the viewport edge would park it
+        // half off-screen (G4.4). Clamp to the visible area — offsetWidth is
+        // cheap here because the loop only ever writes transform (composited,
+        // no layout invalidation between reads).
+        const vp = editor.getViewportScreenBounds();
+        const w = wrapRef.current.offsetWidth || 120;
+        const h = wrapRef.current.offsetHeight || 40;
+        const x = Math.max(4, Math.min(screen.x - 4 + j.x, vp.w - w - 8));
+        const y = Math.max(4, Math.min(screen.y - 3 + j.y, vp.h - h - 8));
         // Anchor on the arrow TIP (4,3 in the svg), like a real cursor hotspot.
-        wrapRef.current.style.transform = `translate(${screen.x - 4 + j.x}px, ${screen.y - 3 + j.y}px)`;
+        wrapRef.current.style.transform = `translate(${x}px, ${y}px)`;
       }
     };
 
