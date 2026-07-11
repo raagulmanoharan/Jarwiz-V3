@@ -6114,6 +6114,70 @@ body,
 .jzd-tab--active { color: var(--jz-ink-900); border-bottom-color: var(--jz-accent); }
 .jzd-tabpanel { min-width: 0; }
 
+/* Drag-out affordance — SELECTING the rich card reveals a grab handle on every
+   extractable block (table/image/prose/chart); dragging one onto the canvas
+   extracts it as a real card of the right type (dashboard/extract.tsx).
+   Selection is the reveal because tldraw keeps shape HTML pointer-events:none
+   (so the card body stays draggable) — blocks can never receive CSS hover. */
+.jzd-extract { position: relative; min-width: 0; flex: 1 1 auto; border-radius: 10px; }
+/* Selecting the card highlights each piece AS A WHOLE — the block itself is
+   the affordance (owner call, 2026-07-11: no pill, no label). */
+.jzd-extract--on {
+  outline: 1px solid var(--jz-hairline-strong);
+  outline-offset: 4px;
+}
+.jzd-extract-handle {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-xs);
+  background: var(--jz-surface-raised);
+  color: var(--jz-ink-400);
+  cursor: grab;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--jz-dur-fast) var(--jz-ease-out);
+  z-index: 2;
+}
+.jzd-extract-handle--on {
+  opacity: 1;
+  pointer-events: all;
+}
+.jzd-extract-handle:hover {
+  color: var(--jz-ink-900);
+  border-color: var(--jz-ink-400);
+  box-shadow: var(--jz-e1);
+}
+.jzd-extract-handle:active { cursor: grabbing; }
+
+/* Tab buttons must re-enable pointer events themselves — the surrounding
+   shape HTML is pointer-events:none (see the drag-out note above), so without
+   this a real mouse could never switch tabs. */
+.jzd-tab { pointer-events: all; }
+
+/* The pill that rides the pointer during an extract drag. */
+.jz-extract-ghost {
+  position: fixed;
+  z-index: 500;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--jz-hairline);
+  background: var(--jz-surface);
+  color: var(--jz-ink-700);
+  font-family: var(--jz-font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: var(--jz-e2);
+  pointer-events: none;
+}
+
 .jzd-tablewrap { overflow: auto; border: 1px solid var(--jz-hairline); border-radius: 12px; }
 .jzd-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .jzd-table th { text-align: left; padding: 9px 12px; color: var(--jz-ink-500); font-weight: 600; border-bottom: 1px solid var(--jz-hairline); background: var(--jz-surface-raised); position: sticky; top: 0; }

@@ -774,6 +774,29 @@ warrants it."
   honesty rule end-to-end: the sandbox blocked the fetch, and the model
   declined to fake a URL — noting it in the card instead of inventing one.
 
+## 2026-07-11 (later) — Rich cards give up their pieces: drag out
+
+**Intent:** "can I drag a table or image out of a rich card into a new card?"
+→ build drag-out first (drop-in composition comes later).
+
+- Every extractable block inside a generative-UI card — table, image, prose
+  section, chart — grows a quiet grab handle on hover (`dashboard/extract.tsx`
+  + wrappers in `library.tsx`). Drag it onto the canvas and it lands as a
+  REAL card of the right type: table → editable table-card, image →
+  image-card (proxied URL travels), prose → doc-card (raw markdown; the doc
+  card re-proxies images itself), chart → a mini one-statement dashboard-card.
+  Instant — the data is already in the rendered spec, no model round-trip.
+- Extraction inherits the day's lineage system for free: the new card records
+  the rich card in `meta.jzSources`, so click-to-reveal provenance and
+  auto-sync treat it like any other derived card.
+- Mechanics: handle pointerdown stops propagation (tldraw never mistakes it
+  for a card translate), a ghost pill rides the pointer, Escape cancels,
+  release must land on the canvas outside the host card. Import note: the
+  library pulls card sizes from specific shape files, not the shapes barrel —
+  the barrel imports the dashboard util which imports the library (cycle).
+- Verified in the browser against the real Hubble research spec: table (3×6,
+  from inside a tab) and image both extracted with lineage intact.
+
 ## 2026-07-11 — Card actions audit: real icons, honest Regenerate
 
 **Intent:** "audit all the actions shown on the card types — is Regenerate on
