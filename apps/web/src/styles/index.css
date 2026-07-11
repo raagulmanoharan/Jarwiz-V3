@@ -5083,6 +5083,9 @@ body,
 }
 
 .jz-cardbar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -5096,6 +5099,20 @@ body,
 }
 
 .jz-cardbar-item:hover { background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent); }
+
+/* The menu entry's leading icon — a fixed column so labels align, tinted
+ * quieter than the label so the words stay primary. */
+.jz-cardbar-item-ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  color: var(--jz-ink-500);
+  transition: color var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-cardbar-item:hover .jz-cardbar-item-ic { color: var(--jz-ink-700); }
 
 /* Discuss panel header (opened from the card action bar) */
 

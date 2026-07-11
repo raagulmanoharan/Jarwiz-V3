@@ -9,7 +9,42 @@
 
 import { useRef, useState, type CSSProperties } from 'react';
 import { stopEventPropagation, useEditor, useValue, type Editor, type TLShapeId } from 'tldraw';
-import { Bold, Italic, Underline, Strikethrough, List, ListTodo, Maximize2, Table2, Image as ImageIcon } from 'lucide-react';
+import {
+  AlertTriangle,
+  BarChart3,
+  Bold,
+  Boxes,
+  ChevronsDownUp,
+  Clock,
+  Columns3,
+  Combine,
+  Copy,
+  Eye,
+  Film,
+  Image as ImageIcon,
+  Italic,
+  Layers,
+  LayoutGrid,
+  LayoutTemplate,
+  Lightbulb,
+  List,
+  ListChecks,
+  ListTodo,
+  Maximize2,
+  Network,
+  PenLine,
+  RefreshCw,
+  RotateCcw,
+  Scale,
+  ScanText,
+  Sparkles,
+  Strikethrough,
+  Table2,
+  Trash2,
+  Underline,
+  Wand2,
+  Workflow,
+} from 'lucide-react';
 import { AFFINITY_COLORS, NOTE_PAPER, PROTOTYPE_PROMPT_SIZE, type NoteCardShape, type PrototypeCardShape } from '../shapes';
 import { ASKABLE, hasAskableContent } from './askable';
 import { formatControlledTextarea, insertBlock, insertTableBlock, toggleInline, toggleLinePrefix, type FormatResult } from './textFormat';
@@ -17,7 +52,7 @@ import { uploadAsset } from '../lib/uploadAsset';
 import { openCardFocus } from '../ui/focusCard';
 import { canFocusCard } from '../ui/CardFocusOverlay';
 import { PROFILE_PROMPT } from './profilePrompt';
-import { useAsk } from './useAsk';
+import { PROMPT_META_KEY, PROV_META_KEY, useAsk } from './useAsk';
 import { useDiagram } from '../agents/useDiagram';
 import { useDashboard } from '../agents/useDashboard';
 import { gridIsDashboardable } from '../lib/dashboardable';
@@ -27,7 +62,12 @@ import { useCluster, canCluster } from '../agents/useCluster';
 import { useCardAnchor } from './useCardAnchor';
 
 const ANSWER = new Set(['doc-card', 'table-card', 'diagram-card']);
-type Transform = { label: string; run: () => void };
+/** Every Actions-menu entry leads with an icon — one visual system, no mixed
+ *  text glyphs (owner audit, 2026-07-11). */
+type Transform = { label: string; icon: React.ReactNode; run: () => void };
+
+/** Shared sizing for the Actions-menu leading icons (matches the format row). */
+const ACT_ICON = { size: 14, strokeWidth: 2 };
 
 /** The sticky's muted palette — the refine bar doubles as its colour switcher
  *  (the tldraw style panel is hidden for our cards). */
@@ -138,15 +178,25 @@ export function CardActionBar() {
   const contentful = ids.filter((i) => hasAskableContent(editor, editor.getShape(i)));
   const hasContent = !sel.multi && contentful.length === 1;
 
+  // Regenerate means "Jarwiz made this — ask again, fresh take". A hand-written
+  // doc or table has no original ask to re-run, and offering to overwrite the
+  // user's own writing reads as a threat, not a tool — so it's gated on the
+  // card's recorded lineage (meta.jzPrompt / meta.jzSources, the same provenance
+  // the auto-sync engine uses). Owner audit, 2026-07-11.
+  const generated = (() => {
+    const m = editor.getShape(id)?.meta as Record<string, unknown> | undefined;
+    return Boolean(m && (m[PROMPT_META_KEY] || (Array.isArray(m[PROV_META_KEY]) && m[PROV_META_KEY].length > 0)));
+  })();
+
   const transforms: Transform[] = [];
   if (!sel.multi && hasContent && ANSWER.has(sel.type)) {
     transforms.push(
-      { label: 'Make it shorter', run: () => ask('Make this shorter and tighter, keeping the key points.', [id], { targetId: id, skipClarify: true }) },
-      { label: 'Go deeper', run: () => ask('Go deeper — add detail, nuance, and specifics.', [id], { targetId: id, skipClarify: true }) },
+      { label: 'Make it shorter', icon: <ChevronsDownUp {...ACT_ICON} />, run: () => ask('Make this shorter and tighter, keeping the key points.', [id], { targetId: id, skipClarify: true }) },
+      { label: 'Go deeper', icon: <Layers {...ACT_ICON} />, run: () => ask('Go deeper — add detail, nuance, and specifics.', [id], { targetId: id, skipClarify: true }) },
     );
-    if (sel.type !== 'table-card') transforms.push({ label: 'As a table', run: () => ask('Reformat this as a comparison table.', [id], { skipClarify: true, forceShape: 'table' }) });
-    if (sel.type !== 'diagram-card') transforms.push({ label: 'As a diagram', run: () => ask('Turn this into a diagram.', [id], { skipClarify: true, forceShape: 'diagram' }) });
-    transforms.push({ label: 'Regenerate', run: () => ask('Regenerate this, same intent, fresh take.', [id], { targetId: id }) });
+    if (sel.type !== 'table-card') transforms.push({ label: 'As a table', icon: <Table2 {...ACT_ICON} />, run: () => ask('Reformat this as a comparison table.', [id], { skipClarify: true, forceShape: 'table' }) });
+    if (sel.type !== 'diagram-card') transforms.push({ label: 'As a diagram', icon: <Network {...ACT_ICON} />, run: () => ask('Turn this into a diagram.', [id], { skipClarify: true, forceShape: 'diagram' }) });
+    if (generated) transforms.push({ label: 'Regenerate', icon: <RefreshCw {...ACT_ICON} />, run: () => ask('Regenerate this, same intent, fresh take.', [id], { targetId: id }) });
   }
   // A link card with extracted page text refines like a document — the page
   // content is on the card, so these read the page, not just its meta tags.
@@ -154,8 +204,8 @@ export function CardActionBar() {
     const pageText = String((editor.getShape(id)?.props as Record<string, unknown>)?.text ?? '');
     if (pageText.trim()) {
       transforms.push(
-        { label: '✦ Summarise the page', run: () => ask('Summarise this page — what it is, the key points, and anything actionable.', [id], { skipClarify: true, logLabel: 'Summarized the page' }) },
-        { label: 'Key takeaways', run: () => ask('Extract the key takeaways from this page as a short, specific list.', [id], { skipClarify: true }) },
+        { label: 'Summarise the page', icon: <Sparkles {...ACT_ICON} />, run: () => ask('Summarise this page — what it is, the key points, and anything actionable.', [id], { skipClarify: true, logLabel: 'Summarized the page' }) },
+        { label: 'Key takeaways', icon: <ListChecks {...ACT_ICON} />, run: () => ask('Extract the key takeaways from this page as a short, specific list.', [id], { skipClarify: true }) },
       );
     }
   }
@@ -163,12 +213,12 @@ export function CardActionBar() {
   // the rendered interface, kept in place (the refine keeps the prototype format).
   if (!sel.multi && hasContent && sel.type === 'prototype-card') {
     transforms.push(
-      { label: '✦ Refine the design', run: () => ask('Refine this UI prototype — improve the visual hierarchy, spacing, and polish, keeping the same intent and content.', [id], { targetId: id, skipClarify: true, logLabel: 'Refined the prototype' }) },
-      { label: 'Try another layout', run: () => ask('Redesign this UI with a different layout, same content and purpose.', [id], { targetId: id, skipClarify: true }) },
+      { label: 'Refine the design', icon: <Wand2 {...ACT_ICON} />, run: () => ask('Refine this UI prototype — improve the visual hierarchy, spacing, and polish, keeping the same intent and content.', [id], { targetId: id, skipClarify: true, logLabel: 'Refined the prototype' }) },
+      { label: 'Try another layout', icon: <LayoutTemplate {...ACT_ICON} />, run: () => ask('Redesign this UI with a different layout, same content and purpose.', [id], { targetId: id, skipClarify: true }) },
       // Reset reloads the live UI to its initial state (no model call) — undo a
       // running timer, a filled form, a screen you navigated to.
-      { label: '↻ Reset', run: () => refreshPrototype(id) },
-      { label: 'Regenerate', run: () => ask('Regenerate this UI prototype, same intent, fresh take.', [id], { targetId: id }) },
+      { label: 'Reset', icon: <RotateCcw {...ACT_ICON} />, run: () => refreshPrototype(id) },
+      { label: 'Regenerate', icon: <RefreshCw {...ACT_ICON} />, run: () => ask('Regenerate this UI prototype, same intent, fresh take.', [id], { targetId: id }) },
     );
   }
   // A dashboard's Actions stay lean: Regenerate (fresh take, same data) and a
@@ -177,15 +227,15 @@ export function CardActionBar() {
   // 2026-07-07); the dashboard's own spec grounds each refinement via toSource.
   if (!sel.multi && hasContent && sel.type === 'dashboard-card') {
     transforms.push(
-      { label: '✦ Summarise the data', run: () => ask('Summarise the story in this dashboard — the headline numbers, the trend, and any outliers.', [id], { skipClarify: true, logLabel: 'Summarised the dashboard' }) },
-      { label: 'Regenerate', run: () => ask('Regenerate this dashboard, same data, fresh take.', [id], { targetId: id }) },
+      { label: 'Summarise the data', icon: <Sparkles {...ACT_ICON} />, run: () => ask('Summarise the story in this dashboard — the headline numbers, the trend, and any outliers.', [id], { skipClarify: true, logLabel: 'Summarised the dashboard' }) },
+      { label: 'Regenerate', icon: <RefreshCw {...ACT_ICON} />, run: () => ask('Regenerate this dashboard, same data, fresh take.', [id], { targetId: id }) },
     );
   }
   // An image is a vision input — offer moves that read the picture.
   if (!sel.multi && hasContent && sel.type === 'image-card') {
     transforms.push(
-      { label: '✦ Describe this', run: () => ask('Describe what you see in this image — subject, composition, colours, and any text.', [id], { skipClarify: true, logLabel: 'Described the image' }) },
-      { label: 'Extract the text', run: () => ask('Transcribe any text visible in this image, exactly, as a list.', [id], { skipClarify: true }) },
+      { label: 'Describe this', icon: <Eye {...ACT_ICON} />, run: () => ask('Describe what you see in this image — subject, composition, colours, and any text.', [id], { skipClarify: true, logLabel: 'Described the image' }) },
+      { label: 'Extract the text', icon: <ScanText {...ACT_ICON} />, run: () => ask('Transcribe any text visible in this image, exactly, as a list.', [id], { skipClarify: true }) },
     );
   }
   // A video reads from its transcript and watched frames — offer moves that
@@ -195,9 +245,9 @@ export function CardActionBar() {
     const processed = vp?.hasTranscript === true || (Array.isArray(vp?.frames) && vp!.frames.length > 0);
     if (processed) {
       transforms.push(
-        { label: '✦ Summarise the video', run: () => ask('Summarise this video — what it covers and the key points, in order.', [id], { skipClarify: true, logLabel: 'Summarised the video' }) },
-        { label: 'Key moments', run: () => ask('List the key moments of this video with their timestamps.', [id], { skipClarify: true }) },
-        { label: 'Dissect the style', run: () => ask('Dissect this video’s editing and narration style: hook, pacing, cut rhythm, tone, and how it closes.', [id], { skipClarify: true }) },
+        { label: 'Summarise the video', icon: <Sparkles {...ACT_ICON} />, run: () => ask('Summarise this video — what it covers and the key points, in order.', [id], { skipClarify: true, logLabel: 'Summarised the video' }) },
+        { label: 'Key moments', icon: <Clock {...ACT_ICON} />, run: () => ask('List the key moments of this video with their timestamps.', [id], { skipClarify: true }) },
+        { label: 'Dissect the style', icon: <Film {...ACT_ICON} />, run: () => ask('Dissect this video’s editing and narration style: hook, pacing, cut rhythm, tone, and how it closes.', [id], { skipClarify: true }) },
       );
     }
   }
@@ -211,7 +261,8 @@ export function CardActionBar() {
     if (sheet?.meta?.jzDashboardable) {
       const p = sheet.props as { assetId?: string; name?: string };
       transforms.push({
-        label: '✦ Interactive dashboard',
+        label: 'Interactive dashboard',
+        icon: <BarChart3 {...ACT_ICON} />,
         run: () =>
           buildDashboard(id, p.name ?? '', async () => {
             const res = await fetch(`/api/sheet/${encodeURIComponent(p.assetId ?? '')}/grid`);
@@ -221,8 +272,8 @@ export function CardActionBar() {
       });
     }
     transforms.push(
-      { label: 'Key insights', run: () => ask('What are the key insights in this spreadsheet? Call out notable totals, trends, and outliers.', [id], { skipClarify: true, logLabel: 'Analysed the sheet' }) },
-      { label: 'Summarise the columns', run: () => ask('Summarise what each column of this spreadsheet holds and what the data is about.', [id], { skipClarify: true }) },
+      { label: 'Key insights', icon: <Lightbulb {...ACT_ICON} />, run: () => ask('What are the key insights in this spreadsheet? Call out notable totals, trends, and outliers.', [id], { skipClarify: true, logLabel: 'Analysed the sheet' }) },
+      { label: 'Summarise the columns', icon: <Columns3 {...ACT_ICON} />, run: () => ask('Summarise what each column of this spreadsheet holds and what the data is about.', [id], { skipClarify: true }) },
     );
   }
   // A table of numbers is dashboard-able too — same data-shape gate, read
@@ -233,7 +284,8 @@ export function CardActionBar() {
     const grid = tp ? [tp.columns ?? [], ...(tp.rows ?? [])] : [];
     if (gridIsDashboardable(grid)) {
       transforms.unshift({
-        label: '✦ Interactive dashboard',
+        label: 'Interactive dashboard',
+        icon: <BarChart3 {...ACT_ICON} />,
         run: () => buildDashboard(id, (t?.meta?.jzTitle as string) ?? '', () => grid),
       });
     }
@@ -254,24 +306,24 @@ export function CardActionBar() {
     // Multi-select gets the same bar, with cross-selection transforms —
     // as long as at least one selected card actually holds content.
     transforms.push(
-      { label: '✦ Summarise the selection', run: () => ask('Summarise the selected cards together into one concise doc.', ids, { skipClarify: true }) },
-      { label: '✦ Combine into a doc', run: () => ask('Combine the selected cards into one structured document.', ids, { skipClarify: true }) },
+      { label: 'Summarise the selection', icon: <Sparkles {...ACT_ICON} />, run: () => ask('Summarise the selected cards together into one concise doc.', ids, { skipClarify: true }) },
+      { label: 'Combine into a doc', icon: <Combine {...ACT_ICON} />, run: () => ask('Combine the selected cards into one structured document.', ids, { skipClarify: true }) },
     );
     if (sel.pdfCount >= 2) {
       transforms.push(
-        { label: 'Find conflicts', run: () => ask('Find conflicts and contradictions between these documents, clause by clause.', ids, { skipClarify: true }) },
-        { label: 'Compare clauses', run: () => ask('Compare these documents clause by clause, showing where each one stands and where they differ.', ids, { skipClarify: true }) },
+        { label: 'Find conflicts', icon: <AlertTriangle {...ACT_ICON} />, run: () => ask('Find conflicts and contradictions between these documents, clause by clause.', ids, { skipClarify: true }) },
+        { label: 'Compare clauses', icon: <Scale {...ACT_ICON} />, run: () => ask('Compare these documents clause by clause, showing where each one stands and where they differ.', ids, { skipClarify: true }) },
       );
     }
   }
-  if (canCluster(editor, ids)) transforms.push({ label: '✦ Cluster & summarise', run: () => cluster() });
-  if (canTidy(editor, ids)) transforms.push({ label: '⤢ Tidy layout', run: () => tidy(ids) });
+  if (canCluster(editor, ids)) transforms.push({ label: 'Cluster & summarise', icon: <Boxes {...ACT_ICON} />, run: () => cluster() });
+  if (canTidy(editor, ids)) transforms.push({ label: 'Tidy layout', icon: <LayoutGrid {...ACT_ICON} />, run: () => tidy(ids) });
   // A flowchart is a text-structure move — offer it where there's structure to
   // draw (prose, tables, docs), not on a raw image or video (owner audit,
   // 2026-07-05). Multi-select keeps it — combining cards into a flow is valid.
   const FLOWCHARTABLE = new Set(['doc-card', 'table-card', 'note-card', 'link-card', 'pdf-card', 'sheet-card', 'diagram-card']);
   const flowchartable = sel.multi ? contentful.length > 0 : contentful.length > 0 && FLOWCHARTABLE.has(sel.type);
-  if (flowchartable) transforms.push({ label: '◇ Make a flowchart', run: () => diagram('Turn this into a flowchart.', ids) });
+  if (flowchartable) transforms.push({ label: 'Make a flowchart', icon: <Workflow {...ACT_ICON} />, run: () => diagram('Turn this into a flowchart.', ids) });
 
   const runTransform = (t: Transform) => { setMenu(null); t.run(); };
 
@@ -299,10 +351,10 @@ export function CardActionBar() {
   const moreActions: Transform[] = [];
   // Only once the UI exists — while the card is still the prompt composer,
   // the prompt is ALREADY editable in place, so the action would be noise.
-  if (sel.type === 'prototype-card' && hasContent) moreActions.push({ label: '✎ Edit prompt', run: editPrototypePrompt });
+  if (sel.type === 'prototype-card' && hasContent) moreActions.push({ label: 'Edit prompt', icon: <PenLine {...ACT_ICON} />, run: editPrototypePrompt });
   moreActions.push(
-    { label: '⧉ Duplicate', run: () => editor.duplicateShapes([id], { x: 32, y: 32 }) },
-    { label: '🗑 Delete', run: () => editor.deleteShapes([id]) },
+    { label: 'Duplicate', icon: <Copy {...ACT_ICON} />, run: () => editor.duplicateShapes([id], { x: 32, y: 32 }) },
+    { label: 'Delete', icon: <Trash2 {...ACT_ICON} />, run: () => editor.deleteShapes([id]) },
   );
 
   // Nothing meaningful to offer (e.g. a single empty card) → no bar at all.
@@ -339,7 +391,7 @@ export function CardActionBar() {
           title="A one-glance summary: what this is, who wrote it, red flags, where to start"
           onClick={() => ask(PROFILE_PROMPT, [id], { skipClarify: true, logLabel: 'Summarized the document' })}
         >
-          ✦ Summary
+          <Sparkles {...ACT_ICON} aria-hidden /> Summary
         </button>
       ) : null}
       {formattable ? (
@@ -427,12 +479,15 @@ export function CardActionBar() {
       {transforms.length > 0 ? (
         <div className="jz-cardbar-group">
           <button className={`jz-cardbar-btn${menu === 'refine' ? ' jz-cardbar-btn--open' : ''}`} onClick={() => setMenu(menu === 'refine' ? null : 'refine')}>
-            ✦ Actions <span className="jz-cardbar-caret" aria-hidden>▾</span>
+            <Sparkles {...ACT_ICON} aria-hidden /> Actions <span className="jz-cardbar-caret" aria-hidden>▾</span>
           </button>
           {menu === 'refine' ? (
             <div className="jz-cardbar-menu" role="menu">
               {transforms.map((t) => (
-                <button key={t.label} className="jz-cardbar-item" onClick={() => runTransform(t)}>{t.label}</button>
+                <button key={t.label} className="jz-cardbar-item" onClick={() => runTransform(t)}>
+                  <span className="jz-cardbar-item-ic" aria-hidden>{t.icon}</span>
+                  {t.label}
+                </button>
               ))}
             </div>
           ) : null}
@@ -461,7 +516,10 @@ export function CardActionBar() {
           {menu === 'more' ? (
             <div className="jz-cardbar-menu jz-cardbar-menu--right" role="menu">
               {moreActions.map((t) => (
-                <button key={t.label} className="jz-cardbar-item" onClick={() => runTransform(t)}>{t.label}</button>
+                <button key={t.label} className="jz-cardbar-item" onClick={() => runTransform(t)}>
+                  <span className="jz-cardbar-item-ic" aria-hidden>{t.icon}</span>
+                  {t.label}
+                </button>
               ))}
             </div>
           ) : null}
