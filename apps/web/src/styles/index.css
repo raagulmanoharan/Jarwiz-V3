@@ -1783,6 +1783,22 @@ body,
   pointer-events: auto;
 }
 
+/* The brand spark, slowly turning while the model writes — Jarwiz at work,
+ * in Jarwiz's own mark (replaces the old pulsing dot; owner call 2026-07-11).
+ * Same shared rotation keyframes the PDF/machine spinners use. */
+.jz-draft-spark {
+  display: inline-flex;
+  align-items: center;
+  color: var(--jz-accent-ink);
+  animation: jz-pdf-spin 1.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jz-draft-spark {
+    animation: none;
+  }
+}
+
 .jz-draft-label {
   font-size: 12.5px;
   color: color-mix(in srgb, var(--jz-accent-ink) 80%, transparent);

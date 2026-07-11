@@ -11,6 +11,7 @@ import { stopEventPropagation } from 'tldraw';
 import { getRegen, subscribeRegen } from './regen';
 import { useCardAnchor } from './useCardAnchor';
 import { cancelActiveAsk } from './useAsk';
+import { JarwizSpark } from '../ui/JarwizSpark';
 
 export function RegenControls() {
   const regen = useSyncExternalStore(subscribeRegen, getRegen, getRegen);
@@ -21,6 +22,9 @@ export function RegenControls() {
 
   return (
     <div className="jz-draft" style={style} onPointerDown={stopEventPropagation}>
+      <span className="jz-draft-spark" aria-hidden>
+        <JarwizSpark size={12} />
+      </span>
       <span className="jz-draft-label">Regenerating…</span>
       <button className="jz-draft-discard" onClick={() => cancelActiveAsk()}>
         Cancel

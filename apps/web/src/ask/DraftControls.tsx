@@ -10,6 +10,7 @@ import { stopEventPropagation, useEditor } from 'tldraw';
 import { getDraft, subscribeDraft } from './draft';
 import { useCardAnchor } from './useCardAnchor';
 import { discardDraft, finalizeDraft } from './useAsk';
+import { JarwizSpark } from '../ui/JarwizSpark';
 
 export function DraftControls() {
   const editor = useEditor();
@@ -27,6 +28,9 @@ export function DraftControls() {
     <div className="jz-draft" style={style} onPointerDown={stopEventPropagation}>
       {draft.status === 'streaming' ? (
         <>
+          <span className="jz-draft-spark" aria-hidden>
+            <JarwizSpark size={12} />
+          </span>
           <span className="jz-draft-label">Generating…</span>
           <button className="jz-draft-discard" onClick={drop}>
             Stop &amp; discard
