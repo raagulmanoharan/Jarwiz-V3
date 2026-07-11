@@ -65,6 +65,19 @@ export function cancelActiveAsk(): void {
   activeRun?.controller.abort();
 }
 
+/** Let an external multi-card run (the debrief recipe) occupy the same
+ *  one-run-at-a-time slot as an Ask — so `ask` refuses while it streams, the
+ *  auto-sync engine queues behind it, and DraftControls' "Stop & discard"
+ *  genuinely aborts it. Returns false when a run is already live. */
+export function claimActiveRun(controller: AbortController): boolean {
+  if (activeRun || getDraft()) return false;
+  activeRun = { controller, kind: 'ask' };
+  return true;
+}
+export function releaseActiveRun(controller: AbortController): void {
+  if (activeRun?.controller === controller) activeRun = null;
+}
+
 /** Is a run in flight or a draft awaiting Keep/Discard? The auto-sync engine
  *  (sync.ts) waits on this before dispatching a queued update — the same
  *  condition `ask` itself refuses on, so auto-work queues behind the user. */

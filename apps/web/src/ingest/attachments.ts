@@ -47,6 +47,18 @@ export function isAttachableText(text: string): boolean {
   return t.length >= 400 && t.includes('\n');
 }
 
+/** Does this pasted text read as a MEETING TRANSCRIPT — several speaker-turn
+ *  lines ("Name:", "Name (role):") or timestamped lines? Drives the composer's
+ *  auto-suggested Debrief recipe (G5); a miss just means no suggestion. */
+export function looksLikeTranscript(text: string): boolean {
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 4) return false;
+  const speaker = /^[A-Z][\w .'’-]{0,28}(\([^)]{0,40}\))?\s*:\s+\S/;
+  const stamped = /^\[?\d{1,2}:\d{2}/;
+  const hits = lines.filter((l) => speaker.test(l) || stamped.test(l)).length;
+  return hits >= 3 && hits / lines.length >= 0.4;
+}
+
 /** Build a ready 'text' attachment from a paste — no upload, content is local.
  *  The name is the first non-empty line (sans markdown heading), clipped. */
 export function makeTextAttachment(key: string, text: string): Attachment {

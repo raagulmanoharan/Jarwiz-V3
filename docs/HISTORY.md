@@ -906,3 +906,28 @@ instead.
   keep its min-content width and spill past the card's right edge, which is
   what actually made the review's launch plan look "off-screen" while the
   camera was correctly framed on the card.
+
+## 2026-07-11 (late) — The meeting-debrief recipe (G5)
+
+**Intent:** the review's productised use case — transcript in, a connected
+cluster out, making good on the hero's "I'll lay it out as a board" promise.
+
+- **Detection is local and humble:** a pasted text attachment with several
+  speaker-turn lines auto-pins a **Debrief** chip (same suggestion chip as the
+  model's shape guesses — dismiss for a doc, tap to change, a user pick is
+  never overridden). A miss just means no suggestion.
+- **The recipe is the plan:** no planning call. The server's compose transport
+  gained a `recipe: 'debrief'` path — three fixed slots (Decisions / Action
+  items / Risks & open questions), each a grounded Ask over the transcript
+  with its own brief, streamed as slot events.
+- **One artifact, one decision:** the three cards register as ONE draft
+  (anchor + groupIds) — a single Keep/Discard gates the whole cluster, the
+  bar centres under the cluster's union, and "Stop & discard" genuinely
+  aborts the stream (the run claims the same one-run-at-a-time slot as Ask).
+- **Lineage is deterministic:** every card records the transcript in
+  `meta.jzSources` at creation — hairlines, auto-sync, and the Regenerate
+  gate see it immediately.
+- Verified live twice: chip auto-pins on a transcript paste; three cards
+  stream in a row beside the source; Action items is checklist-only with
+  owners/dates; one Keep keeps all four cards; lineage points at the
+  transcript.

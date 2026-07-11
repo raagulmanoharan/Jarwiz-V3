@@ -30,7 +30,8 @@ import { getActiveBoard, markBoardUsed, subscribeBoards } from '../boards/boardS
 import { isDemo, isEmbed, isUseCases } from '../boards/demo';
 import { setOnboarding, setOnboardingEngaged } from './onboardingStore';
 import { hasIngestibleFile } from '../ingest/registerIngestion';
-import { classifyFile, isAttachableText, makeTextAttachment, materializeAttachment, uploadAttachment, type Attachment } from '../ingest/attachments';
+import { classifyFile, isAttachableText, looksLikeTranscript, makeTextAttachment, materializeAttachment, uploadAttachment, type Attachment } from '../ingest/attachments';
+import { useDebrief } from '../agents/useDebrief';
 import { getPersona, subscribePersona, type Persona } from '../onboarding/personaStore';
 
 // Intent-first onboarding: on a brand-new empty board the composer rises to the
@@ -127,12 +128,14 @@ const MODES: Array<{ shape: ModeShape; label: string; hint: string }> = [
   { shape: 'dashboard', label: 'Dashboard', hint: 'KPIs, charts, a table' },
   { shape: 'affinity', label: 'Stickies', hint: 'notes across your cards' },
   { shape: 'board', label: 'Board', hint: 'a set of cards' },
+  { shape: 'debrief', label: 'Debrief', hint: 'decisions · actions · risks' },
 ];
 
 export function PromptBar() {
   const editor = useEditor();
   const { ask, isAsking } = useAsk();
   const { run: compose, phase: composePhase } = useCompose();
+  const { run: debrief, phase: debriefPhase } = useDebrief();
   const { run: annotate, phase: annotatePhase } = useAnnotate();
   const { analyze, runningMode } = useAnalyze();
   const [value, setValue] = useState('');
@@ -429,6 +432,23 @@ export function PromptBar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, groundIds.length, modeSource]);
 
+  // A transcript-looking text attachment auto-pins the Debrief recipe — the
+  // detection is local (speaker-turn lines), the pin is the same suggestion
+  // chip as the model's shape guesses: dismiss for a doc, tap to change, and
+  // a user-owned choice is never overridden (G5).
+  useEffect(() => {
+    if (modeSource === 'user') return;
+    const transcriptAttached = attachments.some((a) => a.kind === 'text' && a.text && looksLikeTranscript(a.text));
+    if (transcriptAttached) {
+      setMode('debrief');
+      setModeSource('auto');
+    } else if (mode === 'debrief' && modeSource === 'auto') {
+      setMode(null);
+      setModeSource(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachments, modeSource]);
+
   const pickMode = (shape: ModeShape) => {
     setMode(shape);
     setModeSource('user'); // an explicit pick — stop suggesting for this prompt.
@@ -439,7 +459,7 @@ export function PromptBar() {
     requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input')?.focus());
   };
 
-  const composing = composePhase === 'planning' || composePhase === 'building';
+  const composing = composePhase === 'planning' || composePhase === 'building' || debriefPhase === 'building';
   const annotating = annotatePhase === 'thinking';
   // A single artifact card is selected and the user typed with no mode. Ask the
   // model whether the instruction EDITS that card in place or makes a NEW card
@@ -481,6 +501,13 @@ export function PromptBar() {
     // in place vs makes a new card is inferred from intent (see routeSelectedAsk).
     if (mode === 'board') {
       void compose(q);
+    } else if (mode === 'debrief') {
+      // The debrief recipe reads the transcript among the grounds (the
+      // materialized attachment or a selected text card). Without one it
+      // degrades to a plain doc ask — never a dead send.
+      void debrief(q, grounds).then((ran) => {
+        if (!ran) void ask(q, grounds, { forceShape: 'doc' });
+      });
     } else if (mode === 'affinity') {
       void annotate(q);
     } else if (!mode && attIds.length === 0 && sole && !sole.pdf && INLINE_EDITABLE.has(sole.type)) {
@@ -785,7 +812,7 @@ export function PromptBar() {
             title={attachUploading ? 'Attaching…' : 'Send (Enter)'}
           >
             {composing ? (
-              <span className="jz-promptbar-busy-inline">{composePhase === 'planning' ? 'Planning…' : 'Building…'}</span>
+              <span className="jz-promptbar-busy-inline">{debriefPhase === 'building' ? 'Debriefing…' : composePhase === 'planning' ? 'Planning…' : 'Building…'}</span>
             ) : annotating ? (
               <span className="jz-promptbar-busy-inline">Noting…</span>
             ) : busyLabel ? (

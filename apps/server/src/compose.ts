@@ -105,7 +105,79 @@ async function planBoard(board: AnalyzeCard[], intent: string | undefined, signa
  * engine, forwarding its events tagged with the slot. One card generates at a
  * time (ordered) so the client can lay them out masonry-style deterministically.
  */
+/* ── The meeting-debrief recipe ──────────────────────────────────────────────
+ * A transcript contains three different kinds of material — what was DECIDED,
+ * what must be DONE, and what's still AT RISK or open. The recipe needs no
+ * planning call: the plan is fixed, each slot is a grounded Ask over the
+ * transcript with its own brief. (Review backlog G5, 2026-07-11.) */
+const DEBRIEF_TRANSCRIPT_CHARS = 14_000;
+const DEBRIEF_PLAN: Array<ComposePlanCard & { prompt: string }> = [
+  {
+    slot: 0,
+    type: 'list',
+    title: 'Decisions',
+    prompt:
+      'From the meeting transcript, list every DECISION that was actually made — the call itself, who made it, and any conditions attached. Only calls that were genuinely settled in the meeting; proposals still open belong elsewhere. One tight bullet per decision.',
+  },
+  {
+    slot: 1,
+    type: 'list',
+    title: 'Action items',
+    prompt:
+      'Extract every action item from the meeting transcript as a checklist, one task per line with its owner and due date where stated. Include commitments implied by "I\'ll …" phrasing. Faithful to the transcript — never invent owners or dates. ONLY the checklist: no summary, no context sections, no headings.',
+  },
+  {
+    slot: 2,
+    type: 'list',
+    title: 'Risks & open questions',
+    prompt:
+      'From the meeting transcript, list the risks, disagreements, and open questions the meeting left UNRESOLVED — things nobody decided, dependencies that could slip, and questions raised without an answer. Note who flagged each where clear.',
+  },
+];
+
+async function* streamDebrief(req: ComposeRequest, signal: AbortSignal): AsyncGenerator<ComposeEvent> {
+  const text = req.transcript?.text?.trim();
+  if (!text) {
+    yield { type: 'error', message: 'No transcript to debrief.' };
+    return;
+  }
+  yield { type: 'plan', cards: DEBRIEF_PLAN.map((p) => ({ slot: p.slot, type: p.type, title: p.title })) };
+  const source = [
+    {
+      kind: 'doc' as const,
+      title: req.transcript?.title?.trim() || 'Meeting transcript',
+      text: text.slice(0, DEBRIEF_TRANSCRIPT_CHARS),
+    },
+  ];
+  // A bare "debrief this" adds nothing per-card and only broadens each slot's
+  // focus; a substantive steer ("focus on the engineering risks") rides along
+  // as secondary framing that must not override the card's own job.
+  const intentText = req.intent?.trim() ?? '';
+  const generic = /^(please\s+)?(debrief|summari[sz]e)\b.{0,25}$/i.test(intentText);
+  const steer =
+    intentText && !generic
+      ? ` Secondary framing from the user (produce ONLY this card's content regardless): "${intentText.slice(0, 300)}".`
+      : '';
+  for (const p of DEBRIEF_PLAN) {
+    if (signal.aborted) return;
+    const askReq = { prompt: p.prompt + steer, sources: source, shape: p.type, skipClarify: true, noResearch: true };
+    try {
+      for await (const ev of streamAsk(askReq, signal)) {
+        if (ev.type === 'done' || ev.type === 'clarify') continue;
+        yield { type: 'slot', slot: p.slot, event: ev };
+      }
+    } catch {
+      continue; // one slot failing shouldn't sink the debrief
+    }
+  }
+  yield { type: 'done' };
+}
+
 export async function* streamCompose(req: ComposeRequest, signal: AbortSignal): AsyncGenerator<ComposeEvent> {
+  if (req.recipe === 'debrief') {
+    yield* streamDebrief(req, signal);
+    return;
+  }
   const board = Array.isArray(req.board) ? req.board : [];
   let plan: Array<ComposePlanCard & { prompt: string }>;
   try {
