@@ -20,7 +20,17 @@ export interface CardAnchor {
 
 export function useCardAnchor(
   ids: TLShapeId | TLShapeId[] | null | undefined,
-  opts: { dy?: number; margin?: number; edge?: 'top' | 'bottom' } = {},
+  opts: {
+    dy?: number;
+    margin?: number;
+    edge?: 'top' | 'bottom';
+    /** Bottom-edge affordances only: when the dock clamp would pull the bar
+     *  UP over the card's own content (a tall card reaching the bottom of
+     *  the screen), flip it above the card's top edge instead — floating
+     *  over the artefact's text is worse than sitting near the dock
+     *  (review finding G4.1, 2026-07-11). */
+    flipWhenCovered?: boolean;
+  } = {},
 ): CardAnchor | null {
   const { dy = 12, margin = 90, edge = 'bottom' } = opts;
   const editor = useEditor();
@@ -61,13 +71,24 @@ export function useCardAnchor(
       }
       // Bottom-edge affordances keep clear of the prompt-bar dock plus their
       // own downward pill stack.
-      return {
-        x,
-        y: Math.max(40, Math.min(p.y + dy, vp.h - 230)),
-        placement: 'below' as const,
-      };
+      const clamped = Math.max(40, Math.min(p.y + dy, vp.h - 230));
+      if (opts.flipWhenCovered && clamped < p.y + dy) {
+        // The clamp pulled the bar up over the card body — put it above the
+        // card's top edge instead (36 ≈ the bar's height + a small gap). For
+        // a card taller than the viewport neither edge has room; then the
+        // bar pins to the top strip (44, clear of the topbar's centre) where
+        // it overlaps only the card's top padding — never mid-content.
+        const top = editor.pageToViewport({ x: union.midX, y: union.minY }).y;
+        const above = top - 36;
+        return {
+          x,
+          y: Math.max(44, above),
+          placement: above > 44 ? ('above' as const) : ('over' as const),
+        };
+      }
+      return { x, y: clamped, placement: 'below' as const };
     },
     // `key` makes the array dependency stable across renders.
-    [editor, key, dy, margin, edge],
+    [editor, key, dy, margin, edge, opts.flipWhenCovered],
   );
 }

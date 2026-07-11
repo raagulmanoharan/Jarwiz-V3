@@ -25,6 +25,7 @@ import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { isAutopilotRunning, subscribeAutopilot } from '../agents/autopilotStore';
 import { cardSeedKey, ensureCardSeeds, ensureSeedPrompts, getSeedPrompts, subscribeSeed } from './seedPrompts';
 import { getPromptFill, subscribePromptFill } from './promptFill';
+import { getDraft, subscribeDraft } from './draft';
 import { getActiveBoard, markBoardUsed, subscribeBoards } from '../boards/boardStore';
 import { isDemo, isEmbed, isUseCases } from '../boards/demo';
 import { setOnboarding, setOnboardingEngaged } from './onboardingStore';
@@ -538,7 +539,11 @@ export function PromptBar() {
   // Two contentful cards already qualify — a brief plus one generated artifact
   // is exactly when "what am I missing" earns its place (dogfood 2026-07-05;
   // the old ≥3 hid it right after the first table landed).
-  const showChips = !runningMode && groundIds.length === 0 && meaningfulCount >= 2;
+  // While a draft is on the board (streaming, or waiting on Keep/Discard),
+  // every dock pill stands down: the pills describe the PREVIOUS card, and
+  // they'd float over the fresh artefact and its controls (G4.2).
+  const draftPending = useSyncExternalStore(subscribeDraft, () => Boolean(getDraft()), () => false);
+  const showChips = !runningMode && !draftPending && groundIds.length === 0 && meaningfulCount >= 2;
   // Pills are ALWAYS contextual — generated from the card's own content.
   // Nothing scripted: until the tailored pills arrive (or if the card is
   // empty) we show nothing. Predictable operations live on the card's
@@ -547,12 +552,12 @@ export function PromptBar() {
     groundIds.length === 1 && (seeds?.length ?? 0) > 0
       ? seeds!.map((s) => ({ label: s.label, prompt: s.prompt }))
       : [];
-  const showStarters = !runningMode && !isAsking && !soleBusy && !value.trim() && starters.length > 0;
+  const showStarters = !runningMode && !isAsking && !soleBusy && !draftPending && !value.trim() && starters.length > 0;
   // The 5-20s quiet gap while tailored pills are being generated (cache still
   // undefined = fetch in flight): show shimmering placeholder pills so the
   // wait reads as "thinking", not "nothing here" (feel pass, ROADMAP §10 #4).
   const showSeedWait =
-    !runningMode && !isAsking && !soleBusy && !value.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
+    !runningMode && !isAsking && !soleBusy && !draftPending && !value.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
 
   return (
     <div className={`jz-promptbar-dock${introMode ? ' jz-promptbar-dock--intro' : ''}`} onPointerDown={stopEventPropagation}>
@@ -768,7 +773,10 @@ export function PromptBar() {
             )}
           </div>
           <button
-            className="jz-promptbar-send"
+            // Carrying a busy label ("Planning…", "Scanning…"), the round
+            // 30px button becomes a pill — the text no longer spills out of
+            // the circle (G4.5).
+            className={`jz-promptbar-send${composing || annotating || busyLabel ? ' jz-promptbar-send--busy' : ''}`}
             disabled={!value.trim() || attachUploading || isAsking || composing || annotating}
             onClick={submit}
             title={attachUploading ? 'Attaching…' : 'Send (Enter)'}

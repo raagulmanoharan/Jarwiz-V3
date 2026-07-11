@@ -774,6 +774,29 @@ warrants it."
   honesty rule end-to-end: the sandbox blocked the fetch, and the model
   declined to fake a URL — noting it in the card instead of inventing one.
 
+## 2026-07-11 (later) — Rich cards give up their pieces: drag out
+
+**Intent:** "can I drag a table or image out of a rich card into a new card?"
+→ build drag-out first (drop-in composition comes later).
+
+- Every extractable block inside a generative-UI card — table, image, prose
+  section, chart — grows a quiet grab handle on hover (`dashboard/extract.tsx`
+  + wrappers in `library.tsx`). Drag it onto the canvas and it lands as a
+  REAL card of the right type: table → editable table-card, image →
+  image-card (proxied URL travels), prose → doc-card (raw markdown; the doc
+  card re-proxies images itself), chart → a mini one-statement dashboard-card.
+  Instant — the data is already in the rendered spec, no model round-trip.
+- Extraction inherits the day's lineage system for free: the new card records
+  the rich card in `meta.jzSources`, so click-to-reveal provenance and
+  auto-sync treat it like any other derived card.
+- Mechanics: handle pointerdown stops propagation (tldraw never mistakes it
+  for a card translate), a ghost pill rides the pointer, Escape cancels,
+  release must land on the canvas outside the host card. Import note: the
+  library pulls card sizes from specific shape files, not the shapes barrel —
+  the barrel imports the dashboard util which imports the library (cycle).
+- Verified in the browser against the real Hubble research spec: table (3×6,
+  from inside a tab) and image both extracted with lineage intact.
+
 ## 2026-07-11 — Card actions audit: real icons, honest Regenerate
 
 **Intent:** "audit all the actions shown on the card types — is Regenerate on
@@ -838,6 +861,28 @@ narration-style intro preview, cadence untouched.
   animation, so the first solid chip a user sees is a real control.
 - **Boards panel paints above the ambient vignettes** (panel joined the
   chrome layer, z 160 over the scene's 150).
+
+## 2026-07-11 (evening) — Chrome overlap polish (G4)
+
+**Intent:** the review's five overlap paper cuts, taken one by one — each
+reproduced on current main before fixing, each re-verified after.
+
+- **Keep/Discard never covers content.** The draft bar's dock clamp used to
+  pull it up over a tall card's body. `useCardAnchor` grew `flipWhenCovered`:
+  when the clamp engages the bar flips above the card's top edge, and for a
+  card taller than the viewport it pins to the top strip (44) over the card's
+  padding band — never mid-content. Verified across a full streaming run
+  (14 samples, zero content overlaps).
+- **Dock pills stand down while a draft exists** (streaming or Keep-pending)
+  — they describe the previous card and floated over the fresh artefact.
+- **The card bar's menu is scoped to the selection moment.** The bar stays
+  mounted across selections, so an open menu used to resurrect over whatever
+  card got selected next (including auto-selected generations). Now it resets
+  on selection change and closes on Escape / outside pointer-down.
+- **The avatar clamps to the viewport** — badge included — so it can't park
+  half off-screen at an edge.
+- **The send button relaxes into a pill when busy** ("Planning…",
+  "Scanning…") instead of spilling its label out of the 30px circle.
 
 ## 2026-07-11 (night) — Generation feel: narrated waits + honest framing (G3)
 
