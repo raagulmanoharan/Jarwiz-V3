@@ -13,6 +13,7 @@ import { getRegen, subscribeRegen } from './regen';
 import { clearSyncBadge, getSyncBadges, registerSyncEngine, subscribeSyncBadges, undoSync, type SyncBadge } from './sync';
 import { useCardAnchor } from './useCardAnchor';
 import { useAsk } from './useAsk';
+import { JarwizSpark } from '../ui/JarwizSpark';
 
 export function SyncLayer() {
   const editor = useEditor();
@@ -49,7 +50,7 @@ function UpdatedPill({ badge }: { badge: SyncBadge }) {
   return (
     <div className="jz-draft jz-sync" style={style} onPointerDown={stopEventPropagation}>
       <span className="jz-sync-spark" aria-hidden>
-        ✦
+        <JarwizSpark size={12} />
       </span>
       <span className="jz-draft-label">Updated to match “{badge.sourceLabel}”</span>
       <button className="jz-draft-discard" onClick={() => undoSync(editor, badge.cardId)}>

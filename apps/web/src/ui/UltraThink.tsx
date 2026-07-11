@@ -16,7 +16,8 @@
 
 import { useState, useSyncExternalStore } from 'react';
 import { useEditor, useValue } from 'tldraw';
-import { Sparkles, Plus, X, Video, FileText, BookOpen, GitBranch, Link2, Newspaper, File } from 'lucide-react';
+import { Plus, X, Video, FileText, BookOpen, GitBranch, Link2, Newspaper, File } from 'lucide-react';
+import { JarwizSpark } from './JarwizSpark';
 import type { ResourceKind, SuggestedResource } from '@jarwiz/shared';
 import { gatherBoardCards } from '../agents/boardText';
 import { useDiscover } from '../ask/useDiscover';
@@ -74,7 +75,7 @@ export function UltraThink() {
             : 'Research real related resources from the web, grounded on your board'
         }
       >
-        <Sparkles size={14} className="jz-ultra-spark" />
+        <JarwizSpark size={14} className="jz-ultra-spark" />
         <span>{label}</span>
       </button>
 
@@ -82,7 +83,7 @@ export function UltraThink() {
         <div className="jz-ultra-drawer" onPointerDown={(e) => e.stopPropagation()}>
           <div className="jz-ultra-drawer-head">
             <span className="jz-ultra-drawer-title">
-              <Sparkles size={13} className="jz-ultra-spark" /> Found for your board
+              <JarwizSpark size={13} className="jz-ultra-spark" /> Found for your board
             </span>
             <div className="jz-ultra-drawer-actions">
               <button className="jz-ultra-again" onClick={() => { setOpen(false); run(); }}>Think again</button>

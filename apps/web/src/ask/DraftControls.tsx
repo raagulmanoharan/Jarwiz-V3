@@ -10,11 +10,14 @@ import { stopEventPropagation, useEditor } from 'tldraw';
 import { getDraft, subscribeDraft } from './draft';
 import { useCardAnchor } from './useCardAnchor';
 import { discardDraft, finalizeDraft } from './useAsk';
+import { JarwizSpark } from '../ui/JarwizSpark';
 
 export function DraftControls() {
   const editor = useEditor();
   const draft = useSyncExternalStore(subscribeDraft, getDraft, getDraft);
-  const anchor = useCardAnchor(draft?.id ?? null);
+  // Never over the artefact's own text: a tall card would otherwise get the
+  // bar clamped up over its content — flip above the card instead (G4.1).
+  const anchor = useCardAnchor(draft?.id ?? null, { flipWhenCovered: true });
 
   if (!draft || !anchor) return null;
   const style = { left: anchor.x, top: anchor.y } as CSSProperties;
@@ -27,7 +30,9 @@ export function DraftControls() {
     <div className="jz-draft" style={style} onPointerDown={stopEventPropagation}>
       {draft.status === 'streaming' ? (
         <>
-          <span className="jz-draft-dot" aria-hidden />
+          <span className="jz-draft-spark" aria-hidden>
+            <JarwizSpark size={12} />
+          </span>
           <span className="jz-draft-label">Generating…</span>
           <button className="jz-draft-discard" onClick={drop}>
             Stop &amp; discard

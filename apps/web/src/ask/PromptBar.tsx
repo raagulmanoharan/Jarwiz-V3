@@ -8,7 +8,8 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue, type Editor, type TLRichText, type TLShape, type TLShapeId } from 'tldraw';
-import { Slash, ArrowUp, Sparkles, FileText, Link2, ClipboardList, Paperclip } from 'lucide-react';
+import { Slash, ArrowUp, FileText, Link2, ClipboardList, Paperclip } from 'lucide-react';
+import { JarwizSpark } from '../ui/JarwizSpark';
 import type { AnalyzeMode, AskShape } from '@jarwiz/shared';
 import { type ModeShape } from './modeShape';
 import { suggestShape } from './suggestShape';
@@ -24,11 +25,12 @@ import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { isAutopilotRunning, subscribeAutopilot } from '../agents/autopilotStore';
 import { cardSeedKey, ensureCardSeeds, ensureSeedPrompts, getSeedPrompts, subscribeSeed } from './seedPrompts';
 import { getPromptFill, subscribePromptFill } from './promptFill';
+import { getDraft, subscribeDraft } from './draft';
 import { getActiveBoard, markBoardUsed, subscribeBoards } from '../boards/boardStore';
 import { isDemo, isEmbed, isUseCases } from '../boards/demo';
 import { setOnboarding, setOnboardingEngaged } from './onboardingStore';
 import { hasIngestibleFile } from '../ingest/registerIngestion';
-import { classifyFile, materializeAttachment, uploadAttachment, type Attachment } from '../ingest/attachments';
+import { classifyFile, isAttachableText, makeTextAttachment, materializeAttachment, uploadAttachment, type Attachment } from '../ingest/attachments';
 import { getPersona, subscribePersona, type Persona } from '../onboarding/personaStore';
 
 // Intent-first onboarding: on a brand-new empty board the composer rises to the
@@ -148,6 +150,16 @@ export function PromptBar() {
   // Composer attachments — context you attach before it's on the board (see below).
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const attachSeq = useRef(0);
+  // Onboarding on-ramps are real buttons (they read as buttons — a dead click
+  // there is a broken promise; owner call, 2026-07-11). "Drop a PDF" opens a
+  // file picker into the attachment pipeline; the paste on-ramps focus the
+  // composer with a transient how-to hint as its placeholder.
+  const attachFileRef = useRef<HTMLInputElement>(null);
+  const [onrampHint, setOnrampHint] = useState<string | null>(null);
+  const focusComposerWithHint = (hint: string) => {
+    setOnrampHint(hint);
+    requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input')?.focus());
+  };
 
   // ── Intent-first onboarding (a brand-new, empty board) ────────────────────
   const board = useSyncExternalStore(subscribeBoards, getActiveBoard, getActiveBoard);
@@ -512,14 +524,26 @@ export function PromptBar() {
     requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input')?.focus());
   };
 
-  const placeholder = groundIds.length ? 'Ask about the selection…' : 'What would you like to change or create?';
+  // Precedence: a just-clicked on-ramp's how-to hint wins, then an attached
+  // file/text invites its instruction, then the grounded-selection ask.
+  const placeholder = onrampHint
+    ? onrampHint
+    : attachments.length
+      ? 'What should I do with this?'
+      : groundIds.length
+        ? 'Ask about the selection…'
+        : 'What would you like to change or create?';
   const busyLabel = runningMode ? (runningMode === 'tensions' ? 'Scanning…' : runningMode === 'gaps' ? 'Reviewing…' : 'Critiquing…') : null;
 
   // Board-scan chips need enough substance to find gaps/tensions across cards.
   // Two contentful cards already qualify — a brief plus one generated artifact
   // is exactly when "what am I missing" earns its place (dogfood 2026-07-05;
   // the old ≥3 hid it right after the first table landed).
-  const showChips = !runningMode && groundIds.length === 0 && meaningfulCount >= 2;
+  // While a draft is on the board (streaming, or waiting on Keep/Discard),
+  // every dock pill stands down: the pills describe the PREVIOUS card, and
+  // they'd float over the fresh artefact and its controls (G4.2).
+  const draftPending = useSyncExternalStore(subscribeDraft, () => Boolean(getDraft()), () => false);
+  const showChips = !runningMode && !draftPending && groundIds.length === 0 && meaningfulCount >= 2;
   // Pills are ALWAYS contextual — generated from the card's own content.
   // Nothing scripted: until the tailored pills arrive (or if the card is
   // empty) we show nothing. Predictable operations live on the card's
@@ -528,12 +552,12 @@ export function PromptBar() {
     groundIds.length === 1 && (seeds?.length ?? 0) > 0
       ? seeds!.map((s) => ({ label: s.label, prompt: s.prompt }))
       : [];
-  const showStarters = !runningMode && !isAsking && !soleBusy && !value.trim() && starters.length > 0;
+  const showStarters = !runningMode && !isAsking && !soleBusy && !draftPending && !value.trim() && starters.length > 0;
   // The 5-20s quiet gap while tailored pills are being generated (cache still
   // undefined = fetch in flight): show shimmering placeholder pills so the
   // wait reads as "thinking", not "nothing here" (feel pass, ROADMAP §10 #4).
   const showSeedWait =
-    !runningMode && !isAsking && !soleBusy && !value.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
+    !runningMode && !isAsking && !soleBusy && !draftPending && !value.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
 
   return (
     <div className={`jz-promptbar-dock${introMode ? ' jz-promptbar-dock--intro' : ''}`} onPointerDown={stopEventPropagation}>
@@ -584,7 +608,10 @@ export function PromptBar() {
           <div className="jz-pb-grounds">
             {ground.slice(0, 3).map((g) => (
               <span key={g.id} className="jz-pb-ground" title={g.label}>
-                {g.label}
+                {/* Label gets its own truncating span — ellipsis can't apply to
+                    bare text in a flex row, and without it a long title shoves
+                    the ✕ past the chip's clip edge (owner report, 2026-07-10). */}
+                <span className="jz-pb-ground-label">{g.label}</span>
                 <button className="jz-pb-ground-x" aria-label="Remove from context" onClick={() => dropGround(g.id)}>✕</button>
               </span>
             ))}
@@ -598,10 +625,12 @@ export function PromptBar() {
               >
                 {a.status === 'uploading' ? (
                   <span className="jz-pb-ground-spin" aria-hidden />
+                ) : a.kind === 'text' ? (
+                  <ClipboardList className="jz-pb-ground-clip" size={11} strokeWidth={2} aria-hidden />
                 ) : (
                   <Paperclip className="jz-pb-ground-clip" size={11} strokeWidth={2} aria-hidden />
                 )}
-                {a.name.replace(/\.[^.]+$/, '')}
+                <span className="jz-pb-ground-label">{a.kind === 'text' ? a.name : a.name.replace(/\.[^.]+$/, '')}</span>
                 <button className="jz-pb-ground-x" aria-label="Remove attachment" onClick={() => removeAttachment(a.key)}>✕</button>
               </span>
             ))}
@@ -614,17 +643,25 @@ export function PromptBar() {
           rows={2}
           placeholder={introAnim && introPh ? introPh : placeholder}
           onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onBlur={() => { setFocused(false); setOnrampHint(null); }}
           onPaste={(e) => {
-            // A pasted file (a screenshot, a PDF) attaches as context; pasted
-            // text falls through to the input as the prompt.
+            // A pasted file (a screenshot, a PDF) attaches as context; a long
+            // multi-line text paste (a transcript, notes) attaches too — it's
+            // CONTENT to ground on, not the prompt, and it becomes a source
+            // card on send. Short pastes fall through to the input as prose.
             const files = Array.from(e.clipboardData.files);
-            if (files.length && hasIngestibleFile(files)) { e.preventDefault(); attachFiles(files); }
+            if (files.length && hasIngestibleFile(files)) { e.preventDefault(); attachFiles(files); return; }
+            const pasted = e.clipboardData.getData('text/plain');
+            if (pasted && isAttachableText(pasted)) {
+              e.preventDefault();
+              setAttachments((list) => [...list, makeTextAttachment(`att-${attachSeq.current++}`, pasted)]);
+            }
           }}
           onChange={(e) => {
             const next = e.target.value;
             setValue(next);
             setModeIdx(0);
+            if (onrampHint) setOnrampHint(null); // the hint served its moment
             // A leading "/" is a command: open the menu and filter it live as
             // the user types (a "/" mid-sentence is just a character).
             if (next.startsWith('/')) setModeMenu(true);
@@ -679,30 +716,52 @@ export function PromptBar() {
 
         <div className="jz-promptbar-footer">
           <div className="jz-promptbar-footer-left">
+            {/* Attach — always available: drag/drop and paste attach too, but
+                a visible button is the discoverable path (owner ask,
+                2026-07-11). Opens the same picker the intro on-ramp uses. */}
+            <button
+              className="jz-promptbar-icon-btn"
+              title="Attach a file — PDF, image, or spreadsheet"
+              aria-label="Attach a file"
+              onClick={() => attachFileRef.current?.click()}
+            >
+              <Paperclip size={15} strokeWidth={1.8} />
+            </button>
             {/* The / button IS the mode selector; once a shape is picked the
                 chip takes its place (dismiss to hand the choice back to the
                 model). Same menu as typing "/" in the input. */}
             {mode ? (
+              // ONE chip, one behaviour, whatever pinned it (a pick or the
+              // suggester): the body opens the "/" menu to change the shape,
+              // the ✕ clears back to a doc (owner call, 2026-07-11). The
+              // natural gesture on a wrong guess — tapping it — lands in the
+              // picker instead of doing nothing.
               <span
                 key={`${mode}-${modeSource}`}
-                className={`jz-pb-ground jz-pb-mode${modeSource === 'auto' ? ' jz-pb-mode--auto' : ''}`}
-                title={modeSource === 'auto' ? 'Suggested answer shape — change it with / or dismiss to write a doc' : 'Answer shape — picked with /'}
+                role="button"
+                tabIndex={0}
+                className={`jz-pb-ground jz-pb-mode jz-pb-mode--tappable${modeSource === 'auto' ? ' jz-pb-mode--auto' : ''}`}
+                title="Answer shape — click to change, ✕ for a doc"
+                onClick={() => setModeMenu(true)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setModeMenu(true); } }}
               >
-                {modeSource === 'auto' ? <Sparkles className="jz-pb-mode-spark" size={11} strokeWidth={2} aria-hidden /> : null}
+                {modeSource === 'auto' ? <JarwizSpark className="jz-pb-mode-spark" size={11} aria-hidden /> : null}
                 {MODES.find((m) => m.shape === mode)?.label ?? mode}
                 <button
                   className="jz-pb-ground-x"
                   aria-label="Clear answer shape (write a doc)"
-                  onClick={() => { setMode(null); setModeSource('user'); }}
+                  onClick={(e) => { e.stopPropagation(); setMode(null); setModeSource('user'); }}
                 >✕</button>
               </span>
             ) : introMode ? (
-              // Onboarding: no "/" (Jarwiz suggests the shape for you). While the
-              // composer types its own examples, preview the shape it would build.
+              // Onboarding: no "/" (Jarwiz suggests the shape for you). While
+              // the composer types its own examples, the shape preview reads
+              // as NARRATION of the animation ("→ Table"), visibly not a
+              // control — so the first solid chip a user ever sees is a real
+              // one they can trust (owner call, 2026-07-11).
               introAnim && introShape ? (
-                <span className="jz-pb-ground jz-pb-mode jz-pb-mode--auto" aria-hidden>
-                  <Sparkles className="jz-pb-mode-spark" size={11} strokeWidth={2} />
-                  {MODES.find((m) => m.shape === introShape)?.label ?? introShape}
+                <span className="jz-pb-ground jz-pb-mode jz-pb-mode--preview" aria-hidden>
+                  → {MODES.find((m) => m.shape === introShape)?.label ?? introShape}
                 </span>
               ) : null
             ) : (
@@ -717,7 +776,10 @@ export function PromptBar() {
             )}
           </div>
           <button
-            className="jz-promptbar-send"
+            // Carrying a busy label ("Planning…", "Scanning…"), the round
+            // 30px button becomes a pill — the text no longer spills out of
+            // the circle (G4.5).
+            className={`jz-promptbar-send${composing || annotating || busyLabel ? ' jz-promptbar-send--busy' : ''}`}
             disabled={!value.trim() || attachUploading || isAsking || composing || annotating}
             onClick={submit}
             title={attachUploading ? 'Attaching…' : 'Send (Enter)'}
@@ -739,13 +801,42 @@ export function PromptBar() {
           typing. Calm hints — the canvas already accepts drops and the composer
           accepts pastes, so these communicate rather than gate. */}
       {introMounted ? (
-        <div className={`jz-pb-onramp${introMode ? '' : ' jz-pb-onramp--leaving'}`} aria-hidden>
+        <div className={`jz-pb-onramp${introMode ? '' : ' jz-pb-onramp--leaving'}`}>
           <span className="jz-pb-onramp-or">or</span>
-          <span className="jz-pb-onramp-item"><FileText size={13} strokeWidth={1.9} /> drop a PDF</span>
-          <span className="jz-pb-onramp-item"><Link2 size={13} strokeWidth={1.9} /> paste a link</span>
-          <span className="jz-pb-onramp-item"><ClipboardList size={13} strokeWidth={1.9} /> paste a transcript</span>
+          <button
+            className="jz-pb-onramp-item"
+            onClick={() => attachFileRef.current?.click()}
+          >
+            <FileText size={13} strokeWidth={1.9} /> drop a PDF
+          </button>
+          <button
+            className="jz-pb-onramp-item"
+            onClick={() => focusComposerWithHint('Paste the link here (⌘V) and tell me what to do with it…')}
+          >
+            <Link2 size={13} strokeWidth={1.9} /> paste a link
+          </button>
+          <button
+            className="jz-pb-onramp-item"
+            onClick={() => focusComposerWithHint('Paste your transcript here (⌘V) and tell me what to make of it…')}
+          >
+            <ClipboardList size={13} strokeWidth={1.9} /> paste a transcript
+          </button>
         </div>
       ) : null}
+
+      {/* One hidden picker serves both attach entry points (the footer
+          paperclip and the intro on-ramp) — always mounted. */}
+      <input
+        ref={attachFileRef}
+        type="file"
+        accept="application/pdf,.pdf,image/png,image/jpeg,image/gif,image/webp,.xlsx,.xls,.csv,.tsv"
+        multiple
+        hidden
+        onChange={(e) => {
+          if (e.currentTarget.files?.length) attachFiles(e.currentTarget.files);
+          e.currentTarget.value = ''; // same file can be picked again
+        }}
+      />
     </div>
   );
 }
