@@ -970,3 +970,11 @@ can be any kind of widget to best explain the concept."
   is model judgment, no keywords anywhere in the path. Borderline watch:
   noise cancelling declined a wave-interference toy; conservative per the
   "most answers have none" directive.
+- **All four eval briefs BUILT (live sidecar, ~190s for four concurrent):**
+  f-stops (aperture circles + depth-of-field bar, "exposure vs f/1.4: −7.9
+  stops" at f/22), vaccines (log-scale titer curve, Dose 1/2 markers, day
+  scrubber), compound interest (rate/years sliders — $100@20%×20y reads
+  $3,834 vs $500 simple, which is exactly 100·1.2²⁰), tides (Earth-with-
+  bulges + Moon diagram, 24h tide curve, play + scrubber). All four wear
+  the dark tokens natively; all four controls verified live. QA:
+  docs/assets/qa/widget-wall-4.png.
