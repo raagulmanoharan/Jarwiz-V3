@@ -960,3 +960,13 @@ can be any kind of widget to best explain the concept."
   quiet "try it" hint instead). Canned demo widget updated to match.
 - Observed variance to watch: the model missed accent-color on its range
   slider (browser blue) — prompt tightening candidate if it recurs.
+- **10-random-prompt judgment eval (live sidecar, owner-requested):** 4/10
+  earned widgets — f-stops (slider→depth-of-field), vaccines (first-vs-second
+  exposure compare toggle), compound interest (multi-slider curves), tides
+  (drag-to-spin Earth under the bulges); 1/10 earned a map (Indiranagar
+  coffee shops — 7 stops, correctly places-mode/unordered); 5/10 stayed
+  clean prose incl. both writing tasks. Notably "why is the sky blue"
+  (keyword-bait for any regex system) was correctly declined — the decision
+  is model judgment, no keywords anywhere in the path. Borderline watch:
+  noise cancelling declined a wave-interference toy; conservative per the
+  "most answers have none" directive.
