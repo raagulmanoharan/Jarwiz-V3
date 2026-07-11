@@ -27,7 +27,6 @@ export function DraftControls() {
     <div className="jz-draft" style={style} onPointerDown={stopEventPropagation}>
       {draft.status === 'streaming' ? (
         <>
-          <span className="jz-draft-dot" aria-hidden />
           <span className="jz-draft-label">Generating…</span>
           <button className="jz-draft-discard" onClick={drop}>
             Stop &amp; discard

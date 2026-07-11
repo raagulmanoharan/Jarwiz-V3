@@ -1783,26 +1783,6 @@ body,
   pointer-events: auto;
 }
 
-.jz-draft-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--jz-accent-ink);
-  animation: jz-draft-pulse 1s ease-in-out infinite;
-}
-
-@keyframes jz-draft-pulse {
-  50% {
-    opacity: 0.35;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .jz-draft-dot {
-    animation: none;
-  }
-}
-
 .jz-draft-label {
   font-size: 12.5px;
   color: color-mix(in srgb, var(--jz-accent-ink) 80%, transparent);
@@ -2831,16 +2811,6 @@ body,
   }
 }
 
-@keyframes jz-reading-pulse {
-  0%,
-  100% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
 /* Hero showreel overlay: pinned over the canvas, wholly non-interactive so the
    marketing page scrolls over it and the loop stays deterministic. */
 /* Marketing embeds (?embed / ?usecases) are pure showcases — the camera is
@@ -3792,14 +3762,6 @@ body,
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-caption-size);
   animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
-}
-
-.jz-task-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--jz-accent-ink);
-  animation: jz-reading-pulse 1.4s ease-in-out infinite;
 }
 
 .jz-task-label {

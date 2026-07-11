@@ -21,7 +21,6 @@ export function RegenControls() {
 
   return (
     <div className="jz-draft" style={style} onPointerDown={stopEventPropagation}>
-      <span className="jz-draft-dot" aria-hidden />
       <span className="jz-draft-label">Regenerating…</span>
       <button className="jz-draft-discard" onClick={() => cancelActiveAsk()}>
         Cancel
