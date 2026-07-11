@@ -773,3 +773,27 @@ warrants it."
 - Live sidecar test (the Lake Bled ask through the real prompt bar) showed the
   honesty rule end-to-end: the sandbox blocked the fetch, and the model
   declined to fake a URL — noting it in the card instead of inventing one.
+
+## 2026-07-11 — Sources are sacred: paste-to-attach + honest provenance (G2)
+
+**Intent:** from the product review's top finding — "the transcript never
+lands on the board" — the owner specced: pasted text joins the composer as a
+dismissible attachment, renders on canvas as a truncated doc card opening in
+focus mode, and lineage links only what a generation *actually used*
+("just because it was attached doesn't mean it's a source").
+
+- A long multi-line paste into the composer becomes a **text attachment chip**
+  (the same pipeline files already used — `AttachmentKind` grew `'text'`),
+  dismissible before send; the prompt input stays clean and the placeholder
+  invites the instruction ("What should I do with this?").
+- On send it materializes as a normal doc card flagged `meta.jzSourceDoc`:
+  renders a ~550-char preview with a fade + **"View more · N more lines"**
+  that opens the existing focus-mode reader. Checkbox toggling disables on
+  truncated previews (ordinals would desync against the full text).
+- **Honest provenance:** with sources riding along, the model ends its answer
+  with one machine-read `SOURCES_USED: 1, 3` line (tables: a `usedSources`
+  JSON key). The server strips it mid-stream (a prefix-hold filter that never
+  delays prose) and re-emits it as a new `sources.used` AskEvent; the client
+  prunes `meta.jzSources` to just the declared-used cards — including down to
+  empty (attach transcript, ask about OKRs → source card on board, no
+  hairline). Verified live end-to-end, positive and negative cases.

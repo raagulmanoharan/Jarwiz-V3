@@ -21,6 +21,7 @@ import { useAutopilot } from '../agents/useAutopilot';
 import { useTypingPause } from '../agents/useTypingPause';
 import { abortAutopilot, continueProse, isAutopilotReady, isAutopilotRunning, subscribeAutopilot } from '../agents/autopilotStore';
 import { DocMarkdown } from '../ui/DocMarkdown';
+import { openCardFocus } from '../ui/focusCard';
 import { setPdfPage } from '../pdf/pdfView';
 import { toggleInline } from '../ask/textFormat';
 import { deriveTitle, titleIsAuto } from './shapeTitle';
@@ -85,6 +86,25 @@ export class DocCardShapeUtil extends ShapeUtil<DocCardShape> {
       </HTMLContainer>
     );
   }
+}
+
+/* ── Source-doc preview ──────────────────────────────────────────────────────
+ * A pasted transcript/notes card (meta.jzSourceDoc, made by the composer's
+ * text attachment) is REFERENCE material, not an artifact — at full height a
+ * 3,000-word paste would tower over the board. It renders as a truncated
+ * preview (the first few lines) with a "View more" row that opens the card in
+ * focus mode (the full-page reader/editor). Owner call, 2026-07-11. */
+const SOURCE_PREVIEW_CHARS = 550;
+
+/** Cut at a line boundary near the budget so the preview never ends mid-word
+ *  (and never mid-table-row — pasted sources are line-oriented text). */
+function previewSlice(text: string): { preview: string; more: number } {
+  if (text.length <= SOURCE_PREVIEW_CHARS * 1.3) return { preview: text, more: 0 };
+  const head = text.slice(0, SOURCE_PREVIEW_CHARS);
+  const nl = head.lastIndexOf('\n');
+  const preview = (nl > SOURCE_PREVIEW_CHARS / 2 ? head.slice(0, nl) : head).trimEnd();
+  const more = text.slice(preview.length).split('\n').filter((l) => l.trim()).length;
+  return { preview, more };
 }
 
 // Must match EXACTLY the lines DocMarkdown renders as checkboxes (`- [ ] …`,
@@ -264,6 +284,13 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
     );
   }
 
+  // Source docs (pasted transcripts/notes) render a truncated preview — the
+  // fit-height hook measures the preview, so the card stays compact while the
+  // full text lives on the shape (and in focus mode).
+  const isSourceDoc = shape.meta?.jzSourceDoc === true;
+  const { preview, more } = isSourceDoc ? previewSlice(text) : { preview: text, more: 0 };
+  const truncated = isSourceDoc && more > 0;
+
   return (
     <div
       className={`jz-doc jz-doc-auto${collapsed ? ' jz-card-collapsed' : ''}${isSelected ? ' jz-card-selected' : ''}`}
@@ -272,7 +299,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
       <div className="jz-doc-content">
         {text ? (
           <DocMarkdown
-            content={text}
+            content={truncated ? preview : text}
             onCite={(page) => {
               const pdfId = shape.props.sourcePdfId as TLShapeId;
               if (!pdfId || !editor.getShape(pdfId)) return;
@@ -281,10 +308,23 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
               const bounds = editor.getShapePageBounds(pdfId);
               if (bounds) editor.zoomToBounds(bounds, { animation: { duration: 220 }, inset: 80, targetZoom: 1 });
             }}
-            onToggleTask={isStreaming ? undefined : (ordinal, checked) => toggleTask(editor, shape, ordinal, checked)}
+            // Truncation would desynchronize checkbox ordinals against the
+            // full text — a preview is read-only until opened in focus mode.
+            onToggleTask={isStreaming || truncated ? undefined : (ordinal, checked) => toggleTask(editor, shape, ordinal, checked)}
           />
         ) : isStreaming ? null : (
           <span className="jz-doc-placeholder-text">Write something…</span>
+        )}
+        {truncated && (
+          <button
+            className="jz-doc-viewmore"
+            style={{ pointerEvents: 'all' }}
+            title="Open the full text"
+            onPointerDown={stopEventPropagation}
+            onClick={() => openCardFocus(shape.id)}
+          >
+            View more · {more} more lines
+          </button>
         )}
         {/* The caret IS the pre-text state: a writer's cursor waiting on the
             empty card, then riding the real paragraphs as they arrive — no

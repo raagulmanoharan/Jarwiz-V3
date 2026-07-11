@@ -28,7 +28,7 @@ import { getActiveBoard, markBoardUsed, subscribeBoards } from '../boards/boardS
 import { isDemo, isEmbed, isUseCases } from '../boards/demo';
 import { setOnboarding, setOnboardingEngaged } from './onboardingStore';
 import { hasIngestibleFile } from '../ingest/registerIngestion';
-import { classifyFile, materializeAttachment, uploadAttachment, type Attachment } from '../ingest/attachments';
+import { classifyFile, isAttachableText, makeTextAttachment, materializeAttachment, uploadAttachment, type Attachment } from '../ingest/attachments';
 import { getPersona, subscribePersona, type Persona } from '../onboarding/personaStore';
 
 // Intent-first onboarding: on a brand-new empty board the composer rises to the
@@ -512,7 +512,11 @@ export function PromptBar() {
     requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input')?.focus());
   };
 
-  const placeholder = groundIds.length ? 'Ask about the selection…' : 'What would you like to change or create?';
+  const placeholder = attachments.length
+    ? 'What should I do with this?'
+    : groundIds.length
+      ? 'Ask about the selection…'
+      : 'What would you like to change or create?';
   const busyLabel = runningMode ? (runningMode === 'tensions' ? 'Scanning…' : runningMode === 'gaps' ? 'Reviewing…' : 'Critiquing…') : null;
 
   // Board-scan chips need enough substance to find gaps/tensions across cards.
@@ -598,10 +602,12 @@ export function PromptBar() {
               >
                 {a.status === 'uploading' ? (
                   <span className="jz-pb-ground-spin" aria-hidden />
+                ) : a.kind === 'text' ? (
+                  <ClipboardList className="jz-pb-ground-clip" size={11} strokeWidth={2} aria-hidden />
                 ) : (
                   <Paperclip className="jz-pb-ground-clip" size={11} strokeWidth={2} aria-hidden />
                 )}
-                {a.name.replace(/\.[^.]+$/, '')}
+                {clip(a.kind === 'text' ? a.name : a.name.replace(/\.[^.]+$/, ''), 26)}
                 <button className="jz-pb-ground-x" aria-label="Remove attachment" onClick={() => removeAttachment(a.key)}>✕</button>
               </span>
             ))}
@@ -616,10 +622,17 @@ export function PromptBar() {
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           onPaste={(e) => {
-            // A pasted file (a screenshot, a PDF) attaches as context; pasted
-            // text falls through to the input as the prompt.
+            // A pasted file (a screenshot, a PDF) attaches as context; a long
+            // multi-line text paste (a transcript, notes) attaches too — it's
+            // CONTENT to ground on, not the prompt, and it becomes a source
+            // card on send. Short pastes fall through to the input as prose.
             const files = Array.from(e.clipboardData.files);
-            if (files.length && hasIngestibleFile(files)) { e.preventDefault(); attachFiles(files); }
+            if (files.length && hasIngestibleFile(files)) { e.preventDefault(); attachFiles(files); return; }
+            const pasted = e.clipboardData.getData('text/plain');
+            if (pasted && isAttachableText(pasted)) {
+              e.preventDefault();
+              setAttachments((list) => [...list, makeTextAttachment(`att-${attachSeq.current++}`, pasted)]);
+            }
           }}
           onChange={(e) => {
             const next = e.target.value;

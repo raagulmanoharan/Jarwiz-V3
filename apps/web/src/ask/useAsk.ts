@@ -624,6 +624,18 @@ export function useAsk() {
             follow();
             break;
           }
+          case 'sources.used': {
+            // The model's own declaration of which numbered sources it drew
+            // on. Attached ≠ used (owner call, 2026-07-11): overwrite the
+            // record-all default from card.create with only the real lineage.
+            // In-place regens keep their existing lineage untouched.
+            if (!cardId || inPlaceMark) break;
+            const used = event.indices
+              .map((i) => contributingIds[i - 1])
+              .filter((id): id is TLShapeId => Boolean(id));
+            recordSources(editor, cardId, used, trimmed, true);
+            break;
+          }
           case 'card.done':
             if (cardId) {
               // A dashboard streams its spec into `spec`; flip it out of the
@@ -819,11 +831,19 @@ export function placeInLane(
  *  the card you click (owner call, 2026-07-05). */
 export const PROV_META_KEY = 'jzSources';
 export const PROMPT_META_KEY = 'jzPrompt';
-function recordSources(editor: Editor, cardId: TLShapeId, sourceIds: TLShapeId[], prompt: string): void {
+function recordSources(
+  editor: Editor,
+  cardId: TLShapeId,
+  sourceIds: TLShapeId[],
+  prompt: string,
+  /** A `sources.used` prune may legitimately clear lineage (the model drew on
+   *  none of the attached sources); the initial record-all never writes empty. */
+  allowEmpty = false,
+): void {
   const card = editor.getShape(cardId);
   if (!card) return;
   const ids = sourceIds.filter((id) => id !== cardId && editor.getShape(id));
-  if (ids.length === 0) return;
+  if (ids.length === 0 && !allowEmpty) return;
   editor.updateShape({
     id: cardId,
     type: card.type,
