@@ -12,7 +12,13 @@
 import React from 'react';
 import { z } from 'zod/v4';
 import { createLibrary, defineComponent, type ComponentRenderProps } from '@openuidev/react-lang';
+import { createShapeId } from 'tldraw';
 import { DocMarkdown } from '../ui/DocMarkdown';
+import { Extractable, type MakeCard } from './extract';
+// Sizes come from the specific shape files, NOT the '../shapes' barrel — the
+// barrel exports DashboardCardShapeUtil, which imports this library (cycle).
+import { TABLE_CARD_SIZE } from '../shapes/TableCardShapeUtil';
+import { DOC_CARD_SIZE } from '../shapes/DocCardShapeUtil';
 
 /** Render an array of child node values (OpenUI passes raw values; renderNode
  *  turns each into a ReactNode). */
@@ -137,28 +143,57 @@ function LineSvg({ labels, values }: { labels: string[]; values: number[] }) {
   );
 }
 
+/** Drag a chart out as a small self-contained chart card — a dashboard-card
+ *  whose spec is just this one statement, rebuilt from the rendered props. */
+function chartMakeCard(kind: 'BarChart' | 'LineChart', title: string, labels: string[], values: number[]): MakeCard {
+  return (editor, at) => {
+    if (values.length === 0) return null;
+    const spec = `root = ${kind}(${JSON.stringify(title)}, ${JSON.stringify(labels)}, ${JSON.stringify(values)})`;
+    const w = Math.min(820, Math.max(380, CHART_PAD * 2 + labels.length * 84 + 64));
+    const h = 300;
+    const id = createShapeId();
+    editor.createShape({
+      id, type: 'dashboard-card', x: at.x - w / 2, y: at.y - 24,
+      props: { w, h, spec, title: title || 'Chart', status: 'done' },
+    });
+    return id;
+  };
+}
+
 const BarChart = defineComponent({
   name: 'BarChart',
   description: 'A bar chart. Args: title (string), labels (list of strings), values (list of numbers).',
   props: z.object({ title: z.string().default(''), labels: z.array(z.any()).default([]), values: z.array(z.any()).default([]) }),
-  component: (({ props }: ComponentRenderProps<{ title: string; labels: unknown[]; values: unknown[] }>) => (
-    <div className="jzd-chartcard">
-      {props.title ? <div className="jzd-card-title">{props.title}</div> : null}
-      <BarSvg labels={(props.labels ?? []).map(String)} values={(props.values ?? []).map(num)} />
-    </div>
-  )) as never,
+  component: (({ props }: ComponentRenderProps<{ title: string; labels: unknown[]; values: unknown[] }>) => {
+    const labels = (props.labels ?? []).map(String);
+    const values = (props.values ?? []).map(num);
+    return (
+      <Extractable label="Chart" makeCard={chartMakeCard('BarChart', props.title ?? '', labels, values)}>
+        <div className="jzd-chartcard">
+          {props.title ? <div className="jzd-card-title">{props.title}</div> : null}
+          <BarSvg labels={labels} values={values} />
+        </div>
+      </Extractable>
+    );
+  }) as never,
 });
 
 const LineChart = defineComponent({
   name: 'LineChart',
   description: 'A line chart. Args: title (string), labels (list of strings), values (list of numbers).',
   props: z.object({ title: z.string().default(''), labels: z.array(z.any()).default([]), values: z.array(z.any()).default([]) }),
-  component: (({ props }: ComponentRenderProps<{ title: string; labels: unknown[]; values: unknown[] }>) => (
-    <div className="jzd-chartcard">
-      {props.title ? <div className="jzd-card-title">{props.title}</div> : null}
-      <LineSvg labels={(props.labels ?? []).map(String)} values={(props.values ?? []).map(num)} />
-    </div>
-  )) as never,
+  component: (({ props }: ComponentRenderProps<{ title: string; labels: unknown[]; values: unknown[] }>) => {
+    const labels = (props.labels ?? []).map(String);
+    const values = (props.values ?? []).map(num);
+    return (
+      <Extractable label="Chart" makeCard={chartMakeCard('LineChart', props.title ?? '', labels, values)}>
+        <div className="jzd-chartcard">
+          {props.title ? <div className="jzd-card-title">{props.title}</div> : null}
+          <LineSvg labels={labels} values={values} />
+        </div>
+      </Extractable>
+    );
+  }) as never,
 });
 
 // ─── Rich content (research answers) ─────────────────────────────────────────
@@ -179,10 +214,24 @@ function proxyMarkdownImages(text: string): string {
 }
 
 function MarkdownBody({ props }: ComponentRenderProps<{ text: string }>) {
+  const text = props.text ?? '';
+  // Drag out as a text card. The RAW markdown travels (not the proxied form) —
+  // the doc card routes remote images through the cache-proxy at render time.
+  const makeCard: MakeCard = (editor, at) => {
+    if (!text.trim()) return null;
+    const id = createShapeId();
+    editor.createShape({
+      id, type: 'doc-card', x: at.x - DOC_CARD_SIZE.w / 2, y: at.y - 24,
+      props: { ...DOC_CARD_SIZE, title: '', text, sourcePdfId: '' },
+    });
+    return id;
+  };
   return (
-    <div className="jzd-md">
-      <DocMarkdown content={proxyMarkdownImages(props.text ?? '')} />
-    </div>
+    <Extractable label="Text" makeCard={makeCard}>
+      <div className="jzd-md">
+        <DocMarkdown content={proxyMarkdownImages(text)} />
+      </div>
+    </Extractable>
   );
 }
 
@@ -199,11 +248,23 @@ function ImageBody({ props }: ComponentRenderProps<{ src: string; caption: strin
   // rich cards degrade to "no image", never to visible breakage.
   const [failed, setFailed] = React.useState(false);
   if (!props.src || failed) return null;
+  // Drag out as an image card; the proxied URL travels so the extracted card
+  // loads from the same same-origin cache the rich card does.
+  const makeCard: MakeCard = (editor, at) => {
+    const id = createShapeId();
+    editor.createShape({
+      id, type: 'image-card', x: at.x - 180, y: at.y - 24,
+      props: { w: 360, h: 300, src: proxied(props.src), name: props.caption || 'Image' },
+    });
+    return id;
+  };
   return (
-    <figure className="jzd-figure">
-      <img className="jzd-img" src={proxied(props.src)} alt={props.caption || ''} onError={() => setFailed(true)} />
-      {props.caption ? <figcaption className="jzd-img-caption">{props.caption}</figcaption> : null}
-    </figure>
+    <Extractable label="Image" makeCard={makeCard}>
+      <figure className="jzd-figure">
+        <img className="jzd-img" src={proxied(props.src)} alt={props.caption || ''} onError={() => setFailed(true)} />
+        {props.caption ? <figcaption className="jzd-img-caption">{props.caption}</figcaption> : null}
+      </figure>
+    </Extractable>
   );
 }
 
@@ -259,18 +320,36 @@ const Table = defineComponent({
   name: 'Table',
   description: 'A data table. Args: columns (list of strings), rows (list of rows, each a list of cell strings).',
   props: z.object({ columns: z.array(z.any()).default([]), rows: z.array(z.any()).default([]) }),
-  component: (({ props }: ComponentRenderProps<{ columns: unknown[]; rows: unknown[] }>) => (
-    <div className="jzd-tablewrap">
-      <table className="jzd-table">
-        <thead><tr>{(props.columns ?? []).map((c, i) => <th key={i}>{String(c)}</th>)}</tr></thead>
-        <tbody>
-          {(props.rows ?? []).map((r, ri) => (
-            <tr key={ri}>{(Array.isArray(r) ? r : [r]).map((c, ci) => <td key={ci}>{String(c ?? '')}</td>)}</tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )) as never,
+  component: (({ props }: ComponentRenderProps<{ columns: unknown[]; rows: unknown[] }>) => {
+    const columns = (props.columns ?? []).map(String);
+    const rows = (props.rows ?? []).map((r) => (Array.isArray(r) ? r.map((c) => String(c ?? '')) : [String(r ?? '')]));
+    // Drag out as a REAL editable table card — same column-count sizing the
+    // Ask pipeline uses for generated comparisons.
+    const makeCard: MakeCard = (editor, at) => {
+      if (columns.length === 0) return null;
+      const w = Math.min(940, Math.max(TABLE_CARD_SIZE.w, columns.length * 190));
+      const id = createShapeId();
+      editor.createShape({
+        id, type: 'table-card', x: at.x - w / 2, y: at.y - 24,
+        props: { w, h: TABLE_CARD_SIZE.h, columns, rows },
+      });
+      return id;
+    };
+    return (
+      <Extractable label="Table" makeCard={makeCard}>
+        <div className="jzd-tablewrap">
+          <table className="jzd-table">
+            <thead><tr>{columns.map((c, i) => <th key={i}>{c}</th>)}</tr></thead>
+            <tbody>
+              {rows.map((r, ri) => (
+                <tr key={ri}>{r.map((c, ci) => <td key={ci}>{c}</td>)}</tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Extractable>
+    );
+  }) as never,
 });
 
 // No `root` here: `createLibrary`'s optional `root` names a *component* used as
