@@ -15,9 +15,11 @@ import { JarwizSpark } from '../ui/JarwizSpark';
 export function DraftControls() {
   const editor = useEditor();
   const draft = useSyncExternalStore(subscribeDraft, getDraft, getDraft);
-  // Never over the artefact's own text: a tall card would otherwise get the
-  // bar clamped up over its content — flip above the card instead (G4.1).
-  const anchor = useCardAnchor(draft?.id ?? null, { flipWhenCovered: true });
+  // Anchor on the WHOLE artefact — a debrief cluster's bar centres under all
+  // of its cards, not just the first. Never over the artefact's own text: a
+  // tall card would otherwise get the bar clamped up over its content — flip
+  // above instead (G4.1).
+  const anchor = useCardAnchor(draft ? [draft.id, ...(draft.groupIds ?? [])] : null, { flipWhenCovered: true });
 
   if (!draft || !anchor) return null;
   const style = { left: anchor.x, top: anchor.y } as CSSProperties;

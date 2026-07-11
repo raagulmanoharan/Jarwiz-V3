@@ -619,6 +619,17 @@ app.post('/api/compose', async (c) => {
       }))
     : [];
   const intent = typeof raw.intent === 'string' ? raw.intent.slice(0, 400) : undefined;
+  // The debrief recipe path: a fixed three-card plan over the given transcript.
+  const rawRecipe = (raw as { recipe?: unknown }).recipe;
+  const recipe = rawRecipe === 'debrief' ? ('debrief' as const) : undefined;
+  const rawTranscript = (raw as { transcript?: { title?: unknown; text?: unknown } }).transcript;
+  const transcript =
+    recipe && typeof rawTranscript?.text === 'string' && rawTranscript.text.trim()
+      ? {
+          title: typeof rawTranscript.title === 'string' ? rawTranscript.title.slice(0, 120) : undefined,
+          text: rawTranscript.text.slice(0, 20_000),
+        }
+      : undefined;
   const machine = getMachine(typeof (raw as { machineId?: unknown }).machineId === 'string' ? (raw as { machineId: string }).machineId : undefined);
   const options = Array.isArray((raw as { options?: unknown }).options)
     ? ((raw as { options: unknown[] }).options).filter((x): x is string => typeof x === 'string').map((x) => x.slice(0, 40)).slice(0, 12)
@@ -631,7 +642,7 @@ app.post('/api/compose', async (c) => {
       const events =
         machine && machine.output === 'board'
           ? streamMachineBoard(machine, intent ?? '', signal, options)
-          : streamCompose({ board, intent }, signal);
+          : streamCompose({ board, intent, recipe, transcript }, signal);
       for await (const event of events) {
         await stream.writeSSE({ data: JSON.stringify(event) });
       }

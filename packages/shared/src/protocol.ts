@@ -521,6 +521,13 @@ export interface ComposeRequest {
   /** Optional-output ids the user enabled on the block (e.g. SWOT's 'tows',
    *  'verdict') — the board skill fans these extra cards out only when present. */
   options?: string[];
+  /** Run the fixed MEETING-DEBRIEF recipe instead of the planner: three cards
+   *  (Decisions / Action items / Risks & open questions) generated from the
+   *  `transcript`. No planning call — the recipe IS the plan. `board` is
+   *  ignored on this path. (Review backlog G5, owner-approved 2026-07-11.) */
+  recipe?: 'debrief';
+  /** The transcript the debrief reads (recipe path only). */
+  transcript?: { title?: string; text: string };
 }
 
 /** SSE for a compose run: the plan up front, then each card's Ask events
