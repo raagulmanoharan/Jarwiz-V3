@@ -6513,10 +6513,13 @@ body,
    * card's width by aspect ratio, clamped so a narrow card doesn't get a
    * sliver and a wide one doesn't get a billboard. */
   width: 100%;
+  /* Height grows with width (wide cards get a bigger canvas) but keeps a
+   * comfortable FLOOR so a narrow card is never squished to a sliver — the
+   * chart/sim needs vertical room regardless of how narrow the card is. */
   aspect-ratio: 3 / 2;
   height: auto;
-  min-height: 200px;
-  max-height: 420px;
+  min-height: 340px;
+  max-height: 480px;
   border: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-md);
   overflow: hidden;
