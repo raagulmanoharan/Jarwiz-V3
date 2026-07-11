@@ -47,17 +47,44 @@ export function Extractable({
 }) {
   const hostId = useContext(ExtractHostContext);
   if (!hostId) return <>{children}</>;
+  return <ExtractableBody label={label} makeCard={makeCard} hostId={hostId}>{children}</ExtractableBody>;
+}
+
+function ExtractableBody({
+  label,
+  makeCard,
+  hostId,
+  children,
+}: {
+  label: string;
+  makeCard: MakeCard;
+  hostId: TLShapeId;
+  children: React.ReactNode;
+}) {
+  // Selecting the host card is the reveal: every extractable block highlights
+  // as a whole (outline) and shows its bare grip handle (owner call,
+  // 2026-07-11 — no pill, no label; the highlight says "this is a piece").
+  const on = useCardSelected(hostId);
   return (
-    <div className="jzd-extract">
+    <div className={`jzd-extract${on ? ' jzd-extract--on' : ''}`}>
       {children}
-      <ExtractHandle label={label} makeCard={makeCard} hostId={hostId} />
+      <ExtractHandle label={label} makeCard={makeCard} hostId={hostId} on={on} />
     </div>
   );
 }
 
-function ExtractHandle({ label, makeCard, hostId }: { label: string; makeCard: MakeCard; hostId: TLShapeId }) {
+function ExtractHandle({
+  label,
+  makeCard,
+  hostId,
+  on,
+}: {
+  label: string;
+  makeCard: MakeCard;
+  hostId: TLShapeId;
+  on: boolean;
+}) {
   const editor = useEditor();
-  const selected = useCardSelected(hostId);
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
 
   // Escape aborts a drag in flight.
@@ -111,13 +138,12 @@ function ExtractHandle({ label, makeCard, hostId }: { label: string; makeCard: M
   return (
     <>
       <button
-        className={`jzd-extract-handle${selected || ghost ? ' jzd-extract-handle--on' : ''}`}
+        className={`jzd-extract-handle${on || ghost ? ' jzd-extract-handle--on' : ''}`}
         title={`Drag out as a ${label.toLowerCase()} card`}
         aria-label={`Drag out as a ${label.toLowerCase()} card`}
         onPointerDown={onPointerDown}
       >
         <GripGlyph />
-        <span className="jzd-extract-tag">{label}</span>
       </button>
       {ghost
         ? createPortal(

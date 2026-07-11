@@ -6031,24 +6031,27 @@ body,
    extracts it as a real card of the right type (dashboard/extract.tsx).
    Selection is the reveal because tldraw keeps shape HTML pointer-events:none
    (so the card body stays draggable) — blocks can never receive CSS hover. */
-.jzd-extract { position: relative; min-width: 0; flex: 1 1 auto; }
+.jzd-extract { position: relative; min-width: 0; flex: 1 1 auto; border-radius: 10px; }
+/* Selecting the card highlights each piece AS A WHOLE — the block itself is
+   the affordance (owner call, 2026-07-11: no pill, no label). */
+.jzd-extract--on {
+  outline: 1px solid var(--jz-hairline-strong);
+  outline-offset: 4px;
+}
 .jzd-extract-handle {
   position: absolute;
   top: 6px;
   right: 6px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 0 8px;
-  border: 1px solid var(--jz-hairline-strong);
-  border-radius: 999px;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-xs);
   background: var(--jz-surface-raised);
-  color: var(--jz-ink-500);
-  font-family: var(--jz-font-ui);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  color: var(--jz-ink-400);
   cursor: grab;
   opacity: 0;
   pointer-events: none;
@@ -6065,7 +6068,6 @@ body,
   box-shadow: var(--jz-e1);
 }
 .jzd-extract-handle:active { cursor: grabbing; }
-.jzd-extract-tag { line-height: 1; }
 
 /* Tab buttons must re-enable pointer events themselves — the surrounding
    shape HTML is pointer-events:none (see the drag-out note above), so without
