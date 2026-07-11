@@ -107,3 +107,61 @@ export function medoid<TPoint extends { lat: number; lng: number }>(points: TPoi
   }
   return best;
 }
+
+/* ── stop verification (shared by the map card and the inline doc block) ── */
+
+/** A trip's stops cluster geographically; a geocode hit farther than this from
+ *  the group's medoid is treated as a mis-match and demoted to "approximate". */
+const REGION_KM = 500;
+
+/** What the model proposes per stop (coordinates are its fallback guess). */
+export interface ProposedStop {
+  name: string;
+  query: string;
+  day?: string;
+  time?: string;
+  note?: string;
+  lat?: number;
+  lng?: number;
+}
+
+/** A stop with a location we either verified or visibly doubt. */
+export interface LocatedStop extends Omit<ProposedStop, 'lat' | 'lng'> {
+  lat: number;
+  lng: number;
+  approx?: boolean;
+}
+
+const plausible = (lat: unknown, lng: unknown): boolean =>
+  typeof lat === 'number' && typeof lng === 'number' &&
+  Number.isFinite(lat) && Number.isFinite(lng) &&
+  Math.abs(lat) <= 90 && Math.abs(lng) <= 180 &&
+  !(Math.abs(lat) < 0.5 && Math.abs(lng) < 0.5); // null island = no guess
+
+/**
+ * Verify every proposed stop: geocode its query (cached, throttled); a miss
+ * falls back to the model's own coordinates flagged `approx` (the UI renders
+ * the doubt), or drops the stop when there's no fallback at all — never a
+ * silently wrong pin. A ≥3-stop set then demotes outliers far from the
+ * group's medoid the same way.
+ */
+export async function locateStops(proposed: ProposedStop[], signal?: AbortSignal): Promise<LocatedStop[]> {
+  const located: LocatedStop[] = [];
+  for (const stop of proposed) {
+    if (signal?.aborted) break;
+    const hit = await geocode(stop.query, signal);
+    const { lat: guessLat, lng: guessLng, ...rest } = stop;
+    if (hit) located.push({ ...rest, lat: hit.lat, lng: hit.lng });
+    else if (plausible(guessLat, guessLng)) located.push({ ...rest, lat: guessLat!, lng: guessLng!, approx: true });
+    // Unverifiable with no fallback guess → dropped, not invented.
+  }
+  if (located.length >= 3) {
+    const anchor = medoid(located.filter((l) => !l.approx));
+    if (anchor) {
+      for (const l of located) {
+        if (!l.approx && distanceKm(l, anchor) > REGION_KM) l.approx = true;
+      }
+    }
+  }
+  return located;
+}

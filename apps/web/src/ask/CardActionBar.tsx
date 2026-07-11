@@ -30,7 +30,9 @@ import {
   List,
   ListChecks,
   ListTodo,
+  MapPin,
   Maximize2,
+  Navigation,
   Network,
   PenLine,
   RefreshCw,
@@ -45,6 +47,8 @@ import {
   Workflow,
 } from 'lucide-react';
 import { AFFINITY_COLORS, NOTE_PAPER, PROTOTYPE_PROMPT_SIZE, type NoteCardShape, type PrototypeCardShape } from '../shapes';
+import type { MapStop } from '@jarwiz/shared';
+import { googleMapsRouteUrl, googleMapsUrl } from '../shapes/mapView';
 import { ASKABLE, hasAskableContent } from './askable';
 import { formatControlledTextarea, insertBlock, insertTableBlock, toggleInline, toggleLinePrefix, type FormatResult } from './textFormat';
 import { uploadAsset } from '../lib/uploadAsset';
@@ -229,6 +233,28 @@ export function CardActionBar() {
     transforms.push(
       { label: 'Summarise the data', icon: <JarwizSpark size={13} />, run: () => ask('Summarise the story in this dashboard — the headline numbers, the trend, and any outliers.', [id], { skipClarify: true, logLabel: 'Summarised the dashboard' }) },
       { label: 'Regenerate', icon: <RefreshCw {...ACT_ICON} />, run: () => ask('Regenerate this dashboard, same data, fresh take.', [id], { targetId: id }) },
+    );
+  }
+  // A map's Actions: the navigation hand-off (the whole ordered plan in one
+  // free Google Maps link), one common refine (add a stop — kept in place via
+  // targetId), and Regenerate. Pointed edits ("make it two days", "reorder")
+  // live in the composer, grounded by the map's own stops via toSource.
+  if (!sel.multi && hasContent && sel.type === 'map-card') {
+    const p = editor.getShape(id)?.props as { stops?: MapStop[]; ordered?: boolean } | undefined;
+    const stops = Array.isArray(p?.stops) ? p!.stops! : [];
+    if (stops.length > 0) {
+      transforms.push({
+        label: stops.length > 1 && p?.ordered !== false ? 'Open route' : 'Open in Google Maps',
+        icon: <Navigation {...ACT_ICON} />,
+        run: () => {
+          const url = stops.length > 1 && p?.ordered !== false ? googleMapsRouteUrl(stops) : googleMapsUrl(stops[0]!);
+          window.open(url, '_blank', 'noopener,noreferrer');
+        },
+      });
+    }
+    transforms.push(
+      { label: 'Add a stop', icon: <MapPin {...ACT_ICON} />, run: () => ask('Add one more well-chosen stop to this plan, keeping the rest as is.', [id], { targetId: id, skipClarify: true, logLabel: 'Added a stop' }) },
+      { label: 'Regenerate', icon: <RefreshCw {...ACT_ICON} />, run: () => ask('Regenerate this map plan — same intent, fresh take.', [id], { targetId: id }) },
     );
   }
   // An image is a vision input — offer moves that read the picture.

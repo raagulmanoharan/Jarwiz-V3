@@ -14,7 +14,7 @@ import { AGENT_MODEL } from './agents/runtime.js';
 import { assetPath, extractAssetPages, extractAssetText, getAsset } from './assets.js';
 import { cacheImagesInRows } from './imageCache.js';
 import { FIND_IMAGE_TOOL, runFindImage } from './imageSearch.js';
-import { distanceKm, geocode, medoid } from './geo.js';
+import { locateStops, type ProposedStop } from './geo.js';
 import { extractSheetText } from './sheets.js';
 import { getMachine, type MachineSkill } from './machines.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
@@ -153,6 +153,18 @@ const MAP_SYSTEM = `You answer a places request as a MAP — real, specific plac
   - "note": one tight line of judgement a friend would give ("steep but short (~2 km) — book the forest-dept slot early"). Omit if you have nothing real to say.
   - "lat"/"lng": your best-guess coordinates as a FALLBACK for when the geocoder misses — give them when you know the area, omit when unsure. The geocoder's answer wins when it resolves.
 Ground stops in the provided sources when they name places; otherwise draw on what you reliably know (use web search if available to verify current names). No prose outside the JSON, no code fences.`;
+
+/** The inline map block — doc answers carry a map when the content is places,
+ *  the same "when warranted" doctrine as find_image (docs/MAPS.md). This is
+ *  content-level, not shape routing: the answer is still a doc; the fence is
+ *  just markdown until the client renders it. */
+const MAP_BLOCK_DIRECTIVE = `
+
+MAP BLOCK — when (and ONLY when) the substance of the answer is real places the user could visit (a trip or day plan, "places/cafés/temples near X", a location recommendation), include ONE map block early in the card — right after the opening line, before the plan/details:
+\`\`\`map
+{"ordered": true, "stops": [{"name": "Savandurga Trek", "query": "Savandurga Betta, Magadi, Karnataka, India", "day": "Morning", "time": "6:30 AM", "note": "Steep but short — book the slot early.", "lat": 12.92, "lng": 77.29}]}
+\`\`\`
+Rules: 1–8 REAL places only (never invent one); "query" must be region-qualified (place, locality, state, country) so a geocoder's first hit is the right place; "ordered" true only when the stops form a visiting order (an itinerary) — false for options/a single place; "day"/"time" only for itineraries; "note" one tight line or omitted; "lat"/"lng" your best guess as a fallback, omit when unsure. Then write the plan/answer as normal prose or bullets whose numbering follows the stop order. Never use a map block for anything that is not a visitable place; most answers have none.`;
 
 const AFFINITY_SYSTEM = `You run an affinity-mapping exercise: turn the request and the source(s) into clustered sticky notes. Return ONLY a JSON object {"clusters": [{"label": string, "notes": string[]}]}. Make 3–6 clusters; each has a short 1–4 word "label" (the theme) and 2–6 short "notes" (each one idea, a few words). Group related ideas under the same theme. Ground notes in the provided content when a source is given; otherwise brainstorm sensible ideas for the request. No prose, no code fences.`;
 
@@ -879,12 +891,30 @@ async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenera
     return;
   }
 
-  yield { type: 'card.create', shape: 'doc', title: 'Demo mode' };
-  const body =
-    `You asked: *${req.prompt.slice(0, 140)}*\n\n` +
-    'Jarwiz is running without a model — set `ANTHROPIC_API_KEY` on the server ' +
-    '(or install the Claude CLI) and real answers will stream onto the board ' +
-    'exactly like this one, grounded on the cards you selected.';
+  // A places-flavoured prompt shows the inline map block even keyless — the
+  // demo doc carries a map fence with real, hard-coded coordinates so the doc
+  // path (DocMarkdown → DocMapBlock) is demoable with zero keys and no
+  // geocoder. Any other prompt gets the plain explainer doc.
+  const placey = /\b(trip|itinerar|travel|visit|places?|near|temple|restaurant|caf[eé]|beach|trek|route|weekend)\b/i.test(req.prompt);
+  yield { type: 'card.create', shape: 'doc', title: placey ? 'Day trip — Savandurga + Manchanabele (demo)' : 'Demo mode' };
+  const mapFence = [
+    '```map',
+    JSON.stringify({
+      ordered: true,
+      stops: [
+        { name: 'Savandurga Trek', query: 'Savandurga Betta, Magadi, Karnataka, India', day: 'Morning', time: '6:30 AM', note: 'Steep but short (~2 km) — book the slot early.', lat: 12.9194, lng: 77.2926 },
+        { name: 'Dodda Alada Mara', query: 'Dodda Alada Mara, Ramohalli, Karnataka, India', day: 'Morning', time: '12:30 PM', note: 'The 400-year-old banyan — an easy lunch-side stop.', lat: 12.9226, lng: 77.3934 },
+        { name: 'Manchanabele Dam', query: 'Manchanabele Dam, Karnataka, India', day: 'Afternoon', time: '4:30 PM', note: 'Timed late on purpose — it’s a sunset spot.', lat: 12.9401, lng: 77.3427 },
+      ],
+    }),
+    '```',
+  ].join('\n');
+  const body = placey
+    ? `Here's a solid nature-and-outdoors day out — Savandurga + Manchanabele, both on the Magadi Road side, so the drive between them is quick. *(Demo mode — set a key for a real, planned answer.)*\n\n${mapFence}\n\n**The plan**\n- **5:30 AM** — Leave Bengaluru; Magadi Road before the traffic wakes up.\n- **6:30 AM** — **Savandurga trek** — steep but short (~2 km). Book the forest-dept slot the night before.\n- **12:30 PM** — **Dodda Alada Mara** — lunch near the 400-year-old banyan.\n- **4:30 PM** — **Manchanabele Dam** — timed late on purpose: it's a sunset spot.\n- **7:30 PM** — Back in the city, dinner earned.`
+    : `You asked: *${req.prompt.slice(0, 140)}*\n\n` +
+      'Jarwiz is running without a model — set `ANTHROPIC_API_KEY` on the server ' +
+      '(or install the Claude CLI) and real answers will stream onto the board ' +
+      'exactly like this one, grounded on the cards you selected.';
   for (const piece of chunk(body)) {
     if (signal.aborted) return;
     yield { type: 'card.delta', textDelta: piece };
@@ -1159,6 +1189,9 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   if (linkRefs.length > 0) system += linkCiteDirective(linkRefs);
   if (wantsChecklist(req.prompt)) system += CHECKLIST_DIRECTIVE;
   system += WEB_DIRECTIVE;
+  // Docs carry their map when the content is places — same "when warranted"
+  // doctrine as find_image; static text, so prompt caching still holds.
+  system += MAP_BLOCK_DIRECTIVE;
   // With canvas sources riding along, the model declares which it actually
   // drew on — attached ≠ used, and lineage links only real use.
   if (req.sources.length > 0) system += SOURCES_USED_DIRECTIVE;
@@ -1226,27 +1259,7 @@ async function* runMachineSkill(
   yield* streamDoc(machine.output === 'list' ? 'list' : 'doc', machine.systemPrompt, user, signal, images, opts);
 }
 
-/** A trip's stops cluster geographically; a geocode hit farther than this from
- *  the group's medoid is treated as a mis-match and demoted to "approximate". */
-const MAP_REGION_KM = 500;
 const MAP_MAX_STOPS = 10;
-
-/** What the model proposes per stop (coordinates are its fallback guess). */
-interface ProposedStop {
-  name: string;
-  query: string;
-  day?: string;
-  time?: string;
-  note?: string;
-  lat?: number;
-  lng?: number;
-}
-
-const plausible = (lat: unknown, lng: unknown): boolean =>
-  typeof lat === 'number' && typeof lng === 'number' &&
-  Number.isFinite(lat) && Number.isFinite(lng) &&
-  Math.abs(lat) <= 90 && Math.abs(lng) <= 180 &&
-  !(Math.abs(lat) < 0.5 && Math.abs(lng) < 0.5); // null island = no guess
 
 /**
  * Stream a map: the model proposes real stops as JSON, the server verifies
@@ -1308,38 +1321,21 @@ async function* streamMap(
   // Verify every stop first (cache makes repeats instant; the policy throttle
   // spaces real lookups), THEN drop the pins in visiting order — the emission
   // is the animation, so the geocoding wait never shows as a half-built map.
-  const located: Array<{ stop: ProposedStop; lat: number; lng: number; approx: boolean }> = [];
-  for (const stop of proposed) {
-    if (signal.aborted) return;
-    const hit = await geocode(stop.query, signal);
-    if (hit) located.push({ stop, lat: hit.lat, lng: hit.lng, approx: false });
-    else if (plausible(stop.lat, stop.lng)) located.push({ stop, lat: stop.lat!, lng: stop.lng!, approx: true });
-    // Unverifiable with no fallback guess → dropped, not invented.
-  }
+  // locateStops (geo.ts) is the shared verifier the inline doc block uses too.
+  const located = await locateStops(proposed, signal);
   if (located.length === 0) {
     yield { type: 'card.done' };
     yield { type: 'error', message: 'Couldn’t verify any of the places — try naming them more specifically.' };
     return;
   }
 
-  // Region sanity: a same-named place in another state sits far from the
-  // group; demote such outliers to approximate (visible doubt on the pin).
-  if (located.length >= 3) {
-    const anchor = medoid(located.filter((l) => !l.approx));
-    if (anchor) {
-      for (const l of located) {
-        if (!l.approx && distanceKm(l, anchor) > MAP_REGION_KM) l.approx = true;
-      }
-    }
-  }
-
   for (let i = 0; i < located.length; i++) {
     if (signal.aborted) return;
-    const { stop, lat, lng, approx } = located[i]!;
+    const { lat, lng, approx, name, query, day, time, note } = located[i]!;
     yield {
       type: 'map.pin',
       index: i,
-      stop: { name: stop.name, query: stop.query, lat, lng, approx: approx || undefined, day: stop.day, time: stop.time, note: stop.note },
+      stop: { name, query, lat, lng, approx: approx || undefined, day, time, note },
     };
     await sleep(340, signal);
   }

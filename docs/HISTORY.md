@@ -871,3 +871,32 @@ narration-style intro preview, cadence untouched.
   animation, so the first solid chip a user sees is a real control.
 - **Boards panel paints above the ambient vignettes** (panel joined the
   chrome layer, z 160 over the scene's 150).
+
+## 2026-07-11 (later) — Map card P1: the inline doc map + the trip view
+
+**Intent:** "does it render in rich cards?" → the owner's original ask,
+delivered: doc answers carry their map.
+
+- **The inline map block:** doc/list answers get `MAP_BLOCK_DIRECTIVE` — when
+  (and only when) the content is real visitable places, the model writes a
+  ```map fence (stops JSON) into the markdown, find_image-style "when
+  warranted". `DocMarkdown` renders the fence through `DocMapBlock`, which
+  hydrates via `POST /api/geo/stops` (the shared `locateStops` verifier in
+  geo.ts — cache, throttle, honest `approx`, medoid outlier check) and shows
+  a quiet toolbar: **➤ Open route** (multi-waypoint Google Maps deep link,
+  free) **· ⤢ expand map** (promotes the block into a standalone map card,
+  provenance wired to the doc via a DOM-event bus → MapExpandLayer). An
+  unterminated fence mid-stream shows "placing the stops…"; an unparseable
+  one renders as nothing — the degrade-to-nothing rule.
+- **The trip view:** map cards join CardFocusOverlay — map left, itinerary
+  rail right (day groups in first-appearance order, time · numbered name ·
+  note rows, "location approximate" pills); hover/focus a row → its pin
+  lifts and the camera eases to it; Open route rides the rail head. The
+  shared `MapViewport` moved to `shapes/mapView.tsx` (one renderer for card,
+  doc block, and focus view) and gained `activeIndex`.
+- **Action bar:** map cards get Open route / Add a stop (in-place refine) /
+  Regenerate.
+- Keyless demo: a places-flavoured prompt makes the demo doc answer with a
+  real map fence, so the whole inline flow is testable with zero keys.
+- Deferred to P3 polish: rail thumbnails (find_image per stop) and
+  chip↔pin hover inside the prose.

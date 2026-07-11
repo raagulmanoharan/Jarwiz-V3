@@ -37,6 +37,7 @@ import { getMachine } from './machines.js';
 import { streamMachineBoard } from './machineBoard.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset, sniffMime } from './assets.js';
 import { cachedImageUrl } from './imageCache.js';
+import { locateStops, type ProposedStop } from './geo.js';
 import { classifyRefineIntent, proposeSeedPrompts, streamAsk, suggestShape } from './ask.js';
 import type { AnalyzeCard, AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ReviseRequest } from '@jarwiz/shared';
 import { streamAgentRun } from './agentRun.js';
@@ -109,6 +110,36 @@ app.get('/api/image', async (c) => {
   const cached = await cachedImageUrl(src);
   if (!cached) return c.json({ error: 'image unavailable' }, 404);
   return c.redirect(cached, 302);
+});
+
+/** Verify the stops of an inline doc map block (docs/MAPS.md): geocode each
+ *  query (cached, ≤1 req/s — geo.ts), fall back to the model's coordinates
+ *  flagged `approx`, drop the unverifiable. The doc's markdown fence stays
+ *  text; the client hydrates it through here at render time. */
+app.post('/api/geo/stops', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected JSON: { stops: [...] }' }, 400);
+  }
+  const raw = (body as { stops?: unknown }).stops;
+  if (!Array.isArray(raw)) return c.json({ error: 'stops must be an array' }, 400);
+  const proposed: ProposedStop[] = raw
+    .filter((s): s is Record<string, unknown> => Boolean(s) && typeof s === 'object')
+    .map((s) => ({
+      name: String(s.name ?? '').slice(0, 80),
+      query: String(s.query ?? s.name ?? '').slice(0, 160),
+      day: typeof s.day === 'string' ? s.day.slice(0, 30) : undefined,
+      time: typeof s.time === 'string' ? s.time.slice(0, 20) : undefined,
+      note: typeof s.note === 'string' ? s.note.slice(0, 200) : undefined,
+      lat: typeof s.lat === 'number' ? s.lat : undefined,
+      lng: typeof s.lng === 'number' ? s.lng : undefined,
+    }))
+    .filter((s) => s.name.trim() && s.query.trim())
+    .slice(0, 12);
+  const stops = await locateStops(proposed, c.req.raw.signal);
+  return c.json({ stops });
 });
 
 /** Parsed grid for a sheet card — the capped rows/sheets it renders. */

@@ -272,7 +272,7 @@ The card exists and the Ask pipeline can produce it.
   Maps; works keyless via the demo path; typecheck/build green; screengrab
   on the PR.
 
-### P1 — The trip card (screenshot parity) `M`
+### P1 — The trip card (screenshot parity) `M` — ✅ shipped 2026-07-11 (this PR; thumbnails + chip↔pin hover deferred to P3 polish)
 - `MapFocus` overlay: map + itinerary rail (day/time groups, notes,
   thumbnails via `find_image`), row↔pin hover/fly-to sync.
 - "Open route" (multi-waypoint Google Maps deep link) on card + rail.

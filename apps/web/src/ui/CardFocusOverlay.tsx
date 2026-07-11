@@ -11,7 +11,9 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { stopEventPropagation, useEditor, useValue, type TLShape } from 'tldraw';
 import { X, ExternalLink } from 'lucide-react';
 import { Renderer } from '@openuidev/react-lang';
+import type { MapStop } from '@jarwiz/shared';
 import { getShapeTitle } from '../shapes/shapeTitle';
+import { googleMapsRouteUrl, googleMapsUrl, MapViewport } from '../shapes/mapView';
 import { dashboardLibrary } from '../dashboard/library';
 import { renderMermaid } from '../lib/mermaid';
 import { closeCardFocus, getCardFocus, subscribeCardFocus } from './focusCard';
@@ -28,6 +30,7 @@ const FOCUSABLE = new Set([
   'diagram-card',
   'youtube-card',
   'link-card',
+  'map-card',
 ]);
 
 /** Which types this overlay knows how to render — the same set, exported so the
@@ -110,9 +113,85 @@ function FocusBody({ shape }: { shape: TLShape }) {
       return <YouTubeFocus shape={shape} />;
     case 'link-card':
       return <LinkFocus shape={shape} />;
+    case 'map-card':
+      return <MapFocus shape={shape} />;
     default:
       return null;
   }
+}
+
+/** The trip view (docs/MAPS.md P1): map left, itinerary rail right. Rows
+ *  group by the stops' own day labels; hovering a row lifts its pin and the
+ *  camera eases to it. "Open route" hands the whole ordered plan to Google
+ *  Maps navigation — one free link, no API. */
+function MapFocus({ shape }: { shape: TLShape }) {
+  const { intro, stops, ordered } = shape.props as {
+    intro: string;
+    stops: MapStop[];
+    ordered: boolean;
+  };
+  const [active, setActive] = useState<number | null>(null);
+
+  // Preserve the stops' own day labels in first-appearance order; unlabelled
+  // stops group under no header (a places shortlist has no days at all).
+  const groups: Array<{ day: string | null; items: Array<{ stop: MapStop; index: number }> }> = [];
+  stops.forEach((stop, index) => {
+    const day = stop.day?.trim() || null;
+    const last = groups[groups.length - 1];
+    if (last && last.day === day) last.items.push({ stop, index });
+    else groups.push({ day, items: [{ stop, index }] });
+  });
+
+  return (
+    <div className="jz-mapfocus">
+      <div className="jz-mapfocus-map">
+        <MapViewport stops={stops} ordered={ordered} interactive activeIndex={active} />
+      </div>
+      <div className="jz-mapfocus-rail" onMouseLeave={() => setActive(null)}>
+        <div className="jz-mapfocus-railhead">
+          {intro ? <p className="jz-mapfocus-intro">{intro}</p> : null}
+          <a
+            className="jz-mapfocus-route"
+            href={ordered && stops.length > 1 ? googleMapsRouteUrl(stops) : stops[0] ? googleMapsUrl(stops[0]) : '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            ➤ {ordered && stops.length > 1 ? 'Open route' : 'Open in Google Maps'}
+          </a>
+        </div>
+        <div className="jz-mapfocus-rows">
+          {groups.map((group, gi) => (
+            <div key={`g-${gi}`}>
+              {group.day ? <div className="jz-mapfocus-group">{group.day}</div> : null}
+              {group.items.map(({ stop, index }) => (
+                <button
+                  key={`row-${index}`}
+                  className={`jz-mapfocus-row${index === active ? ' jz-mapfocus-row--active' : ''}`}
+                  onMouseEnter={() => setActive(index)}
+                  onFocus={() => setActive(index)}
+                  onClick={() => setActive(index)}
+                >
+                  {stop.time ? <span className="jz-mapfocus-when">{stop.time}</span> : null}
+                  <span className="jz-mapfocus-what">
+                    <span className="jz-mapfocus-name">
+                      {stops.length > 1 ? <span className="jz-mapfocus-n">{index + 1}</span> : null}
+                      {stop.name}
+                      {stop.approx ? <span className="jz-mapfocus-approx">location approximate</span> : null}
+                    </span>
+                    {stop.note ? <span className="jz-mapfocus-note">{stop.note}</span> : null}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="jz-mapfocus-railfoot">
+          <span>{stops.length} stop{stops.length === 1 ? '' : 's'}</span>
+          <span>map data © OpenStreetMap</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function DashboardFocus({ shape }: { shape: TLShape }) {

@@ -6276,3 +6276,229 @@ body,
   color: var(--jz-ink-400);
   text-decoration: none;
 }
+
+/* ─── Inline map block (a ```map fence inside a doc answer — docs/MAPS.md) ── */
+
+.jz-map-block {
+  margin: var(--jz-space-3) 0 var(--jz-space-2);
+}
+
+.jz-map-block-frame {
+  position: relative;
+  height: 200px;
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-md);
+  overflow: hidden;
+  background: var(--jz-surface);
+}
+
+.jz-map-block--pending {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface);
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-400);
+}
+
+.jz-map-block-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px 0;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.jz-map-block-sep {
+  color: var(--jz-ink-300);
+  font-weight: 400;
+}
+
+.jz-map-block-link {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font: 600 11.5px/16px var(--jz-font-ui);
+  color: var(--jz-ink-500);
+  text-decoration: none;
+  border-bottom: 1px solid var(--jz-hairline-strong);
+}
+
+.jz-map-block-link:hover {
+  color: var(--jz-ink-900);
+}
+
+/* ─── Trip view (map card in focus mode — map left, itinerary rail right) ── */
+
+.jz-mapfocus {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.jz-mapfocus-map {
+  position: relative;
+  min-width: 0;
+  background: var(--jz-surface);
+}
+
+.jz-mapfocus-rail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-left: 1px solid var(--jz-hairline);
+  background: var(--jz-card-surface);
+  overflow-y: auto;
+}
+
+.jz-mapfocus-railhead {
+  padding: var(--jz-space-5) var(--jz-space-6) var(--jz-space-4);
+  border-bottom: 1px solid var(--jz-hairline);
+}
+
+.jz-mapfocus-intro {
+  margin: 0 0 var(--jz-space-4);
+  font-size: var(--jz-text-body-sm-size);
+  line-height: var(--jz-text-body-sm-lh);
+  color: var(--jz-ink-500);
+}
+
+.jz-mapfocus-route {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--jz-accent);
+  color: var(--jz-accent-ink);
+  border-radius: var(--jz-radius-pill);
+  font: 600 12px/1 var(--jz-font-ui);
+  padding: 9px 14px;
+  text-decoration: none;
+}
+
+.jz-mapfocus-rows {
+  padding-bottom: var(--jz-space-4);
+}
+
+.jz-mapfocus-group {
+  font-size: var(--jz-text-micro-size);
+  line-height: var(--jz-text-micro-lh);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--jz-ink-400);
+  padding: var(--jz-space-5) var(--jz-space-6) var(--jz-space-2);
+}
+
+.jz-mapfocus-row {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: var(--jz-space-4);
+  align-items: start;
+  width: 100%;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  padding: var(--jz-space-3) var(--jz-space-6);
+  font-family: var(--jz-font-ui);
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+/* A day-less shortlist has no time column — let the name span the row. */
+.jz-mapfocus-row:not(:has(.jz-mapfocus-when)) {
+  grid-template-columns: 1fr;
+}
+
+.jz-mapfocus-row:hover,
+.jz-mapfocus-row--active {
+  background: var(--jz-surface);
+}
+
+.jz-mapfocus-when {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--jz-ink-500);
+  font-variant-numeric: tabular-nums;
+  padding-top: 1px;
+}
+
+.jz-mapfocus-what {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.jz-mapfocus-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--jz-ink-900);
+}
+
+.jz-mapfocus-n {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--jz-accent);
+  color: var(--jz-accent-ink);
+  font-size: 10px;
+  font-weight: 650;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jz-mapfocus-approx {
+  font-size: var(--jz-text-micro-size);
+  font-weight: 500;
+  color: var(--jz-ink-400);
+  border: 1px dashed var(--jz-ink-300);
+  border-radius: var(--jz-radius-pill);
+  padding: 1px 7px;
+}
+
+.jz-mapfocus-note {
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--jz-ink-500);
+}
+
+.jz-mapfocus-railfoot {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--jz-space-4);
+  padding: var(--jz-space-4) var(--jz-space-6);
+  border-top: 1px solid var(--jz-hairline);
+  font-size: var(--jz-text-micro-size);
+  color: var(--jz-ink-400);
+}
+
+/* The trip rail's active pin — lifted, ringed with the accent. */
+.jz-map-pin--active {
+  transform: scale(1.18);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--jz-accent) 22%, transparent), 0 2px 8px rgba(var(--jz-shadow-rgb), 0.3);
+  z-index: 3;
+}
+
+@media (max-width: 900px) {
+  .jz-mapfocus {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .jz-mapfocus-rail {
+    border-left: none;
+    border-top: 1px solid var(--jz-hairline);
+  }
+}
