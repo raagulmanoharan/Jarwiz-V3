@@ -1,7 +1,7 @@
 /**
- * Boards side panel — DOCKED to the app shell's right edge, pushing the canvas
+ * Boards side panel — DOCKED to the app shell's left edge, pushing the canvas
  * aside rather than floating over it (owner call, 2026-07-11; it used to be a
- * floating left drawer). Hosts the workspace switcher, the board list, and
+ * floating drawer). Hosts the workspace switcher, the board list, and
  * backup/restore — opened by the hamburger logo or the title caret, closed by
  * the same toggle or Escape. Lives beside the Tldraw tree in App (not in the
  * overlay slot): the app shell is a flex row and tldraw re-measures as the

@@ -5556,7 +5556,7 @@ body,
 
 /* ─── Side panel (workspace + boards) ───────────────────────────────────── */
 
-/* Docked right column, flex sibling of the canvas area — opening animates the
+/* Docked LEFT column, flex sibling of the canvas area — opening animates the
    WIDTH so the canvas is pushed aside (tldraw re-measures live) instead of
    being covered by a floating drawer (owner call, 2026-07-11). Closed = zero
    width and dropped from the tab order; the fixed-width inner keeps the
@@ -5575,7 +5575,7 @@ body,
 .jz-side--open {
   width: 300px;
   visibility: visible;
-  border-left: 1px solid var(--jz-hairline);
+  border-right: 1px solid var(--jz-hairline);
   transition: width var(--jz-dur-base) var(--jz-ease-out);
 }
 

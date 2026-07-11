@@ -367,12 +367,13 @@ export function App() {
        *  instead of a white page. */}
       <ErrorBoundary variant="app" label="App">
         {/* Flex row: the canvas area gives way when the Boards panel docks on
-            the right (owner call, 2026-07-11 — push, don't float). tldraw
-            re-measures on container resize, so the board reflows live. */}
+            the LEFT (owner call, 2026-07-11 — push, don't float; left, matching
+            the hamburger that opens it). tldraw re-measures on container
+            resize, so the board reflows live. */}
+        <Safe label="SidePanel"><SidePanel /></Safe>
         <div className="jz-canvas-area">
           {restoring ? <RestoreSplash /> : room ? <SyncedBoard room={room} /> : <LocalBoard />}
         </div>
-        <Safe label="SidePanel"><SidePanel /></Safe>
       </ErrorBoundary>
     </div>
   );
