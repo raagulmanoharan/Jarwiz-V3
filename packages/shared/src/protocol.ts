@@ -586,6 +586,12 @@ export type AskEvent =
   | { type: 'table.cell'; r: number; c: number; text: string }
   | { type: 'affinity.cluster'; index: number; label: string }
   | { type: 'affinity.note'; cluster: number; text: string }
+  /** Which numbered sources (1-based, matching the "Source N" numbering the
+   *  model saw) the answer ACTUALLY drew on — the model's own declaration,
+   *  parsed out of the response. Provenance links only what was genuinely
+   *  used: an attached-but-ignored source earns no lineage (owner call,
+   *  2026-07-11). Absent = the client keeps its default (all sources). */
+  | { type: 'sources.used'; indices: number[] }
   | { type: 'card.done' }
   | { type: 'done' }
   | { type: 'error'; message: string };

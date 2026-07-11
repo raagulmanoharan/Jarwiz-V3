@@ -1762,6 +1762,10 @@ body,
 }
 
 /* ─── Streaming draft controls (Keep / Discard) ─────────────────────────── */
+/* INVERTED chrome: the pill floats over the card it acts on, and on the
+ * card's own surface tone it disappeared (owner call 2026-07-11). It sits on
+ * --jz-accent (near-black in light, white in dark) so it reads at a glance in
+ * both themes; everything inside draws from --jz-accent-ink. */
 .jz-draft {
   position: absolute;
   transform: translateX(-50%);
@@ -1771,62 +1775,66 @@ body,
   gap: 8px;
   height: 34px;
   padding: 0 8px 0 12px;
-  border: 1px solid var(--jz-line);
+  border: 1px solid color-mix(in srgb, var(--jz-accent-ink) 14%, transparent);
   border-radius: 999px;
-  background: var(--jz-surface);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+  background: var(--jz-accent);
+  color: var(--jz-accent-ink);
+  box-shadow: var(--jz-e3);
   pointer-events: auto;
 }
 
-.jz-draft-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--jz-accent);
-  animation: jz-draft-pulse 1s ease-in-out infinite;
-}
-
-@keyframes jz-draft-pulse {
-  50% {
-    opacity: 0.35;
-  }
+/* The brand spark, slowly turning while the model writes — Jarwiz at work,
+ * in Jarwiz's own mark (replaces the old pulsing dot; owner call 2026-07-11).
+ * Same shared rotation keyframes the PDF/machine spinners use. */
+.jz-draft-spark {
+  display: inline-flex;
+  align-items: center;
+  color: var(--jz-accent-ink);
+  animation: jz-pdf-spin 1.6s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .jz-draft-dot {
+  .jz-draft-spark {
     animation: none;
   }
 }
 
 .jz-draft-label {
   font-size: 12.5px;
-  color: var(--jz-ink-500);
+  color: color-mix(in srgb, var(--jz-accent-ink) 80%, transparent);
 }
 
 .jz-draft-err {
   font-size: 12px;
-  color: var(--jz-danger);
+  color: var(--jz-danger-inverse);
   max-width: 240px;
 }
 
 .jz-draft-discard {
   height: 26px;
   padding: 0 12px;
-  border: 1px solid var(--jz-line);
+  border: 1px solid color-mix(in srgb, var(--jz-accent-ink) 25%, transparent);
   border-radius: 999px;
-  background: var(--jz-surface);
-  color: var(--jz-ink-500);
+  background: color-mix(in srgb, var(--jz-accent-ink) 8%, transparent);
+  color: var(--jz-accent-ink);
   font-size: 12px;
   cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
 }
 
+.jz-draft-discard:hover {
+  background: color-mix(in srgb, var(--jz-accent-ink) 16%, transparent);
+}
+
+/* Keep is the pill's primary — inverted once more, so it pops against the
+ * inverted ground the way the old accent button popped against the surface. */
 .jz-draft-keep {
   height: 26px;
   padding: 0 16px;
   border: none;
   border-radius: 999px;
-  background: var(--jz-accent);
-  color: var(--jz-accent-ink);
+  background: var(--jz-accent-ink);
+  color: var(--jz-accent);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -1857,7 +1865,7 @@ body,
 
 .jz-sync-spark {
   font-size: 12px;
-  color: var(--jz-spark);
+  color: var(--jz-accent-ink);
 }
 
 .jz-sync-dismiss {
@@ -1867,15 +1875,15 @@ body,
   border: none;
   border-radius: 50%;
   background: transparent;
-  color: var(--jz-ink-400);
+  color: color-mix(in srgb, var(--jz-accent-ink) 55%, transparent);
   font-size: 11px;
   line-height: 1;
   cursor: pointer;
 }
 
 .jz-sync-dismiss:hover {
-  color: var(--jz-ink-700);
-  background: var(--jz-surface-raised);
+  color: var(--jz-accent-ink);
+  background: color-mix(in srgb, var(--jz-accent-ink) 12%, transparent);
 }
 
 /* ─── Activity timeline (event log) ─────────────────────────────────────── */
@@ -2819,16 +2827,6 @@ body,
   }
 }
 
-@keyframes jz-reading-pulse {
-  0%,
-  100% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
 /* Hero showreel overlay: pinned over the canvas, wholly non-interactive so the
    marketing page scrolls over it and the loop stays deterministic. */
 /* Marketing embeds (?embed / ?usecases) are pure showcases — the camera is
@@ -3116,6 +3114,41 @@ body,
 .jz-doc-auto .jz-doc-content {
   flex: none;
   overflow: visible;
+}
+
+/* Source-doc preview (a pasted transcript/notes card): the body truncates and
+   this row opens the full text in focus mode. A soft fade above the row says
+   "there's more" without a hard cut. */
+.jz-doc-viewmore {
+  display: block;
+  width: 100%;
+  margin-top: var(--jz-space-2);
+  padding: var(--jz-space-2) 0 0;
+  border: none;
+  border-top: 1px solid var(--jz-hairline);
+  background: none;
+  text-align: left;
+  font: inherit;
+  font-size: var(--jz-text-caption-size);
+  line-height: var(--jz-text-caption-lh);
+  color: var(--jz-ink-500);
+  cursor: pointer;
+  position: relative;
+  transition: color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-doc-viewmore::before {
+  /* the fade — content dissolving into the cut, drawn above the divider */
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 28px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--jz-card-surface));
+}
+.jz-doc-viewmore:hover {
+  color: var(--jz-ink-900);
 }
 
 /* The one shared selected state lives in a single `.jz-card-selected` rule
@@ -3760,6 +3793,9 @@ body,
 }
 
 /* ─── Agent task control (cancel while running, error + retry) ────────────── */
+/* INVERTED chrome, same call as .jz-draft (owner, 2026-07-11): the chip sits
+ * on the work it controls, so it grounds on --jz-accent and draws its inks
+ * from --jz-accent-ink — unmissable in both themes. */
 .jz-task {
   position: absolute;
   z-index: 316;
@@ -3770,52 +3806,47 @@ body,
   gap: var(--jz-space-3);
   padding: 5px 6px 5px 12px;
   border-radius: var(--jz-radius-pill);
-  background: var(--jz-surface-raised);
+  background: var(--jz-accent);
+  color: var(--jz-accent-ink);
   box-shadow: var(--jz-e3);
-  border: 1px solid var(--jz-hairline);
+  border: 1px solid color-mix(in srgb, var(--jz-accent-ink) 14%, transparent);
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-caption-size);
   animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
 }
 
-.jz-task-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--jz-accent);
-  animation: jz-reading-pulse 1.4s ease-in-out infinite;
-}
-
 .jz-task-label {
   font-weight: 500;
-  color: var(--jz-ink-700);
+  color: color-mix(in srgb, var(--jz-accent-ink) 85%, transparent);
 }
 
 .jz-task--error {
-  border-color: color-mix(in srgb, var(--jz-danger) 35%, transparent);
+  border-color: color-mix(in srgb, var(--jz-danger-inverse) 45%, transparent);
 }
 
 .jz-task-err {
-  color: var(--jz-danger);
+  color: var(--jz-danger-inverse);
   font-weight: 500;
   padding-left: 4px;
 }
 
+/* Retry is the chip's primary — inverted once more against the inverted
+ * ground, mirroring .jz-draft-keep. */
 .jz-task-btn {
   border: none;
   cursor: pointer;
   padding: 4px 11px;
   border-radius: var(--jz-radius-pill);
-  background: var(--jz-ink-900);
-  color: var(--jz-ink-50);
+  background: var(--jz-accent-ink);
+  color: var(--jz-accent);
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-micro-size);
   font-weight: 600;
 }
 
 .jz-task-cancel {
-  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
-  color: var(--jz-ink-700);
+  background: color-mix(in srgb, var(--jz-accent-ink) 10%, transparent);
+  color: var(--jz-accent-ink);
 }
 
 /* ─── Prompt bar (bottom-centre, two-row layout) ─────────────────────────── */
@@ -4272,8 +4303,9 @@ body,
   transform: translateY(-1px);
 }
 /* Onboarding on-ramp hints under the composer (drop / paste). */
+/* On-ramps are REAL buttons (owner call, 2026-07-11) — they always read as
+   buttons, so a dead click there was a broken promise. Pointer events on. */
 .jz-pb-onramp {
-  pointer-events: none;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -4283,6 +4315,7 @@ body,
   transition: opacity var(--jz-dur-base) var(--jz-ease-out), transform var(--jz-dur-base) var(--jz-ease-out);
 }
 .jz-pb-onramp--leaving {
+  pointer-events: none;
   opacity: 0;
   transform: translateY(8px);
 }
@@ -4291,14 +4324,24 @@ body,
   color: var(--jz-ink-400);
 }
 .jz-pb-onramp-item {
+  pointer-events: auto; /* the dock is pointer-transparent; buttons opt back in */
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  font: inherit;
   font-size: var(--jz-text-body-sm-size);
   color: var(--jz-ink-500);
+  background: none;
   border: 1px dashed var(--jz-hairline-strong);
   border-radius: 10px;
   padding: 5px 11px;
+  cursor: pointer;
+  transition: color var(--jz-dur-fast) var(--jz-ease-out), border-color var(--jz-dur-fast) var(--jz-ease-out), background var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-pb-onramp-item:hover {
+  color: var(--jz-ink-900);
+  border-color: var(--jz-ink-400);
+  background: color-mix(in srgb, var(--jz-ink-900) 4%, transparent);
 }
 .jz-pb-onramp-item svg { opacity: 0.85; }
 
@@ -4476,6 +4519,29 @@ body,
   background: color-mix(in srgb, var(--jz-accent) 14%, transparent);
   color: color-mix(in srgb, var(--jz-accent) 70%, var(--jz-ink-900));
   font-weight: 600;
+}
+
+/* One behaviour for the pinned chip, whoever pinned it: the body opens the
+ * "/" menu to change the shape, the ✕ clears to a doc (owner call,
+ * 2026-07-11). */
+.jz-pb-mode--tappable {
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-pb-mode--tappable:hover {
+  background: color-mix(in srgb, var(--jz-accent) 22%, transparent);
+}
+
+/* The intro animation's shape preview is NARRATION of the self-typing
+ * placeholder ("→ Table"), not a control — ghosted and dashed so the first
+ * solid chip a user ever sees is a real one (owner call, 2026-07-11). */
+.jz-pb-mode--preview {
+  background: none;
+  border: 1px dashed var(--jz-hairline-strong);
+  color: var(--jz-ink-400);
+  font-weight: 500;
+  font-style: italic;
+  animation: jz-fade-in var(--jz-dur-fast) var(--jz-ease-out) both;
 }
 
 /* Suggested variant: the shape classifier pinned this as the user typed. The
@@ -5083,6 +5149,9 @@ body,
 }
 
 .jz-cardbar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -5096,6 +5165,20 @@ body,
 }
 
 .jz-cardbar-item:hover { background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent); }
+
+/* The menu entry's leading icon — a fixed column so labels align, tinted
+ * quieter than the label so the words stay primary. */
+.jz-cardbar-item-ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  color: var(--jz-ink-500);
+  transition: color var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-cardbar-item:hover .jz-cardbar-item-ic { color: var(--jz-ink-700); }
 
 /* Discuss panel header (opened from the card action bar) */
 
@@ -5589,6 +5672,11 @@ body,
   overflow: hidden;
   visibility: hidden;
   background: var(--jz-surface-raised);
+  /* The panel is chrome — it paints above the ambient onboarding scene
+     (.jz-ambient, fixed at z-index 150), whose vignette cards otherwise
+     drift over an open panel (review finding, 2026-07-11). */
+  position: relative;
+  z-index: 160;
   transition:
     width var(--jz-dur-base) var(--jz-ease-out),
     visibility 0s var(--jz-dur-base);

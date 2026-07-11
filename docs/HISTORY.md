@@ -796,3 +796,68 @@ warrants it."
   the barrel imports the dashboard util which imports the library (cycle).
 - Verified in the browser against the real Hubble research spec: table (3×6,
   from inside a tab) and image both extracted with lineage intact.
+
+## 2026-07-11 — Card actions audit: real icons, honest Regenerate
+
+**Intent:** "audit all the actions shown on the card types — is Regenerate on
+a doc card valid? And give every action a proper icon; only the flowchart had
+one and it looked generic."
+
+- Every entry in the card bar's Actions and ⋯ menus now leads with a lucide
+  icon (14px, muted `--jz-ink-500` in a fixed 16px column, same sizing as the
+  format row) — replacing the mixed text glyphs (✦ ◇ ⤢ ↻ ✎ ⧉ 🗑) that only
+  some actions carried. The ✦ Actions / ✦ Summary bar buttons use the
+  Sparkles icon proper. Flowchart got `Workflow` (a real flowchart glyph).
+- Regenerate audit verdict: valid only on cards **Jarwiz generated** — it
+  re-runs the ask in place, so on a hand-typed doc it read as "the AI will
+  overwrite my writing". Now gated on the card's recorded lineage
+  (`meta.jzPrompt`/`meta.jzSources`, the same provenance auto-sync uses).
+  Prototype and dashboard cards keep it unconditionally (they're always
+  generated). Known gap for a follow-up: the Analyze/Cluster paths don't
+  record provenance yet, so their docs won't offer Regenerate until they do.
+- Browser-verified both ways: generated doc shows the full menu with icons
+  incl. Regenerate; hand-written doc shows the same menu without it.
+
+## 2026-07-11 — Sources are sacred: paste-to-attach + honest provenance (G2)
+
+**Intent:** from the product review's top finding — "the transcript never
+lands on the board" — the owner specced: pasted text joins the composer as a
+dismissible attachment, renders on canvas as a truncated doc card opening in
+focus mode, and lineage links only what a generation *actually used*
+("just because it was attached doesn't mean it's a source").
+
+- A long multi-line paste into the composer becomes a **text attachment chip**
+  (the same pipeline files already used — `AttachmentKind` grew `'text'`),
+  dismissible before send; the prompt input stays clean and the placeholder
+  invites the instruction ("What should I do with this?").
+- On send it materializes as a normal doc card flagged `meta.jzSourceDoc`:
+  renders a ~550-char preview with a fade + **"View more · N more lines"**
+  that opens the existing focus-mode reader. Checkbox toggling disables on
+  truncated previews (ordinals would desync against the full text).
+- **Honest provenance:** with sources riding along, the model ends its answer
+  with one machine-read `SOURCES_USED: 1, 3` line (tables: a `usedSources`
+  JSON key). The server strips it mid-stream (a prefix-hold filter that never
+  delays prose) and re-emits it as a new `sources.used` AskEvent; the client
+  prunes `meta.jzSources` to just the declared-used cards — including down to
+  empty (attach transcript, ask about OKRs → source card on board, no
+  hairline). Verified live end-to-end, positive and negative cases.
+
+## 2026-07-11 (later) — First-touch entry points (G1)
+
+**Intent:** the review's first-five-minutes fixes, with the owner's mode-pill
+calls: one chip behaviour (no "Suggested:" label split), tappable body,
+narration-style intro preview, cadence untouched.
+
+- **On-ramps are real buttons.** "drop a PDF / paste a link / paste a
+  transcript" were `pointer-events: none` decoration styled as pills — every
+  new user's first click was dead. Now: PDF opens a file picker into the
+  composer-attachment pipeline; the paste on-ramps focus the composer with a
+  transient placeholder hint ("Paste your transcript here (⌘V)…").
+- **The mode chip has ONE behaviour** whoever pinned it: clicking the body
+  opens the "/" picker (the natural gesture on a wrong guess), ✕ clears to a
+  doc. No label distinction between guess and pick (owner call).
+- **The intro preview reads as narration** — the self-typing placeholder's
+  shape preview renders ghosted/dashed as "→ Table", visibly part of the
+  animation, so the first solid chip a user sees is a real control.
+- **Boards panel paints above the ambient vignettes** (panel joined the
+  chrome layer, z 160 over the scene's 150).
