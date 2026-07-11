@@ -3334,6 +3334,11 @@ body,
   border-collapse: separate;
   border-spacing: 0;
   width: 100%;
+  /* Fixed layout so the table can NEVER exceed the card: a many-column table
+   * otherwise keeps its min-content width and spills past the card's right
+   * edge — the camera frames the card perfectly while the table hangs out of
+   * it (review finding G3.2, 2026-07-11). Columns share the width; cells wrap. */
+  table-layout: fixed;
   margin: var(--jz-space-2) 0;
   font-size: var(--jz-text-body-size);
   line-height: var(--jz-text-body-lh);
@@ -3348,6 +3353,7 @@ body,
   padding: var(--jz-space-2) var(--jz-space-3);
   text-align: left;
   vertical-align: top;
+  overflow-wrap: break-word;
 }
 .jz-md-table th:last-child,
 .jz-md-table td:last-child {
