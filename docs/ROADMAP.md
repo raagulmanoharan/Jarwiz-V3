@@ -378,6 +378,12 @@ with retry everywhere the model can fail. Multiplayer is parked behind
 | 8 | **"The board noticed"** | Consent-gated tension/gap nudges — the differentiator, once the loop is bulletproof | M |
 | 9 | **Debt batch** | Server streaming-helper adoption, shape-util base class, remaining small bugs (fit-height ratchet, shared presence key) — one maintenance pass | M |
 
+**Craft — queued (owner call 2026-07-11, address later):**
+
+| # | Build | Why | Size |
+|---|---|---|---|
+| 10 | **WYSIWYG doc editing** | Editing a doc card today means editing its raw markdown source — bold shows as `**bold**`, tables as pipes — then rendering rich on blur. Replace the edit-mode textarea with a live rich-text editor so editing feels as crafted as reading. Must keep what rides the current write path: format bar + ⌘B/I/U, auto-title from the first line, autopilot's Tab hooks, streaming, and markdown as the stored format (asks, sync, and the server all speak it) | L |
+
 Parked by owner decision: **export with source trail** (revisit after 1-4),
 multiplayer hardening.
 

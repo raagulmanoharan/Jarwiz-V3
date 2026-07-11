@@ -2,13 +2,12 @@
  * Tool rail — Flora-style vertical nav column on the left edge.
  * Icons from lucide-react (consistent stroke weight, same family throughout).
  *
- * Cursor → Hand → Text → Upload → Folder → HelpCircle
+ * Select → Pan → Text → Sticky → Prototype → Machines → Upload → Help
  */
 
 import { createShapeId, stopEventPropagation, useEditor, useValue } from 'tldraw';
-import { MousePointer2, Hand, Type, StickyNote, ArrowUpRight, AppWindow, Upload, Folder, HelpCircle } from 'lucide-react';
+import { MousePointer2, Hand, Type, StickyNote, AppWindow, Upload, HelpCircle } from 'lucide-react';
 import { DOC_CARD_SIZE, NOTE_CARD_SIZE, NOTE_PAPER, PROTOTYPE_PROMPT_SIZE, type DocCardShape, type NoteCardShape, type PrototypeCardShape } from '../shapes';
-import { toggleSidePanel } from './sidePanelStore';
 import { toggleHelp } from './help';
 import { MachinesRail } from './MachinesPalette';
 import { useSyncExternalStore } from 'react';
@@ -136,19 +135,16 @@ export function ToolRail() {
       </RailTool>
       {/* The geo Shape tool is gone (owner call 2026-07-10): it armed a
           draw-a-shape mode that read as "nothing happened", and raw geo
-          primitives sit outside the card design system anyway. */}
-      <RailTool label="Arrow (A)" active={toolId === 'arrow'} onClick={() => editor.setCurrentTool('arrow')}>
-        <ArrowUpRight {...ICON_PROPS} />
-      </RailTool>
+          primitives sit outside the card design system anyway. The Arrow and
+          Boards buttons followed (owner call 2026-07-11) — arrows stay on the
+          A shortcut and in generated diagrams; the Boards panel opens from
+          the topbar's workspace name. */}
       <RailTool label="Prototype a UI" active={false} onClick={() => spawnPrototypeCard(editor)}>
         <AppWindow {...ICON_PROPS} />
       </RailTool>
       <MachinesRail />
       <RailTool label="Upload a PDF" active={false} onClick={() => pickAndIngestPdfs(editor)}>
         <Upload {...ICON_PROPS} />
-      </RailTool>
-      <RailTool label="Boards" active={false} onClick={toggleSidePanel}>
-        <Folder {...ICON_PROPS} />
       </RailTool>
       <div className="jz-rail-spacer" aria-hidden />
       <RailTool label="Help" active={false} onClick={toggleHelp}>

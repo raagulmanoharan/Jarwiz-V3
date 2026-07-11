@@ -23,6 +23,7 @@ import { BarChart3, Loader2 } from 'lucide-react';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
 import { dashboardLibrary } from '../dashboard/library';
+import { ExtractHostContext } from '../dashboard/extract';
 
 export interface DashboardCardProps {
   w: number;
@@ -106,7 +107,11 @@ function DashboardBody({ shape }: { shape: DashboardCardShape }) {
           onPointerDown={status === 'done' ? stopEventPropagation : undefined}
           onWheelCapture={status === 'done' ? stopEventPropagation : undefined}
         >
-          <Renderer response={source} library={dashboardLibrary} isStreaming={streaming} />
+          {/* Names this card as the host so blocks can be dragged OUT of it
+              (Extractable/extract.tsx) with lineage back to it. */}
+          <ExtractHostContext.Provider value={shape.id}>
+            <Renderer response={source} library={dashboardLibrary} isStreaming={streaming} />
+          </ExtractHostContext.Provider>
         </div>
       )}
       {status === 'error' ? (
