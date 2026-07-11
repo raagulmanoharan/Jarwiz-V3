@@ -66,8 +66,11 @@ rest; interactive only when deliberately entered) — a live map must never
 steal the canvas's pan/zoom:
 
 - **At rest (board view).** A quiet, theme-matched map viewport + numbered
-  pins + the route + a title header and an `© OpenStreetMap` attribution
-  line. **Pointer-inert**: drag moves the card, scroll pans the canvas.
+  pins + the route + an `© OpenStreetMap` attribution line. No internal
+  header — the title is the standard outside title tag, like every rich card
+  (owner call 2026-07-11: cards don't grow chrome bars); status and the
+  interaction hint are quiet overlay pills inside the viewport.
+  **Pointer-inert**: drag moves the card, scroll pans the canvas.
   While streaming, pins drop in one at a time (materialize motion:
   `--jz-dur-base` / `--jz-ease-spring`, reduced-motion honored).
 - **Editing (double-click).** The map goes live: pan/zoom inside the card,

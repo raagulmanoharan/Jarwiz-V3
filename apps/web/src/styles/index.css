@@ -6046,58 +6046,45 @@ body,
 .jzd-table tr:last-child td { border-bottom: none; }
 
 /* ─── Map card (docs/MAPS.md) ─────────────────────────────────────────────
- * Real places on a real map. The header mirrors the video card's (the header
- * IS the title + drag bar); pins are the design system's accent dots and land
- * with the materialize spring while the Ask stream places stops. */
+ * Real places on a real map. No internal header — like every rich card, the
+ * title is the OUTSIDE tag; the map fills the frame edge to edge. Status and
+ * the interaction hint ride as quiet overlay pills; pins are the design
+ * system's accent dots and land with the materialize spring. */
 
-.jz-map-header {
-  flex: none;
-  height: 36px;
-  display: flex;
+/* Overlay pills inside the viewport — status (inverted, like the draft pill)
+ * and the interaction hint (quiet, card-toned). Never interactive. */
+.jz-map-float {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
+  pointer-events: none;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--jz-ink-500);
-  border-bottom: 1px solid var(--jz-line);
-  background: var(--jz-card);
-  user-select: none;
-}
-
-.jz-map-title {
-  font-weight: 600;
-  color: var(--jz-ink-900);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.jz-map-chip {
-  flex: none;
+  gap: 6px;
+  font-family: var(--jz-font-ui);
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.02em;
   line-height: 1;
-  padding: 4px 8px;
+  padding: 5px 10px;
   border-radius: var(--jz-radius-pill);
   border: 1px solid var(--jz-line);
-  color: var(--jz-ink-400);
-  background: var(--jz-card);
+  color: var(--jz-ink-500);
+  background: color-mix(in srgb, var(--jz-card-surface) 88%, transparent);
 }
 
-/* Live chip rides the INVERTED chrome like the draft pill — it must read at a
- * glance on the card surface in both themes. */
-.jz-map-chip--live {
+/* Live status rides the INVERTED chrome so it reads at a glance (same call
+ * as the Keep/Discard pill, owner 2026-07-11). */
+.jz-map-float--live {
   color: var(--jz-accent-ink);
   background: var(--jz-accent);
   border-color: transparent;
 }
 
-.jz-map-hint {
-  margin-left: auto;
-  flex: none;
-  font-size: 11px;
+.jz-map-float--hint {
+  left: auto;
+  right: 10px;
   color: var(--jz-ink-400);
 }
 
@@ -6107,6 +6094,7 @@ body,
   min-height: 0;
   background: var(--jz-surface);
   overflow: hidden;
+  border-radius: var(--jz-radius-lg);
 }
 
 .jz-map-canvas {

@@ -127,19 +127,13 @@ export class MapCardShapeUtil extends ShapeUtil<MapCardShape> {
 function MapCardBody({ shape }: { shape: MapCardShape }) {
   const isEditing = useIsEditing(shape.id);
   const isSelected = useCardSelected(shape.id);
-  const { title, stops, ordered, status } = shape.props;
+  const { stops, ordered, status } = shape.props;
 
+  // No internal header — like every rich card, the title is the OUTSIDE tag
+  // (shapeTitle TITLED); the map fills the frame edge to edge. Status and the
+  // interaction hint ride as quiet overlay pills inside the viewport.
   return (
     <div className={`jz-card${isSelected ? ' jz-card-selected' : ''}`} data-status={status}>
-      <div className="jz-map-header">
-        <span className="jz-map-title">{title || 'Map'}</span>
-        {status === 'running' ? (
-          <span className="jz-map-chip jz-map-chip--live">✦ placing stops</span>
-        ) : status === 'error' ? (
-          <span className="jz-map-chip">couldn’t verify places</span>
-        ) : null}
-        <span className="jz-map-hint">{isEditing ? 'esc to leave' : 'double-click to pan'}</span>
-      </div>
       <div
         className="jz-map-frame"
         // In edit mode gestures belong to the map, not the canvas; at rest
@@ -148,6 +142,16 @@ function MapCardBody({ shape }: { shape: MapCardShape }) {
         onWheelCapture={isEditing ? stopEventPropagation : undefined}
       >
         <MapViewport stops={stops} ordered={ordered} interactive={isEditing} />
+        {status === 'running' ? (
+          <span className="jz-map-float jz-map-float--live">✦ placing stops</span>
+        ) : status === 'error' ? (
+          <span className="jz-map-float">couldn’t verify places</span>
+        ) : null}
+        {isEditing ? (
+          <span className="jz-map-float jz-map-float--hint">esc to leave</span>
+        ) : isSelected ? (
+          <span className="jz-map-float jz-map-float--hint">double-click to pan</span>
+        ) : null}
       </div>
     </div>
   );

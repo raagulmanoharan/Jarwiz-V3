@@ -10,9 +10,6 @@
 
 import type { Editor, TLShape, TLShapePartial } from 'tldraw';
 
-// map-card shows its title in its own header (like the video card) so it's in
-// TITLE_PROP for grounding/search but deliberately NOT in TITLED — no
-// duplicate outside tag.
 const TITLE_PROP = new Set(['doc-card', 'diagram-card', 'prototype-card', 'dashboard-card', 'link-card', 'youtube-card', 'map-card']);
 const NAME_PROP = new Set(['pdf-card', 'sheet-card', 'image-card', 'frame']);
 
@@ -23,7 +20,7 @@ const NAME_PROP = new Set(['pdf-card', 'sheet-card', 'image-card', 'frame']);
  *  stays in TITLE_PROP above so grounding/search still read its title. */
 export const TITLED = new Set([
   'doc-card', 'table-card', 'pdf-card', 'sheet-card', 'image-card', 'link-card', 'prototype-card',
-  'dashboard-card',
+  'dashboard-card', 'map-card',
 ]);
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
