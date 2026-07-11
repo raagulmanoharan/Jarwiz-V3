@@ -1762,6 +1762,10 @@ body,
 }
 
 /* ─── Streaming draft controls (Keep / Discard) ─────────────────────────── */
+/* INVERTED chrome: the pill floats over the card it acts on, and on the
+ * card's own surface tone it disappeared (owner call 2026-07-11). It sits on
+ * --jz-accent (near-black in light, white in dark) so it reads at a glance in
+ * both themes; everything inside draws from --jz-accent-ink. */
 .jz-draft {
   position: absolute;
   transform: translateX(-50%);
@@ -1771,10 +1775,11 @@ body,
   gap: 8px;
   height: 34px;
   padding: 0 8px 0 12px;
-  border: 1px solid var(--jz-line);
+  border: 1px solid color-mix(in srgb, var(--jz-accent-ink) 14%, transparent);
   border-radius: 999px;
-  background: var(--jz-surface);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+  background: var(--jz-accent);
+  color: var(--jz-accent-ink);
+  box-shadow: var(--jz-e3);
   pointer-events: auto;
 }
 
@@ -1782,7 +1787,7 @@ body,
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--jz-accent);
+  background: var(--jz-accent-ink);
   animation: jz-draft-pulse 1s ease-in-out infinite;
 }
 
@@ -1800,33 +1805,40 @@ body,
 
 .jz-draft-label {
   font-size: 12.5px;
-  color: var(--jz-ink-500);
+  color: color-mix(in srgb, var(--jz-accent-ink) 80%, transparent);
 }
 
 .jz-draft-err {
   font-size: 12px;
-  color: var(--jz-danger);
+  color: var(--jz-danger-inverse);
   max-width: 240px;
 }
 
 .jz-draft-discard {
   height: 26px;
   padding: 0 12px;
-  border: 1px solid var(--jz-line);
+  border: 1px solid color-mix(in srgb, var(--jz-accent-ink) 25%, transparent);
   border-radius: 999px;
-  background: var(--jz-surface);
-  color: var(--jz-ink-500);
+  background: color-mix(in srgb, var(--jz-accent-ink) 8%, transparent);
+  color: var(--jz-accent-ink);
   font-size: 12px;
   cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
 }
 
+.jz-draft-discard:hover {
+  background: color-mix(in srgb, var(--jz-accent-ink) 16%, transparent);
+}
+
+/* Keep is the pill's primary — inverted once more, so it pops against the
+ * inverted ground the way the old accent button popped against the surface. */
 .jz-draft-keep {
   height: 26px;
   padding: 0 16px;
   border: none;
   border-radius: 999px;
-  background: var(--jz-accent);
-  color: var(--jz-accent-ink);
+  background: var(--jz-accent-ink);
+  color: var(--jz-accent);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -1857,7 +1869,7 @@ body,
 
 .jz-sync-spark {
   font-size: 12px;
-  color: var(--jz-spark);
+  color: var(--jz-accent-ink);
 }
 
 .jz-sync-dismiss {
@@ -1867,15 +1879,15 @@ body,
   border: none;
   border-radius: 50%;
   background: transparent;
-  color: var(--jz-ink-400);
+  color: color-mix(in srgb, var(--jz-accent-ink) 55%, transparent);
   font-size: 11px;
   line-height: 1;
   cursor: pointer;
 }
 
 .jz-sync-dismiss:hover {
-  color: var(--jz-ink-700);
-  background: var(--jz-surface-raised);
+  color: var(--jz-accent-ink);
+  background: color-mix(in srgb, var(--jz-accent-ink) 12%, transparent);
 }
 
 /* ─── Activity timeline (event log) ─────────────────────────────────────── */
@@ -3760,6 +3772,9 @@ body,
 }
 
 /* ─── Agent task control (cancel while running, error + retry) ────────────── */
+/* INVERTED chrome, same call as .jz-draft (owner, 2026-07-11): the chip sits
+ * on the work it controls, so it grounds on --jz-accent and draws its inks
+ * from --jz-accent-ink — unmissable in both themes. */
 .jz-task {
   position: absolute;
   z-index: 316;
@@ -3770,9 +3785,10 @@ body,
   gap: var(--jz-space-3);
   padding: 5px 6px 5px 12px;
   border-radius: var(--jz-radius-pill);
-  background: var(--jz-surface-raised);
+  background: var(--jz-accent);
+  color: var(--jz-accent-ink);
   box-shadow: var(--jz-e3);
-  border: 1px solid var(--jz-hairline);
+  border: 1px solid color-mix(in srgb, var(--jz-accent-ink) 14%, transparent);
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-caption-size);
   animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
@@ -3782,40 +3798,42 @@ body,
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--jz-accent);
+  background: var(--jz-accent-ink);
   animation: jz-reading-pulse 1.4s ease-in-out infinite;
 }
 
 .jz-task-label {
   font-weight: 500;
-  color: var(--jz-ink-700);
+  color: color-mix(in srgb, var(--jz-accent-ink) 85%, transparent);
 }
 
 .jz-task--error {
-  border-color: color-mix(in srgb, var(--jz-danger) 35%, transparent);
+  border-color: color-mix(in srgb, var(--jz-danger-inverse) 45%, transparent);
 }
 
 .jz-task-err {
-  color: var(--jz-danger);
+  color: var(--jz-danger-inverse);
   font-weight: 500;
   padding-left: 4px;
 }
 
+/* Retry is the chip's primary — inverted once more against the inverted
+ * ground, mirroring .jz-draft-keep. */
 .jz-task-btn {
   border: none;
   cursor: pointer;
   padding: 4px 11px;
   border-radius: var(--jz-radius-pill);
-  background: var(--jz-ink-900);
-  color: var(--jz-ink-50);
+  background: var(--jz-accent-ink);
+  color: var(--jz-accent);
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-micro-size);
   font-weight: 600;
 }
 
 .jz-task-cancel {
-  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
-  color: var(--jz-ink-700);
+  background: color-mix(in srgb, var(--jz-accent-ink) 10%, transparent);
+  color: var(--jz-accent-ink);
 }
 
 /* ─── Prompt bar (bottom-centre, two-row layout) ─────────────────────────── */
