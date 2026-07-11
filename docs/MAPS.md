@@ -297,10 +297,22 @@ The card exists and the Ask pipeline can produce it.
   the map as anchor; a notice can point at a real timing conflict.
 
 ### P3 — Hardening & hands-on editing `S–M`
+- **Drag and drop is a requirement, not polish (owner call 2026-07-11).**
+  The trip must be shapeable by hand, three interactions:
+  1. **Reorder by dragging rail rows** — drag a stop up/down in the trip
+     view's itinerary rail; the stop order, pin numbers, route arc, and the
+     Open route link all update live. One drag = one undo step.
+  2. **Drag a pin to nudge** (edit mode) — moving a pin rewrites that stop's
+     coordinates and clears/sets its `approx` flag honestly ("you placed
+     it" is a verified-by-you location).
+  3. **Drop onto the map to add** — a link card or a plain text drag dropped
+     onto a map card becomes a new stop: the server geocodes the dropped
+     name/URL's place and the pin lands where it belongs (falls back to the
+     ask pipeline's Add-a-stop refine when nothing geocodable is found).
 - WebGL budget: snapshot-to-image at rest, live map only while
   editing/focused (browsers cap ~8–16 contexts; boards can hold many maps).
-- Manual editing: drag a pin to nudge, add a stop by search box (the
-  geocode helper gets a real endpoint), delete/reorder from the rail.
+- Add a stop by search box (the geocode endpoint already exists — P1
+  shipped `POST /api/geo/stops`); delete from the rail.
 - Eval: `scripts/eval-map.mjs` driving the real flow (mode → stream → pins
   → deep-link URLs well-formed), honest about sandbox tile flakiness.
 
