@@ -12,11 +12,18 @@
  * tldraw never mistakes the gesture for a card translate; a small ghost pill
  * follows the pointer; release over the canvas (outside the host card)
  * creates + selects the extracted card, anywhere else cancels.
+ *
+ * Affordance: SELECTING the rich card reveals every handle (the same moment
+ * the action bar and lineage lines appear). Hover-reveal can't work here —
+ * tldraw keeps shape HTML at pointer-events:none so the card body stays
+ * draggable, which also means blocks never receive CSS hover. The handles
+ * themselves re-enable pointer events only while shown.
  */
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useEditor, type Editor, type TLShapeId } from 'tldraw';
+import { useCardSelected } from '../shapes/useCardSelected';
 
 /** Same key useAsk writes (`jzSources`) — duplicated as a literal to keep this
  *  module out of the shapes→library→extract→useAsk import cycle. */
@@ -50,6 +57,7 @@ export function Extractable({
 
 function ExtractHandle({ label, makeCard, hostId }: { label: string; makeCard: MakeCard; hostId: TLShapeId }) {
   const editor = useEditor();
+  const selected = useCardSelected(hostId);
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
 
   // Escape aborts a drag in flight.
@@ -103,12 +111,13 @@ function ExtractHandle({ label, makeCard, hostId }: { label: string; makeCard: M
   return (
     <>
       <button
-        className="jzd-extract-handle"
+        className={`jzd-extract-handle${selected || ghost ? ' jzd-extract-handle--on' : ''}`}
         title={`Drag out as a ${label.toLowerCase()} card`}
         aria-label={`Drag out as a ${label.toLowerCase()} card`}
         onPointerDown={onPointerDown}
       >
         <GripGlyph />
+        <span className="jzd-extract-tag">{label}</span>
       </button>
       {ghost
         ? createPortal(

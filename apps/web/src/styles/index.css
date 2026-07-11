@@ -6026,32 +6026,51 @@ body,
 .jzd-tab--active { color: var(--jz-ink-900); border-bottom-color: var(--jz-accent); }
 .jzd-tabpanel { min-width: 0; }
 
-/* Drag-out affordance — a block inside a rich card (table/image/prose/chart)
-   grows a grab handle on hover; dragging it onto the canvas extracts it as a
-   real card of the right type (dashboard/extract.tsx). */
+/* Drag-out affordance — SELECTING the rich card reveals a grab handle on every
+   extractable block (table/image/prose/chart); dragging one onto the canvas
+   extracts it as a real card of the right type (dashboard/extract.tsx).
+   Selection is the reveal because tldraw keeps shape HTML pointer-events:none
+   (so the card body stays draggable) — blocks can never receive CSS hover. */
 .jzd-extract { position: relative; min-width: 0; flex: 1 1 auto; }
 .jzd-extract-handle {
   position: absolute;
   top: 6px;
   right: 6px;
-  width: 24px;
   height: 24px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 1px solid var(--jz-hairline);
-  border-radius: var(--jz-radius-xs);
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid var(--jz-hairline-strong);
+  border-radius: 999px;
   background: var(--jz-surface-raised);
-  color: var(--jz-ink-400);
+  color: var(--jz-ink-500);
+  font-family: var(--jz-font-ui);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   cursor: grab;
   opacity: 0;
+  pointer-events: none;
   transition: opacity var(--jz-dur-fast) var(--jz-ease-out);
   z-index: 2;
 }
-.jzd-extract:hover > .jzd-extract-handle { opacity: 1; }
-.jzd-extract-handle:hover { color: var(--jz-ink-700); box-shadow: var(--jz-e1); }
+.jzd-extract-handle--on {
+  opacity: 1;
+  pointer-events: all;
+}
+.jzd-extract-handle:hover {
+  color: var(--jz-ink-900);
+  border-color: var(--jz-ink-400);
+  box-shadow: var(--jz-e1);
+}
 .jzd-extract-handle:active { cursor: grabbing; }
+.jzd-extract-tag { line-height: 1; }
+
+/* Tab buttons must re-enable pointer events themselves — the surrounding
+   shape HTML is pointer-events:none (see the drag-out note above), so without
+   this a real mouse could never switch tabs. */
+.jzd-tab { pointer-events: all; }
 
 /* The pill that rides the pointer during an extract drag. */
 .jz-extract-ghost {
