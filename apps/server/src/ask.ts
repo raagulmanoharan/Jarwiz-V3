@@ -14,6 +14,7 @@ import { AGENT_MODEL } from './agents/runtime.js';
 import { assetPath, extractAssetPages, extractAssetText, getAsset } from './assets.js';
 import { cacheImagesInRows } from './imageCache.js';
 import { FIND_IMAGE_TOOL, runFindImage } from './imageSearch.js';
+import { distanceKm, geocode, medoid } from './geo.js';
 import { extractSheetText } from './sheets.js';
 import { getMachine, type MachineSkill } from './machines.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
@@ -134,6 +135,24 @@ bar = BarChart("Revenue by region", ["NA","EU","APAC","LATAM"], [120, 80, 50, 34
 line = LineChart("Monthly revenue", ["Jan","Feb","Mar","Apr","May"], [42, 38, 51, 47, 53])
 tbl = Card("By region", [t1])
 t1 = Table(["Region","Revenue","Orders"], [["NA","$120k","540"],["EU","$80k","410"]])`;
+
+/** A map answer is structured stops the server geocodes before each pin is
+ *  emitted (docs/MAPS.md) — the table pattern (generate → enrich → fan out
+ *  events), not the dashboard's opaque streamed spec. */
+const MAP_SYSTEM = `You answer a places request as a MAP — real, specific places the user can actually visit: a trip itinerary, a day plan with stops, a shortlist of options, or a single recommended place. Return ONLY a JSON object:
+
+{"title": string, "intro": string, "ordered": boolean, "stops": [{"name": string, "query": string, "day"?: string, "time"?: string, "note"?: string, "lat"?: number, "lng"?: number}]}
+
+- "title": short and concrete ("Savandurga + Manchanabele day trip").
+- "intro": ONE line of the reasoning behind the geometry ("both on the Magadi Road side, so drives stay short").
+- "ordered": true when the stops form a visiting order (an itinerary/route); false when they are options to pick from (a shortlist, "temples near X") or a single place.
+- "stops": 1–10 REAL places. Never invent a place; if you are not confident it exists, leave it out.
+  - "name": what a person calls it ("Savandurga Trek").
+  - "query": a REGION-QUALIFIED geocodable string — place, locality, state/region, country ("Savandurga Betta, Magadi, Karnataka, India"). This is looked up on a real geocoder; qualify it enough that the FIRST result is the right place, never a same-named place elsewhere.
+  - "day"/"time": only for itineraries — "Day 1"/"Morning" and "6:30 AM" style. Omit for options.
+  - "note": one tight line of judgement a friend would give ("steep but short (~2 km) — book the forest-dept slot early"). Omit if you have nothing real to say.
+  - "lat"/"lng": your best-guess coordinates as a FALLBACK for when the geocoder misses — give them when you know the area, omit when unsure. The geocoder's answer wins when it resolves.
+Ground stops in the provided sources when they name places; otherwise draw on what you reliably know (use web search if available to verify current names). No prose outside the JSON, no code fences.`;
 
 const AFFINITY_SYSTEM = `You run an affinity-mapping exercise: turn the request and the source(s) into clustered sticky notes. Return ONLY a JSON object {"clusters": [{"label": string, "notes": string[]}]}. Make 3–6 clusters; each has a short 1–4 word "label" (the theme) and 2–6 short "notes" (each one idea, a few words). Group related ideas under the same theme. Ground notes in the provided content when a source is given; otherwise brainstorm sensible ideas for the request. No prose, no code fences.`;
 
@@ -763,6 +782,32 @@ async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenera
     return;
   }
 
+  // A map ask has a concrete shape to show even without a model — drop a
+  // canned Bengaluru day trip pin by pin (real places, hard-coded coordinates,
+  // no geocoder) so the map card is demoable keyless.
+  if (req.shape === 'map') {
+    yield {
+      type: 'card.create',
+      shape: 'map',
+      title: 'Savandurga + Manchanabele day trip (demo)',
+      intro: 'Both sit on the Magadi Road side of Bengaluru, so drives between stops stay short.',
+      ordered: true,
+    };
+    const stops = [
+      { name: 'Savandurga Trek', query: 'Savandurga Betta, Magadi, Karnataka, India', lat: 12.9194, lng: 77.2926, day: 'Morning', time: '6:30 AM', note: 'Steep but short (~2 km) — set a key for a real, planned trip.' },
+      { name: 'Dodda Alada Mara', query: 'Dodda Alada Mara, Ramohalli, Karnataka, India', lat: 12.9226, lng: 77.3934, day: 'Morning', time: '12:30 PM', note: 'The 400-year-old banyan — an easy lunch-side stop.' },
+      { name: 'Manchanabele Dam', query: 'Manchanabele Dam, Karnataka, India', lat: 12.9401, lng: 77.3427, day: 'Afternoon', time: '4:30 PM', note: 'Timed late on purpose — it’s a sunset spot.' },
+    ];
+    for (let i = 0; i < stops.length; i++) {
+      if (signal.aborted) return;
+      yield { type: 'map.pin', index: i, stop: stops[i]! };
+      await sleep(340, signal);
+    }
+    yield { type: 'card.done' };
+    yield { type: 'done' };
+    return;
+  }
+
   yield { type: 'card.create', shape: 'doc', title: 'Demo mode' };
   const body =
     `You asked: *${req.prompt.slice(0, 140)}*\n\n` +
@@ -844,6 +889,7 @@ const SHAPE_SUGGEST_SYSTEM = `A user is typing a request into a canvas app that 
 - DIAGRAM — boxes and arrows: a flowchart, process flow, architecture, sequence, org chart, mind map, "how X works".
 - PROTOTYPE — a live, rendered, interactive UI: an app, screen, form, widget, game, landing page, signup, timer, calculator.
 - DASHBOARD — turning DATA into an interactive view of KPIs, charts and a table: "dashboard of…", "visualise the… data/metrics/sales/revenue", analytics/KPIs/scorecard.
+- MAP — real PLACES to visit, on a map: a trip/day-trip/route with stops, an itinerary tied to geography, "places/cafés/temples near X", "where should I go…".
 - BOARD — a whole SET of cards laid out together for a broad, multi-part goal: "plan my launch", "organise everything for my trip", a workspace, everything you need end-to-end.
 
 Examples:
@@ -862,12 +908,15 @@ Examples:
 "dashboard of Q2 sales" → DASHBOARD
 "visualise revenue by region" → DASHBOARD
 "kpis for our SaaS metrics" → DASHBOARD
+"plan a day trip from Bengaluru with a trek and a waterfall" → MAP
+"good temples near Mysore" → MAP
+"route for our Coorg road trip" → MAP
 "plan my product launch" → BOARD
 "organise everything for my Goa trip" → BOARD
 
-Reply with EXACTLY one word: DOC, LIST, TABLE, DIAGRAM, PROTOTYPE, DASHBOARD, or BOARD.`;
+Reply with EXACTLY one word: DOC, LIST, TABLE, DIAGRAM, PROTOTYPE, DASHBOARD, MAP, or BOARD.`;
 
-const SUGGESTABLE = new Set(['doc', 'list', 'table', 'diagram', 'prototype', 'dashboard', 'board']);
+const SUGGESTABLE = new Set(['doc', 'list', 'table', 'diagram', 'prototype', 'dashboard', 'map', 'board']);
 
 export async function suggestShape(prompt: string, signal: AbortSignal): Promise<string | null> {
   const p = prompt.trim();
@@ -956,6 +1005,11 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
 
   if (shape === 'dashboard') {
     yield* streamDashboard(user, signal, images);
+    return;
+  }
+
+  if (shape === 'map') {
+    yield* streamMap(user, signal, images, { framePaths, imageData });
     return;
   }
 
@@ -1084,6 +1138,127 @@ async function* runMachineSkill(
   }
 
   yield* streamDoc(machine.output === 'list' ? 'list' : 'doc', machine.systemPrompt, user, signal, images, opts);
+}
+
+/** A trip's stops cluster geographically; a geocode hit farther than this from
+ *  the group's medoid is treated as a mis-match and demoted to "approximate". */
+const MAP_REGION_KM = 500;
+const MAP_MAX_STOPS = 10;
+
+/** What the model proposes per stop (coordinates are its fallback guess). */
+interface ProposedStop {
+  name: string;
+  query: string;
+  day?: string;
+  time?: string;
+  note?: string;
+  lat?: number;
+  lng?: number;
+}
+
+const plausible = (lat: unknown, lng: unknown): boolean =>
+  typeof lat === 'number' && typeof lng === 'number' &&
+  Number.isFinite(lat) && Number.isFinite(lng) &&
+  Math.abs(lat) <= 90 && Math.abs(lng) <= 180 &&
+  !(Math.abs(lat) < 0.5 && Math.abs(lng) < 0.5); // null island = no guess
+
+/**
+ * Stream a map: the model proposes real stops as JSON, the server verifies
+ * each location against a real geocoder (cached, throttled — geo.ts), then the
+ * pins land one by one. A stop whose location can't be verified either falls
+ * back to the model's own coordinates flagged `approx` (the card renders the
+ * doubt) or is dropped — never a silently wrong pin. See docs/MAPS.md.
+ */
+async function* streamMap(
+  user: string,
+  signal: AbortSignal,
+  images: ImageInput[] = [],
+  opts: GenOpts = {},
+): AsyncGenerator<AskEvent> {
+  yield { type: 'status', message: 'planning the stops…' };
+  const raw = await generate(MAP_SYSTEM, user, signal, images, { ...opts, web: true });
+  if (signal.aborted) return;
+
+  let title = '';
+  let intro = '';
+  let ordered = true;
+  let proposed: ProposedStop[] = [];
+  try {
+    const json = JSON.parse(raw.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()) as {
+      title?: unknown;
+      intro?: unknown;
+      ordered?: unknown;
+      stops?: unknown;
+    };
+    title = typeof json.title === 'string' ? json.title.slice(0, 90) : '';
+    intro = typeof json.intro === 'string' ? json.intro.slice(0, 200) : '';
+    ordered = json.ordered !== false;
+    proposed = Array.isArray(json.stops)
+      ? json.stops
+          .filter((s): s is Record<string, unknown> => Boolean(s) && typeof s === 'object')
+          .map((s) => ({
+            name: String(s.name ?? '').slice(0, 80),
+            query: String(s.query ?? s.name ?? '').slice(0, 160),
+            day: typeof s.day === 'string' ? s.day.slice(0, 30) : undefined,
+            time: typeof s.time === 'string' ? s.time.slice(0, 20) : undefined,
+            note: typeof s.note === 'string' ? s.note.slice(0, 200) : undefined,
+            lat: typeof s.lat === 'number' ? s.lat : undefined,
+            lng: typeof s.lng === 'number' ? s.lng : undefined,
+          }))
+          .filter((s) => s.name.trim() && s.query.trim())
+          .slice(0, MAP_MAX_STOPS)
+      : [];
+  } catch {
+    /* fall through — no clean JSON means no map; degrade to a written answer */
+  }
+  if (proposed.length === 0) {
+    yield* streamDoc('doc', DOC_SYSTEM + WEB_DIRECTIVE, user, signal, images, { ...opts, web: true });
+    return;
+  }
+
+  yield { type: 'card.create', shape: 'map', title: title || undefined, intro: intro || undefined, ordered };
+  yield { type: 'status', message: 'finding the places…' };
+
+  // Verify every stop first (cache makes repeats instant; the policy throttle
+  // spaces real lookups), THEN drop the pins in visiting order — the emission
+  // is the animation, so the geocoding wait never shows as a half-built map.
+  const located: Array<{ stop: ProposedStop; lat: number; lng: number; approx: boolean }> = [];
+  for (const stop of proposed) {
+    if (signal.aborted) return;
+    const hit = await geocode(stop.query, signal);
+    if (hit) located.push({ stop, lat: hit.lat, lng: hit.lng, approx: false });
+    else if (plausible(stop.lat, stop.lng)) located.push({ stop, lat: stop.lat!, lng: stop.lng!, approx: true });
+    // Unverifiable with no fallback guess → dropped, not invented.
+  }
+  if (located.length === 0) {
+    yield { type: 'card.done' };
+    yield { type: 'error', message: 'Couldn’t verify any of the places — try naming them more specifically.' };
+    return;
+  }
+
+  // Region sanity: a same-named place in another state sits far from the
+  // group; demote such outliers to approximate (visible doubt on the pin).
+  if (located.length >= 3) {
+    const anchor = medoid(located.filter((l) => !l.approx));
+    if (anchor) {
+      for (const l of located) {
+        if (!l.approx && distanceKm(l, anchor) > MAP_REGION_KM) l.approx = true;
+      }
+    }
+  }
+
+  for (let i = 0; i < located.length; i++) {
+    if (signal.aborted) return;
+    const { stop, lat, lng, approx } = located[i]!;
+    yield {
+      type: 'map.pin',
+      index: i,
+      stop: { name: stop.name, query: stop.query, lat, lng, approx: approx || undefined, day: stop.day, time: stop.time, note: stop.note },
+    };
+    await sleep(340, signal);
+  }
+  yield { type: 'card.done' };
+  yield { type: 'done' };
 }
 
 /**

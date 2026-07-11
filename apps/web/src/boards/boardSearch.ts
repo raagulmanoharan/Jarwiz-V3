@@ -34,6 +34,16 @@ function recordText(record: AnyRecord): string {
   push(props.description); // link card
   push(props.url); // link card
   if (Array.isArray(props.columns)) (props.columns as unknown[]).forEach(push);
+  // Map cards: stop names/notes are what a person would search for.
+  if (Array.isArray(props.stops)) {
+    (props.stops as Array<Record<string, unknown>>).forEach((s) => {
+      if (s && typeof s === 'object') {
+        push(s.name);
+        push(s.note);
+        push(s.day);
+      }
+    });
+  }
   if (Array.isArray(props.rows)) {
     (props.rows as unknown[][]).forEach((row) => Array.isArray(row) && row.forEach(push));
   }

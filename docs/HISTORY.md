@@ -794,3 +794,36 @@ one and it looked generic."
   record provenance yet, so their docs won't offer Regenerate until they do.
 - Browser-verified both ways: generated doc shows the full menu with icons
   incl. Regenerate; hand-written doc shows the same menu without it.
+
+## 2026-07-11 — Map card P0: /Map mode, verified pins, keyless demo
+
+**Intent:** "Need the rich card to support maps. It will be useful for trip
+planning." Planned in full first (docs/MAPS.md, PR #54), then P0 built on the
+same branch: the card + the `/Map` mode + pin-by-pin streaming.
+
+- **The shape:** `map-card` (MapLibre GL over OpenFreeMap vector tiles — no
+  key, no billing; positron light / dark by theme; the library is a lazy
+  chunk like pdf.js/mermaid, ~285kB gzip off the cold load). YouTube's
+  interaction rule: inert at rest, pan/zoom only in edit mode. Pins are
+  accent dots with the materialize spring; clicking one (in edit mode) opens
+  the place in Google Maps — a free deep link, no API.
+- **The pipeline:** `/Map` in the "/" menu → `MAP_SYSTEM` returns stop JSON →
+  the server verifies every stop against Nominatim (`geo.ts`: mandatory
+  cache, ≤1 req/s global throttle, identifying UA — their policy) → `map.pin`
+  events land one at a time (the table-cell pattern). Geocode misses fall
+  back to model coordinates flagged `approx` (dashed ring — visible doubt);
+  a ≥3-stop run demotes >500km medoid outliers the same way. Keyless demo
+  streams a canned Bengaluru day trip with hard-coded coords.
+- **Degrade state:** tiles unreachable → pins keep their relative geography
+  on plain paper with a quiet "map tiles unavailable" chip (that's what the
+  sandbox QA shots show — both providers are blocked here; verified live on
+  a real network at build review time instead).
+- **Gotcha for the ages:** adding the 26th shape type pushed tldraw's shape
+  union past TypeScript's 25-constituent discriminated-union limit — every
+  generic `updateShape({ type: shape.type, x, y })` site stopped narrowing.
+  Fix: the `as TLShapePartial` cast shapeTitle.ts already used for exactly
+  this pattern, applied at the eight cross-type call sites. Also: tldraw
+  props must be JSON-compatible — a shared `interface` in props breaks the
+  global shape map; use a `type` alias.
+- Remaining in docs/MAPS.md phasing: P1 (focus rail + inline doc map block +
+  Open route), P2 (compose + OSRM routes + board scans), P3 (hardening).

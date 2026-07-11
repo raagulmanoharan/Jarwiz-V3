@@ -10,6 +10,7 @@ import type { AnalyzeCard } from '@jarwiz/shared';
 
 const CARD_TYPES = new Set([
   'doc-card', 'note-card', 'table-card', 'diagram-card', 'prototype-card', 'link-card', 'pdf-card', 'youtube-card', 'sheet-card',
+  'map-card',
 ]);
 const PRIMITIVE_TYPES = new Set(['geo', 'text', 'note', 'arrow', 'frame']);
 const MAX_CARDS = 30;
@@ -36,6 +37,18 @@ function extract(editor: Editor, shape: ReturnType<Editor['getShape']>): Analyze
       return typeof p.code === 'string' && p.code.trim() ? { kind: 'diagram', title, text: p.code } : null;
     case 'prototype-card':
       return typeof p.html === 'string' && p.html.trim() ? { kind: 'prototype', title, text: p.html } : null;
+    case 'map-card': {
+      // The trip joins scans as its stop list — so "the board noticed" can see
+      // a sunset spot scheduled at 11:30 AM, and compose can build around it.
+      const stops = Array.isArray(p.stops) ? (p.stops as Array<Record<string, unknown>>) : [];
+      if (stops.length === 0) return null;
+      const intro = typeof p.intro === 'string' && p.intro.trim() ? `${p.intro.trim()}\n` : '';
+      const lines = stops.map((s, i) => {
+        const when = [s.day, s.time].filter(Boolean).join(' ');
+        return `${i + 1}. ${String(s.name ?? '')}${when ? ` (${when})` : ''}${s.note ? ` — ${String(s.note)}` : ''}`;
+      });
+      return { kind: 'map', title, text: `${intro}${lines.join('\n')}` };
+    }
     case 'table-card': {
       const cols = Array.isArray(p.columns) ? (p.columns as string[]) : [];
       const rows = Array.isArray(p.rows) ? (p.rows as string[][]) : [];

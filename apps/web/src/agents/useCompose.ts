@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
-import { createShapeId, useEditor, type Box, type Editor, type TLShape, type TLShapeId } from 'tldraw';
+import { createShapeId, useEditor, type Box, type Editor, type TLShape, type TLShapeId, type TLShapePartial } from 'tldraw';
 import type { ComposeEvent } from '@jarwiz/shared';
 import { DOC_CARD_SIZE, TABLE_CARD_SIZE, PROTOTYPE_CARD_SIZE, type DocCardShape, type TableCardShape, type PrototypeCardShape } from '../shapes';
 import { setShapeTitle } from '../shapes/shapeTitle';
@@ -264,7 +264,7 @@ function gridPack(
     if (!s) continue;
     const x = originX + c.col * (CELL_W + H_GAP);
     const cy = rowY.get(c.row) ?? originY;
-    if (s.x !== x || s.y !== cy) editor.updateShape({ id: c.id, type: s.type, x, y: cy });
+    if (s.x !== x || s.y !== cy) editor.updateShape({ id: c.id, type: s.type, x, y: cy } as TLShapePartial);
   }
 }
 
@@ -277,7 +277,7 @@ function shelfPack(editor: Editor, ids: TLShapeId[], originX: number, originY: n
     const b = editor.getShapePageBounds(id);
     const s = editor.getShape(id);
     if (!b || !s) continue;
-    if (s.x !== x || s.y !== originY) editor.updateShape({ id, type: s.type, x, y: originY });
+    if (s.x !== x || s.y !== originY) editor.updateShape({ id, type: s.type, x, y: originY } as TLShapePartial);
     x += b.w + H_GAP;
   }
 }

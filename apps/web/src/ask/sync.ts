@@ -90,6 +90,7 @@ const CONTENT_PROPS: Record<string, string[]> = {
   'diagram-card': ['code'],
   'dashboard-card': ['spec'],
   'prototype-card': ['html'],
+  'map-card': ['stops', 'title'],
   geo: ['richText'],
   text: ['richText'],
   note: ['richText'],

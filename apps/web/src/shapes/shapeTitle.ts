@@ -10,7 +10,10 @@
 
 import type { Editor, TLShape, TLShapePartial } from 'tldraw';
 
-const TITLE_PROP = new Set(['doc-card', 'diagram-card', 'prototype-card', 'dashboard-card', 'link-card', 'youtube-card']);
+// map-card shows its title in its own header (like the video card) so it's in
+// TITLE_PROP for grounding/search but deliberately NOT in TITLED — no
+// duplicate outside tag.
+const TITLE_PROP = new Set(['doc-card', 'diagram-card', 'prototype-card', 'dashboard-card', 'link-card', 'youtube-card', 'map-card']);
 const NAME_PROP = new Set(['pdf-card', 'sheet-card', 'image-card', 'frame']);
 
 /** Shape types that carry the outside title tag. Deliberately absent:

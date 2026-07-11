@@ -565,7 +565,31 @@ export interface ReviseResult {
  *  - `affinity` — clustered sticky notes (an affinity diagram): not one card but
  *    a set of `note` cards grouped into labelled clusters.
  */
-export type AskShape = 'doc' | 'table' | 'list' | 'diagram' | 'affinity' | 'prototype' | 'dashboard';
+export type AskShape = 'doc' | 'table' | 'list' | 'diagram' | 'affinity' | 'prototype' | 'dashboard' | 'map';
+
+/**
+ * One stop on a map card. The model proposes `name`/`query` (+ day/time/note
+ * for itineraries); the server geocodes `query` into lat/lng before the pin is
+ * emitted. `approx` marks a pin whose location could NOT be verified (geocode
+ * miss → model's best-guess coordinates) — the card renders it visibly
+ * different, never silently wrong. See docs/MAPS.md.
+ */
+/* A `type` alias, not an `interface`, on purpose: these ride inside tldraw
+ * shape props, whose JsonValue constraint interfaces don't satisfy. */
+export type MapStop = {
+  name: string;
+  /** Region-qualified geocodable string ("Savandurga Betta, Magadi, Karnataka"). */
+  query: string;
+  lat: number;
+  lng: number;
+  approx?: boolean;
+  /** Rail grouping ("Day 1" / "Morning") — present only for itineraries. */
+  day?: string;
+  /** "6:30 AM" — present only for itineraries. */
+  time?: string;
+  /** One tight line of judgement ("steep but short — book slots early"). */
+  note?: string;
+};
 
 /** SSE events for a single Ask response.
  *  - Tables build live: `card.create` carries the columns + row count, then
@@ -580,10 +604,24 @@ export type AskEvent =
    *  few tappable options before making anything. The run ends after this; the
    *  client re-asks with the answer folded in (and `skipClarify`). */
   | { type: 'clarify'; question: string; options: string[] }
-  | { type: 'card.create'; shape: AskShape; title?: string; columns?: string[]; rowCount?: number }
+  | {
+      type: 'card.create';
+      shape: AskShape;
+      title?: string;
+      columns?: string[];
+      rowCount?: number;
+      /** Map cards: the one-line thesis ("both on the Magadi Road side…"). */
+      intro?: string;
+      /** Map cards: stops form a visiting order (route) vs. unordered options
+       *  (places) — decides whether the card draws a route line. */
+      ordered?: boolean;
+    }
   | { type: 'card.title'; title: string }
   | { type: 'card.delta'; textDelta: string }
   | { type: 'table.cell'; r: number; c: number; text: string }
+  /** Drop one geocoded stop onto a map card, in visiting order — the map
+   *  assembles pin by pin, the way a table fills cell by cell. */
+  | { type: 'map.pin'; index: number; stop: MapStop }
   | { type: 'affinity.cluster'; index: number; label: string }
   | { type: 'affinity.note'; cluster: number; text: string }
   | { type: 'card.done' }

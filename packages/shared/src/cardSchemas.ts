@@ -70,6 +70,30 @@ export const cardShapeProps = {
     code: T.string,
     title: T.string,
   },
+  'map-card': {
+    w: T.number,
+    h: T.number,
+    title: T.string,
+    /** The one-line thesis behind the geometry (shown in the focus rail, P1). */
+    intro: T.string,
+    /** Geocoded stops in visiting order — see MapStop in protocol.ts. */
+    stops: T.arrayOf(
+      T.object({
+        name: T.string,
+        query: T.string,
+        lat: T.number,
+        lng: T.number,
+        approx: T.boolean.optional(),
+        day: T.string.optional(),
+        time: T.string.optional(),
+        note: T.string.optional(),
+      }),
+    ),
+    /** Route (ordered stops, dashed line) vs. places (options, no line). */
+    ordered: T.boolean,
+    /** 'running' (pins still landing) | 'done' | 'error'. */
+    status: T.string,
+  },
   'prototype-card': {
     w: T.number,
     h: T.number,

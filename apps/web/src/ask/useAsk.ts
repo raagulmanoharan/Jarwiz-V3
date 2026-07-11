@@ -19,6 +19,7 @@ import {
   type TLRichText,
   type TLShape,
   type TLShapeId,
+  type TLShapePartial,
 } from 'tldraw';
 import type { AskEvent, AskShape, AskSource } from '@jarwiz/shared';
 import {
@@ -27,6 +28,7 @@ import {
   TABLE_CARD_SIZE,
   PROTOTYPE_CARD_SIZE,
   DASHBOARD_CARD_SIZE,
+  MAP_CARD_SIZE,
   affinityColor,
   type DiagramCardShape,
   type DocCardShape,
@@ -34,6 +36,7 @@ import {
   type TableCardShape,
   type PrototypeCardShape,
   type DashboardCardShape,
+  type MapCardShape,
 } from '../shapes';
 import { readSSE } from '../agents/sse';
 import { startStreaming, stopStreaming } from '../agents/streaming';
@@ -80,6 +83,7 @@ export const REFINABLE: Record<string, AskShape> = {
   'diagram-card': 'diagram',
   'prototype-card': 'prototype',
   'dashboard-card': 'dashboard',
+  'map-card': 'map',
 };
 
 /** Does a server-chosen shape land on the SAME card kind we're refining? A
@@ -92,6 +96,7 @@ function isInPlace(cardType: string | undefined, shape: AskShape): boolean {
   if (cardType === 'diagram-card') return shape === 'diagram';
   if (cardType === 'prototype-card') return shape === 'prototype';
   if (cardType === 'dashboard-card') return shape === 'dashboard';
+  if (cardType === 'map-card') return shape === 'map';
   return false;
 }
 
@@ -161,6 +166,18 @@ function toSource(editor: Editor, shape: TLShape): AskSource | null {
       const spec = String((p as { spec?: unknown }).spec ?? '');
       return spec.trim() ? { kind: 'doc', title: getShapeTitle(shape), text: `Current dashboard (OpenUI Lang spec):\n${spec}` } : null;
     }
+    case 'map-card': {
+      // The map grounds on its stops as text — a refine ("add a lunch stop")
+      // builds on the existing plan, and any ask can read the trip.
+      const stops = Array.isArray(p.stops) ? (p.stops as Array<Record<string, unknown>>) : [];
+      if (stops.length === 0) return null;
+      const lines = stops.map((s, i) => {
+        const when = [s.day, s.time].filter(Boolean).join(' ');
+        return `${i + 1}. ${String(s.name ?? '')}${when ? ` (${when})` : ''}${s.note ? ` — ${String(s.note)}` : ''} [${String(s.query ?? '')}]`;
+      });
+      const intro = typeof p.intro === 'string' && p.intro.trim() ? `${p.intro.trim()}\n` : '';
+      return { kind: 'doc', title: getShapeTitle(shape), text: `Current map (stops in order):\n${intro}${lines.join('\n')}` };
+    }
     case 'machine-card': {
       // A machine block grounds its answer on the subject typed into it; the
       // block becomes the answer's provenance source and its placement anchor.
@@ -229,7 +246,7 @@ export function sourceLabel(shape: TLShape): string {
   if (title) return title.length > 28 ? `${title.slice(0, 27)}…` : title;
   const fallback: Record<string, string> = {
     'pdf-card': 'PDF', 'doc-card': 'Text', 'note-card': 'Note', 'table-card': 'Table', 'diagram-card': 'Diagram',
-    'prototype-card': 'Prototype',
+    'prototype-card': 'Prototype', 'map-card': 'Map',
     'image-card': 'Image', 'link-card': 'Link', 'youtube-card': 'Video', 'sheet-card': 'Sheet', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section',
   };
   return fallback[shape.type] ?? 'Card';
@@ -442,6 +459,18 @@ export function useAsk() {
                   type: 'dashboard-card',
                   props: { spec: '', status: 'running' },
                 });
+              } else if (t.type === 'map-card') {
+                editor.updateShape<MapCardShape>({
+                  id: targetId,
+                  type: 'map-card',
+                  props: {
+                    stops: [],
+                    status: 'running',
+                    title: event.title ?? (t.props as { title: string }).title,
+                    intro: event.intro ?? '',
+                    ordered: event.ordered ?? true,
+                  },
+                });
               } else if (t.type === 'table-card') {
                 cols = (event.columns ?? []).slice(0, 6);
                 rows = Array.from({ length: event.rowCount ?? 0 }, () => cols.map(() => ''));
@@ -496,6 +525,23 @@ export function useAsk() {
                 y: at.y,
                 props: { w: DASHBOARD_CARD_SIZE.w, h: DASHBOARD_CARD_SIZE.h, spec: '', title: trimmed.slice(0, 70), status: 'running' },
               });
+            } else if (event.shape === 'map') {
+              const at = placeInLane(editor, sourceIds, MAP_CARD_SIZE.w, MAP_CARD_SIZE.h);
+              editor.createShape<MapCardShape>({
+                id,
+                type: 'map-card',
+                x: at.x,
+                y: at.y,
+                props: {
+                  w: MAP_CARD_SIZE.w,
+                  h: MAP_CARD_SIZE.h,
+                  title: event.title ?? trimmed.slice(0, 70),
+                  intro: event.intro ?? '',
+                  stops: [],
+                  ordered: event.ordered ?? true,
+                  status: 'running',
+                },
+              });
             } else if (event.shape === 'table') {
               cols = (event.columns ?? []).slice(0, 6);
               // Width scales with the column count so generated comparisons
@@ -538,7 +584,7 @@ export function useAsk() {
             // it lands — select it so the provenance hairline to its source(s)
             // is drawn immediately (ProvenanceLayer reveals on selection),
             // instead of waiting for a click.
-            if ((event.shape === 'prototype' || event.shape === 'dashboard') && contributingIds.length > 0) {
+            if ((event.shape === 'prototype' || event.shape === 'dashboard' || event.shape === 'map') && contributingIds.length > 0) {
               editor.setSelectedShapes([id]);
             }
             break;
@@ -578,6 +624,22 @@ export function useAsk() {
                 props: { text: (s.props as { text: string }).text + event.textDelta },
               } as Parameters<typeof editor.updateShape>[0]);
             }
+            follow();
+            break;
+          }
+          case 'map.pin': {
+            // A verified stop lands on the map — pins assemble one by one, the
+            // way a table fills cell by cell (the pin wears the spring in CSS).
+            if (!cardId) break;
+            const m = editor.getShape(cardId);
+            if (m?.type !== 'map-card') break;
+            const prev = (m.props as { stops: MapCardShape['props']['stops'] }).stops;
+            editor.updateShape<MapCardShape>({
+              id: cardId,
+              type: 'map-card',
+              props: { stops: [...prev, event.stop] },
+            });
+            setPresenceStatus(PRESENCE.id, `placing ${event.stop.name}…`);
             follow();
             break;
           }
@@ -631,6 +693,10 @@ export function useAsk() {
               const dc = editor.getShape(cardId);
               if (dc?.type === 'dashboard-card') {
                 editor.updateShape<DashboardCardShape>({ id: cardId, type: 'dashboard-card', props: { status: 'done' } });
+              } else if (dc?.type === 'map-card') {
+                // All pins landed — flip out of the running state (header chip
+                // clears; the card reads as settled).
+                editor.updateShape<MapCardShape>({ id: cardId, type: 'map-card', props: { status: 'done' } });
               }
               stopStreaming(cardId);
             }
@@ -703,6 +769,7 @@ const ARTEFACT_LABEL: Record<string, string> = {
   affinity: 'Sticky notes',
   list: 'List',
   doc: 'Text',
+  map: 'Map',
 };
 
 /** Keep the streamed draft — log it and drop the draft state (the card stays). */
@@ -824,9 +891,11 @@ function recordSources(editor: Editor, cardId: TLShapeId, sourceIds: TLShapeId[]
   if (!card) return;
   const ids = sourceIds.filter((id) => id !== cardId && editor.getShape(id));
   if (ids.length === 0) return;
+  // Cross-type partial (meta only) — the cast defeats the per-type union,
+  // same as shapeTitle.ts.
   editor.updateShape({
     id: cardId,
     type: card.type,
     meta: { ...card.meta, [PROV_META_KEY]: ids, [PROMPT_META_KEY]: prompt },
-  });
+  } as TLShapePartial);
 }

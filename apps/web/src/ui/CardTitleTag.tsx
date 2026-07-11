@@ -10,7 +10,7 @@
  */
 
 import { useRef } from 'react';
-import { useEditor, useValue, type TLShapeId } from 'tldraw';
+import { useEditor, useValue, type TLShapeId, type TLShapePartial } from 'tldraw';
 import { TITLED, getShapeTitle, setShapeTitle } from '../shapes/shapeTitle';
 
 interface Tag {
@@ -92,7 +92,7 @@ export function CardTitleTag() {
     if (!shape) return;
     // Screen delta → page delta; frames don't scale, so parent space matches.
     const z = editor.getZoomLevel();
-    editor.updateShape({ id: d.id, type: shape.type, x: d.originX + dx / z, y: d.originY + dy / z });
+    editor.updateShape({ id: d.id, type: shape.type, x: d.originX + dx / z, y: d.originY + dy / z } as TLShapePartial);
   };
   const onTagPointerUp = (e: React.PointerEvent<HTMLElement>, editable: boolean) => {
     e.stopPropagation();

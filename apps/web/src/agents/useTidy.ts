@@ -9,7 +9,7 @@
  */
 
 import { useCallback } from 'react';
-import { getArrowBindings, useEditor, type Editor, type TLArrowShape, type TLShapeId } from 'tldraw';
+import { getArrowBindings, useEditor, type Editor, type TLArrowShape, type TLShapeId, type TLShapePartial } from 'tldraw';
 import { computeRows, GAP_X, GAP_Y } from './flowLayout';
 
 /** Shapes worth repositioning — nodes, not the connectors between them. */
@@ -89,7 +89,7 @@ export function useTidy() {
           // Centre each node within its cell so mixed sizes still align.
           const x = rowX + c * (cellW + GAP_X) + (cellW - bb.w) / 2;
           const y = originY + r * (cellH + GAP_Y);
-          editor.updateShape({ id: id as TLShapeId, type: editor.getShape(id as TLShapeId)!.type, x, y });
+          editor.updateShape({ id: id as TLShapeId, type: editor.getShape(id as TLShapeId)!.type, x, y } as TLShapePartial);
         });
       });
 

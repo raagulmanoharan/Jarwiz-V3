@@ -256,7 +256,7 @@ unavailable" line — degrade, never break).
 
 ## Phasing (one phase = one branch = one PR)
 
-### P0 — The map speaks `M`
+### P0 — The map speaks `M` — ✅ shipped 2026-07-11 (this PR)
 The card exists and the Ask pipeline can produce it.
 - Shared types + schemas; `streamMap` + `MAP_SYSTEM` + geocode helper +
   demo branch; `SHAPES` whitelist.
