@@ -33,7 +33,9 @@ export function DraftControls() {
           <span className="jz-draft-spark" aria-hidden>
             <JarwizSpark size={12} />
           </span>
-          <span className="jz-draft-label">Generating…</span>
+          {/* Narrate the actual stage when the server reports one — the wait
+              should read as work, not as one frozen word (G3.1). */}
+          <span className="jz-draft-label">{draft.statusText ?? 'Generating…'}</span>
           <button className="jz-draft-discard" onClick={drop}>
             Stop &amp; discard
           </button>

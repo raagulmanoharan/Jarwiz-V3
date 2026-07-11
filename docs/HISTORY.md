@@ -883,3 +883,26 @@ reproduced on current main before fixing, each re-verified after.
   half off-screen at an edge.
 - **The send button relaxes into a pill when busy** ("Planning…",
   "Scanning…") instead of spilling its label out of the 30px circle.
+
+## 2026-07-11 (night) — Generation feel: narrated waits + honest framing (G3)
+
+**Intent:** the review's "silent latency" and "artifact lands half
+off-screen" findings. The backlog's third item (a streaming skeleton) was
+dropped deliberately — the doc card's caret IS the pre-text state by prior
+owner call ("no fake skeleton blobs"), and narration carries the wait
+instead.
+
+- **The wait narrates itself.** The server emits honest, specific stages —
+  `reading "Product sync — …"…` (the source by name), `making sure I
+  understand…`, `building the table…`, `drafting the answer…` — and the
+  Generating chip mirrors the live stage instead of one frozen word. Stage
+  events fire before `card.create`, so the run carries the latest stage into
+  the draft at creation (the chip's first word is already specific).
+- **The finished artifact is always in view.** Mid-stream camera follows are
+  throttled and interrupt each other; `card.done` now runs one final
+  followCard settle (same contains() gate — an in-view pair doesn't move).
+- **Markdown tables can't escape their card.** `.jz-md-table` gained
+  `table-layout: fixed` + cell `overflow-wrap` — a six-column table used to
+  keep its min-content width and spill past the card's right edge, which is
+  what actually made the review's launch plan look "off-screen" while the
+  camera was correctly framed on the card.

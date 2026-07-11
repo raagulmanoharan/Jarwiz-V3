@@ -962,7 +962,20 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
     return;
   }
 
-  yield { type: 'status', message: 'reading the source…' };
+  // Name what's being read — "reading 'Product sync — …'" beats a generic
+  // verb, and the honest-status principle wants specific over vague (G3.1).
+  const firstTitle = req.sources.find((s) => s.title?.trim())?.title?.trim();
+  yield {
+    type: 'status',
+    message:
+      req.sources.length === 0
+        ? 'thinking it through…'
+        : firstTitle
+          ? `reading “${firstTitle.slice(0, 40)}${firstTitle.length > 40 ? '…' : ''}”…`
+          : req.sources.length > 1
+            ? `reading ${req.sources.length} sources…`
+            : 'reading the source…',
+  };
   const { context, citable, images, linkRefs, framePaths, imageData } = await gatherContext(req);
   if (signal.aborted) return;
 
@@ -996,6 +1009,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   // Disambiguation: if the request is genuinely unclear, ask one short question
   // (with tappable options) instead of guessing. Skipped once the user answers.
   if (!req.skipClarify) {
+    yield { type: 'status', message: 'making sure I understand…' };
     const clarify = await maybeClarify(req, signal);
     if (signal.aborted) return;
     if (clarify) {
@@ -1041,6 +1055,9 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
         ? '\nAlso include a "usedSources": number[] key — the numbers of the numbered Sources whose content the table actually drew on (a source you ignored, and web results, do not count; [] if none).'
         : '';
     const tableSystem = (isDiff ? CLAUSE_DIFF_SYSTEM : TABLE_SYSTEM + WEB_TABLE_DIRECTIVE) + tableUsedDirective;
+    // The table generates in one long blocking call — without a stage here
+    // the whole build reads as silence until cells appear (G3.1).
+    yield { type: 'status', message: 'building the table…' };
     const raw = await generate(tableSystem, user, signal, images, {
       web: !isDiff,
       framePaths,
@@ -1108,6 +1125,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   // With canvas sources riding along, the model declares which it actually
   // drew on — attached ≠ used, and lineage links only real use.
   if (req.sources.length > 0) system += SOURCES_USED_DIRECTIVE;
+  yield { type: 'status', message: shape === 'list' ? 'writing the list…' : 'drafting the answer…' };
   // Everyday doc/list answers carry find_image too — the directive gates it
   // to answers a real image genuinely lifts (owner call, 2026-07-10).
   yield* streamDoc(shape, system, user, signal, images, { web: true, framePaths, imageData, clientTools: FIND_IMAGE_CLIENT }, req.sources.length);
