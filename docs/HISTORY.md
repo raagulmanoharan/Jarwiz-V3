@@ -794,3 +794,23 @@ one and it looked generic."
   record provenance yet, so their docs won't offer Regenerate until they do.
 - Browser-verified both ways: generated doc shows the full menu with icons
   incl. Regenerate; hand-written doc shows the same menu without it.
+
+## 2026-07-11 (later) — First-touch entry points (G1)
+
+**Intent:** the review's first-five-minutes fixes, with the owner's mode-pill
+calls: one chip behaviour (no "Suggested:" label split), tappable body,
+narration-style intro preview, cadence untouched.
+
+- **On-ramps are real buttons.** "drop a PDF / paste a link / paste a
+  transcript" were `pointer-events: none` decoration styled as pills — every
+  new user's first click was dead. Now: PDF opens a file picker into the
+  composer-attachment pipeline; the paste on-ramps focus the composer with a
+  transient placeholder hint ("Paste your transcript here (⌘V)…").
+- **The mode chip has ONE behaviour** whoever pinned it: clicking the body
+  opens the "/" picker (the natural gesture on a wrong guess), ✕ clears to a
+  doc. No label distinction between guess and pick (owner call).
+- **The intro preview reads as narration** — the self-typing placeholder's
+  shape preview renders ghosted/dashed as "→ Table", visibly part of the
+  animation, so the first solid chip a user sees is a real control.
+- **Boards panel paints above the ambient vignettes** (panel joined the
+  chrome layer, z 160 over the scene's 150).
