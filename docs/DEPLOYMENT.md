@@ -43,6 +43,35 @@ is deliberately bring-your-own-key, so nobody's bill but the visitor's own is
 ever on the line. (Setting it would make the server answer everyone with that
 key.)
 
+## Running a closed pilot (invited people, your key, capped spend)
+
+The pilot gives a handful of invitees the **full live experience without
+needing their own API key** — your key answers for them, metered so the
+worst-case bill is a number you chose in advance.
+
+1. On the Render service (Environment tab), set:
+   - `ANTHROPIC_API_KEY` — your key (pilot only; without pilot codes this
+     would serve *everyone*, so always pair it with the next line).
+   - `JARWIZ_PILOT_CODES` — comma-separated invite codes you make up, one
+     per person, e.g. `mira-x7k2,arjun-p3v9`. Memorable-but-unguessable.
+   - Optional: `JARWIZ_PILOT_ACTIONS` (AI actions per person, default 100)
+     and `JARWIZ_PILOT_TOTAL` (ceiling across everyone, default 1000).
+2. Send each person their link:
+   `https://raagulmanoharan.github.io/Jarwiz-V3/app/?pilot=mira-x7k2`
+   Opening it once saves the invite in their browser; the code disappears
+   from the address bar.
+
+What invitees experience: everything live, no key pill, a key-button popover
+showing "N of 100 AI actions left." When a budget runs out, asks answer with
+a friendly "pilot budget used up — add your own key to keep going" instead
+of failing, and their canvas keeps working. People *with* their own key are
+never metered.
+
+Worst-case spend ≈ `JARWIZ_PILOT_TOTAL` × ~3–5¢ per action (~$30–50 at the
+defaults). Caveat: counts persist on the free tier's ephemeral disk, so a
+redeploy resets them — the global ceiling still bounds each deploy's spend;
+bump `JARWIZ_PILOT_TOTAL` down if you redeploy often mid-pilot.
+
 ## Free-tier realities (fine for a trial, know them anyway)
 
 - **Cold starts** — the free service sleeps after ~15 min idle; the first

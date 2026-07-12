@@ -14,7 +14,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { stopEventPropagation } from 'tldraw';
 import { KeyRound } from 'lucide-react';
-import { getApiKey, setApiKey, subscribeApiKey } from '../lib/api';
+import { getApiKey, getPilotCode, setApiKey, setPilotCode, subscribeApiKey } from '../lib/api';
 import { getBackendSnapshot, reprobeBackend, subscribeBackend } from '../lib/backend';
 
 // External open/close store so other surfaces (the PromptBar's demo-mode
@@ -42,8 +42,15 @@ export function openApiKeySettings(): void {
 export function ApiKeyButton() {
   const backend = useSyncExternalStore(subscribeBackend, getBackendSnapshot, getBackendSnapshot);
   const storedKey = useSyncExternalStore(subscribeApiKey, getApiKey, getApiKey);
+  const pilotCode = useSyncExternalStore(subscribeApiKey, getPilotCode, getPilotCode);
   const popped = useSyncExternalStore(subscribeOpen, isOpen, isOpen);
   const [draft, setDraft] = useState('');
+
+  // Keep the pilot count honest while the popover is up — the probe result
+  // is from page load, and actions spend budget as they work.
+  useEffect(() => {
+    if (popped && getPilotCode()) reprobeBackend();
+  }, [popped]);
 
   // Close on click-away (same pattern as the zoom dropdown).
   useEffect(() => {
@@ -55,7 +62,7 @@ export function ApiKeyButton() {
     return () => window.removeEventListener('mousedown', onDown);
   }, [popped]);
 
-  const relevant = Boolean(storedKey) || backend.mode === 'demo';
+  const relevant = Boolean(storedKey) || Boolean(pilotCode) || backend.mode === 'demo';
   if (!relevant) return null;
 
   const live = backend.mode === 'api' || backend.mode === 'sidecar';
@@ -75,7 +82,7 @@ export function ApiKeyButton() {
   return (
     <div className="jz-key-wrap" onPointerDown={stopEventPropagation}>
       <button
-        className={`jz-key-btn${storedKey ? ' jz-key-btn--set' : ''}`}
+        className={`jz-key-btn${storedKey || pilotCode ? ' jz-key-btn--set' : ''}`}
         onClick={() => setOpen(!popped)}
         title={storedKey ? 'Manage your Anthropic API key' : 'Add your Anthropic API key'}
         aria-label={storedKey ? 'Manage your Anthropic API key' : 'Add your Anthropic API key'}
@@ -85,13 +92,27 @@ export function ApiKeyButton() {
       </button>
       {popped ? (
         <div className="jz-key-pop" role="dialog" aria-label="Anthropic API key">
+          {pilotCode ? (
+            <div className="jz-key-pilot">
+              <div className="jz-key-pop-title">Pilot access</div>
+              <p className="jz-key-pop-sub">
+                {backend.pilot
+                  ? backend.pilot.used >= backend.pilot.limit
+                    ? 'Your pilot budget is used up — thank you for testing! Add your own key below to keep going.'
+                    : `${backend.pilot.limit - backend.pilot.used} of ${backend.pilot.limit} AI actions left on your invite.`
+                  : 'Invite saved in this browser.'}
+              </p>
+            </div>
+          ) : null}
           <div className="jz-key-pop-title">Your Anthropic API key</div>
           <p className="jz-key-pop-sub">
             {storedKey
               ? live
                 ? 'Key saved in this browser — agents are live.'
                 : 'Key saved in this browser.'
-              : 'Agents are running a scripted demo. Paste your own key and they come alive — it stays in this browser only, and is never stored on the server.'}
+              : pilotCode && live
+                ? 'Optional — your own key removes the pilot cap. It stays in this browser only, and is never stored on the server.'
+                : 'Agents are running a scripted demo. Paste your own key and they come alive — it stays in this browser only, and is never stored on the server.'}
           </p>
           {storedKey ? (
             <div className="jz-key-row">

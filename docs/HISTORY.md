@@ -1182,3 +1182,28 @@ scene. Just keep the typing animation."
 - Verified against the production build: the composer still cycles its typed
   examples; no mode pill renders during onboarding (`.jz-pb-mode` count = 0);
   zero console errors.
+## 2026-07-10 (later) — Closed pilot: invited people, the owner's key, a bill with a ceiling
+
+Raagul: "closed pilot for a few people… full deployed app experience with
+API key… limited to 100 cards?" Built on the BYOK rails the same day they
+merged (#34 — which needed a live rebase over five feature PRs that landed
+on main mid-session).
+
+- **Invite links, not accounts** (`?pilot=CODE` → localStorage → an
+  `x-jarwiz-pilot` header via the existing fetch bridge; the code is scrubbed
+  from the address bar). Codes live in `JARWIZ_PILOT_CODES` on the server.
+- **The env key stops being a free-for-all** the moment codes are configured:
+  `model.ts` now grants it only to requests carrying a valid, under-budget
+  code (or a BYOK header, never metered). Strangers get the scripted demo —
+  the owner's key is unreachable to them.
+- **Metering that matches perception** (`pilot.ts`): only card-producing
+  endpoints spend budget (ask/analyze/compose/…); shape hints and seed pills
+  ride free. Per-code cap (`JARWIZ_PILOT_ACTIONS`, default 100) + global
+  ceiling (`JARWIZ_PILOT_TOTAL`, default 1000) → worst case ≈ $30–50.
+  Counts persist best-effort to disk; free-tier redeploys reset them — the
+  ceiling is the real backstop.
+- **Honest exhaustion**: metered calls answer 429 with a thank-you that
+  points at BYOK; the pill says "Pilot budget used up", never fake-demo; the
+  key popover shows "N of 100 AI actions left" (reprobed on open).
+- Verified with curl (all eight states) and in-browser (invite link → live +
+  budget in popover + stripped URL; spent code → honest pill).

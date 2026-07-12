@@ -4669,6 +4669,17 @@ body,
   margin-bottom: var(--jz-space-2);
 }
 
+/* Pilot status block — sits above the key section, separated by a hairline. */
+.jz-key-pilot {
+  margin-bottom: var(--jz-space-4);
+  padding-bottom: var(--jz-space-4);
+  border-bottom: 1px solid var(--jz-hairline);
+}
+
+.jz-key-pilot .jz-key-pop-sub {
+  margin-bottom: 0;
+}
+
 .jz-key-pop-sub {
   margin: 0 0 var(--jz-space-4);
   font-size: var(--jz-text-caption-size);

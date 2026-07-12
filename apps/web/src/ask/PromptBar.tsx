@@ -232,6 +232,9 @@ export function PromptBar() {
   const chromeVisible = !isEmbed() && !isUseCases();
   const playground = backend.availability === 'down' && chromeVisible;
   const demoMode = backend.mode === 'demo' && chromeVisible;
+  // An invited pilot whose budget ran out sees why the agents went quiet —
+  // not a generic "demo mode" that reads like a bug.
+  const pilotSpent = Boolean(backend.pilot && backend.pilot.used >= backend.pilot.limit);
   const boardEmpty = useValue('promptbar-board-empty', () => editor.getCurrentPageShapeIds().size === 0, [editor]);
   // Let tldraw hydrate from IndexedDB before trusting emptiness, so a returning
   // board that loads async never flashes the intro for a frame.
@@ -669,7 +672,11 @@ export function PromptBar() {
       {playground || demoMode ? (
         <div className="jz-pb-playground" role="status">
           <span className="jz-pb-playground-dot" aria-hidden />
-          {playground ? PLAYGROUND_NOTICE : DEMO_NOTICE}
+          {playground
+            ? PLAYGROUND_NOTICE
+            : pilotSpent
+              ? 'Pilot budget used up — thank you for testing!'
+              : DEMO_NOTICE}
           {demoMode ? (
             <button className="jz-pb-playground-cta" onClick={() => openApiKeySettings()}>
               Add your API key

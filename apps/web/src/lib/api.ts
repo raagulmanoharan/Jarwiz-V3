@@ -59,6 +59,55 @@ export function setApiKey(key: string | null): void {
   for (const listener of listeners) listener();
 }
 
+// ── Pilot invite code — same shape, separate credential ─────────────────────
+//
+// A closed-pilot invite arrives as a link (app/?pilot=CODE); the code is
+// remembered here and rides every /api call as `x-jarwiz-pilot`, unlocking
+// the server's own key with a metered budget (apps/server/src/pilot.ts).
+
+const PILOT_STORAGE = 'jz-pilot-code';
+
+let cachedPilot: string | null = readStored(PILOT_STORAGE);
+
+function readStored(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+export function getPilotCode(): string | null {
+  return cachedPilot;
+}
+
+export function setPilotCode(code: string | null): void {
+  cachedPilot = code?.trim() || null;
+  try {
+    if (cachedPilot) window.localStorage.setItem(PILOT_STORAGE, cachedPilot);
+    else window.localStorage.removeItem(PILOT_STORAGE);
+  } catch {
+    /* storage blocked — works for this tab's lifetime */
+  }
+  for (const listener of listeners) listener();
+}
+
+/** Adopt an invite from the URL (?pilot=CODE), then tidy the address bar so
+ *  the code doesn't linger in history/screenshots. Call before the probe. */
+export function capturePilotCode(): void {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('pilot')?.trim();
+    if (!code) return;
+    setPilotCode(code);
+    params.delete('pilot');
+    const query = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+  } catch {
+    /* URL APIs blocked — the link still works, just unsaved */
+  }
+}
+
 // ── The fetch bridge ─────────────────────────────────────────────────────────
 
 let bridgeInstalled = false;
@@ -75,6 +124,7 @@ export function installApiBridge(): void {
       init?.headers ?? (input instanceof Request ? input.headers : undefined),
     );
     if (cachedKey) headers.set('x-anthropic-key', cachedKey);
+    if (cachedPilot) headers.set('x-jarwiz-pilot', cachedPilot);
     if (input instanceof Request) return native(new Request(apiUrl(url), input), { ...init, headers });
     return native(apiUrl(url), { ...init, headers });
   };
