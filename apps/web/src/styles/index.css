@@ -4283,6 +4283,10 @@ body,
   align-items: center;
   text-align: center;
   max-width: min(760px, calc(100vw - 48px));
+  /* Six cards (two rows of three): on short viewports the panel scrolls
+   * inside the dimmed backdrop instead of clipping the skip link. */
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
   animation: jz-persona-pop var(--jz-dur-glide) var(--jz-ease-glide) both;
 }
 @keyframes jz-persona-pop { from { opacity: 0; transform: translateY(10px) scale(0.985); } to { opacity: 1; transform: none; } }
@@ -4308,7 +4312,12 @@ body,
   gap: 12px;
   width: 100%;
 }
+/* Six choices stay scannable as the width shrinks: 3×2 → 2×3 → a single
+ * column only on true phone widths. */
 @media (max-width: 720px) {
+  .jz-persona-cards { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 460px) {
   .jz-persona-cards { grid-template-columns: 1fr; }
 }
 .jz-persona-card {

@@ -1,9 +1,11 @@
 /**
  * "What brings you here?" — the ask-once persona modal over the intent screen.
- * Three identity cards (icon + a few example asks) float above the live
+ * Six identity cards (icon + a few example asks) float above the live
  * ambient scene; one tap re-themes the whole first run (starter prompts, the
  * composer's self-typing examples, the ambient cards) and persists, so no
- * surface ever asks again. "Just exploring" (or Escape / clicking the
+ * surface ever asks again. The six deliberately span work AND life (a trip, a
+ * talk, a decision) — the canvas isn't only for product teams (owner call,
+ * 2026-07-12). "Just exploring" (or Escape / clicking the
  * backdrop) is a first-class answer, not a failure — it lands the generic
  * experience and is remembered the same way.
  *
@@ -13,7 +15,7 @@
  */
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { BookOpen, PenTool, Rocket } from 'lucide-react';
+import { BookOpen, PenTool, Plane, Presentation, Rocket, Scale } from 'lucide-react';
 import { isOnboarding, subscribeOnboarding } from '../ask/onboardingStore';
 import { hasChosenPersona, setPersona, subscribePersona, type Persona } from './personaStore';
 
@@ -40,6 +42,24 @@ const CARDS: Array<{
     icon: PenTool,
     title: 'Designing an experience',
     blurb: 'Map a user flow, prototype an idea, or cluster research notes into personas.',
+  },
+  {
+    persona: 'trip',
+    icon: Plane,
+    title: 'Planning a trip',
+    blurb: 'Sketch an itinerary, compare places to stay, or turn saved links into a day-by-day plan.',
+  },
+  {
+    persona: 'talk',
+    icon: Presentation,
+    title: 'Preparing a talk',
+    blurb: 'Outline the narrative, storyboard the slides, or distill your notes into three takeaways.',
+  },
+  {
+    persona: 'decide',
+    icon: Scale,
+    title: 'Making a decision',
+    blurb: 'Compare options in a table, weigh the trade-offs, or lay out pros and cons side by side.',
   },
 ];
 

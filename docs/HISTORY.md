@@ -991,3 +991,25 @@ their own Anthropic key**.
 - Verified against the production build: preview with no server → playground
   pill + friendly ask error; mock server up → demo pill + CTA; key saved →
   capabilities flips to `api` per-request (env-less server, header key).
+## 2026-07-12 — The question gets six answers: work and life
+
+**Intent:** owner review of the new front door — "the use-case selection is
+too narrow. Include more, like planning a trip, planning a talk — at least 6."
+
+- "What brings you here?" grew from three work personas to **six choices**
+  spanning work and life: Building a product, Researching a topic, Designing
+  an experience, + new **Planning a trip**, **Preparing a talk**, and
+  **Making a decision** (the sixth was Claude's pick — comparison tables and
+  verdicts are the canvas's home turf; the SWOT demo is literally this).
+- Each new pick is themed end-to-end like the original three: modal card
+  (Plane / Presentation / Scale icons), three starter pills, four self-typing
+  composer examples with shape previews (trip → Board, talk → List, decide →
+  Table), and a full ambient-scene content set (sticky, link, doc, and all
+  four Jarwiz verb scripts).
+- Modal layout: 3×2 grid at full width, 2×3 under 720px, single column only
+  on phones; the panel scrolls inside the backdrop on short viewports.
+- The ambient collaborator cast (PM/Researcher/Designer/Founder badges) stays
+  fixed across personas by design — only texts re-theme. Fine for now; a
+  themed cast is possible polish if a "PM" carrying trip notes ever reads odd.
+- Verified against the production build: six cards render, and each new pick
+  re-themes starters + composer + all four ambient cards, zero console errors.

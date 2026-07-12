@@ -110,6 +110,45 @@ const CONTENT: Record<Persona | 'default', AmbContent> = {
       ['Skimming the notes', 'Grouping the feedback', 'Outlining next steps'],
     ],
   },
+  trip: {
+    note: 'Five days, three cities everyone recommends — we can’t do it all',
+    linkTitle: '48 hours in Kyoto — a first-timer’s guide',
+    linkDomain: 'theculturetrip.com',
+    docTitle: 'Trip notes',
+    docText: 'Book the museums early, keep the evenings unplanned — the best finds were never on the list.',
+    verbs: [
+      ['Reading the note', 'Spotting the overlap', 'Cutting it to one city'],
+      ['Opening the guide', 'Picking the keepers', 'Laying out a day plan'],
+      ['Studying the map', 'Tracing the route', 'Redrawing it as a plan'],
+      ['Skimming the notes', 'Pulling the must-dos', 'Outlining the days'],
+    ],
+  },
+  talk: {
+    note: 'Twenty minutes, forty slides — the story is buried in there',
+    linkTitle: 'What makes a conference talk land — a speaker’s field notes',
+    linkDomain: 'speaking.io',
+    docTitle: 'Talk outline',
+    docText: 'One idea per talk. Everything on every slide either serves it or steals from it.',
+    verbs: [
+      ['Reading the note', 'Finding the one idea', 'Cutting the rest'],
+      ['Opening the link', 'Pulling the patterns', 'Turning them into beats'],
+      ['Studying the slide', 'Tracing the arc', 'Redrawing it as a storyboard'],
+      ['Skimming the outline', 'Tightening the beats', 'Drafting the close'],
+    ],
+  },
+  decide: {
+    note: 'Two good offers, one week to answer — gut says one, spreadsheet says the other',
+    linkTitle: 'How to make hard decisions without regret',
+    linkDomain: 'fs.blog',
+    docTitle: 'Decision notes',
+    docText: 'List what you can’t undo. The reversible parts are noise — decide those fast, spend the week on the rest.',
+    verbs: [
+      ['Reading the note', 'Naming the real question', 'Framing the trade-off'],
+      ['Opening the link', 'Weighing the criteria', 'Building a scorecard'],
+      ['Studying the numbers', 'Tracing what matters', 'Redrawing it as a table'],
+      ['Skimming the notes', 'Splitting reversible calls', 'Outlining a verdict'],
+    ],
+  },
 };
 
 const reduceMotion = () =>

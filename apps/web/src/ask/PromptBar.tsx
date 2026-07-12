@@ -66,6 +66,21 @@ const INTRO_STARTERS: Record<Persona | 'default', Array<{ label: string; prompt:
     { label: 'Prototype an idea', prompt: 'Prototype a focus-timer app I can click through' },
     { label: 'Explore concepts', prompt: 'Brainstorm three directions for a pricing page' },
   ],
+  trip: [
+    { label: 'Plan an itinerary', prompt: 'Plan a five-day Tokyo itinerary as a day-by-day board' },
+    { label: 'Compare stays', prompt: 'Compare three Lisbon neighbourhoods for a week-long stay' },
+    { label: 'Pack smart', prompt: 'Build a packing checklist for two weeks of mixed weather' },
+  ],
+  talk: [
+    { label: 'Outline a talk', prompt: 'Outline a 20-minute conference talk on design systems' },
+    { label: 'Storyboard slides', prompt: 'Storyboard the slide flow for a product demo' },
+    { label: 'Sharpen the message', prompt: 'Distill my talk notes into three memorable takeaways' },
+  ],
+  decide: [
+    { label: 'Compare options', prompt: 'Compare three laptops for video editing in a table' },
+    { label: 'Weigh a big call', prompt: 'Lay out the pros and cons of relocating to Berlin' },
+    { label: 'Find the blind spots', prompt: 'What am I missing before signing a two-year lease?' },
+  ],
 };
 
 // The empty intent composer types these on its own and previews the shape it'd
@@ -96,6 +111,24 @@ const INTRO_ANIM: Record<Persona | 'default', Array<{ text: string; shape: ModeS
     { text: 'Prototype a focus-timer app', shape: 'prototype' },
     { text: 'Compare three pricing-page layouts', shape: 'table' },
     { text: 'Turn my research notes into personas', shape: 'board' },
+  ],
+  trip: [
+    { text: 'Plan a five-day Tokyo itinerary', shape: 'board' },
+    { text: 'Compare three neighbourhoods to stay in', shape: 'table' },
+    { text: 'Map the route between the stops', shape: 'diagram' },
+    { text: 'Build a packing checklist', shape: 'list' },
+  ],
+  talk: [
+    { text: 'Outline a 20-minute talk on design systems', shape: 'list' },
+    { text: 'Storyboard the slide flow', shape: 'board' },
+    { text: 'Diagram the narrative arc', shape: 'diagram' },
+    { text: 'Compare three opening hooks', shape: 'table' },
+  ],
+  decide: [
+    { text: 'Compare three laptops for video editing', shape: 'table' },
+    { text: 'Lay out the pros and cons of relocating', shape: 'board' },
+    { text: 'Map the decision and its trade-offs', shape: 'diagram' },
+    { text: 'Turn my criteria into a scorecard', shape: 'dashboard' },
   ],
 };
 const prefersReducedMotion = () =>
