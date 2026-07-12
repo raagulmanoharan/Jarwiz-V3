@@ -105,52 +105,52 @@ const INTRO_SUB: Record<Persona | 'default', string> = {
   decide: 'Drop in the options and what matters. I’ll lay it out so the answer shows itself.',
 };
 
-// The empty intent composer types these on its own and previews the shape it'd
-// build a few words in — the box is alive, and Jarwiz shows it understood
-// before you commit. Shapes are real ModeShape values so the preview chip reuses
-// the composer's own suggestion chip. Per-persona, same reason as the starters.
-const INTRO_ANIM: Record<Persona | 'default', Array<{ text: string; shape: ModeShape }>> = {
+// The empty intent composer types these on its own — the box is alive, so
+// Jarwiz shows it's listening before you commit. Per-persona, same reason as
+// the starters. (No shape preview: the typed example carries the intent on its
+// own; the pill was removed as noise — owner call, 2026-07-12.)
+const INTRO_ANIM: Record<Persona | 'default', string[]> = {
   default: [
-    { text: 'Compare Notion, Linear and Asana for a small team', shape: 'table' },
-    { text: 'Brainstorm features for a habit-tracking app', shape: 'board' },
-    { text: 'Map the onboarding flow end to end', shape: 'diagram' },
-    { text: 'Turn my Q2 numbers into a dashboard', shape: 'dashboard' },
+    'Compare Notion, Linear and Asana for a small team',
+    'Brainstorm features for a habit-tracking app',
+    'Map the onboarding flow end to end',
+    'Turn my Q2 numbers into a dashboard',
   ],
   product: [
-    { text: 'Break down a launch plan for a new product', shape: 'board' },
-    { text: 'Compare Notion, Linear and Asana for a small team', shape: 'table' },
-    { text: 'Map the signup flow end to end', shape: 'diagram' },
-    { text: 'Turn my Q2 numbers into a dashboard', shape: 'dashboard' },
+    'Break down a launch plan for a new product',
+    'Compare Notion, Linear and Asana for a small team',
+    'Map the signup flow end to end',
+    'Turn my Q2 numbers into a dashboard',
   ],
   research: [
-    { text: 'Compare the main studies on remote work', shape: 'table' },
-    { text: 'Map the literature around habit formation', shape: 'diagram' },
-    { text: 'Cluster my reading notes by theme', shape: 'board' },
-    { text: 'Turn these survey results into a dashboard', shape: 'dashboard' },
+    'Compare the main studies on remote work',
+    'Map the literature around habit formation',
+    'Cluster my reading notes by theme',
+    'Turn these survey results into a dashboard',
   ],
   design: [
-    { text: 'Map the onboarding flow end to end', shape: 'diagram' },
-    { text: 'Prototype a focus-timer app', shape: 'prototype' },
-    { text: 'Compare three pricing-page layouts', shape: 'table' },
-    { text: 'Turn my research notes into personas', shape: 'board' },
+    'Map the onboarding flow end to end',
+    'Prototype a focus-timer app',
+    'Compare three pricing-page layouts',
+    'Turn my research notes into personas',
   ],
   trip: [
-    { text: 'Plan a five-day Tokyo itinerary', shape: 'board' },
-    { text: 'Compare three neighbourhoods to stay in', shape: 'table' },
-    { text: 'Map the route between the stops', shape: 'diagram' },
-    { text: 'Build a packing checklist', shape: 'list' },
+    'Plan a five-day Tokyo itinerary',
+    'Compare three neighbourhoods to stay in',
+    'Map the route between the stops',
+    'Build a packing checklist',
   ],
   talk: [
-    { text: 'Outline a 20-minute talk on design systems', shape: 'list' },
-    { text: 'Storyboard the slide flow', shape: 'board' },
-    { text: 'Diagram the narrative arc', shape: 'diagram' },
-    { text: 'Compare three opening hooks', shape: 'table' },
+    'Outline a 20-minute talk on design systems',
+    'Storyboard the slide flow',
+    'Diagram the narrative arc',
+    'Compare three opening hooks',
   ],
   decide: [
-    { text: 'Compare three laptops for video editing', shape: 'table' },
-    { text: 'Lay out the pros and cons of relocating', shape: 'board' },
-    { text: 'Map the decision and its trade-offs', shape: 'diagram' },
-    { text: 'Turn my criteria into a scorecard', shape: 'dashboard' },
+    'Compare three laptops for video editing',
+    'Lay out the pros and cons of relocating',
+    'Map the decision and its trade-offs',
+    'Turn my criteria into a scorecard',
   ],
 };
 const prefersReducedMotion = () =>
@@ -264,13 +264,12 @@ export function PromptBar() {
     setLeaving(true);
     setTimeout(() => setLeaving(false), 650);
   };
-  // The empty intent composer types example intents on its own and previews the
-  // shape a few words in, so the box is alive and the intelligence shows before
-  // you commit. Purely a placeholder animation — it never touches the real value
-  // or mode, and it stops the moment you focus or type.
+  // The empty intent composer types example intents on its own, so the box is
+  // alive and the intelligence shows before you commit. Purely a placeholder
+  // animation — it never touches the real value or mode, and it stops the
+  // moment you focus or type.
   const [focused, setFocused] = useState(false);
   const [introPh, setIntroPh] = useState('');
-  const [introShape, setIntroShape] = useState<ModeShape | null>(null);
   const introAnim = introMode && !value.trim() && !focused && attachments.length === 0 && !prefersReducedMotion();
   // Who's here — the persona modal's one-tap pick. Tuning is instant: starters
   // and the self-typing examples re-theme in place the moment a card is tapped.
@@ -285,7 +284,7 @@ export function PromptBar() {
     return () => setOnboardingEngaged(false);
   }, [introEngaged]);
   useEffect(() => {
-    if (!introAnim) { setIntroPh(''); setIntroShape(null); return; }
+    if (!introAnim) { setIntroPh(''); return; }
     let alive = true;
     const timers: number[] = [];
     const wait = (ms: number) => new Promise<void>((res) => { timers.push(window.setTimeout(res, ms) as unknown as number); });
@@ -293,19 +292,15 @@ export function PromptBar() {
       let i = 0;
       while (alive) {
         const ex = introExamples[i % introExamples.length]!;
-        setIntroShape(null);
-        const reveal = Math.min(14, Math.max(6, Math.floor(ex.text.length * 0.4)));
-        for (let c = 1; c <= ex.text.length && alive; c++) {
-          setIntroPh(`${ex.text.slice(0, c)} ▏`);
-          if (c === reveal) setIntroShape(ex.shape);
+        for (let c = 1; c <= ex.length && alive; c++) {
+          setIntroPh(`${ex.slice(0, c)} ▏`);
           await wait(38);
         }
         if (!alive) break;
-        setIntroPh(`${ex.text} ▏`);
+        setIntroPh(`${ex} ▏`);
         await wait(1900);
-        for (let c = ex.text.length; c >= 0 && alive; c--) {
-          setIntroPh(c > 0 ? `${ex.text.slice(0, c)} ▏` : '');
-          if (c < 8) setIntroShape(null);
+        for (let c = ex.length; c >= 0 && alive; c--) {
+          setIntroPh(c > 0 ? `${ex.slice(0, c)} ▏` : '');
           await wait(16);
         }
         await wait(450);
@@ -857,16 +852,10 @@ export function PromptBar() {
                 >✕</button>
               </span>
             ) : introMode ? (
-              // Onboarding: no "/" (Jarwiz suggests the shape for you). While
-              // the composer types its own examples, the shape preview reads
-              // as NARRATION of the animation ("→ Table"), visibly not a
-              // control — so the first solid chip a user ever sees is a real
-              // one they can trust (owner call, 2026-07-11).
-              introAnim && introShape ? (
-                <span className="jz-pb-ground jz-pb-mode jz-pb-mode--preview" aria-hidden>
-                  → {MODES.find((m) => m.shape === introShape)?.label ?? introShape}
-                </span>
-              ) : null
+              // Onboarding: no shape control and no preview pill — the composer's
+              // self-typing example carries the intent on its own, so the footer
+              // stays clean until the board opens (owner call, 2026-07-12).
+              null
             ) : (
               <button
                 className={`jz-promptbar-icon-btn${modeMenu ? ' jz-promptbar-icon-btn--active' : ''}`}

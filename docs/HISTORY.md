@@ -1026,3 +1026,20 @@ too narrow. Include more, like planning a trip, planning a talk — at least 6."
   hero question also speaks the pick's language ("Where are we off to?" for a
   trip) with a matching sub-line. Ambient scene is keyed on the persona now —
   the live mid-scene re-theme machinery went away with the reason for it.
+
+## 2026-07-12 (later) — Drop the onboarding shape-preview pill
+
+**Intent:** owner — "remove the preview pill completely from the ambient
+scene. Just keep the typing animation."
+
+- The composer's self-typing intro used to flash a shape-preview chip a few
+  words in ("→ Table"). Removed it: the typed example carries the intent on
+  its own, and the footer now stays clean until the board opens. Kept the
+  self-typing placeholder animation untouched.
+- Cleanup: `INTRO_ANIM` dropped its per-example `shape` field (plain strings
+  now), the dead `introShape` state and the `.jz-pb-mode--preview` CSS rule
+  are gone. `MODES` / `ModeShape` stay — still used by the real "/" picker and
+  the pinned mode chip outside onboarding.
+- Verified against the production build: the composer still cycles its typed
+  examples; no mode pill renders during onboarding (`.jz-pb-mode` count = 0);
+  zero console errors.

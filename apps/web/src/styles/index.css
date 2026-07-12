@@ -4856,21 +4856,6 @@ body,
   background: color-mix(in srgb, var(--jz-accent) 22%, transparent);
 }
 
-/* The intro animation's shape preview is NARRATION of the self-typing
- * placeholder ("→ Table"), not a control — ghosted and dashed so the first
- * solid chip a user ever sees is a real one (owner call, 2026-07-11). */
-.jz-pb-mode--preview {
-  background: none;
-  border: 1px dashed var(--jz-hairline-strong);
-  color: var(--jz-ink-400);
-  font-weight: 500;
-  font-style: italic;
-  animation: jz-fade-in var(--jz-dur-fast) var(--jz-ease-out) both;
-  /* Label-only (no ✕), so the base pill's tight 4px right padding — meant to
-   * hug the close button — crowds the text. Give it a real inset. */
-  padding-right: 10px;
-}
-
 /* Suggested variant: the shape classifier pinned this as the user typed. The
  * spring pop-in (replayed on every re-suggest via a changing React key) reads
  * as "Jarwiz's guess"; the spark marks it as a suggestion, not a manual pick,
