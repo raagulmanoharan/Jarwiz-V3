@@ -4866,6 +4866,9 @@ body,
   font-weight: 500;
   font-style: italic;
   animation: jz-fade-in var(--jz-dur-fast) var(--jz-ease-out) both;
+  /* Label-only (no ✕), so the base pill's tight 4px right padding — meant to
+   * hug the close button — crowds the text. Give it a real inset. */
+  padding-right: 10px;
 }
 
 /* Suggested variant: the shape classifier pinned this as the user typed. The
