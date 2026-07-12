@@ -29,7 +29,7 @@ import { getDraft, subscribeDraft } from './draft';
 import { getActiveBoard, markBoardUsed, subscribeBoards } from '../boards/boardStore';
 import { isDemo, isEmbed, isUseCases } from '../boards/demo';
 import { DEMO_NOTICE, getBackendSnapshot, subscribeBackend, PLAYGROUND_NOTICE } from '../lib/backend';
-import { openApiKeySettings } from '../ui/ApiKeySettings';
+import { openSidePanel } from '../ui/sidePanelStore';
 import { setOnboarding, setOnboardingEngaged } from './onboardingStore';
 import { hasIngestibleFile } from '../ingest/registerIngestion';
 import { classifyFile, isAttachableText, looksLikeTranscript, makeTextAttachment, materializeAttachment, uploadAttachment, type Attachment } from '../ingest/attachments';
@@ -675,11 +675,11 @@ export function PromptBar() {
           {playground
             ? PLAYGROUND_NOTICE
             : pilotSpent
-              ? 'Pilot budget used up — thank you for testing!'
+              ? 'Demo actions used up — thank you for testing!'
               : DEMO_NOTICE}
           {demoMode ? (
-            <button className="jz-pb-playground-cta" onClick={() => openApiKeySettings()}>
-              Add your API key
+            <button className="jz-pb-playground-cta" onClick={() => openSidePanel()}>
+              Get full access
             </button>
           ) : null}
         </div>

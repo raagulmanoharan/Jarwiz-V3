@@ -61,11 +61,15 @@ worst-case bill is a number you chose in advance.
    Opening it once saves the invite in their browser; the code disappears
    from the address bar.
 
-What invitees experience: everything live, no key pill, a key-button popover
-showing "N of 100 AI actions left." When a budget runs out, asks answer with
-a friendly "pilot budget used up — add your own key to keep going" instead
-of failing, and their canvas keeps working. People *with* their own key are
-never metered.
+What invitees experience: everything live, and a quiet counter beside the
+board title ("42 actions left") that updates as they work. Clicking it opens
+the boards panel, where a card pinned to the bottom explains the demo's
+limits and carries the **Get full Jarwiz access** button (a placeholder for
+now — its destination is a product decision still to come). When a budget
+runs out, asks answer with a friendly "demo actions used up — thank you for
+testing" and the canvas keeps working. There is no key UI anywhere; the
+server still honors an `x-anthropic-key` header, so power users with their
+own key are possible later without redesign (and are never metered).
 
 Worst-case spend ≈ `JARWIZ_PILOT_TOTAL` × ~3–5¢ per action (~$30–50 at the
 defaults). Caveat: counts persist on the free tier's ephemeral disk, so a

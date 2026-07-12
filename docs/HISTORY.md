@@ -1207,3 +1207,12 @@ on main mid-session).
   key popover shows "N of 100 AI actions left" (reprobed on open).
 - Verified with curl (all eight states) and in-browser (invite link → live +
   budget in popover + stripped URL; spent code → honest pill).
+
+**Design pass (same session):** Raagul redirected the invitee UX — BYOK is
+OUT of the interface (plumbing stays server-side): no key button, no key
+popover. Instead a counter chip beside the board title ("42 actions left",
+reprobed after each ask) opens the boards side panel, where a card pinned to
+the bottom ("You're in the demo") shows the budget meter, the demo's limits,
+and a **Get full Jarwiz access** CTA — deliberately unwired; its destination
+is a product decision he'll make later. All "add your key" copy (pill,
+mock answers, 429 message) now points at the panel card instead.

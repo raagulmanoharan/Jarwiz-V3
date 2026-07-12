@@ -9,7 +9,7 @@ import {
 } from './sidePanelStore';
 import { UltraThink } from './UltraThink';
 import { JarwizSpark } from './JarwizSpark';
-import { ApiKeyButton } from './ApiKeySettings';
+import { DemoCounterChip } from './DemoAccess';
 import { canTidyBoard, useTidyBoard } from '../agents/tidyBoard';
 
 /**
@@ -37,12 +37,12 @@ export function Topbar() {
       <div className="jz-topbar-left">
         <HamburgerLogo />
         <TitleBlock />
+        <DemoCounterChip />
       </div>
       <div className="jz-topbar-right">
         <UltraThink />
         <TidyButton />
         <ZoomDropdown />
-        <ApiKeyButton />
         <ThemeToggleButton />
       </div>
     </div>

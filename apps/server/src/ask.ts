@@ -968,7 +968,7 @@ async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenera
       'bar = BarChart("By category", ["A", "B", "C", "D"], [8, 6, 4, 3])',
       'line = LineChart("Over time", ["Q1", "Q2", "Q3", "Q4"], [4, 6, 5, 7])',
       'tbl = Card("Set a key for a real dashboard", [t1])',
-      't1 = Table(["Column", "Value"], [["Model", "not configured"], ["Fix", "add your Anthropic API key (key button, top right)"]])',
+      't1 = Table(["Column", "Value"], [["Model", "not configured"], ["Fix", "get full access — see the boards panel"]])',
     ].join('\n');
     for (const piece of chunk(spec, 4)) {
       if (signal.aborted) return;

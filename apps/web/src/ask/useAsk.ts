@@ -39,7 +39,7 @@ import {
   type MapCardShape,
 } from '../shapes';
 import { readSSE } from '../agents/sse';
-import { agentErrorMessage } from '../lib/backend';
+import { agentErrorMessage, getBackendSnapshot, reprobeBackend } from '../lib/backend';
 import { startStreaming, stopStreaming } from '../agents/streaming';
 import { clearDraft, getDraft, setDraft, updateDraft } from './draft';
 import { clearRegen, setRegen } from './regen';
@@ -794,6 +794,8 @@ export function useAsk() {
         endPresence(PRESENCE.id);
         if (activeRun?.controller === ac) activeRun = null;
         setIsAsking(false);
+        // Pilot budgets spend one action per ask — refresh the topbar counter.
+        if (getBackendSnapshot().pilot) reprobeBackend();
       }
     },
     [editor, isAsking],

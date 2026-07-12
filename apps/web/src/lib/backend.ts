@@ -62,7 +62,7 @@ export const PLAYGROUND_ERROR =
 export const DEMO_NOTICE = 'Demo mode — agents answer with a script.';
 
 export const KEY_REJECTED_ERROR =
-  'That Anthropic API key was rejected — re-check it in the key settings (top right).';
+  'The server’s Anthropic API key was rejected — the site owner needs to check it.';
 
 /** Swap a raw network/auth failure for a message a person can act on. */
 export function agentErrorMessage(raw: string): string {

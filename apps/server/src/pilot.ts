@@ -124,4 +124,4 @@ export function isMeteredPath(path: string): boolean {
 
 /** What a spent budget answers with — the client shows this verbatim. */
 export const PILOT_EXHAUSTED_MESSAGE =
-  'Your pilot budget is used up — thank you for testing Jarwiz! Add your own Anthropic API key (key button, top right) to keep going.';
+  'Your demo actions are used up — thank you for testing Jarwiz! See "Get full access" in the boards panel to keep going.';
