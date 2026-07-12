@@ -18,6 +18,7 @@ import { summarizer } from './agents/summarizer.js';
 import { researcher } from './agents/researcher.js';
 import { brainstormer } from './agents/brainstormer.js';
 import { writer } from './agents/writer.js';
+import { hasModelKey } from './model.js';
 
 const AGENT_DEFINITIONS: Record<string, AgentDefinition> = {
   summarizer,
@@ -48,7 +49,7 @@ export async function* streamAgentRun(
     wake = null;
   };
 
-  const hasApiKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+  const hasApiKey = Boolean(hasModelKey());
   // Routing: real API → tool-use runtime; no key but CLI sidecar → real content
   // for the text agents (Researcher needs citable web sources, so it stays on
   // the scripted mock); otherwise → scripted mock.

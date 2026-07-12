@@ -951,3 +951,43 @@ zoom menu, fine at 3 cards, dead at 40.
 - Browser-verified on a 6-card board spread across thousands of page units:
   a body-text query ("zebra") found the right card, Enter landed it selected
   and in view, ⌘K opened, Escape closed, no-match state honest.
+## 2026-07-10 — Deployment spike → BYOK: the hosted app becomes the full product
+
+Raagul asked how people can try Jarwiz without touching a terminal. First
+finding: **static hosting already existed and was live** — `pages.yml`
+publishes the landing + real app to GitHub Pages on every push to main
+(`https://raagulmanoharan.github.io/Jarwiz-V3/`, app at `/app/`, "Try it
+free" → `app/?demo=1`), and persistence was already all-browser (IndexedDB /
+localStorage). What was missing: no agent runtime behind the hosted app, so
+the first prompt died with "Ask failed (404)". Mid-session Raagul raised the
+bar from "graceful playground" to **the full experience — visitors bring
+their own Anthropic key**.
+
+- **BYOK, end to end.** The visitor pastes their key into a topbar popover
+  (`ui/ApiKeySettings.tsx`); it lives only in their localStorage and rides
+  every /api call as an `x-anthropic-key` header. Server-side,
+  `apps/server/src/model.ts` parks that header in an AsyncLocalStorage scope;
+  all 30+ `process.env.ANTHROPIC_API_KEY` / `new Anthropic()` sites now go
+  through `modelKey()` / `anthropic()`. Request key wins, env falls back —
+  local dev unchanged. Deliberate choice over porting the ~4k-line agent
+  brain into the browser, which would have forked every future feature into
+  two runtimes.
+- **One fetch bridge instead of 20 call-site edits** (`lib/api.ts`):
+  `installApiBridge()` wraps window.fetch once — /api/* requests get
+  `VITE_API_BASE` prefixed (Pages → Render are different origins) and the key
+  attached. The key can never ride a non-/api request. `<img>` srcs don't
+  fetch — `apiUrl()` bakes the base into asset URLs at the three sites.
+- **Three honest states** (`lib/backend.ts` probes `/api/capabilities` once,
+  per-visitor since the key rides the probe too): no server → offline
+  playground pill (canvas + browser saves still work, images ≤8 MB inline as
+  data URLs); server keyless → "Demo mode" pill with an **Add your API key**
+  CTA (mock still answers); key present → everything live, zero notices.
+  Saving a key re-probes — the app flips live without a reload.
+- **Hosting**: `render.yaml` blueprint (free tier, `/api/health` check,
+  sidecar disabled) + `JARWIZ_API_BASE` repo variable → `VITE_API_BASE` in
+  pages.yml. Raagul's five-minute click-path is in `docs/DEPLOYMENT.md`,
+  with the free-tier realities (cold starts, ephemeral asset disk, open
+  CORS pinnable via `JARWIZ_ALLOWED_ORIGINS`).
+- Verified against the production build: preview with no server → playground
+  pill + friendly ask error; mock server up → demo pill + CTA; key saved →
+  capabilities flips to `api` per-request (env-less server, header key).

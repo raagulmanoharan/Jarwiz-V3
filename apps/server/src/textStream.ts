@@ -8,6 +8,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AGENT_MODEL } from './agents/runtime.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
+import { anthropic, hasModelKey } from './model.js';
 
 export type TextStreamEvent =
   | { type: 'delta'; textDelta: string }
@@ -44,7 +45,7 @@ const sleep = (ms: number, signal: AbortSignal) =>
 
 export async function* streamText(opts: TextStreamOptions): AsyncGenerator<TextStreamEvent> {
   const { system, user, signal, maxTokens = 1500 } = opts;
-  const hasKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+  const hasKey = Boolean(hasModelKey());
 
   // ── No key: real Claude via the CLI sidecar, else the scripted stand-in ──
   if (!hasKey) {
@@ -81,7 +82,7 @@ export async function* streamText(opts: TextStreamOptions): AsyncGenerator<TextS
 
   const run = (async () => {
     try {
-      const client = new Anthropic();
+      const client = anthropic();
       const stream = client.messages.stream(
         {
           model: AGENT_MODEL,

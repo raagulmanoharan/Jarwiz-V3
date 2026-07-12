@@ -36,6 +36,7 @@ import {
   type DashboardCardShape,
 } from '../shapes';
 import { readSSE } from '../agents/sse';
+import { agentErrorMessage } from '../lib/backend';
 import { startStreaming, stopStreaming } from '../agents/streaming';
 import { clearDraft, getDraft, setDraft, updateDraft } from './draft';
 import { clearRegen, setRegen } from './regen';
@@ -707,7 +708,9 @@ export function useAsk() {
         if (cardId) stopStreaming(cardId);
         if (err instanceof Error && err.name !== 'AbortError') {
           runFailed = true;
-          surfaceError(err.message);
+          // On the hosted playground the raw failure is a meaningless 404 —
+          // tell the person what's actually going on instead.
+          surfaceError(agentErrorMessage(err.message));
         }
       } finally {
         if (inPlaceMark) {

@@ -51,6 +51,11 @@ jobs:
         run: npm run build --workspace=apps/web
         env:
           VITE_BASE: /${{ github.event.repository.name }}/app/
+          # Agent server for the hosted trial (BYOK). Set the repo Actions
+          # variable JARWIZ_API_BASE to the deployed server's URL (e.g.
+          # https://jarwiz-agents.onrender.com) — see docs/DEPLOYMENT.md.
+          # Empty = no server: the app degrades to the offline playground.
+          VITE_API_BASE: ${{ vars.JARWIZ_API_BASE }}
 
       - name: Assemble Pages artifact (landing + app)
         run: |

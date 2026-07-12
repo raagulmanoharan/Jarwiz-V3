@@ -9,6 +9,7 @@ import {
 } from './sidePanelStore';
 import { UltraThink } from './UltraThink';
 import { JarwizSpark } from './JarwizSpark';
+import { ApiKeyButton } from './ApiKeySettings';
 import { canTidyBoard, useTidyBoard } from '../agents/tidyBoard';
 
 /**
@@ -41,6 +42,7 @@ export function Topbar() {
         <UltraThink />
         <TidyButton />
         <ZoomDropdown />
+        <ApiKeyButton />
         <ThemeToggleButton />
       </div>
     </div>

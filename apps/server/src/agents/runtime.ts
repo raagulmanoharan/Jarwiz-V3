@@ -15,6 +15,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import type { AgentEvent, AgentMeta, AgentRunRequest, CardKind } from '@jarwiz/shared';
+import { anthropic } from '../model.js';
 
 export const AGENT_MODEL = 'claude-opus-4-8';
 export const AGENT_MAX_TOKENS = 16_000;
@@ -181,7 +182,7 @@ export function briefSuffix(request: AgentRunRequest): string {
 
 function friendlyApiError(error: unknown): string {
   if (error instanceof Anthropic.AuthenticationError) {
-    return "The server Anthropic API key was rejected - check ANTHROPIC_API_KEY.";
+    return 'The Anthropic API key was rejected — if you added your own key, re-check it in the key settings (top right); on a self-hosted server, check ANTHROPIC_API_KEY.';
   }
   if (error instanceof Anthropic.RateLimitError) {
     return "Anthropic rate limit hit - give it a moment and try again.";
@@ -345,7 +346,7 @@ export async function runAgentLoop(
     const userTurn = (await def.buildUserTurn(request)) + briefSuffix(request);
     if (signal.aborted) return;
 
-    const client = new Anthropic();
+    const client = anthropic();
     const tools: Anthropic.Messages.ToolUnion[] = [...CANVAS_TOOLS, ...(def.serverTools ?? [])];
     const messages: Anthropic.Messages.MessageParam[] = [{ role: 'user', content: userTurn }];
 

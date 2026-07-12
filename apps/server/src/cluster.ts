@@ -13,6 +13,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { ClusterRequest, ClusterResult, ClusterTheme } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
+import { anthropic, hasModelKey } from './model.js';
 
 const MAX_THEMES = 5;
 
@@ -93,9 +94,9 @@ export async function generateClusters(
   const items = request.items.map((s) => s.trim()).filter(Boolean);
   if (items.length === 0) return { themes: [], summary: '' };
 
-  const hasKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+  const hasKey = Boolean(hasModelKey());
   if (hasKey) {
-    const client = new Anthropic();
+    const client = anthropic();
     const message = await client.messages.create(
       {
         model: AGENT_MODEL,

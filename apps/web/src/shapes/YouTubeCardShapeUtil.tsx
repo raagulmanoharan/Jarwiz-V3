@@ -11,6 +11,7 @@ import {
 } from 'tldraw';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
+import { apiUrl } from '../lib/api';
 
 export interface YouTubeCardProps {
   w: number;
@@ -96,7 +97,7 @@ function YouTubeCardBody({ shape }: { shape: YouTubeCardShape }) {
   const poster = videoId
     ? `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg`
     : frames?.[0]
-      ? `/api/assets/${encodeURIComponent(frames[0])}`
+      ? apiUrl(`/api/assets/${encodeURIComponent(frames[0])}`)
       : '';
 
   return (

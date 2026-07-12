@@ -15,6 +15,7 @@ import type { AnalyzeCard, DiscoverRequest, ResourceKind, SuggestedResource } fr
 import { AGENT_MODEL } from './agents/runtime.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 import { RESEARCH_MAX_CONTINUATIONS, researchToolset } from './webTools.js';
+import { anthropic, hasModelKey } from './model.js';
 
 const MAX_CARDS = 24;
 const MAX_TEXT_PER_CARD = 700;
@@ -51,8 +52,8 @@ function boardSummary(cards: AnalyzeCard[]): string {
 
 /** Deep grounded research with the web tools; returns the model's raw text. */
 async function groundedSearch(user: string, signal: AbortSignal): Promise<string> {
-  if (process.env.ANTHROPIC_API_KEY?.trim()) {
-    const client = new Anthropic();
+  if (hasModelKey()) {
+    const client = anthropic();
     const tools = researchToolset(); // deep budget: many searches + fetches
     const messages: Anthropic.MessageParam[] = [{ role: 'user', content: user }];
     let text = '';

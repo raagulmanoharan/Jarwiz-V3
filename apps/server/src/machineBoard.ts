@@ -15,6 +15,7 @@ import { AGENT_MODEL } from './agents/runtime.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 import { RESEARCH_MAX_CONTINUATIONS, researchToolset } from './webTools.js';
 import type { MachineSkill } from './machines.js';
+import { anthropic, hasModelKey } from './model.js';
 
 const MAX_TOKENS = 4000;
 const SIDECAR_TIMEOUT_MS = 300_000;
@@ -23,8 +24,8 @@ const SIDECAR_TIMEOUT_MS = 300_000;
  *  deep web-research toolset: on for research machines (SWOT), off for a
  *  pure-reasoning machine (Effort–Impact) so it answers in one snappy call. */
 async function research(system: string, user: string, signal: AbortSignal, useTools = true): Promise<string> {
-  if (process.env.ANTHROPIC_API_KEY?.trim()) {
-    const client = new Anthropic();
+  if (hasModelKey()) {
+    const client = anthropic();
     const tools = useTools ? researchToolset() : undefined;
     const messages: Anthropic.MessageParam[] = [{ role: 'user', content: user }];
     let text = '';
