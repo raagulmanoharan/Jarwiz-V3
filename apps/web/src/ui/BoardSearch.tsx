@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { stopEventPropagation, useEditor, type Editor, type TLShapeId } from 'tldraw';
 import { Search } from 'lucide-react';
 import { getShapeTitle } from '../shapes/shapeTitle';
@@ -86,7 +87,8 @@ export function BoardSearchRail() {
     }
   }, [open]);
 
-  // Escape / clicking away closes; ⌘K / Ctrl-K opens from anywhere.
+  // Escape closes; ⌘K / Ctrl-K opens from anywhere. (Clicking away is the
+  // backdrop's own job — the dimmed layer swallows the click and closes.)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -96,17 +98,9 @@ export function BoardSearchRail() {
       }
       if (e.key === 'Escape') setOpen(false);
     };
-    const onPointer = (e: PointerEvent) => {
-      if (e.target instanceof Node && wrapRef.current?.contains(e.target)) return;
-      setOpen(false);
-    };
     window.addEventListener('keydown', onKey, true);
-    if (open) window.addEventListener('pointerdown', onPointer, true);
-    return () => {
-      window.removeEventListener('keydown', onKey, true);
-      window.removeEventListener('pointerdown', onPointer, true);
-    };
-  }, [open]);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, []);
 
   const jump = (id: TLShapeId) => {
     setOpen(false);
@@ -125,7 +119,11 @@ export function BoardSearchRail() {
       >
         <Search size={18} strokeWidth={1.7} />
       </button>
-      {open ? (
+      {/* Spotlight treatment (owner call, 2026-07-12): the panel sits in the
+          MIDDLE of the screen over a darkened board. Portaled to <body> — the
+          rail's own transform would otherwise hijack position:fixed. */}
+      {open ? createPortal(
+        <div className="jz-search-backdrop" onPointerDown={(e) => { stopEventPropagation(e); if (e.target === e.currentTarget) setOpen(false); }}>
         <div className="jz-search-panel">
           <input
             ref={inputRef}
@@ -167,6 +165,8 @@ export function BoardSearchRail() {
             )
           ) : null}
         </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   );

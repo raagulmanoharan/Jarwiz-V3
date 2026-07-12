@@ -938,8 +938,10 @@ cluster out, making good on the hero's "I'll lay it out as a board" promise.
 search" — the review's scale finding: the only magnifier on screen was the
 zoom menu, fine at 3 cards, dead at 40.
 
-- A **Search** tool joined the rail (between Upload and Help), opening a
-  flyout beside the rail — same anchoring idiom as the Machines palette.
+- A **Search** tool joined the rail (between Upload and Help). It opens as a
+  SPOTLIGHT — centred panel over a darkened board (owner call, 2026-07-12:
+  "keep it in the middle of the screen with bg darkened") — portaled to
+  <body> because the rail's own transform would hijack position:fixed.
 - Type ≥2 chars → live local scan over every text-bearing card (titles,
   bodies, table cells, diagram code, link URLs); title hits rank first, each
   result shows kind + a snippet around the match.

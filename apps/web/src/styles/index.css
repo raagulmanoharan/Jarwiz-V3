@@ -590,25 +590,33 @@ body,
 }
 .jz-comment-dismiss:hover { color: var(--jz-ink-900); }
 
-/* ── Board search — rail tool flyout (find a card, jump to it) ─────────────── */
-/* Same anchoring idiom as the Machines flyout below: .jz-search is NOT
-   position:relative, so the panel anchors to the RAIL and opens
-   screen-centred beside it. */
+/* ── Board search — spotlight over a darkened board (owner call, 2026-07-12) ─ */
+.jz-search-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 480; /* above canvas chrome, below focus mode (500) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* A dim, not a blackout — the board stays legible behind the spotlight so
+     a jump target's neighbourhood is still visible context. */
+  background: rgba(6, 7, 9, 0.45);
+  animation: jz-fade-in var(--jz-dur-fast) var(--jz-ease-out) both;
+}
 .jz-search-panel {
-  position: absolute;
-  left: calc(100% + 12px);
-  top: 50%;
-  transform: translateY(-50%);
-  width: 320px;
-  max-height: min(70vh, 560px);
+  width: min(480px, calc(100vw - 80px));
+  max-height: min(60vh, 520px);
   overflow-y: auto;
   background: var(--jz-card);
   border: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-lg);
-  box-shadow: var(--jz-e3);
+  box-shadow: var(--jz-e4);
   padding: 8px;
-  z-index: 60;
-  animation: jz-machines-in var(--jz-dur-base) var(--jz-ease-out, ease);
+  animation: jz-search-pop var(--jz-dur-base) var(--jz-ease-out, ease) both;
+}
+@keyframes jz-search-pop {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 .jz-search-input {
   width: 100%;
@@ -674,7 +682,7 @@ body,
   color: var(--jz-ink-400);
 }
 @media (prefers-reduced-motion: reduce) {
-  .jz-search-panel { animation: none; }
+  .jz-search-backdrop, .jz-search-panel { animation: none; }
 }
 
 /* ── Thinking Machines — rail tool flyout + on-canvas machine block ────────── */
