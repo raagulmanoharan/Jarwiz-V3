@@ -9,6 +9,8 @@
  */
 
 import { stopEventPropagation } from 'tldraw';
+import { DocMapBlock } from './DocMapBlock';
+import { DocWidgetBlock } from './DocWidgetBlock';
 
 interface DocMarkdownProps {
   content: string;
@@ -16,6 +18,9 @@ interface DocMarkdownProps {
   onCite?: (page: number) => void;
   /** When set, `- [ ]` items render as checkboxes; toggling calls this. */
   onToggleTask?: (ordinal: number, checked: boolean) => void;
+  /** The doc shape this markdown lives in — a ```map block's "expand map"
+   *  wires the promoted card's provenance back to it. */
+  sourceId?: string;
 }
 
 /** Matches a markdown task line, capturing the checked state and the label. */
@@ -35,7 +40,7 @@ function tableCells(line: string): string[] {
   return cells.map((c) => c.trim());
 }
 
-export function DocMarkdown({ content, onCite, onToggleTask }: DocMarkdownProps) {
+export function DocMarkdown({ content, onCite, onToggleTask, sourceId }: DocMarkdownProps) {
   const lines = content.split('\n');
   const elements: React.ReactNode[] = [];
   let i = 0;
@@ -44,6 +49,43 @@ export function DocMarkdown({ content, onCite, onToggleTask }: DocMarkdownProps)
 
   while (i < lines.length) {
     const line = lines[i] ?? '';
+
+    // Inline blocks — the doc's fence architecture (docs/MAPS.md): a ```map
+    // fence holds the answer's stops, a ```widget fence a small interactive's
+    // brief. The fence is just text until it CLOSES; mid-stream (no closing
+    // fence yet) shows a quiet pending state.
+    {
+      const fenceKind = line.trim() === '```map' ? 'map' : line.trim() === '```widget' ? 'widget' : null;
+      if (fenceKind) {
+        const body: string[] = [];
+        let j = i + 1;
+        while (j < lines.length && (lines[j] ?? '').trim() !== '```') {
+          body.push(lines[j] ?? '');
+          j++;
+        }
+        if (j < lines.length) {
+          elements.push(
+            fenceKind === 'map' ? (
+              <DocMapBlock key={`map-${i}`} raw={body.join('\n')} sourceId={sourceId} />
+            ) : (
+              <DocWidgetBlock key={`widget-${i}`} raw={body.join('\n')} sourceId={sourceId} />
+            ),
+          );
+          i = j + 1;
+        } else {
+          elements.push(
+            <div
+              key={`block-pending-${i}`}
+              className={fenceKind === 'map' ? 'jz-map-block jz-map-block--pending' : 'jz-widget-block jz-widget-block--pending'}
+            >
+              {fenceKind === 'map' ? 'placing the stops…' : 'building the widget…'}
+            </div>,
+          );
+          i = lines.length;
+        }
+        continue;
+      }
+    }
 
     // Headings
     if (line.startsWith('### ')) {

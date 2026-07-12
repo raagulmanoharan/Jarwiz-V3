@@ -22,7 +22,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useEditor, type Editor, type TLShapeId } from 'tldraw';
+import { useEditor, type Editor, type TLShapeId, type TLShapePartial } from 'tldraw';
 import { useCardSelected } from '../shapes/useCardSelected';
 
 /** Same key useAsk writes (`jzSources`) — duplicated as a literal to keep this
@@ -122,11 +122,14 @@ function ExtractHandle({
       if (!id) return;
       const card = editor.getShape(id);
       if (card) {
+        // Cross-type partial (meta only) — the cast defeats the per-type union,
+        // which stopped narrowing once the shape count crossed TS's limit
+        // (same pattern as shapeTitle.ts / useAsk.ts).
         editor.updateShape({
           id,
           type: card.type,
           meta: { ...card.meta, [PROV_META_KEY]: [hostId] },
-        });
+        } as TLShapePartial);
       }
       editor.select(id);
     };

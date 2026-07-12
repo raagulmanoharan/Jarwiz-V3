@@ -20,6 +20,7 @@ import { YouTubeCardShapeUtil } from './YouTubeCardShapeUtil';
 import { MachineCardShapeUtil } from './MachineCardShapeUtil';
 import { PrototypeCardShapeUtil } from './PrototypeCardShapeUtil';
 import { DashboardCardShapeUtil } from './DashboardCardShapeUtil';
+import { MapCardShapeUtil } from './MapCardShapeUtil';
 
 export { DiagramCardShapeUtil, DIAGRAM_CARD_SIZE, type DiagramCardShape } from './DiagramCardShapeUtil';
 export { PrototypeCardShapeUtil, PROTOTYPE_CARD_SIZE, PROTOTYPE_PROMPT_SIZE, type PrototypeCardShape } from './PrototypeCardShapeUtil';
@@ -46,6 +47,7 @@ export {
 export { YouTubeCardShapeUtil, YOUTUBE_CARD_SIZE, type YouTubeCardShape } from './YouTubeCardShapeUtil';
 export { MachineCardShapeUtil, MACHINE_CARD_SIZE, type MachineCardShape } from './MachineCardShapeUtil';
 export { DashboardCardShapeUtil, DASHBOARD_CARD_SIZE, type DashboardCardShape } from './DashboardCardShapeUtil';
+export { MapCardShapeUtil, MAP_CARD_SIZE, type MapCardShape } from './MapCardShapeUtil';
 
 export const cardShapeUtils = [
   LinkCardShapeUtil,
@@ -60,4 +62,5 @@ export const cardShapeUtils = [
   PrototypeCardShapeUtil,
   MachineCardShapeUtil,
   DashboardCardShapeUtil,
+  MapCardShapeUtil,
 ] as const;

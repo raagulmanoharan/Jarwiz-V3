@@ -24,6 +24,7 @@ export const REFINE_SHAPE: Record<string, AskShape> = {
   'diagram-card': 'diagram',
   'prototype-card': 'prototype',
   'dashboard-card': 'dashboard',
+  'map-card': 'map',
 };
 
 export const INLINE_EDITABLE = new Set(Object.keys(REFINE_SHAPE));

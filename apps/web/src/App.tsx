@@ -35,6 +35,8 @@ import { setComments, toggleComment, commentSig } from './ask/comments';
 import { MachineRunner } from './ui/MachineRunner';
 import { PrototypeRunner } from './ui/PrototypeRunner';
 import { DashboardRunner } from './ui/DashboardRunner';
+import { MapExpandLayer } from './ui/MapExpandLayer';
+import { WidgetPresenceLayer } from './ui/WidgetPresenceLayer';
 import { DraftControls } from './ask/DraftControls';
 import { RegenControls } from './ask/RegenControls';
 import { SyncLayer } from './ask/SyncLayer';
@@ -96,6 +98,8 @@ function JarwizOverlay() {
       <Safe label="MachineRunner"><MachineRunner /></Safe>
       <Safe label="PrototypeRunner"><PrototypeRunner /></Safe>
       <Safe label="DashboardRunner"><DashboardRunner /></Safe>
+      <Safe label="MapExpandLayer"><MapExpandLayer /></Safe>
+      <Safe label="WidgetPresenceLayer"><WidgetPresenceLayer /></Safe>
       <Safe label="DraftControls"><DraftControls /></Safe>
       <Safe label="RegenControls"><RegenControls /></Safe>
       <Safe label="SyncLayer"><SyncLayer /></Safe>

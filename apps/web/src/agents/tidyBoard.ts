@@ -26,7 +26,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import { useEditor, type Box, type Editor, type TLShapeId } from 'tldraw';
+import { useEditor, type Box, type Editor, type TLShapeId, type TLShapePartial } from 'tldraw';
 
 /** Gutters between packed cards (page px). Matches the board's calm rhythm. */
 export const TIDY_GAP_X = 40;
@@ -223,7 +223,7 @@ export function useTidyBoard() {
       // target. Everything after is history-ignored, so undo restores the
       // original board in a single step.
       editor.markHistoryStoppingPoint('tidy-board');
-      editor.updateShapes(targets.map((t) => ({ id: t.id, type: t.type, x: t.toX, y: t.toY })));
+      editor.updateShapes(targets.map((t) => ({ id: t.id, type: t.type, x: t.toX, y: t.toY }) as TLShapePartial));
       if (opts?.select) editor.select(...ids);
 
       const finish = () => {
@@ -242,7 +242,7 @@ export function useTidyBoard() {
       // happens between the commit and this reset, so the final layout never
       // flashes), then glide start→final over the settle duration.
       editor.run(
-        () => editor.updateShapes(targets.map((t) => ({ id: t.id, type: t.type, x: t.fromX, y: t.fromY }))),
+        () => editor.updateShapes(targets.map((t) => ({ id: t.id, type: t.type, x: t.fromX, y: t.fromY }) as TLShapePartial)),
         { history: 'ignore' },
       );
       finish(); // camera glides while the cards settle
@@ -260,7 +260,7 @@ export function useTidyBoard() {
                 type: tg.type,
                 x: tg.fromX + (tg.toX - tg.fromX) * k,
                 y: tg.fromY + (tg.toY - tg.fromY) * k,
-              })),
+              }) as TLShapePartial),
           );
         }, { history: 'ignore' });
         rafRef.current = t < 1 ? requestAnimationFrame(tick) : null;

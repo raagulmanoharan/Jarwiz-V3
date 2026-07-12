@@ -8,7 +8,7 @@ import { renderPlaintextFromRichText, type Editor, type TLRichText, type TLShape
 
 export const ASKABLE = new Set([
   'pdf-card', 'doc-card', 'table-card', 'diagram-card', 'prototype-card', 'note-card', 'image-card', 'link-card',
-  'youtube-card', 'sheet-card', 'dashboard-card',
+  'youtube-card', 'sheet-card', 'dashboard-card', 'map-card',
   'geo', 'text', 'note', 'arrow', 'frame', 'group',
 ]);
 
@@ -35,6 +35,9 @@ export function hasAskableContent(editor: Editor, shape: TLShape | undefined): b
       return Boolean(str(p.html));
     case 'dashboard-card':
       return Boolean(str(p.spec));
+    case 'map-card':
+      // Stops are the content — a still-empty (streaming) map grounds nothing.
+      return Array.isArray(p.stops) && (p.stops as unknown[]).length > 0;
     case 'table-card': {
       const rows = Array.isArray(p.rows) ? (p.rows as unknown[][]) : [];
       return rows.some((r) => Array.isArray(r) && r.some((c) => str(c)));

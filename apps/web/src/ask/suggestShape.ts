@@ -13,7 +13,7 @@
 
 import type { ModeShape } from './modeShape';
 
-const VALID: ReadonlySet<string> = new Set(['list', 'table', 'diagram', 'prototype', 'dashboard', 'board']);
+const VALID: ReadonlySet<string> = new Set(['list', 'table', 'diagram', 'prototype', 'dashboard', 'map', 'board']);
 
 export async function suggestShape(prompt: string, signal?: AbortSignal): Promise<ModeShape | null> {
   if (prompt.trim().length < 4) return null;

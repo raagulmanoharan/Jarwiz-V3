@@ -311,6 +311,8 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
             // Truncation would desynchronize checkbox ordinals against the
             // full text — a preview is read-only until opened in focus mode.
             onToggleTask={isStreaming || truncated ? undefined : (ordinal, checked) => toggleTask(editor, shape, ordinal, checked)}
+            // A ```map block's "expand map" wires its promoted card back here.
+            sourceId={shape.id}
           />
         ) : isStreaming ? null : (
           <span className="jz-doc-placeholder-text">Write something…</span>

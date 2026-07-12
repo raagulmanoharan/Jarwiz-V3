@@ -818,6 +818,39 @@ one and it looked generic."
 - Browser-verified both ways: generated doc shows the full menu with icons
   incl. Regenerate; hand-written doc shows the same menu without it.
 
+## 2026-07-11 — Map card P0: /Map mode, verified pins, keyless demo
+
+**Intent:** "Need the rich card to support maps. It will be useful for trip
+planning." Planned in full first (docs/MAPS.md, PR #54), then P0 built on the
+same branch: the card + the `/Map` mode + pin-by-pin streaming.
+
+- **The shape:** `map-card` (MapLibre GL over OpenFreeMap vector tiles — no
+  key, no billing; positron light / dark by theme; the library is a lazy
+  chunk like pdf.js/mermaid, ~285kB gzip off the cold load). YouTube's
+  interaction rule: inert at rest, pan/zoom only in edit mode. Pins are
+  accent dots with the materialize spring; clicking one (in edit mode) opens
+  the place in Google Maps — a free deep link, no API.
+- **The pipeline:** `/Map` in the "/" menu → `MAP_SYSTEM` returns stop JSON →
+  the server verifies every stop against Nominatim (`geo.ts`: mandatory
+  cache, ≤1 req/s global throttle, identifying UA — their policy) → `map.pin`
+  events land one at a time (the table-cell pattern). Geocode misses fall
+  back to model coordinates flagged `approx` (dashed ring — visible doubt);
+  a ≥3-stop run demotes >500km medoid outliers the same way. Keyless demo
+  streams a canned Bengaluru day trip with hard-coded coords.
+- **Degrade state:** tiles unreachable → pins keep their relative geography
+  on plain paper with a quiet "map tiles unavailable" chip (that's what the
+  sandbox QA shots show — both providers are blocked here; verified live on
+  a real network at build review time instead).
+- **Gotcha for the ages:** adding the 26th shape type pushed tldraw's shape
+  union past TypeScript's 25-constituent discriminated-union limit — every
+  generic `updateShape({ type: shape.type, x, y })` site stopped narrowing.
+  Fix: the `as TLShapePartial` cast shapeTitle.ts already used for exactly
+  this pattern, applied at the eight cross-type call sites. Also: tldraw
+  props must be JSON-compatible — a shared `interface` in props breaks the
+  global shape map; use a `type` alias.
+- Remaining in docs/MAPS.md phasing: P1 (focus rail + inline doc map block +
+  Open route), P2 (compose + OSRM routes + board scans), P3 (hardening).
+
 ## 2026-07-11 — Sources are sacred: paste-to-attach + honest provenance (G2)
 
 **Intent:** from the product review's top finding — "the transcript never
@@ -862,6 +895,112 @@ narration-style intro preview, cadence untouched.
 - **Boards panel paints above the ambient vignettes** (panel joined the
   chrome layer, z 160 over the scene's 150).
 
+## 2026-07-11 (later) — Map card P1: the inline doc map + the trip view
+
+**Intent:** "does it render in rich cards?" → the owner's original ask,
+delivered: doc answers carry their map.
+
+- **The inline map block:** doc/list answers get `MAP_BLOCK_DIRECTIVE` — when
+  (and only when) the content is real visitable places, the model writes a
+  ```map fence (stops JSON) into the markdown, find_image-style "when
+  warranted". `DocMarkdown` renders the fence through `DocMapBlock`, which
+  hydrates via `POST /api/geo/stops` (the shared `locateStops` verifier in
+  geo.ts — cache, throttle, honest `approx`, medoid outlier check) and shows
+  a quiet toolbar: **➤ Open route** (multi-waypoint Google Maps deep link,
+  free) **· ⤢ expand map** (promotes the block into a standalone map card,
+  provenance wired to the doc via a DOM-event bus → MapExpandLayer). An
+  unterminated fence mid-stream shows "placing the stops…"; an unparseable
+  one renders as nothing — the degrade-to-nothing rule.
+- **The trip view:** map cards join CardFocusOverlay — map left, itinerary
+  rail right (day groups in first-appearance order, time · numbered name ·
+  note rows, "location approximate" pills); hover/focus a row → its pin
+  lifts and the camera eases to it; Open route rides the rail head. The
+  shared `MapViewport` moved to `shapes/mapView.tsx` (one renderer for card,
+  doc block, and focus view) and gained `activeIndex`.
+- **Action bar:** map cards get Open route / Add a stop (in-place refine) /
+  Regenerate.
+- Keyless demo: a places-flavoured prompt makes the demo doc answer with a
+  real map fence, so the whole inline flow is testable with zero keys.
+- Deferred to P3 polish: rail thumbnails (find_image per stop) and
+  chip↔pin hover inside the prose.
+
+## 2026-07-11 (later still) — Inline widget blocks: the fence architecture generalizes
+
+**Intent:** owner: "the rich card should also show small interactive widgets
+(prototype) inline… e.g. explaining drag dynamics in car aerodynamics — is
+there a smart way to do this without hardcoding this logic?"
+
+- The smart way was already on the branch: the map block's **fence
+  architecture** — DocMarkdown dispatches on fence language; each kind gets
+  a renderer; hydrators produce reality. Two tiers: STRUCTURED blocks
+  (```map — data verified server-side) and GENERATIVE blocks (```widget —
+  the model AUTHORS the interactive; zero per-concept code, ever).
+- **The fence carries the brief, not the widget** ({concept, controls,
+  note}) so doc streaming stays fast on the small budget; `POST /api/widget`
+  hydrates it on the prototype budget (WIDGET_SYSTEM: one concept, real
+  formulas, labeled axes, ≤~150 lines, self-contained), cached per brief on
+  both sides. Pending state "building the widget…"; failure degrades to
+  nothing.
+- Rendering = the prototype card's contract exactly: sandboxed iframe
+  (allow-scripts only — opaque origin, no network), fixed 320px block,
+  pointer ownership like checkboxes/links.
+- `WIDGET_BLOCK_DIRECTIVE` rides doc answers with the find_image
+  "when warranted" doctrine: at most one, only when varying a parameter
+  genuinely teaches, most answers have none.
+- Verified live: the demo drag widget is real physics — sedan @80 km/h reads
+  186 N; switching to the van at 130 km/h reads 1032 N, which hand-checks
+  against ½·ρ·Cd·A·v² exactly. Playwright drove the slider/toggle inside
+  the sandboxed iframe.
+- **Real-sidecar verification (same day):** ran the whole flow on the live
+  CLI sidecar (no key, no canned content). The model wrote a full doc
+  ("Drag Dynamics: Sedan vs. Van" — formula, C_d/frontal-area sections, a
+  comparison table) AND authored its own widget from the brief: speed
+  slider, Sedan/Van toggle, labeled axes, live readout (v=45 m/s → 1555 N,
+  consistent with the constants it chose). Playwright drove the slider and
+  toggle inside the sandboxed iframe. QA: docs/assets/qa/widget-real-sidecar.png.
+
+## 2026-07-11 (evening) — Widget delight pass: honest wait, token dress, any form
+
+**Intent:** owner: "how can we make it smart and dynamic and delightful… it
+can be any kind of widget to best explain the concept."
+
+- **Any interaction form:** WIDGET_BLOCK_DIRECTIVE/WIDGET_SYSTEM loosened
+  from parameter-sliders to whatever teaches — step-throughs, drag,
+  compare toggles, run/pause simulations. Verified live: asked about the
+  four-stroke cycle and the model chose (unprompted) a step-through piston
+  simulator — stage buttons, Play, a 0–720° crank scrubber, live valve/
+  spark readouts.
+- **The honest wait:** the pending block shows the BRIEF itself ("building:
+  four-stroke engine cycle… step-through slider cycles the piston…") — the
+  wait reads as intent, not a spinner. The Jarwiz avatar parks beside the
+  doc while the widget builds (WidgetPresenceLayer ← hydration events).
+- **Token dress:** the current theme's tokens are injected into the widget
+  as --jzw-* custom properties (and WIDGET_SYSTEM teaches the model to use
+  them with fallbacks); a theme flip re-dresses the widget live. Verified
+  dark AND light on the same model-authored widget.
+- **The widget introduces itself:** WIDGET_SYSTEM has widgets run one
+  ~1.2s authored demo sweep on load, then settle (reduced-motion gets a
+  quiet "try it" hint instead). Canned demo widget updated to match.
+- Observed variance to watch: the model missed accent-color on its range
+  slider (browser blue) — prompt tightening candidate if it recurs.
+- **10-random-prompt judgment eval (live sidecar, owner-requested):** 4/10
+  earned widgets — f-stops (slider→depth-of-field), vaccines (first-vs-second
+  exposure compare toggle), compound interest (multi-slider curves), tides
+  (drag-to-spin Earth under the bulges); 1/10 earned a map (Indiranagar
+  coffee shops — 7 stops, correctly places-mode/unordered); 5/10 stayed
+  clean prose incl. both writing tasks. Notably "why is the sky blue"
+  (keyword-bait for any regex system) was correctly declined — the decision
+  is model judgment, no keywords anywhere in the path. Borderline watch:
+  noise cancelling declined a wave-interference toy; conservative per the
+  "most answers have none" directive.
+- **All four eval briefs BUILT (live sidecar, ~190s for four concurrent):**
+  f-stops (aperture circles + depth-of-field bar, "exposure vs f/1.4: −7.9
+  stops" at f/22), vaccines (log-scale titer curve, Dose 1/2 markers, day
+  scrubber), compound interest (rate/years sliders — $100@20%×20y reads
+  $3,834 vs $500 simple, which is exactly 100·1.2²⁰), tides (Earth-with-
+  bulges + Moon diagram, 24h tide curve, play + scrubber). All four wear
+  the dark tokens natively; all four controls verified live. QA:
+  docs/assets/qa/widget-wall-4.png.
 ## 2026-07-11 (evening) — Chrome overlap polish (G4)
 
 **Intent:** the review's five overlap paper cuts, taken one by one — each

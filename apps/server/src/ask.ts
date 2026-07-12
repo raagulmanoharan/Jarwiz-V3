@@ -14,6 +14,7 @@ import { AGENT_MODEL } from './agents/runtime.js';
 import { assetPath, extractAssetPages, extractAssetText, getAsset } from './assets.js';
 import { cacheImagesInRows } from './imageCache.js';
 import { FIND_IMAGE_TOOL, runFindImage } from './imageSearch.js';
+import { locateStops, type ProposedStop } from './geo.js';
 import { extractSheetText } from './sheets.js';
 import { getMachine, type MachineSkill } from './machines.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
@@ -135,6 +136,150 @@ bar = BarChart("Revenue by region", ["NA","EU","APAC","LATAM"], [120, 80, 50, 34
 line = LineChart("Monthly revenue", ["Jan","Feb","Mar","Apr","May"], [42, 38, 51, 47, 53])
 tbl = Card("By region", [t1])
 t1 = Table(["Region","Revenue","Orders"], [["NA","$120k","540"],["EU","$80k","410"]])`;
+
+/** A map answer is structured stops the server geocodes before each pin is
+ *  emitted (docs/MAPS.md) — the table pattern (generate → enrich → fan out
+ *  events), not the dashboard's opaque streamed spec. */
+const MAP_SYSTEM = `You answer a places request as a MAP — real, specific places the user can actually visit: a trip itinerary, a day plan with stops, a shortlist of options, or a single recommended place. Return ONLY a JSON object:
+
+{"title": string, "intro": string, "ordered": boolean, "stops": [{"name": string, "query": string, "day"?: string, "time"?: string, "note"?: string, "lat"?: number, "lng"?: number}]}
+
+- "title": short and concrete ("Savandurga + Manchanabele day trip").
+- "intro": ONE line of the reasoning behind the geometry ("both on the Magadi Road side, so drives stay short").
+- "ordered": true when the stops form a visiting order (an itinerary/route); false when they are options to pick from (a shortlist, "temples near X") or a single place.
+- "stops": 1–10 REAL places. Never invent a place; if you are not confident it exists, leave it out.
+  - "name": what a person calls it ("Savandurga Trek").
+  - "query": a REGION-QUALIFIED geocodable string — place, locality, state/region, country ("Savandurga Betta, Magadi, Karnataka, India"). This is looked up on a real geocoder; qualify it enough that the FIRST result is the right place, never a same-named place elsewhere.
+  - "day"/"time": only for itineraries — "Day 1"/"Morning" and "6:30 AM" style. Omit for options.
+  - "note": one tight line of judgement a friend would give ("steep but short (~2 km) — book the forest-dept slot early"). Omit if you have nothing real to say.
+  - "lat"/"lng": your best-guess coordinates as a FALLBACK for when the geocoder misses — give them when you know the area, omit when unsure. The geocoder's answer wins when it resolves.
+Ground stops in the provided sources when they name places; otherwise draw on what you reliably know (use web search if available to verify current names). No prose outside the JSON, no code fences.`;
+
+/** The inline map block — doc answers carry a map when the content is places,
+ *  the same "when warranted" doctrine as find_image (docs/MAPS.md). This is
+ *  content-level, not shape routing: the answer is still a doc; the fence is
+ *  just markdown until the client renders it. */
+const MAP_BLOCK_DIRECTIVE = `
+
+MAP BLOCK — when (and ONLY when) the substance of the answer is real places the user could visit (a trip or day plan, "places/cafés/temples near X", a location recommendation), include ONE map block early in the card — right after the opening line, before the plan/details:
+\`\`\`map
+{"ordered": true, "stops": [{"name": "Savandurga Trek", "query": "Savandurga Betta, Magadi, Karnataka, India", "day": "Morning", "time": "6:30 AM", "note": "Steep but short — book the slot early.", "lat": 12.92, "lng": 77.29}]}
+\`\`\`
+Rules: 1–8 REAL places only (never invent one); "query" must be region-qualified (place, locality, state, country) so a geocoder's first hit is the right place; "ordered" true only when the stops form a visiting order (an itinerary) — false for options/a single place; "day"/"time" only for itineraries; "note" one tight line or omitted; "lat"/"lng" your best guess as a fallback, omit when unsure. Then write the plan/answer as normal prose or bullets whose numbering follows the stop order. Never use a map block for anything that is not a visitable place; most answers have none.`;
+
+/** The inline widget block — a doc answer carries a SMALL model-authored
+ *  interactive when varying a parameter genuinely explains the concept
+ *  (docs/MAPS.md's fence architecture, second instance: the fence carries the
+ *  BRIEF, hydration generates the widget on the prototype budget via
+ *  /api/widget). Content-level like find_image/map — the shape stays a doc. */
+const WIDGET_BLOCK_DIRECTIVE = `
+
+WIDGET BLOCK — when (and ONLY when) the concept being explained genuinely becomes clearer through INTERACTION — varying a parameter, stepping through stages, dragging something, comparing two states, watching a small simulation — include ONE widget block where the concept appears:
+\`\`\`widget
+{"concept": "drag force vs speed for different body shapes", "interaction": "speed slider + sedan/van toggle drive the force curve", "note": "F = 1/2 * rho * Cd * A * v^2; van Cd ~0.38 vs sedan ~0.28"}
+\`\`\`
+"concept" names exactly ONE idea to make interactive; "interaction" describes the form that best teaches it (sliders, a step-through of stages, drag-to-explore, a compare toggle, a run/pause simulation — your call); "note" (optional) pins the real formula/values/sequence so the widget is honest. A separate pass builds the widget from this brief — you only write the brief. At most one per answer; only when interaction genuinely teaches (never decoration, never a chart of static facts); MOST answers have none.`;
+
+/** How the widget itself is authored — the prototype card's rules shrunk to a
+ *  single-concept teaching block (~460×320, rendered in a sandboxed iframe
+ *  with no network). */
+const WIDGET_SYSTEM = `You build ONE small interactive teaching widget as a self-contained HTML document. It illustrates exactly one concept, honestly, in whatever interaction form BEST TEACHES it: parameter sliders, a step-through of stages (Next/Play), drag-to-explore, a compare toggle, or a small run/pause simulation. The brief's "interaction" field is your starting point — improve on it if a better form teaches better.
+
+HARD REQUIREMENTS — rendered in a sandboxed iframe with NO network access:
+- Full document starting <!doctype html>; ALL CSS in one inline <style>, ALL JS in one inline <script>. No external resources of any kind.
+- System font stack.
+- FILL THE FRAME, RESPONSIVELY. The host already provides the ONE frame (a bordered, rounded panel) — do NOT draw your own outer card, border, or drop-shadow around everything; that makes an ugly card-within-a-card. Set html,body{margin:0;height:100%} and make your root fill 100% width AND 100% height with flexbox (display:flex;flex-direction:column). The frame size is VARIABLE (roughly 3:2, but it ranges from ~300px to ~900px wide) — never assume a fixed pixel size and never center a small fixed-size box in a large frame. Any canvas/SVG must stretch to its container (width:100%;height:100%, flex:1) and REDRAW on resize (a ResizeObserver on the canvas, or a window 'resize' listener) so it always fills, crisp, at any size. Breathing room comes from INTERNAL padding, not a dead outer margin.
+- THEME: the host injects CSS custom properties — use them WITH fallbacks and invent no other colors:
+  background: var(--jzw-surface, #fafafa); primary text/lines: var(--jzw-ink, #1a1a1a); secondary text: var(--jzw-muted, #6a6a6a); hairlines: var(--jzw-line, #d4d4d4); the ONE accent: var(--jzw-accent, #0f0f0f) with var(--jzw-accent-ink, #ffffff) on top.
+- The interaction must actually drive the visual — canvas or SVG redrawn live. Use the REAL relationship (the brief's note pins formulas/values/sequences); label axes/stages and show a live readout. Never fake the shape of a curve.
+- THE WIDGET INTRODUCES ITSELF: on load, run ONE brief (~1.2s) demonstration — animate the primary control/state through its range so the reader sees it is alive, then settle at the default. If matchMedia('(prefers-reduced-motion: reduce)') matches, skip the animation and show a small quiet "try it" hint instead.
+- Keep it small and instant: no libraries, no images, under ~160 lines.
+
+Output ONLY the raw HTML document — no prose, NO \`\`\` fences.`;
+
+/** One widget per distinct brief per process — hydrations are cached so a doc
+ *  re-render (or several viewers of the same card) never regenerates. */
+const widgetCache = new Map<string, Promise<string | null>>();
+
+/** The keyless demo widget: an honest drag-vs-speed interactive for
+ *  aero-flavoured briefs, a designed "set a key" block for anything else. */
+function demoWidgetHtml(concept: string): string {
+  if (!/drag|aero|speed|force/i.test(concept)) {
+    return '<!doctype html><html><body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui,sans-serif;background:#fafafa;color:#8a8a8a;font-size:13px">Set ANTHROPIC_API_KEY to generate this widget.</body></html>';
+  }
+  return `<!doctype html><html><head><style>
+html,body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:var(--jzw-surface,#fafafa);color:var(--jzw-ink,#1a1a1a)}
+.wrap{padding:14px 16px;display:flex;flex-direction:column;gap:10px;height:100vh;box-sizing:border-box}
+.row{display:flex;gap:14px;align-items:center;font-size:12px}
+.row label{color:var(--jzw-muted,#5a5a5a);font-weight:600}
+.seg{display:flex;border:1px solid var(--jzw-line,#d4d4d4);border-radius:999px;overflow:hidden}
+.seg button{border:none;background:transparent;padding:4px 12px;font:600 11px system-ui;cursor:pointer;color:var(--jzw-muted,#5a5a5a)}
+.seg button.on{background:var(--jzw-accent,#0f0f0f);color:var(--jzw-accent-ink,#fff)}
+canvas{flex:1;min-height:0;width:100%}
+.read{font-size:12px;color:var(--jzw-muted,#5a5a5a)}.read b{color:var(--jzw-ink,#0f0f0f);font-variant-numeric:tabular-nums}
+input[type=range]{accent-color:var(--jzw-accent,#0f0f0f);flex:1}
+</style></head><body><div class="wrap">
+<div class="row"><label>Speed</label><input id="v" type="range" min="10" max="140" value="80"><span class="read"><b id="vr">80</b> km/h</span></div>
+<div class="row"><label>Body</label><div class="seg"><button id="sedan" class="on">Sedan (Cd 0.28)</button><button id="van">Van (Cd 0.38)</button></div><span class="read">Drag: <b id="fr">—</b> N</span></div>
+<canvas id="c"></canvas></div><script>
+const rho=1.225,A={sedan:2.2,van:3.4},Cd={sedan:0.28,van:0.38};let body='sedan';
+const c=document.getElementById('c'),x=c.getContext('2d');
+const v=document.getElementById('v'),vr=document.getElementById('vr'),fr=document.getElementById('fr');
+function F(kmh,b){const ms=kmh/3.6;return .5*rho*Cd[b]*A[b]*ms*ms}
+function draw(){const W=c.width=c.clientWidth*2,H=c.height=c.clientHeight*2;x.scale(1,1);
+x.clearRect(0,0,W,H);const pad=56,maxV=140,maxF=F(maxV,'van')*1.05;
+const cs=getComputedStyle(document.documentElement),C={ink:cs.getPropertyValue('--jzw-ink').trim()||'#1a1a1a',muted:cs.getPropertyValue('--jzw-muted').trim()||'#8a8a8a',line:cs.getPropertyValue('--jzw-line').trim()||'#d4d4d4',accent:cs.getPropertyValue('--jzw-accent').trim()||'#0f0f0f'};x.strokeStyle=C.line;x.lineWidth=2;x.beginPath();x.moveTo(pad,10);x.lineTo(pad,H-pad);x.lineTo(W-10,H-pad);x.stroke();
+x.fillStyle=C.muted;x.font='20px system-ui';x.fillText('drag force (N)',pad+8,28);x.fillText('speed (km/h)',W-150,H-pad+34);
+const px=k=>pad+(W-pad-20)*k/maxV, py=f=>H-pad-(H-pad-20)*f/maxF;
+for(const b of['sedan','van']){x.strokeStyle=b===body?C.accent:C.line;x.lineWidth=b===body?4:2;x.beginPath();
+for(let k=0;k<=maxV;k+=2){const X=px(k),Y=py(F(k,b));k?x.lineTo(X,Y):x.moveTo(X,Y)}x.stroke();}
+const kv=+v.value,Y=py(F(kv,body)),X=px(kv);x.fillStyle=C.accent;x.beginPath();x.arc(X,Y,7,0,7);x.fill();
+vr.textContent=kv;fr.textContent=F(kv,body).toFixed(0);}
+v.oninput=draw;for(const id of['sedan','van'])document.getElementById(id).onclick=e=>{body=id;
+document.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on',b.id===id));draw()};
+new ResizeObserver(draw).observe(c);draw();
+// The widget introduces itself: one ~1.2s sweep of the speed slider, then
+// settle at the default. Reduced motion skips it.
+if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
+const t0=performance.now(),from=15,peak=140,home=80;
+(function sweep(now){const k=Math.min(1,(now-t0)/1200);
+v.value=Math.round(k<.7?from+(peak-from)*(k/.7):peak+(home-peak)*((k-.7)/.3));draw();
+if(k<1)requestAnimationFrame(sweep)})(t0);}
+</script></body></html>`;
+}
+
+/** Build (or replay) the widget for a doc's \`\`\`widget brief. Cached per
+ *  brief; strips stray fences; null on failure (the block degrades). */
+export async function generateWidgetHtml(briefRaw: string, signal: AbortSignal): Promise<string | null> {
+  const key = briefRaw.trim();
+  let inflight = widgetCache.get(key);
+  if (!inflight) {
+    inflight = (async () => {
+      let concept = '';
+      let controls: string[] = [];
+      let note = '';
+      try {
+        const json = JSON.parse(key) as { concept?: unknown; controls?: unknown; note?: unknown };
+        concept = typeof json.concept === 'string' ? json.concept.slice(0, 200) : '';
+        controls = Array.isArray(json.controls) ? json.controls.map((c) => String(c).slice(0, 80)).slice(0, 3) : [];
+        note = typeof json.note === 'string' ? json.note.slice(0, 300) : '';
+      } catch {
+        return null;
+      }
+      if (!concept.trim()) return null;
+      if (!process.env.ANTHROPIC_API_KEY?.trim() && !sidecarAvailable()) return demoWidgetHtml(concept);
+      const user = `Concept: ${concept}\nControls: ${controls.join('; ') || 'your call — the fewest that teach it'}${note ? `\nGround truth: ${note}` : ''}`;
+      const raw = await generate(WIDGET_SYSTEM, user, signal, [], { prototype: true });
+      const html = raw.replace(/^\s*```(?:html)?\s*/i, '').replace(/```\s*$/i, '').trim();
+      return html.toLowerCase().includes('<html') || html.toLowerCase().startsWith('<!doctype') ? html.slice(0, 60_000) : null;
+    })().catch(() => null);
+    widgetCache.set(key, inflight);
+    void inflight.then((v) => {
+      if (!v) widgetCache.delete(key); // a transient failure may succeed later
+    });
+  }
+  return inflight;
+}
 
 const AFFINITY_SYSTEM = `You run an affinity-mapping exercise: turn the request and the source(s) into clustered sticky notes. Return ONLY a JSON object {"clusters": [{"label": string, "notes": string[]}]}. Make 3–6 clusters; each has a short 1–4 word "label" (the theme) and 2–6 short "notes" (each one idea, a few words). Group related ideas under the same theme. Ground notes in the provided content when a source is given; otherwise brainstorm sensible ideas for the request. No prose, no code fences.`;
 
@@ -835,12 +980,84 @@ async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenera
     return;
   }
 
-  yield { type: 'card.create', shape: 'doc', title: 'Demo mode' };
-  const body =
-    `You asked: *${req.prompt.slice(0, 140)}*\n\n` +
-    'Jarwiz is running without a model — add your Anthropic API key (key ' +
-    'button, top right) and real answers will stream onto the board ' +
-    'exactly like this one, grounded on the cards you selected.';
+  // A map ask has a concrete shape to show even without a model — drop a
+  // canned Bengaluru day trip pin by pin (real places, hard-coded coordinates,
+  // no geocoder) so the map card is demoable keyless.
+  if (req.shape === 'map') {
+    yield {
+      type: 'card.create',
+      shape: 'map',
+      title: 'Savandurga + Manchanabele day trip (demo)',
+      intro: 'Both sit on the Magadi Road side of Bengaluru, so drives between stops stay short.',
+      ordered: true,
+    };
+    const stops = [
+      { name: 'Savandurga Trek', query: 'Savandurga Betta, Magadi, Karnataka, India', lat: 12.9194, lng: 77.2926, day: 'Morning', time: '6:30 AM', note: 'Steep but short (~2 km) — set a key for a real, planned trip.' },
+      { name: 'Dodda Alada Mara', query: 'Dodda Alada Mara, Ramohalli, Karnataka, India', lat: 12.9226, lng: 77.3934, day: 'Morning', time: '12:30 PM', note: 'The 400-year-old banyan — an easy lunch-side stop.' },
+      { name: 'Manchanabele Dam', query: 'Manchanabele Dam, Karnataka, India', lat: 12.9401, lng: 77.3427, day: 'Afternoon', time: '4:30 PM', note: 'Timed late on purpose — it’s a sunset spot.' },
+    ];
+    for (let i = 0; i < stops.length; i++) {
+      if (signal.aborted) return;
+      yield { type: 'map.pin', index: i, stop: stops[i]! };
+      await sleep(340, signal);
+    }
+    yield { type: 'card.done' };
+    yield { type: 'done' };
+    return;
+  }
+
+  // A places-flavoured prompt shows the inline map block even keyless — the
+  // demo doc carries a map fence with real, hard-coded coordinates so the doc
+  // path (DocMarkdown → DocMapBlock) is demoable with zero keys and no
+  // geocoder. Any other prompt gets the plain explainer doc.
+  const placey = /\b(trip|itinerar|travel|visit|places?|near|temple|restaurant|caf[eé]|beach|trek|route|weekend)\b/i.test(req.prompt);
+  // A concept-flavoured prompt demos the inline WIDGET block the same way a
+  // places prompt demos the map block — the fence carries the brief and the
+  // /api/widget hydrator returns the canned keyless interactive.
+  const concepty = !placey && /\b(drag|aerodynamic|physics|force|explain|why|how does|dynamics)\b/i.test(req.prompt);
+  yield {
+    type: 'card.create',
+    shape: 'doc',
+    title: placey ? 'Day trip — Savandurga + Manchanabele (demo)' : concepty ? 'Drag: why the van loses (demo)' : 'Demo mode',
+  };
+  if (concepty) {
+    const widgetFence = [
+      '```widget',
+      JSON.stringify({
+        concept: 'drag force vs speed for different body shapes',
+        interaction: 'speed slider + sedan/van toggle drive the force curve',
+        note: 'F = 1/2 * rho * Cd * A * v^2; van Cd ~0.38 A ~3.4, sedan Cd ~0.28 A ~2.2',
+      }),
+      '```',
+    ].join('\n');
+    const conceptBody = `Drag force grows with the **square** of speed — double your speed and the air pushes back four times as hard. *(Demo mode — set a key for a real, grounded answer.)*\n\n${widgetFence}\n\nA van suffers twice: its drag coefficient is higher (boxy nose, hard edges — Cd ≈ 0.38 vs a sedan's ≈ 0.28) **and** its frontal area is bigger (≈ 3.4 m² vs ≈ 2.2 m²). Multiply those through F = ½ρC_dAv² and at highway speed the van is fighting roughly **twice the drag force** — which is why its fuel economy falls off a cliff above 90 km/h while the sedan's merely sags.`;
+    for (const piece of chunk(conceptBody)) {
+      if (signal.aborted) return;
+      yield { type: 'card.delta', textDelta: piece };
+      await sleep(24, signal);
+    }
+    yield { type: 'card.done' };
+    yield { type: 'done' };
+    return;
+  }
+  const mapFence = [
+    '```map',
+    JSON.stringify({
+      ordered: true,
+      stops: [
+        { name: 'Savandurga Trek', query: 'Savandurga Betta, Magadi, Karnataka, India', day: 'Morning', time: '6:30 AM', note: 'Steep but short (~2 km) — book the slot early.', lat: 12.9194, lng: 77.2926 },
+        { name: 'Dodda Alada Mara', query: 'Dodda Alada Mara, Ramohalli, Karnataka, India', day: 'Morning', time: '12:30 PM', note: 'The 400-year-old banyan — an easy lunch-side stop.', lat: 12.9226, lng: 77.3934 },
+        { name: 'Manchanabele Dam', query: 'Manchanabele Dam, Karnataka, India', day: 'Afternoon', time: '4:30 PM', note: 'Timed late on purpose — it’s a sunset spot.', lat: 12.9401, lng: 77.3427 },
+      ],
+    }),
+    '```',
+  ].join('\n');
+  const body = placey
+    ? `Here's a solid nature-and-outdoors day out — Savandurga + Manchanabele, both on the Magadi Road side, so the drive between them is quick. *(Demo mode — set a key for a real, planned answer.)*\n\n${mapFence}\n\n**The plan**\n- **5:30 AM** — Leave Bengaluru; Magadi Road before the traffic wakes up.\n- **6:30 AM** — **Savandurga trek** — steep but short (~2 km). Book the forest-dept slot the night before.\n- **12:30 PM** — **Dodda Alada Mara** — lunch near the 400-year-old banyan.\n- **4:30 PM** — **Manchanabele Dam** — timed late on purpose: it's a sunset spot.\n- **7:30 PM** — Back in the city, dinner earned.`
+    : `You asked: *${req.prompt.slice(0, 140)}*\n\n` +
+      'Jarwiz is running without a model — add your Anthropic API key (key ' +
+      'button, top right) and real answers will stream onto the board ' +
+      'exactly like this one, grounded on the cards you selected.';
   for (const piece of chunk(body)) {
     if (signal.aborted) return;
     yield { type: 'card.delta', textDelta: piece };
@@ -916,6 +1133,7 @@ const SHAPE_SUGGEST_SYSTEM = `A user is typing a request into a canvas app that 
 - DIAGRAM — boxes and arrows: a flowchart, process flow, architecture, sequence, org chart, mind map, "how X works".
 - PROTOTYPE — a live, rendered, interactive UI: an app, screen, form, widget, game, landing page, signup, timer, calculator.
 - DASHBOARD — turning DATA into an interactive view of KPIs, charts and a table: "dashboard of…", "visualise the… data/metrics/sales/revenue", analytics/KPIs/scorecard.
+- MAP — real PLACES to visit, on a map: a trip/day-trip/route with stops, an itinerary tied to geography, "places/cafés/temples near X", "where should I go…".
 - BOARD — a whole SET of cards laid out together for a broad, multi-part goal: "plan my launch", "organise everything for my trip", a workspace, everything you need end-to-end.
 
 Examples:
@@ -934,12 +1152,15 @@ Examples:
 "dashboard of Q2 sales" → DASHBOARD
 "visualise revenue by region" → DASHBOARD
 "kpis for our SaaS metrics" → DASHBOARD
+"plan a day trip from Bengaluru with a trek and a waterfall" → MAP
+"good temples near Mysore" → MAP
+"route for our Coorg road trip" → MAP
 "plan my product launch" → BOARD
 "organise everything for my Goa trip" → BOARD
 
-Reply with EXACTLY one word: DOC, LIST, TABLE, DIAGRAM, PROTOTYPE, DASHBOARD, or BOARD.`;
+Reply with EXACTLY one word: DOC, LIST, TABLE, DIAGRAM, PROTOTYPE, DASHBOARD, MAP, or BOARD.`;
 
-const SUGGESTABLE = new Set(['doc', 'list', 'table', 'diagram', 'prototype', 'dashboard', 'board']);
+const SUGGESTABLE = new Set(['doc', 'list', 'table', 'diagram', 'prototype', 'dashboard', 'map', 'board']);
 
 export async function suggestShape(prompt: string, signal: AbortSignal): Promise<string | null> {
   const p = prompt.trim();
@@ -1045,6 +1266,11 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
     return;
   }
 
+  if (shape === 'map') {
+    yield* streamMap(user, signal, images, { framePaths, imageData });
+    return;
+  }
+
   if (shape === 'table') {
     // Cross-document conflict requests get the clause-diff table treatment
     // (purely extractive across the given documents — no web there).
@@ -1123,6 +1349,11 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   if (linkRefs.length > 0) system += linkCiteDirective(linkRefs);
   if (wantsChecklist(req.prompt)) system += CHECKLIST_DIRECTIVE;
   system += WEB_DIRECTIVE;
+  // Docs carry their map when the content is places, and a small interactive
+  // widget when varying a parameter teaches the concept — the same "when
+  // warranted" doctrine as find_image; static text, so prompt caching holds.
+  system += MAP_BLOCK_DIRECTIVE;
+  system += WIDGET_BLOCK_DIRECTIVE;
   // With canvas sources riding along, the model declares which it actually
   // drew on — attached ≠ used, and lineage links only real use.
   if (req.sources.length > 0) system += SOURCES_USED_DIRECTIVE;
@@ -1189,6 +1420,90 @@ async function* runMachineSkill(
   }
 
   yield* streamDoc(machine.output === 'list' ? 'list' : 'doc', machine.systemPrompt, user, signal, images, opts);
+}
+
+const MAP_MAX_STOPS = 10;
+
+/**
+ * Stream a map: the model proposes real stops as JSON, the server verifies
+ * each location against a real geocoder (cached, throttled — geo.ts), then the
+ * pins land one by one. A stop whose location can't be verified either falls
+ * back to the model's own coordinates flagged `approx` (the card renders the
+ * doubt) or is dropped — never a silently wrong pin. See docs/MAPS.md.
+ */
+async function* streamMap(
+  user: string,
+  signal: AbortSignal,
+  images: ImageInput[] = [],
+  opts: GenOpts = {},
+): AsyncGenerator<AskEvent> {
+  yield { type: 'status', message: 'planning the stops…' };
+  const raw = await generate(MAP_SYSTEM, user, signal, images, { ...opts, web: true });
+  if (signal.aborted) return;
+
+  let title = '';
+  let intro = '';
+  let ordered = true;
+  let proposed: ProposedStop[] = [];
+  try {
+    const json = JSON.parse(raw.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()) as {
+      title?: unknown;
+      intro?: unknown;
+      ordered?: unknown;
+      stops?: unknown;
+    };
+    title = typeof json.title === 'string' ? json.title.slice(0, 90) : '';
+    intro = typeof json.intro === 'string' ? json.intro.slice(0, 200) : '';
+    ordered = json.ordered !== false;
+    proposed = Array.isArray(json.stops)
+      ? json.stops
+          .filter((s): s is Record<string, unknown> => Boolean(s) && typeof s === 'object')
+          .map((s) => ({
+            name: String(s.name ?? '').slice(0, 80),
+            query: String(s.query ?? s.name ?? '').slice(0, 160),
+            day: typeof s.day === 'string' ? s.day.slice(0, 30) : undefined,
+            time: typeof s.time === 'string' ? s.time.slice(0, 20) : undefined,
+            note: typeof s.note === 'string' ? s.note.slice(0, 200) : undefined,
+            lat: typeof s.lat === 'number' ? s.lat : undefined,
+            lng: typeof s.lng === 'number' ? s.lng : undefined,
+          }))
+          .filter((s) => s.name.trim() && s.query.trim())
+          .slice(0, MAP_MAX_STOPS)
+      : [];
+  } catch {
+    /* fall through — no clean JSON means no map; degrade to a written answer */
+  }
+  if (proposed.length === 0) {
+    yield* streamDoc('doc', DOC_SYSTEM + WEB_DIRECTIVE, user, signal, images, { ...opts, web: true });
+    return;
+  }
+
+  yield { type: 'card.create', shape: 'map', title: title || undefined, intro: intro || undefined, ordered };
+  yield { type: 'status', message: 'finding the places…' };
+
+  // Verify every stop first (cache makes repeats instant; the policy throttle
+  // spaces real lookups), THEN drop the pins in visiting order — the emission
+  // is the animation, so the geocoding wait never shows as a half-built map.
+  // locateStops (geo.ts) is the shared verifier the inline doc block uses too.
+  const located = await locateStops(proposed, signal);
+  if (located.length === 0) {
+    yield { type: 'card.done' };
+    yield { type: 'error', message: 'Couldn’t verify any of the places — try naming them more specifically.' };
+    return;
+  }
+
+  for (let i = 0; i < located.length; i++) {
+    if (signal.aborted) return;
+    const { lat, lng, approx, name, query, day, time, note } = located[i]!;
+    yield {
+      type: 'map.pin',
+      index: i,
+      stop: { name, query, lat, lng, approx: approx || undefined, day, time, note },
+    };
+    await sleep(340, signal);
+  }
+  yield { type: 'card.done' };
+  yield { type: 'done' };
 }
 
 /**
