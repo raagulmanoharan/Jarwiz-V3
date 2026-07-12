@@ -17,6 +17,10 @@ export interface Draft {
   groupIds?: TLShapeId[];
   status: 'streaming' | 'done' | 'error';
   error?: string;
+  /** The live stage the server reports ("reading …", "searching the web…",
+   *  "drafting the answer…") — the Generating chip mirrors it so the wait
+   *  narrates itself instead of sitting on one static word (G3.1). */
+  statusText?: string;
   prompt: string;
   /** Friendly label for the activity log — canned prompts (Profile, Refine
    *  transforms) read badly as raw instruction text. Falls back to `prompt`. */

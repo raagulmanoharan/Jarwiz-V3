@@ -18,6 +18,7 @@ import { locateStops, type ProposedStop } from './geo.js';
 import { extractSheetText } from './sheets.js';
 import { getMachine, type MachineSkill } from './machines.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
+import { anthropic, hasModelKey } from './model.js';
 import {
   RESEARCH_MAX_CONTINUATIONS,
   WEB_DIRECTIVE,
@@ -770,8 +771,8 @@ async function generate(
   opts: GenOpts = {},
 ): Promise<string> {
   const { tools, maxTokens, maxTurns, sidecarTimeoutMs } = genBudget(opts);
-  if (process.env.ANTHROPIC_API_KEY?.trim()) {
-    const client = new Anthropic();
+  if (hasModelKey()) {
+    const client = anthropic();
     const allTools = [...(tools ?? []), ...(opts.clientTools?.tools ?? [])];
     const messages: Anthropic.MessageParam[] = [
       { role: 'user', content: buildContent(user, images) },
@@ -848,8 +849,8 @@ async function* generateStream(
   opts: GenOpts = {},
 ): AsyncGenerator<GenEvent> {
   const { tools, maxTokens, maxTurns, sidecarTimeoutMs } = genBudget(opts);
-  if (process.env.ANTHROPIC_API_KEY?.trim()) {
-    const client = new Anthropic();
+  if (hasModelKey()) {
+    const client = anthropic();
     const allTools = [...(tools ?? []), ...(opts.clientTools?.tools ?? [])];
     const messages: Anthropic.MessageParam[] = [
       { role: 'user', content: buildContent(user, images) },
@@ -967,7 +968,7 @@ async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenera
       'bar = BarChart("By category", ["A", "B", "C", "D"], [8, 6, 4, 3])',
       'line = LineChart("Over time", ["Q1", "Q2", "Q3", "Q4"], [4, 6, 5, 7])',
       'tbl = Card("Set a key for a real dashboard", [t1])',
-      't1 = Table(["Column", "Value"], [["Model", "not configured"], ["Fix", "set ANTHROPIC_API_KEY"]])',
+      't1 = Table(["Column", "Value"], [["Model", "not configured"], ["Fix", "add your Anthropic API key (key button, top right)"]])',
     ].join('\n');
     for (const piece of chunk(spec, 4)) {
       if (signal.aborted) return;
@@ -1054,8 +1055,8 @@ async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenera
   const body = placey
     ? `Here's a solid nature-and-outdoors day out — Savandurga + Manchanabele, both on the Magadi Road side, so the drive between them is quick. *(Demo mode — set a key for a real, planned answer.)*\n\n${mapFence}\n\n**The plan**\n- **5:30 AM** — Leave Bengaluru; Magadi Road before the traffic wakes up.\n- **6:30 AM** — **Savandurga trek** — steep but short (~2 km). Book the forest-dept slot the night before.\n- **12:30 PM** — **Dodda Alada Mara** — lunch near the 400-year-old banyan.\n- **4:30 PM** — **Manchanabele Dam** — timed late on purpose: it's a sunset spot.\n- **7:30 PM** — Back in the city, dinner earned.`
     : `You asked: *${req.prompt.slice(0, 140)}*\n\n` +
-      'Jarwiz is running without a model — set `ANTHROPIC_API_KEY` on the server ' +
-      '(or install the Claude CLI) and real answers will stream onto the board ' +
+      'Jarwiz is running without a model — add your Anthropic API key (key ' +
+      'button, top right) and real answers will stream onto the board ' +
       'exactly like this one, grounded on the cards you selected.';
   for (const piece of chunk(body)) {
     if (signal.aborted) return;
@@ -1178,12 +1179,25 @@ export async function suggestShape(prompt: string, signal: AbortSignal): Promise
 }
 
 export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGenerator<AskEvent> {
-  if (!process.env.ANTHROPIC_API_KEY?.trim() && !sidecarAvailable()) {
+  if (!hasModelKey() && !sidecarAvailable()) {
     yield* streamDemoAsk(req, signal);
     return;
   }
 
-  yield { type: 'status', message: 'reading the source…' };
+  // Name what's being read — "reading 'Product sync — …'" beats a generic
+  // verb, and the honest-status principle wants specific over vague (G3.1).
+  const firstTitle = req.sources.find((s) => s.title?.trim())?.title?.trim();
+  yield {
+    type: 'status',
+    message:
+      req.sources.length === 0
+        ? 'thinking it through…'
+        : firstTitle
+          ? `reading “${firstTitle.slice(0, 40)}${firstTitle.length > 40 ? '…' : ''}”…`
+          : req.sources.length > 1
+            ? `reading ${req.sources.length} sources…`
+            : 'reading the source…',
+  };
   const { context, citable, images, linkRefs, framePaths, imageData } = await gatherContext(req);
   if (signal.aborted) return;
 
@@ -1217,6 +1231,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   // Disambiguation: if the request is genuinely unclear, ask one short question
   // (with tappable options) instead of guessing. Skipped once the user answers.
   if (!req.skipClarify) {
+    yield { type: 'status', message: 'making sure I understand…' };
     const clarify = await maybeClarify(req, signal);
     if (signal.aborted) return;
     if (clarify) {
@@ -1267,6 +1282,9 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
         ? '\nAlso include a "usedSources": number[] key — the numbers of the numbered Sources whose content the table actually drew on (a source you ignored, and web results, do not count; [] if none).'
         : '';
     const tableSystem = (isDiff ? CLAUSE_DIFF_SYSTEM : TABLE_SYSTEM + WEB_TABLE_DIRECTIVE) + tableUsedDirective;
+    // The table generates in one long blocking call — without a stage here
+    // the whole build reads as silence until cells appear (G3.1).
+    yield { type: 'status', message: 'building the table…' };
     const raw = await generate(tableSystem, user, signal, images, {
       web: !isDiff,
       framePaths,
@@ -1339,6 +1357,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   // With canvas sources riding along, the model declares which it actually
   // drew on — attached ≠ used, and lineage links only real use.
   if (req.sources.length > 0) system += SOURCES_USED_DIRECTIVE;
+  yield { type: 'status', message: shape === 'list' ? 'writing the list…' : 'drafting the answer…' };
   // Everyday doc/list answers carry find_image too — the directive gates it
   // to answers a real image genuinely lifts (owner call, 2026-07-10).
   yield* streamDoc(shape, system, user, signal, images, { web: true, framePaths, imageData, clientTools: FIND_IMAGE_CLIENT }, req.sources.length);

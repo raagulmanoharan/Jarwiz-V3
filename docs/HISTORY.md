@@ -774,6 +774,29 @@ warrants it."
   honesty rule end-to-end: the sandbox blocked the fetch, and the model
   declined to fake a URL — noting it in the card instead of inventing one.
 
+## 2026-07-11 (later) — Rich cards give up their pieces: drag out
+
+**Intent:** "can I drag a table or image out of a rich card into a new card?"
+→ build drag-out first (drop-in composition comes later).
+
+- Every extractable block inside a generative-UI card — table, image, prose
+  section, chart — grows a quiet grab handle on hover (`dashboard/extract.tsx`
+  + wrappers in `library.tsx`). Drag it onto the canvas and it lands as a
+  REAL card of the right type: table → editable table-card, image →
+  image-card (proxied URL travels), prose → doc-card (raw markdown; the doc
+  card re-proxies images itself), chart → a mini one-statement dashboard-card.
+  Instant — the data is already in the rendered spec, no model round-trip.
+- Extraction inherits the day's lineage system for free: the new card records
+  the rich card in `meta.jzSources`, so click-to-reveal provenance and
+  auto-sync treat it like any other derived card.
+- Mechanics: handle pointerdown stops propagation (tldraw never mistakes it
+  for a card translate), a ghost pill rides the pointer, Escape cancels,
+  release must land on the canvas outside the host card. Import note: the
+  library pulls card sizes from specific shape files, not the shapes barrel —
+  the barrel imports the dashboard util which imports the library (cycle).
+- Verified in the browser against the real Hubble research spec: table (3×6,
+  from inside a tab) and image both extracted with lineage intact.
+
 ## 2026-07-11 — Card actions audit: real icons, honest Regenerate
 
 **Intent:** "audit all the actions shown on the card types — is Regenerate on
@@ -978,3 +1001,132 @@ can be any kind of widget to best explain the concept."
   bulges + Moon diagram, 24h tide curve, play + scrubber). All four wear
   the dark tokens natively; all four controls verified live. QA:
   docs/assets/qa/widget-wall-4.png.
+## 2026-07-11 (evening) — Chrome overlap polish (G4)
+
+**Intent:** the review's five overlap paper cuts, taken one by one — each
+reproduced on current main before fixing, each re-verified after.
+
+- **Keep/Discard never covers content.** The draft bar's dock clamp used to
+  pull it up over a tall card's body. `useCardAnchor` grew `flipWhenCovered`:
+  when the clamp engages the bar flips above the card's top edge, and for a
+  card taller than the viewport it pins to the top strip (44) over the card's
+  padding band — never mid-content. Verified across a full streaming run
+  (14 samples, zero content overlaps).
+- **Dock pills stand down while a draft exists** (streaming or Keep-pending)
+  — they describe the previous card and floated over the fresh artefact.
+- **The card bar's menu is scoped to the selection moment.** The bar stays
+  mounted across selections, so an open menu used to resurrect over whatever
+  card got selected next (including auto-selected generations). Now it resets
+  on selection change and closes on Escape / outside pointer-down.
+- **The avatar clamps to the viewport** — badge included — so it can't park
+  half off-screen at an edge.
+- **The send button relaxes into a pill when busy** ("Planning…",
+  "Scanning…") instead of spilling its label out of the 30px circle.
+
+## 2026-07-11 (night) — Generation feel: narrated waits + honest framing (G3)
+
+**Intent:** the review's "silent latency" and "artifact lands half
+off-screen" findings. The backlog's third item (a streaming skeleton) was
+dropped deliberately — the doc card's caret IS the pre-text state by prior
+owner call ("no fake skeleton blobs"), and narration carries the wait
+instead.
+
+- **The wait narrates itself.** The server emits honest, specific stages —
+  `reading "Product sync — …"…` (the source by name), `making sure I
+  understand…`, `building the table…`, `drafting the answer…` — and the
+  Generating chip mirrors the live stage instead of one frozen word. Stage
+  events fire before `card.create`, so the run carries the latest stage into
+  the draft at creation (the chip's first word is already specific).
+- **The finished artifact is always in view.** Mid-stream camera follows are
+  throttled and interrupt each other; `card.done` now runs one final
+  followCard settle (same contains() gate — an in-view pair doesn't move).
+- **Markdown tables can't escape their card.** `.jz-md-table` gained
+  `table-layout: fixed` + cell `overflow-wrap` — a six-column table used to
+  keep its min-content width and spill past the card's right edge, which is
+  what actually made the review's launch plan look "off-screen" while the
+  camera was correctly framed on the card.
+
+## 2026-07-11 (late) — The meeting-debrief recipe (G5)
+
+**Intent:** the review's productised use case — transcript in, a connected
+cluster out, making good on the hero's "I'll lay it out as a board" promise.
+
+- **Detection is local and humble:** a pasted text attachment with several
+  speaker-turn lines auto-pins a **Debrief** chip (same suggestion chip as the
+  model's shape guesses — dismiss for a doc, tap to change, a user pick is
+  never overridden). A miss just means no suggestion.
+- **The recipe is the plan:** no planning call. The server's compose transport
+  gained a `recipe: 'debrief'` path — three fixed slots (Decisions / Action
+  items / Risks & open questions), each a grounded Ask over the transcript
+  with its own brief, streamed as slot events.
+- **One artifact, one decision:** the three cards register as ONE draft
+  (anchor + groupIds) — a single Keep/Discard gates the whole cluster, the
+  bar centres under the cluster's union, and "Stop & discard" genuinely
+  aborts the stream (the run claims the same one-run-at-a-time slot as Ask).
+- **Lineage is deterministic:** every card records the transcript in
+  `meta.jzSources` at creation — hairlines, auto-sync, and the Regenerate
+  gate see it immediately.
+- Verified live twice: chip auto-pins on a transcript paste; three cards
+  stream in a row beside the source; Action items is checklist-only with
+  owners/dates; one Keep keeps all four cards; lineage points at the
+  transcript.
+
+## 2026-07-12 — Board-wide search from the tool rail (G6, part 1)
+
+**Intent:** "add a search icon in the left toolbar that does the board-wide
+search" — the review's scale finding: the only magnifier on screen was the
+zoom menu, fine at 3 cards, dead at 40.
+
+- A **Search** tool joined the rail (between Upload and Help). It opens as a
+  SPOTLIGHT — centred panel over a darkened board (owner call, 2026-07-12:
+  "keep it in the middle of the screen with bg darkened") — portaled to
+  <body> because the rail's own transform would hijack position:fixed.
+- Type ≥2 chars → live local scan over every text-bearing card (titles,
+  bodies, table cells, diagram code, link URLs); title hits rank first, each
+  result shows kind + a snippet around the match.
+- Enter / click jumps: the card is selected and brought into view at a
+  readable zoom (`bringIntoView`), panel closes. ⌘K / Ctrl-K opens search
+  from anywhere — reconciling the review's dead-⌘K finding.
+- Browser-verified on a 6-card board spread across thousands of page units:
+  a body-text query ("zebra") found the right card, Enter landed it selected
+  and in view, ⌘K opened, Escape closed, no-match state honest.
+## 2026-07-10 — Deployment spike → BYOK: the hosted app becomes the full product
+
+Raagul asked how people can try Jarwiz without touching a terminal. First
+finding: **static hosting already existed and was live** — `pages.yml`
+publishes the landing + real app to GitHub Pages on every push to main
+(`https://raagulmanoharan.github.io/Jarwiz-V3/`, app at `/app/`, "Try it
+free" → `app/?demo=1`), and persistence was already all-browser (IndexedDB /
+localStorage). What was missing: no agent runtime behind the hosted app, so
+the first prompt died with "Ask failed (404)". Mid-session Raagul raised the
+bar from "graceful playground" to **the full experience — visitors bring
+their own Anthropic key**.
+
+- **BYOK, end to end.** The visitor pastes their key into a topbar popover
+  (`ui/ApiKeySettings.tsx`); it lives only in their localStorage and rides
+  every /api call as an `x-anthropic-key` header. Server-side,
+  `apps/server/src/model.ts` parks that header in an AsyncLocalStorage scope;
+  all 30+ `process.env.ANTHROPIC_API_KEY` / `new Anthropic()` sites now go
+  through `modelKey()` / `anthropic()`. Request key wins, env falls back —
+  local dev unchanged. Deliberate choice over porting the ~4k-line agent
+  brain into the browser, which would have forked every future feature into
+  two runtimes.
+- **One fetch bridge instead of 20 call-site edits** (`lib/api.ts`):
+  `installApiBridge()` wraps window.fetch once — /api/* requests get
+  `VITE_API_BASE` prefixed (Pages → Render are different origins) and the key
+  attached. The key can never ride a non-/api request. `<img>` srcs don't
+  fetch — `apiUrl()` bakes the base into asset URLs at the three sites.
+- **Three honest states** (`lib/backend.ts` probes `/api/capabilities` once,
+  per-visitor since the key rides the probe too): no server → offline
+  playground pill (canvas + browser saves still work, images ≤8 MB inline as
+  data URLs); server keyless → "Demo mode" pill with an **Add your API key**
+  CTA (mock still answers); key present → everything live, zero notices.
+  Saving a key re-probes — the app flips live without a reload.
+- **Hosting**: `render.yaml` blueprint (free tier, `/api/health` check,
+  sidecar disabled) + `JARWIZ_API_BASE` repo variable → `VITE_API_BASE` in
+  pages.yml. Raagul's five-minute click-path is in `docs/DEPLOYMENT.md`,
+  with the free-tier realities (cold starts, ephemeral asset disk, open
+  CORS pinnable via `JARWIZ_ALLOWED_ORIGINS`).
+- Verified against the production build: preview with no server → playground
+  pill + friendly ask error; mock server up → demo pill + CTA; key saved →
+  capabilities flips to `api` per-request (env-less server, header key).

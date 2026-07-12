@@ -590,6 +590,101 @@ body,
 }
 .jz-comment-dismiss:hover { color: var(--jz-ink-900); }
 
+/* ── Board search — spotlight over a darkened board (owner call, 2026-07-12) ─ */
+.jz-search-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 480; /* above canvas chrome, below focus mode (500) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* A dim, not a blackout — the board stays legible behind the spotlight so
+     a jump target's neighbourhood is still visible context. */
+  background: rgba(6, 7, 9, 0.45);
+  animation: jz-fade-in var(--jz-dur-fast) var(--jz-ease-out) both;
+}
+.jz-search-panel {
+  width: min(480px, calc(100vw - 80px));
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+  background: var(--jz-card);
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-lg);
+  box-shadow: var(--jz-e4);
+  padding: 8px;
+  animation: jz-search-pop var(--jz-dur-base) var(--jz-ease-out, ease) both;
+}
+@keyframes jz-search-pop {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.jz-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: var(--jz-text-body-sm-size);
+  color: var(--jz-ink-900);
+  background: var(--jz-surface-raised);
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-sm);
+  outline: none;
+}
+.jz-search-input:focus {
+  border-color: var(--jz-hairline-strong);
+}
+.jz-search-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+}
+.jz-search-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 8px;
+  text-align: left;
+  padding: 6px 8px;
+  font: inherit;
+  background: none;
+  border: none;
+  border-radius: var(--jz-radius-sm);
+  cursor: pointer;
+}
+.jz-search-row--active {
+  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+}
+.jz-search-row-title {
+  font-size: var(--jz-text-body-sm-size);
+  font-weight: 600;
+  color: var(--jz-ink-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jz-search-row-meta {
+  font-size: var(--jz-text-micro-size);
+  color: var(--jz-ink-400);
+  align-self: center;
+}
+.jz-search-row-snippet {
+  grid-column: 1 / -1;
+  font-size: var(--jz-text-caption-size);
+  line-height: var(--jz-text-caption-lh);
+  color: var(--jz-ink-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jz-search-empty {
+  padding: 10px 8px 6px;
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-400);
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-search-backdrop, .jz-search-panel { animation: none; }
+}
+
 /* ── Thinking Machines — rail tool flyout + on-canvas machine block ────────── */
 /* .jz-machines is deliberately NOT position:relative: the flyout anchors to
    the RAIL (the nearest positioned ancestor), whose middle sits at the
@@ -3340,6 +3435,11 @@ body,
   border-collapse: separate;
   border-spacing: 0;
   width: 100%;
+  /* Fixed layout so the table can NEVER exceed the card: a many-column table
+   * otherwise keeps its min-content width and spills past the card's right
+   * edge — the camera frames the card perfectly while the table hangs out of
+   * it (review finding G3.2, 2026-07-11). Columns share the width; cells wrap. */
+  table-layout: fixed;
   margin: var(--jz-space-2) 0;
   font-size: var(--jz-text-body-size);
   line-height: var(--jz-text-body-lh);
@@ -3354,6 +3454,7 @@ body,
   padding: var(--jz-space-2) var(--jz-space-3);
   text-align: left;
   vertical-align: top;
+  overflow-wrap: break-word;
 }
 .jz-md-table th:last-child,
 .jz-md-table td:last-child {
@@ -3935,8 +4036,13 @@ body,
  * in from the edges; the orb births one Jarwiz per card. Pure illustration —
  * pointer-events off, so the canvas beneath stays fully interactive. */
 .jz-ambient {
-  position: fixed;
+  /* Absolute (not fixed) + clipped: the scene lives INSIDE the canvas area,
+     so when the docked Boards panel pushes the canvas, the scenery reflows
+     with it instead of painting over the panel (owner report, 2026-07-11 —
+     a scene card sat on top of the open panel). */
+  position: absolute;
   inset: 0;
+  overflow: hidden;
   z-index: 150;                 /* above the empty canvas, below the chrome + composer */
   pointer-events: none;
   transition: opacity 0.8s var(--jz-ease-glide), filter 0.8s ease, transform 0.8s ease;
@@ -4424,6 +4530,180 @@ body,
   color: var(--jz-ink-900);
 }
 
+/* Hosted-trial notice — sits above the composer when there's no agent runtime
+ * behind /api, or the server is keyless and answering with the scripted mock
+ * (lib/backend.ts). Quiet pill, not an alarm: the canvas is fully usable, and
+ * in demo mode the CTA is one tap from going live. */
+.jz-pb-playground {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jz-space-3);
+  max-width: min(640px, calc(100vw - 32px));
+  padding: 6px 14px;
+  border: 1px solid var(--jz-hairline-strong);
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e2);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-700);
+}
+
+.jz-pb-playground-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--jz-spark);
+}
+
+.jz-pb-playground-cta {
+  flex: none;
+  margin-left: var(--jz-space-2);
+  padding: 4px 12px;
+  border: none;
+  border-radius: var(--jz-radius-pill);
+  cursor: pointer;
+  background: var(--jz-accent);
+  color: var(--jz-accent-ink);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  font-weight: 600;
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-pb-playground-cta:hover {
+  transform: translateY(-1px);
+}
+
+/* ── BYOK key settings (Topbar) ─────────────────────────────────────────── */
+
+.jz-key-wrap {
+  position: relative;
+  flex: none;
+}
+
+/* Same round icon-button language as the theme toggle beside it. */
+.jz-key-btn {
+  pointer-events: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--jz-hairline);
+  border-radius: 50%;
+  cursor: pointer;
+  background: var(--jz-surface-raised);
+  color: var(--jz-ink-700);
+  box-shadow: var(--jz-e1);
+  transition: color var(--jz-dur-fast) var(--jz-ease-out), transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-key-btn:hover {
+  color: var(--jz-ink-900);
+  transform: translateY(-1px);
+}
+
+.jz-key-btn--set {
+  color: var(--jz-spark);
+}
+
+.jz-key-pop {
+  pointer-events: auto;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 300px;
+  padding: var(--jz-space-5);
+  border: 1px solid var(--jz-hairline-strong);
+  border-radius: var(--jz-radius-lg);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e3);
+  font-family: var(--jz-font-ui);
+  z-index: 30;
+}
+
+.jz-key-pop-title {
+  font-size: var(--jz-text-body-size);
+  font-weight: 600;
+  color: var(--jz-ink-900);
+  margin-bottom: var(--jz-space-2);
+}
+
+.jz-key-pop-sub {
+  margin: 0 0 var(--jz-space-4);
+  font-size: var(--jz-text-caption-size);
+  line-height: 1.45;
+  color: var(--jz-ink-700);
+}
+
+.jz-key-row {
+  display: flex;
+  gap: var(--jz-space-2);
+  align-items: center;
+}
+
+.jz-key-input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--jz-hairline-strong);
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface);
+  color: var(--jz-ink-900);
+  font-family: var(--jz-font-mono);
+  font-size: var(--jz-text-caption-size);
+}
+
+.jz-key-masked {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--jz-font-mono);
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-700);
+}
+
+.jz-key-save,
+.jz-key-remove {
+  flex: none;
+  padding: 7px 14px;
+  border: none;
+  border-radius: var(--jz-radius-pill);
+  cursor: pointer;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  font-weight: 600;
+  background: var(--jz-accent);
+  color: var(--jz-accent-ink);
+}
+
+.jz-key-save:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.jz-key-remove {
+  background: transparent;
+  border: 1px solid var(--jz-hairline-strong);
+  color: var(--jz-ink-700);
+}
+
+.jz-key-pop-hint {
+  margin: var(--jz-space-4) 0 0;
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-500);
+}
+
+.jz-key-pop-hint a {
+  color: inherit;
+  text-decoration: underline;
+}
+
 /* One-time coachmark */
 .jz-coach {
   pointer-events: auto;
@@ -4482,8 +4762,16 @@ body,
   font-weight: 500;
   color: var(--jz-ink-700);
   white-space: nowrap;
+}
+
+/* The label truncates INSIDE the chip (min-width: 0 lets it shrink as a flex
+   item) so a long card title ellipsizes instead of shoving the ✕ dismiss
+   past the chip's clip edge. */
+.jz-pb-ground-label {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Drop-to-attach: a file dragged over the composer highlights it as a target,
@@ -5219,6 +5507,14 @@ body,
   font-size: var(--jz-text-micro-size);
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* Carrying a busy label, the send circle relaxes into a pill so the text fits
+   instead of spilling over the 30px round button (G4.5). */
+.jz-promptbar-send--busy {
+  width: auto;
+  min-width: 30px;
+  padding: 0 12px;
 }
 
 /* ─── Board entry — "What are you working on?" onboarding dialog ─────────── */
@@ -6119,6 +6415,70 @@ body,
 .jzd-tab:hover { color: var(--jz-ink-700); }
 .jzd-tab--active { color: var(--jz-ink-900); border-bottom-color: var(--jz-accent); }
 .jzd-tabpanel { min-width: 0; }
+
+/* Drag-out affordance — SELECTING the rich card reveals a grab handle on every
+   extractable block (table/image/prose/chart); dragging one onto the canvas
+   extracts it as a real card of the right type (dashboard/extract.tsx).
+   Selection is the reveal because tldraw keeps shape HTML pointer-events:none
+   (so the card body stays draggable) — blocks can never receive CSS hover. */
+.jzd-extract { position: relative; min-width: 0; flex: 1 1 auto; border-radius: 10px; }
+/* Selecting the card highlights each piece AS A WHOLE — the block itself is
+   the affordance (owner call, 2026-07-11: no pill, no label). */
+.jzd-extract--on {
+  outline: 1px solid var(--jz-hairline-strong);
+  outline-offset: 4px;
+}
+.jzd-extract-handle {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-xs);
+  background: var(--jz-surface-raised);
+  color: var(--jz-ink-400);
+  cursor: grab;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--jz-dur-fast) var(--jz-ease-out);
+  z-index: 2;
+}
+.jzd-extract-handle--on {
+  opacity: 1;
+  pointer-events: all;
+}
+.jzd-extract-handle:hover {
+  color: var(--jz-ink-900);
+  border-color: var(--jz-ink-400);
+  box-shadow: var(--jz-e1);
+}
+.jzd-extract-handle:active { cursor: grabbing; }
+
+/* Tab buttons must re-enable pointer events themselves — the surrounding
+   shape HTML is pointer-events:none (see the drag-out note above), so without
+   this a real mouse could never switch tabs. */
+.jzd-tab { pointer-events: all; }
+
+/* The pill that rides the pointer during an extract drag. */
+.jz-extract-ghost {
+  position: fixed;
+  z-index: 500;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--jz-hairline);
+  background: var(--jz-surface);
+  color: var(--jz-ink-700);
+  font-family: var(--jz-font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: var(--jz-e2);
+  pointer-events: none;
+}
 
 .jzd-tablewrap { overflow: auto; border: 1px solid var(--jz-hairline); border-radius: 12px; }
 .jzd-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }

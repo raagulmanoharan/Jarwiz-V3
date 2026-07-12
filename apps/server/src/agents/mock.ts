@@ -78,7 +78,7 @@ function mockSummaryText(request: AgentRunRequest): string {
         ? `the page at ${source.url}`
         : `the selected ${source.kind} card`;
   return [
-    `**Demo mode** — the server has no ANTHROPIC_API_KEY, so this is a scripted stand-in summary of ${what}.`,
+    `**Demo mode** — no API key is configured, so this is a scripted stand-in summary of ${what}. Add your Anthropic API key (key button, top right) for the real thing.`,
     '',
     'What a real run would do here:',
     '',
@@ -209,7 +209,7 @@ function mockDraftText(request: AgentRunRequest): string {
   const inputs = [request.source, ...(request.selection ?? [])];
   const n = new Set(inputs.map((c) => c.cardId)).size;
   return [
-    `**Demo mode** — no ANTHROPIC_API_KEY is set, so this is a scripted stand-in draft synthesizing the ${n} selected card${n === 1 ? '' : 's'}.`,
+    `**Demo mode** — no API key is configured, so this is a scripted stand-in draft synthesizing the ${n} selected card${n === 1 ? '' : 's'}. Add your Anthropic API key (key button, top right) for the real thing.`,
     '',
     'A real Writer run would weave your selection into a single argument — not a list of what each card said, but a throughline that connects and contrasts them.',
     '',

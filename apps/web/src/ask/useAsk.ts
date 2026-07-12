@@ -39,6 +39,7 @@ import {
   type MapCardShape,
 } from '../shapes';
 import { readSSE } from '../agents/sse';
+import { agentErrorMessage } from '../lib/backend';
 import { startStreaming, stopStreaming } from '../agents/streaming';
 import { clearDraft, getDraft, setDraft, updateDraft } from './draft';
 import { clearRegen, setRegen } from './regen';
@@ -66,6 +67,19 @@ let activeRun: ActiveRun | null = null;
 /** Cancel the in-flight Ask/regen, if any (aborts the fetch/model stream). */
 export function cancelActiveAsk(): void {
   activeRun?.controller.abort();
+}
+
+/** Let an external multi-card run (the debrief recipe) occupy the same
+ *  one-run-at-a-time slot as an Ask — so `ask` refuses while it streams, the
+ *  auto-sync engine queues behind it, and DraftControls' "Stop & discard"
+ *  genuinely aborts it. Returns false when a run is already live. */
+export function claimActiveRun(controller: AbortController): boolean {
+  if (activeRun || getDraft()) return false;
+  activeRun = { controller, kind: 'ask' };
+  return true;
+}
+export function releaseActiveRun(controller: AbortController): void {
+  if (activeRun?.controller === controller) activeRun = null;
 }
 
 /** Is a run in flight or a draft awaiting Keep/Discard? The auto-sync engine
@@ -346,6 +360,10 @@ export function useAsk() {
       let affinity: { laneX: number; laneY: number; cols: Map<number, { x: number; ynext: number }> } | null =
         null;
       let lastFollow = 0;
+      // The latest server stage ("drafting the answer…"). Stage events fire
+      // BEFORE card.create, but the draft chip only exists after — carry the
+      // stage across so the chip narrates the first-token wait (G3.1).
+      let lastStatus: string | null = null;
       // When regenerating in place, a single history mark wraps the clear +
       // every streamed delta so one Cmd+Z restores the card's previous content.
       let inPlaceMark: string | null = null;
@@ -403,6 +421,7 @@ export function useAsk() {
             sourceIds,
             shape: 'affinity',
             pdfSourceId,
+            statusText: lastStatus ?? undefined,
           });
           frameCard(editor, [id], sourceIds);
         } else {
@@ -416,6 +435,11 @@ export function useAsk() {
             // Live server-side phase ("searching the web…") on the avatar —
             // a search can hold the stream for 10s+; never let it read as stall.
             setPresenceStatus(PRESENCE.id, event.message);
+            // The Generating chip narrates the same stage (G3.1). One run at
+            // a time is enforced at ask() entry, so a live draft is always
+            // this run's own.
+            lastStatus = event.message;
+            if (getDraft()) updateDraft({ statusText: event.message });
             break;
           }
           case 'clarify': {
@@ -578,7 +602,7 @@ export function useAsk() {
             // a source it was built from changes.
             recordSources(editor, id, contributingIds, trimmed);
             startStreaming(id);
-            setDraft({ id, status: 'streaming', prompt: trimmed, logLabel: opts?.logLabel, sourceIds, shape: event.shape, pdfSourceId });
+            setDraft({ id, status: 'streaming', prompt: trimmed, logLabel: opts?.logLabel, sourceIds, shape: event.shape, pdfSourceId, statusText: lastStatus ?? undefined });
             frameCard(editor, [id], sourceIds);
             // Any card built FROM other cards shows its lineage the moment it
             // lands — select it so the provenance hairline to its source(s)
@@ -712,6 +736,11 @@ export function useAsk() {
                 editor.updateShape<MapCardShape>({ id: cardId, type: 'map-card', props: { status: 'done' } });
               }
               stopStreaming(cardId);
+              // One final settle: mid-stream follows are throttled and their
+              // animations interrupt each other, so the finished artifact can
+              // end a run partly out of view (G3.2). Same contains() gate as
+              // followCard — a pair already in view doesn't move the camera.
+              followCard(editor, createdIds.length ? createdIds : [cardId], sourceIds);
             }
             break;
           case 'done':
@@ -745,7 +774,9 @@ export function useAsk() {
         if (cardId) stopStreaming(cardId);
         if (err instanceof Error && err.name !== 'AbortError') {
           runFailed = true;
-          surfaceError(err.message);
+          // On the hosted playground the raw failure is a meaningless 404 —
+          // tell the person what's actually going on instead.
+          surfaceError(agentErrorMessage(err.message));
         }
       } finally {
         if (inPlaceMark) {

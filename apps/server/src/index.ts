@@ -7,7 +7,9 @@
  *   POST /api/agents/:id/run     → SSE stream of typed AgentEvents
  *   POST /api/autopilot          → SSE stream of AutopilotEvents (Tab-to-continue)
  *
- * Secrets (ANTHROPIC_API_KEY) live only here — the client never sees a key.
+ * Keys: the server's own ANTHROPIC_API_KEY (env, local dev) or a visitor's
+ * BYOK key sent per-request as `x-anthropic-key` (hosted trial — see model.ts).
+ * The client never sees the server's key; visitor keys are never stored.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -15,6 +17,7 @@ import type { Server as HttpServer } from 'node:http';
 import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { streamSSE } from 'hono/streaming';
 import { isAgentId } from '@jarwiz/shared';
@@ -50,6 +53,7 @@ import { proposeClusterSuggestions, proposeSuggestions } from './suggest.js';
 import type { ClusterSuggestRequest, SuggestRequest } from '@jarwiz/shared';
 import { handleSyncSocket } from './sync.js';
 import { parseRunRequest, RunRequestError } from './agents/request.js';
+import { hasModelKey, runWithRequestKey, sanitizeRequestKey } from './model.js';
 
 // Load apps/server/.env when present (no-op otherwise).
 try {
@@ -60,6 +64,31 @@ try {
 
 const app = new Hono();
 app.use(logger());
+
+/**
+ * Cross-origin + BYOK. The hosted client is a static site (GitHub Pages) on a
+ * different origin than this server, and visitors bring their own Anthropic
+ * key as an `x-anthropic-key` header (see model.ts). JARWIZ_ALLOWED_ORIGINS
+ * (comma-separated) pins CORS to known frontends; unset, any origin may call —
+ * fine for a BYOK server that holds no key of its own.
+ */
+const allowedOrigins = (process.env.JARWIZ_ALLOWED_ORIGINS ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+app.use(
+  '/api/*',
+  cors({
+    origin: (origin) =>
+      allowedOrigins.length === 0 || allowedOrigins.includes(origin) ? origin : '',
+    allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'x-anthropic-key'],
+    maxAge: 86400,
+  }),
+);
+app.use('/api/*', (c, next) =>
+  runWithRequestKey(sanitizeRequestKey(c.req.header('x-anthropic-key')), () => next()),
+);
 
 app.get('/api/health', (c) => c.json({ ok: true }));
 
@@ -175,11 +204,9 @@ app.get('/api/sheet/:id/grid', async (c) => {
  * badge. `mode` distinguishes the three so the UI can be precise.
  */
 app.get('/api/capabilities', (c) => {
-  const mode = process.env.ANTHROPIC_API_KEY?.trim()
-    ? 'api'
-    : sidecarAvailable()
-      ? 'sidecar'
-      : 'demo';
+  // Per-request: a visitor's x-anthropic-key header (BYOK) counts as 'api',
+  // so the client's probe answers for THIS visitor, not the server at large.
+  const mode = hasModelKey() ? 'api' : sidecarAvailable() ? 'sidecar' : 'demo';
   return c.json({ live: mode !== 'demo', mode });
 });
 
@@ -667,6 +694,17 @@ app.post('/api/compose', async (c) => {
       }))
     : [];
   const intent = typeof raw.intent === 'string' ? raw.intent.slice(0, 400) : undefined;
+  // The debrief recipe path: a fixed three-card plan over the given transcript.
+  const rawRecipe = (raw as { recipe?: unknown }).recipe;
+  const recipe = rawRecipe === 'debrief' ? ('debrief' as const) : undefined;
+  const rawTranscript = (raw as { transcript?: { title?: unknown; text?: unknown } }).transcript;
+  const transcript =
+    recipe && typeof rawTranscript?.text === 'string' && rawTranscript.text.trim()
+      ? {
+          title: typeof rawTranscript.title === 'string' ? rawTranscript.title.slice(0, 120) : undefined,
+          text: rawTranscript.text.slice(0, 20_000),
+        }
+      : undefined;
   const machine = getMachine(typeof (raw as { machineId?: unknown }).machineId === 'string' ? (raw as { machineId: string }).machineId : undefined);
   const options = Array.isArray((raw as { options?: unknown }).options)
     ? ((raw as { options: unknown[] }).options).filter((x): x is string => typeof x === 'string').map((x) => x.slice(0, 40)).slice(0, 12)
@@ -679,7 +717,7 @@ app.post('/api/compose', async (c) => {
       const events =
         machine && machine.output === 'board'
           ? streamMachineBoard(machine, intent ?? '', signal, options)
-          : streamCompose({ board, intent }, signal);
+          : streamCompose({ board, intent, recipe, transcript }, signal);
       for await (const event of events) {
         await stream.writeSSE({ data: JSON.stringify(event) });
       }

@@ -25,11 +25,15 @@ import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { isAutopilotRunning, subscribeAutopilot } from '../agents/autopilotStore';
 import { cardSeedKey, ensureCardSeeds, ensureSeedPrompts, getSeedPrompts, subscribeSeed } from './seedPrompts';
 import { getPromptFill, subscribePromptFill } from './promptFill';
+import { getDraft, subscribeDraft } from './draft';
 import { getActiveBoard, markBoardUsed, subscribeBoards } from '../boards/boardStore';
 import { isDemo, isEmbed, isUseCases } from '../boards/demo';
+import { DEMO_NOTICE, getBackendSnapshot, subscribeBackend, PLAYGROUND_NOTICE } from '../lib/backend';
+import { openApiKeySettings } from '../ui/ApiKeySettings';
 import { setOnboarding, setOnboardingEngaged } from './onboardingStore';
 import { hasIngestibleFile } from '../ingest/registerIngestion';
-import { classifyFile, isAttachableText, makeTextAttachment, materializeAttachment, uploadAttachment, type Attachment } from '../ingest/attachments';
+import { classifyFile, isAttachableText, looksLikeTranscript, makeTextAttachment, materializeAttachment, uploadAttachment, type Attachment } from '../ingest/attachments';
+import { useDebrief } from '../agents/useDebrief';
 import { getPersona, subscribePersona, type Persona } from '../onboarding/personaStore';
 
 // Intent-first onboarding: on a brand-new empty board the composer rises to the
@@ -127,12 +131,14 @@ const MODES: Array<{ shape: ModeShape; label: string; hint: string }> = [
   { shape: 'map', label: 'Map', hint: 'pins & a route' },
   { shape: 'affinity', label: 'Stickies', hint: 'notes across your cards' },
   { shape: 'board', label: 'Board', hint: 'a set of cards' },
+  { shape: 'debrief', label: 'Debrief', hint: 'decisions · actions · risks' },
 ];
 
 export function PromptBar() {
   const editor = useEditor();
   const { ask, isAsking } = useAsk();
   const { run: compose, phase: composePhase } = useCompose();
+  const { run: debrief, phase: debriefPhase } = useDebrief();
   const { run: annotate, phase: annotatePhase } = useAnnotate();
   const { analyze, runningMode } = useAnalyze();
   const [value, setValue] = useState('');
@@ -163,6 +169,14 @@ export function PromptBar() {
 
   // ── Intent-first onboarding (a brand-new, empty board) ────────────────────
   const board = useSyncExternalStore(subscribeBoards, getActiveBoard, getActiveBoard);
+  // Hosted-trial honesty, right where the person is about to ask — never let
+  // the first prompt be the way they find out. Two states: no server at all
+  // (static playground), or a keyless server answering with the scripted mock
+  // (one tap from adding their own key and going live).
+  const backend = useSyncExternalStore(subscribeBackend, getBackendSnapshot, getBackendSnapshot);
+  const chromeVisible = !isEmbed() && !isUseCases();
+  const playground = backend.availability === 'down' && chromeVisible;
+  const demoMode = backend.mode === 'demo' && chromeVisible;
   const boardEmpty = useValue('promptbar-board-empty', () => editor.getCurrentPageShapeIds().size === 0, [editor]);
   // Let tldraw hydrate from IndexedDB before trusting emptiness, so a returning
   // board that loads async never flashes the intro for a frame.
@@ -429,6 +443,23 @@ export function PromptBar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, groundIds.length, modeSource]);
 
+  // A transcript-looking text attachment auto-pins the Debrief recipe — the
+  // detection is local (speaker-turn lines), the pin is the same suggestion
+  // chip as the model's shape guesses: dismiss for a doc, tap to change, and
+  // a user-owned choice is never overridden (G5).
+  useEffect(() => {
+    if (modeSource === 'user') return;
+    const transcriptAttached = attachments.some((a) => a.kind === 'text' && a.text && looksLikeTranscript(a.text));
+    if (transcriptAttached) {
+      setMode('debrief');
+      setModeSource('auto');
+    } else if (mode === 'debrief' && modeSource === 'auto') {
+      setMode(null);
+      setModeSource(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachments, modeSource]);
+
   const pickMode = (shape: ModeShape) => {
     setMode(shape);
     setModeSource('user'); // an explicit pick — stop suggesting for this prompt.
@@ -439,7 +470,7 @@ export function PromptBar() {
     requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input')?.focus());
   };
 
-  const composing = composePhase === 'planning' || composePhase === 'building';
+  const composing = composePhase === 'planning' || composePhase === 'building' || debriefPhase === 'building';
   const annotating = annotatePhase === 'thinking';
   // A single artifact card is selected and the user typed with no mode. Ask the
   // model whether the instruction EDITS that card in place or makes a NEW card
@@ -481,6 +512,13 @@ export function PromptBar() {
     // in place vs makes a new card is inferred from intent (see routeSelectedAsk).
     if (mode === 'board') {
       void compose(q);
+    } else if (mode === 'debrief') {
+      // The debrief recipe reads the transcript among the grounds (the
+      // materialized attachment or a selected text card). Without one it
+      // degrades to a plain doc ask — never a dead send.
+      void debrief(q, grounds).then((ran) => {
+        if (!ran) void ask(q, grounds, { forceShape: 'doc' });
+      });
     } else if (mode === 'affinity') {
       void annotate(q);
     } else if (!mode && attIds.length === 0 && sole && !sole.pdf && INLINE_EDITABLE.has(sole.type)) {
@@ -539,7 +577,11 @@ export function PromptBar() {
   // Two contentful cards already qualify — a brief plus one generated artifact
   // is exactly when "what am I missing" earns its place (dogfood 2026-07-05;
   // the old ≥3 hid it right after the first table landed).
-  const showChips = !runningMode && groundIds.length === 0 && meaningfulCount >= 2;
+  // While a draft is on the board (streaming, or waiting on Keep/Discard),
+  // every dock pill stands down: the pills describe the PREVIOUS card, and
+  // they'd float over the fresh artefact and its controls (G4.2).
+  const draftPending = useSyncExternalStore(subscribeDraft, () => Boolean(getDraft()), () => false);
+  const showChips = !runningMode && !draftPending && groundIds.length === 0 && meaningfulCount >= 2;
   // Pills are ALWAYS contextual — generated from the card's own content.
   // Nothing scripted: until the tailored pills arrive (or if the card is
   // empty) we show nothing. Predictable operations live on the card's
@@ -548,12 +590,12 @@ export function PromptBar() {
     groundIds.length === 1 && (seeds?.length ?? 0) > 0
       ? seeds!.map((s) => ({ label: s.label, prompt: s.prompt }))
       : [];
-  const showStarters = !runningMode && !isAsking && !soleBusy && !value.trim() && starters.length > 0;
+  const showStarters = !runningMode && !isAsking && !soleBusy && !draftPending && !value.trim() && starters.length > 0;
   // The 5-20s quiet gap while tailored pills are being generated (cache still
   // undefined = fetch in flight): show shimmering placeholder pills so the
   // wait reads as "thinking", not "nothing here" (feel pass, ROADMAP §10 #4).
   const showSeedWait =
-    !runningMode && !isAsking && !soleBusy && !value.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
+    !runningMode && !isAsking && !soleBusy && !draftPending && !value.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
 
   return (
     <div className={`jz-promptbar-dock${introMode ? ' jz-promptbar-dock--intro' : ''}`} onPointerDown={stopEventPropagation}>
@@ -574,6 +616,17 @@ export function PromptBar() {
       {/* The coach bubble is gone: it described the two scan chips rendered
           directly beneath it (redundant teaching, permanent until dismissed,
           and part of the bottom-centre chrome pile-up — dogfood finding). */}
+      {playground || demoMode ? (
+        <div className="jz-pb-playground" role="status">
+          <span className="jz-pb-playground-dot" aria-hidden />
+          {playground ? PLAYGROUND_NOTICE : DEMO_NOTICE}
+          {demoMode ? (
+            <button className="jz-pb-playground-cta" onClick={() => openApiKeySettings()}>
+              Add your API key
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {showStarters ? (
         <div className="jz-promptbar-chips">
           {starters.map((s) => (
@@ -604,7 +657,10 @@ export function PromptBar() {
           <div className="jz-pb-grounds">
             {ground.slice(0, 3).map((g) => (
               <span key={g.id} className="jz-pb-ground" title={g.label}>
-                {g.label}
+                {/* Label gets its own truncating span — ellipsis can't apply to
+                    bare text in a flex row, and without it a long title shoves
+                    the ✕ past the chip's clip edge (owner report, 2026-07-10). */}
+                <span className="jz-pb-ground-label">{g.label}</span>
                 <button className="jz-pb-ground-x" aria-label="Remove from context" onClick={() => dropGround(g.id)}>✕</button>
               </span>
             ))}
@@ -623,7 +679,7 @@ export function PromptBar() {
                 ) : (
                   <Paperclip className="jz-pb-ground-clip" size={11} strokeWidth={2} aria-hidden />
                 )}
-                {clip(a.kind === 'text' ? a.name : a.name.replace(/\.[^.]+$/, ''), 26)}
+                <span className="jz-pb-ground-label">{a.kind === 'text' ? a.name : a.name.replace(/\.[^.]+$/, '')}</span>
                 <button className="jz-pb-ground-x" aria-label="Remove attachment" onClick={() => removeAttachment(a.key)}>✕</button>
               </span>
             ))}
@@ -769,13 +825,16 @@ export function PromptBar() {
             )}
           </div>
           <button
-            className="jz-promptbar-send"
+            // Carrying a busy label ("Planning…", "Scanning…"), the round
+            // 30px button becomes a pill — the text no longer spills out of
+            // the circle (G4.5).
+            className={`jz-promptbar-send${composing || annotating || busyLabel ? ' jz-promptbar-send--busy' : ''}`}
             disabled={!value.trim() || attachUploading || isAsking || composing || annotating}
             onClick={submit}
             title={attachUploading ? 'Attaching…' : 'Send (Enter)'}
           >
             {composing ? (
-              <span className="jz-promptbar-busy-inline">{composePhase === 'planning' ? 'Planning…' : 'Building…'}</span>
+              <span className="jz-promptbar-busy-inline">{debriefPhase === 'building' ? 'Debriefing…' : composePhase === 'planning' ? 'Planning…' : 'Building…'}</span>
             ) : annotating ? (
               <span className="jz-promptbar-busy-inline">Noting…</span>
             ) : busyLabel ? (

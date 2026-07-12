@@ -15,7 +15,11 @@ import { JarwizSpark } from '../ui/JarwizSpark';
 export function DraftControls() {
   const editor = useEditor();
   const draft = useSyncExternalStore(subscribeDraft, getDraft, getDraft);
-  const anchor = useCardAnchor(draft?.id ?? null);
+  // Anchor on the WHOLE artefact — a debrief cluster's bar centres under all
+  // of its cards, not just the first. Never over the artefact's own text: a
+  // tall card would otherwise get the bar clamped up over its content — flip
+  // above instead (G4.1).
+  const anchor = useCardAnchor(draft ? [draft.id, ...(draft.groupIds ?? [])] : null, { flipWhenCovered: true });
 
   if (!draft || !anchor) return null;
   const style = { left: anchor.x, top: anchor.y } as CSSProperties;
@@ -31,7 +35,9 @@ export function DraftControls() {
           <span className="jz-draft-spark" aria-hidden>
             <JarwizSpark size={12} />
           </span>
-          <span className="jz-draft-label">Generating…</span>
+          {/* Narrate the actual stage when the server reports one — the wait
+              should read as work, not as one frozen word (G3.1). */}
+          <span className="jz-draft-label">{draft.statusText ?? 'Generating…'}</span>
           <button className="jz-draft-discard" onClick={drop}>
             Stop &amp; discard
           </button>

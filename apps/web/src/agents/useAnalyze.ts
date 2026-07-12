@@ -13,6 +13,7 @@ import { readSSE } from './sse';
 import { startStreaming, stopStreaming } from './streaming';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from './presence';
 import { clearAgentTask, setAgentTask } from './agentTask';
+import { agentErrorMessage } from '../lib/backend';
 import { DOC_CARD_SIZE, type DocCardShape } from '../shapes';
 
 const AGENT = getAgent('writer');
@@ -87,7 +88,7 @@ export function useAnalyze() {
         } else {
           const s = editor.getShape(id) as DocCardShape | undefined;
           if (s && !got) editor.deleteShape(id); // nothing arrived → don't leave a husk
-          const message = timedOut ? 'The agent timed out.' : err instanceof Error ? err.message : 'The agent failed.';
+          const message = timedOut ? 'The agent timed out.' : agentErrorMessage(err instanceof Error ? err.message : 'The agent failed.');
           setAgentTask({ id: taskId, anchorId: got ? id : null, status: 'error', label: TITLES[mode], error: message, onRetry: () => { clearAgentTask(taskId); void analyze(mode); } });
         }
       } finally {

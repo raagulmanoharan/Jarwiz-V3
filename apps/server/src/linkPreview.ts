@@ -12,6 +12,7 @@
 import * as cheerio from 'cheerio';
 import type { LinkPreview } from '@jarwiz/shared';
 import { assertPublicHttpUrl, publicOnlyAgent } from './ssrf.js';
+import { modelKey } from './model.js';
 
 const FETCH_TIMEOUT_MS = 10_000;
 const MAX_REDIRECTS = 5;
@@ -156,7 +157,7 @@ function parseMetadata(html: string, finalUrl: URL): LinkPreview {
  * no key, an API error, or malformed output all return the raw preview.
  */
 async function enrichWithHaiku(preview: LinkPreview): Promise<LinkPreview> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = modelKey();
   if (!apiKey) return preview;
 
   try {

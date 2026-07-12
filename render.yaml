@@ -1,0 +1,25 @@
+# One-click deploy of the agent server (apps/server) to Render's free tier —
+# the backend for the hosted trial at the GitHub Pages site. BYOK: no
+# ANTHROPIC_API_KEY is set here; visitors bring their own key from the client
+# (see apps/server/src/model.ts). Deploy: render.com → New → Blueprint → pick
+# this repo. Free-tier realities: the service sleeps after ~15 min idle (first
+# request wakes it in ~30-60 s) and its disk is ephemeral (uploaded assets
+# reset on redeploy; boards themselves live in each visitor's browser).
+services:
+  - type: web
+    name: jarwiz-agents
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build --workspace=packages/shared && npm run build --workspace=apps/server
+    startCommand: npm run start --workspace=apps/server
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # No Claude CLI on Render — skip the sidecar probe.
+      - key: JZ_DISABLE_SIDECAR
+        value: "1"
+      # Optionally pin CORS to the Pages origin (comma-separated). Unset = any
+      # origin may call, which is fine for a keyless BYOK server.
+      # - key: JARWIZ_ALLOWED_ORIGINS
+      #   value: https://raagulmanoharan.github.io

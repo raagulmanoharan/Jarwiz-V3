@@ -2,7 +2,7 @@
  * Tool rail — Flora-style vertical nav column on the left edge.
  * Icons from lucide-react (consistent stroke weight, same family throughout).
  *
- * Select → Pan → Text → Sticky → Prototype → Machines → Upload → Help
+ * Select → Pan → Text → Sticky → Prototype → Machines → Upload → Search → Help
  */
 
 import { createShapeId, stopEventPropagation, useEditor, useValue } from 'tldraw';
@@ -10,6 +10,7 @@ import { MousePointer2, Hand, Type, StickyNote, AppWindow, Upload, HelpCircle } 
 import { DOC_CARD_SIZE, NOTE_CARD_SIZE, NOTE_PAPER, PROTOTYPE_PROMPT_SIZE, type DocCardShape, type NoteCardShape, type PrototypeCardShape } from '../shapes';
 import { toggleHelp } from './help';
 import { MachinesRail } from './MachinesPalette';
+import { BoardSearchRail } from './BoardSearch';
 import { useSyncExternalStore } from 'react';
 import { isOnboarding, subscribeOnboarding } from '../ask/onboardingStore';
 import { bringIntoView } from './bringIntoView';
@@ -146,6 +147,7 @@ export function ToolRail() {
       <RailTool label="Upload a PDF" active={false} onClick={() => pickAndIngestPdfs(editor)}>
         <Upload {...ICON_PROPS} />
       </RailTool>
+      <BoardSearchRail />
       <div className="jz-rail-spacer" aria-hidden />
       <RailTool label="Help" active={false} onClick={toggleHelp}>
         <HelpCircle {...ICON_PROPS} />

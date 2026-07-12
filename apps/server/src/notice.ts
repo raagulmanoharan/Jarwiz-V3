@@ -13,6 +13,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { NoticeCard, NoticeComment, NoticeKind, NoticeRequest } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
+import { anthropic, hasModelKey } from './model.js';
 
 const MAX_CARDS = 24;
 const MAX_TEXT_PER_CARD = 900;
@@ -46,8 +47,8 @@ function boardSummary(cards: NoticeCard[]): string {
 }
 
 async function review(user: string, signal: AbortSignal): Promise<string> {
-  if (process.env.ANTHROPIC_API_KEY?.trim()) {
-    const client = new Anthropic();
+  if (hasModelKey()) {
+    const client = anthropic();
     const msg = await client.messages.create(
       { model: AGENT_MODEL, max_tokens: MAX_TOKENS, system: SYSTEM, messages: [{ role: 'user', content: user }] },
       { signal },

@@ -149,8 +149,11 @@ function AmbientScene({ hushed }: { hushed: boolean }) {
     const timers = new Set<number>();
     const sleep = (ms: number) =>
       new Promise<void>((res) => { const t = window.setTimeout(() => { timers.delete(t); res(); }, ms); timers.add(t); });
-    const W = () => window.innerWidth;
-    const H = () => window.innerHeight;
+    // The scene's stage is its own container (the canvas area), NOT the
+    // window — with the Boards panel docked, the two differ by the panel's
+    // width, and window-based fractions painted cards over the panel.
+    const W = () => root.clientWidth || window.innerWidth;
+    const H = () => root.clientHeight || window.innerHeight;
     const hushed = () => hushedRef.current;
 
     const q = (sel: string) => root.querySelector<HTMLElement>(sel);
@@ -164,7 +167,13 @@ function AmbientScene({ hushed }: { hushed: boolean }) {
     const ring = q('[data-ring]');
     let orb = { x: 0.5 * W(), y: 0.34 * H() };
     const measureOrb = () => {
-      if (spark) { const r = spark.getBoundingClientRect(); orb = { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+      if (spark) {
+        // Client rect → scene-local: the scene's origin is the canvas area's
+        // corner, which sits right of the window's when the panel is docked.
+        const r = spark.getBoundingClientRect();
+        const base = root.getBoundingClientRect();
+        orb = { x: r.left + r.width / 2 - base.left, y: r.top + r.height / 2 - base.top };
+      }
       if (ring) { ring.style.left = orb.x + 'px'; ring.style.top = orb.y + 'px'; }
     };
     const pulseOrb = () => {
