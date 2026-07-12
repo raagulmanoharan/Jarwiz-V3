@@ -9,7 +9,9 @@
  * gate: everything works identically without a pick.
  */
 
-export type Persona = 'product' | 'research' | 'design';
+export type Persona = 'product' | 'research' | 'design' | 'trip' | 'talk' | 'decide';
+
+const PERSONAS: readonly Persona[] = ['product', 'research', 'design', 'trip', 'talk', 'decide'];
 
 const KEY = 'jarwiz-persona';
 
@@ -30,7 +32,7 @@ function hasStored(): boolean {
 function readStored(): Persona | null {
   try {
     const v = localStorage.getItem(KEY);
-    return v === 'product' || v === 'research' || v === 'design' ? v : null;
+    return (PERSONAS as readonly string[]).includes(v ?? '') ? (v as Persona) : null;
   } catch {
     return null;
   }
