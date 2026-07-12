@@ -182,7 +182,7 @@ export function briefSuffix(request: AgentRunRequest): string {
 
 function friendlyApiError(error: unknown): string {
   if (error instanceof Anthropic.AuthenticationError) {
-    return 'The Anthropic API key was rejected — if you added your own key, re-check it in the key settings (top right); on a self-hosted server, check ANTHROPIC_API_KEY.';
+    return 'The Anthropic API key was rejected — check the server\'s ANTHROPIC_API_KEY.';
   }
   if (error instanceof Anthropic.RateLimitError) {
     return "Anthropic rate limit hit - give it a moment and try again.";

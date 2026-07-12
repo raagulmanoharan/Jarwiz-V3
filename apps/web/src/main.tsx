@@ -7,7 +7,7 @@ import { App } from './App';
 import { applyStoredTheme } from './ui/theme';
 import { handleFreshStart } from './boards/freshStart';
 import { probeBackend } from './lib/backend';
-import { installApiBridge } from './lib/api';
+import { capturePilotCode, installApiBridge } from './lib/api';
 
 // Paint the stored theme before React renders so the first frame isn't a flash
 // of the default theme.
@@ -22,6 +22,7 @@ handleFreshStart();
 // before anyone asks — the AI surfaces read the answer to degrade honestly
 // instead of failing with raw 404s.
 installApiBridge();
+capturePilotCode();
 probeBackend();
 
 const root = document.getElementById('root');

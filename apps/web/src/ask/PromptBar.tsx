@@ -29,7 +29,7 @@ import { getDraft, subscribeDraft } from './draft';
 import { getActiveBoard, markBoardUsed, subscribeBoards } from '../boards/boardStore';
 import { isDemo, isEmbed, isUseCases } from '../boards/demo';
 import { DEMO_NOTICE, getBackendSnapshot, subscribeBackend, PLAYGROUND_NOTICE } from '../lib/backend';
-import { openApiKeySettings } from '../ui/ApiKeySettings';
+import { openSidePanel } from '../ui/sidePanelStore';
 import { setOnboarding, setOnboardingEngaged } from './onboardingStore';
 import { hasIngestibleFile } from '../ingest/registerIngestion';
 import { classifyFile, isAttachableText, looksLikeTranscript, makeTextAttachment, materializeAttachment, uploadAttachment, type Attachment } from '../ingest/attachments';
@@ -232,6 +232,9 @@ export function PromptBar() {
   const chromeVisible = !isEmbed() && !isUseCases();
   const playground = backend.availability === 'down' && chromeVisible;
   const demoMode = backend.mode === 'demo' && chromeVisible;
+  // An invited pilot whose budget ran out sees why the agents went quiet —
+  // not a generic "demo mode" that reads like a bug.
+  const pilotSpent = Boolean(backend.pilot && backend.pilot.used >= backend.pilot.limit);
   const boardEmpty = useValue('promptbar-board-empty', () => editor.getCurrentPageShapeIds().size === 0, [editor]);
   // Let tldraw hydrate from IndexedDB before trusting emptiness, so a returning
   // board that loads async never flashes the intro for a frame.
@@ -653,7 +656,7 @@ export function PromptBar() {
           composer, which glides down to its dock as the first answer builds. */}
       {introMounted ? (
         <div className={`jz-pb-intro${introMode ? '' : ' jz-pb-intro--leaving'}`}>
-          <span className="jz-pb-intro-spark" aria-hidden>✦</span>
+          <span className="jz-pb-intro-spark" aria-hidden><JarwizSpark size={20} /></span>
           <h1 className="jz-pb-intro-head">{INTRO_HEAD[persona ?? 'default']}</h1>
           <p className="jz-pb-intro-sub">{INTRO_SUB[persona ?? 'default']}</p>
           <div className="jz-pb-intro-chips" key={persona ?? 'default'}>
@@ -669,10 +672,14 @@ export function PromptBar() {
       {playground || demoMode ? (
         <div className="jz-pb-playground" role="status">
           <span className="jz-pb-playground-dot" aria-hidden />
-          {playground ? PLAYGROUND_NOTICE : DEMO_NOTICE}
+          {playground
+            ? PLAYGROUND_NOTICE
+            : pilotSpent
+              ? 'Demo actions used up — thank you for testing!'
+              : DEMO_NOTICE}
           {demoMode ? (
-            <button className="jz-pb-playground-cta" onClick={() => openApiKeySettings()}>
-              Add your API key
+            <button className="jz-pb-playground-cta" onClick={() => openSidePanel()}>
+              Get full access
             </button>
           ) : null}
         </div>
@@ -694,7 +701,7 @@ export function PromptBar() {
       {showChips ? (
         <div className="jz-promptbar-chips">
           <button className="jz-pb-chip" title="Find contradictions between cards" onClick={() => runTool('tensions')}>⚖ Scan for tensions</button>
-          <button className="jz-pb-chip" title="Name the due-diligence gaps on this board" onClick={() => runTool('gaps')}>✦ What am I missing?</button>
+          <button className="jz-pb-chip" title="Name the due-diligence gaps on this board" onClick={() => runTool('gaps')}><JarwizSpark size={11} className="jz-spark-inline" /> What am I missing?</button>
         </div>
       ) : null}
 

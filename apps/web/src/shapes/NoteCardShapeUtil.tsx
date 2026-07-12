@@ -18,6 +18,7 @@ import { useAutopilot } from '../agents/useAutopilot';
 import { useTypingPause } from '../agents/useTypingPause';
 import { NOTE_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
+import { JarwizSpark } from '../ui/JarwizSpark';
 
 export interface NoteCardProps {
   w: number;
@@ -143,9 +144,7 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
             style={{ pointerEvents: 'all' }}
             onPointerDown={stopEventPropagation}
             onClick={() => void continueProse(editor, shape.id)}
-          >
-            ✦ Fill
-          </button>
+          ><JarwizSpark size={10} className="jz-spark-inline" /> Fill</button>
         )}
         </>
       ) : (

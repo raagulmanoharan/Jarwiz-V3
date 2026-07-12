@@ -53,7 +53,16 @@ import { proposeClusterSuggestions, proposeSuggestions } from './suggest.js';
 import type { ClusterSuggestRequest, SuggestRequest } from '@jarwiz/shared';
 import { handleSyncSocket } from './sync.js';
 import { parseRunRequest, RunRequestError } from './agents/request.js';
-import { hasModelKey, runWithRequestKey, sanitizeRequestKey } from './model.js';
+import { hasModelKey, requestPilot, runWithRequestContext, sanitizeRequestKey } from './model.js';
+import {
+  isMeteredPath,
+  perCodeLimit,
+  PILOT_EXHAUSTED_MESSAGE,
+  pilotExhausted,
+  pilotUsed,
+  recordPilotAction,
+  validatePilotCode,
+} from './pilot.js';
 
 // Load apps/server/.env when present (no-op otherwise).
 try {
@@ -82,13 +91,28 @@ app.use(
     origin: (origin) =>
       allowedOrigins.length === 0 || allowedOrigins.includes(origin) ? origin : '',
     allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'x-anthropic-key'],
+    allowHeaders: ['Content-Type', 'x-anthropic-key', 'x-jarwiz-pilot'],
     maxAge: 86400,
   }),
 );
-app.use('/api/*', (c, next) =>
-  runWithRequestKey(sanitizeRequestKey(c.req.header('x-anthropic-key')), () => next()),
-);
+app.use('/api/*', async (c, next) => {
+  const key = sanitizeRequestKey(c.req.header('x-anthropic-key'));
+  // A pilot code only enters the request scope while under budget, so every
+  // downstream modelKey() check stays a plain "is there a pilot?" question.
+  const code = validatePilotCode(c.req.header('x-jarwiz-pilot'));
+  const pilot = code && !(await pilotExhausted(code)) ? code : undefined;
+
+  // A spent budget answers card-producing calls with a clear message instead
+  // of silently downgrading to the scripted demo mid-session. BYOK visitors
+  // (key set) are never metered — their key, their bill.
+  if (code && !pilot && !key && isMeteredPath(new URL(c.req.url).pathname)) {
+    return c.json({ error: PILOT_EXHAUSTED_MESSAGE }, 429);
+  }
+  if (pilot && !key && isMeteredPath(new URL(c.req.url).pathname)) {
+    await recordPilotAction(pilot);
+  }
+  return runWithRequestContext({ key, pilot }, () => next());
+});
 
 app.get('/api/health', (c) => c.json({ ok: true }));
 
@@ -203,11 +227,14 @@ app.get('/api/sheet/:id/grid', async (c) => {
  * runtime serves a scripted mock and the client shows an honest "Demo mode"
  * badge. `mode` distinguishes the three so the UI can be precise.
  */
-app.get('/api/capabilities', (c) => {
-  // Per-request: a visitor's x-anthropic-key header (BYOK) counts as 'api',
-  // so the client's probe answers for THIS visitor, not the server at large.
+app.get('/api/capabilities', async (c) => {
+  // Per-request: a visitor's x-anthropic-key header (BYOK) or a valid pilot
+  // code counts as 'api', so the client's probe answers for THIS visitor,
+  // not the server at large. Pilot visitors also learn their budget.
   const mode = hasModelKey() ? 'api' : sidecarAvailable() ? 'sidecar' : 'demo';
-  return c.json({ live: mode !== 'demo', mode });
+  const code = validatePilotCode(c.req.header('x-jarwiz-pilot'));
+  const pilot = code ? { used: await pilotUsed(code), limit: perCodeLimit() } : undefined;
+  return c.json({ live: mode !== 'demo', mode, ...(pilot ? { pilot } : {}) });
 });
 
 app.post('/api/link/preview', async (c) => {

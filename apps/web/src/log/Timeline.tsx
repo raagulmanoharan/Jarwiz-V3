@@ -7,6 +7,7 @@
 
 import { useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { Box, useEditor, useValue } from 'tldraw';
+import { JarwizSpark } from '../ui/JarwizSpark';
 import {
   getEvents,
   getHoveredEvent,
@@ -125,7 +126,7 @@ function TimelineItem({
       onMouseLeave={() => onHover(false)}
     >
       <span className={`jz-tl-dot jz-tl-${ev.kind}`} aria-hidden>
-        {ev.kind === 'pdf' ? '◧' : '✦'}
+        {ev.kind === 'pdf' ? '◧' : <JarwizSpark size={11} />}
       </span>
       <div className="jz-tl-body">
         <div className="jz-tl-label" title={ev.label}>

@@ -276,9 +276,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
             style={{ pointerEvents: 'all' }}
             onPointerDown={stopEventPropagation}
             onClick={() => void continueProse(editor, shape.id)}
-          >
-            ✦ Fill
-          </button>
+          ><JarwizSpark size={10} className="jz-spark-inline" /> Fill</button>
         ) : null}
       </div>
     );

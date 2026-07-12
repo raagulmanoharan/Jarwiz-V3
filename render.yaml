@@ -23,3 +23,13 @@ services:
       # origin may call, which is fine for a keyless BYOK server.
       # - key: JARWIZ_ALLOWED_ORIGINS
       #   value: https://raagulmanoharan.github.io
+      #
+      # Closed pilot (docs/DEPLOYMENT.md → "Running a closed pilot"): set
+      # ANTHROPIC_API_KEY (dashboard, not here — it's a secret) together with
+      # invite codes; the key then only answers metered, invited requests.
+      # - key: JARWIZ_PILOT_CODES
+      #   value: mira-x7k2,arjun-p3v9
+      # - key: JARWIZ_PILOT_ACTIONS
+      #   value: "100"
+      # - key: JARWIZ_PILOT_TOTAL
+      #   value: "1000"

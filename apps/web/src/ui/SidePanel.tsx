@@ -21,6 +21,7 @@ import {
 import { exportBackup, parseBackup, restoreBackup, type JarwizBackup } from '../boards/backup';
 import { searchBoardContents } from '../boards/boardSearch';
 import { closeSidePanel, isSidePanelOpen, subscribeSidePanel } from './sidePanelStore';
+import { DemoAccessCard } from './DemoAccess';
 
 export function SidePanel() {
   const open = useSyncExternalStore(subscribeSidePanel, isSidePanelOpen, isSidePanelOpen);
@@ -51,6 +52,7 @@ export function SidePanel() {
         <BoardsSection />
         <div className="jz-side-divider" aria-hidden />
         <BackupSection />
+        <DemoAccessCard />
       </div>
     </aside>
   );

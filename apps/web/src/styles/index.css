@@ -4613,131 +4613,124 @@ body,
   transform: translateY(-1px);
 }
 
-/* ── BYOK key settings (Topbar) ─────────────────────────────────────────── */
-
-.jz-key-wrap {
-  position: relative;
-  flex: none;
+/* The brand spark inline with button/label text — sit it on the baseline. */
+.jz-spark-inline {
+  vertical-align: -1px;
+  margin-right: 2px;
 }
 
-/* Same round icon-button language as the theme toggle beside it. */
-.jz-key-btn {
+/* ── Demo access — counter chip (topbar) + pinned side-panel card ────────── */
+
+/* Quiet pill beside the board title: how many AI actions this invite has
+ * left ("42 actions left"), or just "Demo". Clicking opens the boards panel
+ * where the access card explains the rest. */
+.jz-democount {
   pointer-events: auto;
   flex: none;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--jz-hairline);
-  border-radius: 50%;
+  gap: var(--jz-space-2);
+  padding: 5px 12px;
+  border: 1px solid var(--jz-hairline-strong);
+  border-radius: var(--jz-radius-pill);
   cursor: pointer;
   background: var(--jz-surface-raised);
-  color: var(--jz-ink-700);
   box-shadow: var(--jz-e1);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  font-weight: 500;
+  color: var(--jz-ink-700);
   transition: color var(--jz-dur-fast) var(--jz-ease-out), transform var(--jz-dur-fast) var(--jz-ease-out);
 }
 
-.jz-key-btn:hover {
+.jz-democount:hover {
   color: var(--jz-ink-900);
   transform: translateY(-1px);
 }
 
-.jz-key-btn--set {
-  color: var(--jz-spark);
+.jz-democount-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--jz-spark);
 }
 
-.jz-key-pop {
-  pointer-events: auto;
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  width: 300px;
+.jz-democount--spent .jz-democount-dot {
+  background: var(--jz-ink-500);
+}
+
+/* The access card pins to the panel's bottom edge (margin-top: auto inside
+ * the flex column) so the board list scrolls above it. */
+.jz-side-access {
+  margin-top: auto;
   padding: var(--jz-space-5);
   border: 1px solid var(--jz-hairline-strong);
   border-radius: var(--jz-radius-lg);
-  background: var(--jz-surface-raised);
-  box-shadow: var(--jz-e3);
+  background: var(--jz-surface);
   font-family: var(--jz-font-ui);
-  z-index: 30;
 }
 
-.jz-key-pop-title {
+.jz-side-access-head {
+  display: flex;
+  align-items: center;
+  gap: var(--jz-space-2);
   font-size: var(--jz-text-body-size);
   font-weight: 600;
   color: var(--jz-ink-900);
+  margin-bottom: var(--jz-space-5);
+}
+
+.jz-side-access-count {
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-700);
   margin-bottom: var(--jz-space-2);
 }
 
-.jz-key-pop-sub {
-  margin: 0 0 var(--jz-space-4);
-  font-size: var(--jz-text-caption-size);
-  line-height: 1.45;
-  color: var(--jz-ink-700);
-}
-
-.jz-key-row {
-  display: flex;
-  gap: var(--jz-space-2);
-  align-items: center;
-}
-
-.jz-key-input {
-  flex: 1;
-  min-width: 0;
-  padding: 7px 10px;
-  border: 1px solid var(--jz-hairline-strong);
-  border-radius: var(--jz-radius-md);
-  background: var(--jz-surface);
+.jz-side-access-count strong {
   color: var(--jz-ink-900);
-  font-family: var(--jz-font-mono);
-  font-size: var(--jz-text-caption-size);
 }
 
-.jz-key-masked {
-  flex: 1;
-  min-width: 0;
+.jz-side-access-meter {
+  height: 4px;
+  border-radius: var(--jz-radius-pill);
+  background: color-mix(in srgb, var(--jz-ink-900) 10%, transparent);
   overflow: hidden;
-  text-overflow: ellipsis;
-  font-family: var(--jz-font-mono);
+  margin-bottom: var(--jz-space-4);
+}
+
+.jz-side-access-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--jz-spark);
+  transition: width var(--jz-dur-base) var(--jz-ease-out);
+}
+
+.jz-side-access-limits {
+  margin: 0 0 var(--jz-space-4);
+  padding-left: 18px;
   font-size: var(--jz-text-caption-size);
+  line-height: 1.6;
   color: var(--jz-ink-700);
 }
 
-.jz-key-save,
-.jz-key-remove {
-  flex: none;
-  padding: 7px 14px;
+.jz-side-access-cta {
+  width: 100%;
+  padding: 9px 14px;
   border: none;
   border-radius: var(--jz-radius-pill);
   cursor: pointer;
+  background: var(--jz-accent);
+  color: var(--jz-accent-ink);
   font-family: var(--jz-font-ui);
   font-size: var(--jz-text-caption-size);
   font-weight: 600;
-  background: var(--jz-accent);
-  color: var(--jz-accent-ink);
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out);
 }
 
-.jz-key-save:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.jz-key-remove {
-  background: transparent;
-  border: 1px solid var(--jz-hairline-strong);
-  color: var(--jz-ink-700);
-}
-
-.jz-key-pop-hint {
-  margin: var(--jz-space-4) 0 0;
-  font-size: var(--jz-text-caption-size);
-  color: var(--jz-ink-500);
-}
-
-.jz-key-pop-hint a {
-  color: inherit;
-  text-decoration: underline;
+.jz-side-access-cta:hover {
+  transform: translateY(-1px);
 }
 
 /* One-time coachmark */

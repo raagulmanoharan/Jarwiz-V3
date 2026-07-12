@@ -10,6 +10,7 @@ import { stopEventPropagation } from 'tldraw';
 import { clearClarify, getClarify, subscribeClarify } from './clarify';
 import { useCardAnchor } from './useCardAnchor';
 import { useAsk } from './useAsk';
+import { JarwizSpark } from '../ui/JarwizSpark';
 
 export function ClarifyLayer() {
   const { ask, isAsking } = useAsk();
@@ -38,9 +39,7 @@ export function ClarifyLayer() {
   return (
     <div className="jz-clarify" style={style} onPointerDown={stopEventPropagation}>
       <div className="jz-clarify-q">
-        <span className="jz-clarify-spark" aria-hidden>
-          ✦
-        </span>
+        <span className="jz-clarify-spark" aria-hidden><JarwizSpark size={12} /></span>
         {clarify.question}
       </div>
       <div className="jz-clarify-opts">

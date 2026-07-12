@@ -18,12 +18,19 @@
 
 export type BackendMode = 'api' | 'sidecar' | 'demo';
 
+export interface PilotBudget {
+  used: number;
+  limit: number;
+}
+
 export interface BackendState {
   availability: 'unknown' | 'up' | 'down';
   mode: BackendMode | null;
+  /** Closed-pilot budget for this visitor's invite code, when one is set. */
+  pilot: PilotBudget | null;
 }
 
-let state: BackendState = { availability: 'unknown', mode: null };
+let state: BackendState = { availability: 'unknown', mode: null, pilot: null };
 const listeners = new Set<() => void>();
 
 function emit(): void {
@@ -55,7 +62,7 @@ export const PLAYGROUND_ERROR =
 export const DEMO_NOTICE = 'Demo mode — agents answer with a script.';
 
 export const KEY_REJECTED_ERROR =
-  'That Anthropic API key was rejected — re-check it in the key settings (top right).';
+  'The server’s Anthropic API key was rejected — the site owner needs to check it.';
 
 /** Swap a raw network/auth failure for a message a person can act on. */
 export function agentErrorMessage(raw: string): string {
@@ -77,16 +84,23 @@ export function probeBackend(): void {
       // Static hosts answer /api/* with their 404 page (or an index.html
       // rewrite) — only real JSON with a mode counts as a backend.
       if (!res.ok) return null;
-      const body = (await res.json().catch(() => null)) as { mode?: string } | null;
-      return body?.mode === 'api' || body?.mode === 'sidecar' || body?.mode === 'demo'
-        ? (body.mode as BackendMode)
-        : null;
+      const body = (await res.json().catch(() => null)) as
+        | { mode?: string; pilot?: { used?: number; limit?: number } }
+        | null;
+      if (body?.mode !== 'api' && body?.mode !== 'sidecar' && body?.mode !== 'demo') return null;
+      const pilot =
+        typeof body.pilot?.used === 'number' && typeof body.pilot?.limit === 'number'
+          ? { used: body.pilot.used, limit: body.pilot.limit }
+          : null;
+      return { mode: body.mode as BackendMode, pilot };
     })
     .catch(() => null)
-    .then((mode) => {
+    .then((result) => {
       window.clearTimeout(timer);
       probing = false;
-      state = mode ? { availability: 'up', mode } : { availability: 'down', mode: null };
+      state = result
+        ? { availability: 'up', mode: result.mode, pilot: result.pilot }
+        : { availability: 'down', mode: null, pilot: null };
       emit();
     });
 }
@@ -94,7 +108,7 @@ export function probeBackend(): void {
 /** The visitor just added/removed their key — ask the server again. */
 export function reprobeBackend(): void {
   if (probing) return;
-  state = { availability: 'unknown', mode: null };
+  state = { availability: 'unknown', mode: null, pilot: null };
   emit();
   probeBackend();
 }
