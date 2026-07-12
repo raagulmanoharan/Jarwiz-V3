@@ -27,6 +27,7 @@ import type { MapStop } from '@jarwiz/shared';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
 import { MapViewport } from './mapView';
+import { JarwizSpark } from '../ui/JarwizSpark';
 
 export interface MapCardProps {
   w: number;
@@ -126,7 +127,7 @@ function MapCardBody({ shape }: { shape: MapCardShape }) {
       >
         <MapViewport stops={stops} ordered={ordered} interactive={isEditing} />
         {status === 'running' ? (
-          <span className="jz-map-float jz-map-float--live">✦ placing stops</span>
+          <span className="jz-map-float jz-map-float--live"><JarwizSpark size={11} className="jz-spark-inline" /> placing stops</span>
         ) : status === 'error' ? (
           <span className="jz-map-float">couldn’t verify places</span>
         ) : null}
