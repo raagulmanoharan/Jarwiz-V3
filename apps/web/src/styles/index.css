@@ -590,6 +590,93 @@ body,
 }
 .jz-comment-dismiss:hover { color: var(--jz-ink-900); }
 
+/* ── Board search — rail tool flyout (find a card, jump to it) ─────────────── */
+/* Same anchoring idiom as the Machines flyout below: .jz-search is NOT
+   position:relative, so the panel anchors to the RAIL and opens
+   screen-centred beside it. */
+.jz-search-panel {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 320px;
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  background: var(--jz-card);
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-lg);
+  box-shadow: var(--jz-e3);
+  padding: 8px;
+  z-index: 60;
+  animation: jz-machines-in var(--jz-dur-base) var(--jz-ease-out, ease);
+}
+.jz-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: var(--jz-text-body-sm-size);
+  color: var(--jz-ink-900);
+  background: var(--jz-surface-raised);
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-sm);
+  outline: none;
+}
+.jz-search-input:focus {
+  border-color: var(--jz-hairline-strong);
+}
+.jz-search-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+}
+.jz-search-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 8px;
+  text-align: left;
+  padding: 6px 8px;
+  font: inherit;
+  background: none;
+  border: none;
+  border-radius: var(--jz-radius-sm);
+  cursor: pointer;
+}
+.jz-search-row--active {
+  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+}
+.jz-search-row-title {
+  font-size: var(--jz-text-body-sm-size);
+  font-weight: 600;
+  color: var(--jz-ink-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jz-search-row-meta {
+  font-size: var(--jz-text-micro-size);
+  color: var(--jz-ink-400);
+  align-self: center;
+}
+.jz-search-row-snippet {
+  grid-column: 1 / -1;
+  font-size: var(--jz-text-caption-size);
+  line-height: var(--jz-text-caption-lh);
+  color: var(--jz-ink-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jz-search-empty {
+  padding: 10px 8px 6px;
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-400);
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-search-panel { animation: none; }
+}
+
 /* ── Thinking Machines — rail tool flyout + on-canvas machine block ────────── */
 /* .jz-machines is deliberately NOT position:relative: the flyout anchors to
    the RAIL (the nearest positioned ancestor), whose middle sits at the

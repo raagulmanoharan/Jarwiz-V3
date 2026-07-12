@@ -931,3 +931,21 @@ cluster out, making good on the hero's "I'll lay it out as a board" promise.
   stream in a row beside the source; Action items is checklist-only with
   owners/dates; one Keep keeps all four cards; lineage points at the
   transcript.
+
+## 2026-07-12 — Board-wide search from the tool rail (G6, part 1)
+
+**Intent:** "add a search icon in the left toolbar that does the board-wide
+search" — the review's scale finding: the only magnifier on screen was the
+zoom menu, fine at 3 cards, dead at 40.
+
+- A **Search** tool joined the rail (between Upload and Help), opening a
+  flyout beside the rail — same anchoring idiom as the Machines palette.
+- Type ≥2 chars → live local scan over every text-bearing card (titles,
+  bodies, table cells, diagram code, link URLs); title hits rank first, each
+  result shows kind + a snippet around the match.
+- Enter / click jumps: the card is selected and brought into view at a
+  readable zoom (`bringIntoView`), panel closes. ⌘K / Ctrl-K opens search
+  from anywhere — reconciling the review's dead-⌘K finding.
+- Browser-verified on a 6-card board spread across thousands of page units:
+  a body-text query ("zebra") found the right card, Enter landed it selected
+  and in view, ⌘K opened, Escape closed, no-match state honest.
