@@ -7,8 +7,9 @@
  * undiscoverable — the reference panel stands on its own.)
  */
 
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore, type ReactNode } from 'react';
 import { closeHelp, getHelpState, subscribeHelp } from './help';
+import { JarwizSpark } from './JarwizSpark';
 
 const isMac =
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
@@ -16,10 +17,10 @@ const MOD = isMac ? '⌘' : 'Ctrl';
 
 /** The reference feature list — the powerful surfaces first, so a newcomer sees
  *  what makes Jarwiz more than a whiteboard. */
-const FEATURES: Array<{ glyph: string; title: string; body: string }> = [
+const FEATURES: Array<{ glyph: ReactNode; title: string; body: string }> = [
   { glyph: '◱', title: 'Thinking Machines', body: 'Premade analysis blocks — SWOT, Effort–Impact, Competitive, Risk — that deep-research the web and fan out a board of cards. Pick one from the left rail.' },
-  { glyph: '✧', title: 'Autopilot', body: 'Hand Jarwiz a goal in the prompt bar and it plans, researches, and builds the board for you.' },
-  { glyph: '✦', title: 'Ask & create', body: 'Type in the prompt bar; the answer streams onto a card. Select a card first to ground the question on it.' },
+  { glyph: <JarwizSpark size={14} />, title: 'Autopilot', body: 'Hand Jarwiz a goal in the prompt bar and it plans, researches, and builds the board for you.' },
+  { glyph: <JarwizSpark size={14} />, title: 'Ask & create', body: 'Type in the prompt bar; the answer streams onto a card. Select a card first to ground the question on it.' },
   { glyph: '⌕', title: 'Deep research', body: 'Research-heavy asks pull live data from the web and cite their sources — not just what the model remembers.' },
   { glyph: '⬓', title: 'Bring in your material', body: 'Drop a PDF, spreadsheet, video, or link — Jarwiz reads it and works from it, and suggests starting questions.' },
   { glyph: '↺', title: 'Card actions', body: 'Select a card to shorten it, go deeper, reformat as a table or flowchart, summarise, or regenerate.' },
@@ -67,7 +68,7 @@ function HelpPanel() {
       >
         <div className="jz-help-head">
           <h2 className="jz-help-title">
-            <span className="jz-help-spark" aria-hidden>✦</span> What you can do with Jarwiz
+            <span className="jz-help-spark" aria-hidden><JarwizSpark size={14} /></span> What you can do with Jarwiz
           </h2>
           <button className="jz-help-close" aria-label="Close help" onClick={closeHelp}>✕</button>
         </div>

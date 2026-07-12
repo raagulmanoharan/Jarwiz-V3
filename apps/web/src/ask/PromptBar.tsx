@@ -656,7 +656,7 @@ export function PromptBar() {
           composer, which glides down to its dock as the first answer builds. */}
       {introMounted ? (
         <div className={`jz-pb-intro${introMode ? '' : ' jz-pb-intro--leaving'}`}>
-          <span className="jz-pb-intro-spark" aria-hidden>✦</span>
+          <span className="jz-pb-intro-spark" aria-hidden><JarwizSpark size={20} /></span>
           <h1 className="jz-pb-intro-head">{INTRO_HEAD[persona ?? 'default']}</h1>
           <p className="jz-pb-intro-sub">{INTRO_SUB[persona ?? 'default']}</p>
           <div className="jz-pb-intro-chips" key={persona ?? 'default'}>
@@ -701,7 +701,7 @@ export function PromptBar() {
       {showChips ? (
         <div className="jz-promptbar-chips">
           <button className="jz-pb-chip" title="Find contradictions between cards" onClick={() => runTool('tensions')}>⚖ Scan for tensions</button>
-          <button className="jz-pb-chip" title="Name the due-diligence gaps on this board" onClick={() => runTool('gaps')}>✦ What am I missing?</button>
+          <button className="jz-pb-chip" title="Name the due-diligence gaps on this board" onClick={() => runTool('gaps')}><JarwizSpark size={11} className="jz-spark-inline" /> What am I missing?</button>
         </div>
       ) : null}
 

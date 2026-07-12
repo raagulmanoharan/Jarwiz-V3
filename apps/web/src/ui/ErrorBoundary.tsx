@@ -15,6 +15,7 @@
  */
 
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { JarwizSpark } from './JarwizSpark';
 
 interface Props {
   children: ReactNode;
@@ -59,7 +60,7 @@ function AppCrash({ error }: { error: Error }) {
   return (
     <div className="jz-crash" role="alert">
       <div className="jz-crash-card">
-        <div className="jz-crash-spark" aria-hidden>✦</div>
+        <div className="jz-crash-spark" aria-hidden><JarwizSpark size={26} /></div>
         <h1 className="jz-crash-title">Something went wrong</h1>
         <p className="jz-crash-body">
           Jarwiz hit an unexpected error. Your boards are saved on this device — reloading will

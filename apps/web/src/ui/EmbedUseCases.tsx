@@ -148,7 +148,7 @@ const PERSONAS: Persona[] = [
       { kind: 'link', slot: 'link4', url: 'https://www.cbinsights.com/research/digital-health', siteName: 'CB Insights', title: 'Digital health market map', description: 'Competitive landscape & funding.' },
       { kind: 'img', slot: 'img', src: 'stocks', name: 'The AI circle of money' },
       { kind: 'img', slot: 'img2', src: 'fnd-chart', name: 'Market size — 2022–2032' },
-      { kind: 'pin', slot: 'note1', text: 'why now ✦', anchor: 'doc', corner: 'tr' },
+      { kind: 'pin', slot: 'note1', text: 'why now', anchor: 'doc', corner: 'tr' },
       { kind: 'pin', slot: 'note2', text: 'biggest risk ↓', anchor: 'table2', corner: 'tr' },
       { kind: 'pin', slot: 'note3', text: '$25/seat ceiling', anchor: 'doc2', corner: 'br' },
     ],

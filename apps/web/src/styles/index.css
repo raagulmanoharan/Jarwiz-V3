@@ -4613,6 +4613,12 @@ body,
   transform: translateY(-1px);
 }
 
+/* The brand spark inline with button/label text — sit it on the baseline. */
+.jz-spark-inline {
+  vertical-align: -1px;
+  margin-right: 2px;
+}
+
 /* ── Demo access — counter chip (topbar) + pinned side-panel card ────────── */
 
 /* Quiet pill beside the board title: how many AI actions this invite has

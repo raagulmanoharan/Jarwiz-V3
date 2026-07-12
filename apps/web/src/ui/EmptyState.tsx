@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { useValue, useEditor } from 'tldraw';
 import { getActiveBoard, subscribeBoards } from '../boards/boardStore';
+import { JarwizSpark } from './JarwizSpark';
 
 /**
  * The cold-board invitation shown when an existing board is empty (the user
@@ -35,9 +36,7 @@ export function EmptyState() {
           Run a Thinking Machine
         </span>
         <span className="jz-empty-hint">
-          <span className="jz-empty-glyph" aria-hidden>
-            ✦
-          </span>
+          <span className="jz-empty-glyph" aria-hidden><JarwizSpark size={13} /></span>
           Ask in the prompt bar
         </span>
         <span className="jz-empty-hint">

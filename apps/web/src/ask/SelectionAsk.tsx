@@ -9,6 +9,7 @@ import { stopEventPropagation, useEditor } from 'tldraw';
 import { getPdfSelection, setPdfSelection, subscribePdfSelection } from '../pdf/pdfSelection';
 import { setPdfHighlight } from '../pdf/pdfHighlight';
 import { useAsk } from './useAsk';
+import { JarwizSpark } from '../ui/JarwizSpark';
 
 export function SelectionAsk() {
   const editor = useEditor();
@@ -31,9 +32,7 @@ export function SelectionAsk() {
 
   return (
     <button className="jz-selask" style={style} onPointerDown={stopEventPropagation} onClick={ask_}>
-      <span className="jz-ask-spark" aria-hidden>
-        ✦
-      </span>
+      <span className="jz-ask-spark" aria-hidden><JarwizSpark size={12} /></span>
       Ask about this passage
     </button>
   );

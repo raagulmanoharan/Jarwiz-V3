@@ -23,6 +23,7 @@ import { isExpanded, subscribeExpand } from './cardExpand';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
 import { renderRichCell } from './tableRich';
+import { JarwizSpark } from '../ui/JarwizSpark';
 
 export type ColumnType = 'text' | 'link' | 'photo';
 
@@ -376,9 +377,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
                   style={{ pointerEvents: 'all' }}
                   onPointerDown={stopEventPropagation}
                   onClick={runFill}
-                >
-                  ✦ Fill
-                </button>
+                ><JarwizSpark size={10} className="jz-spark-inline" /> Fill</button>
               ) : null}
               {columns.length > 1 ? (
                 <button

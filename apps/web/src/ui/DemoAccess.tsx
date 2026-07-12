@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useSyncExternalStore } from 'react';
-import { Sparkles } from 'lucide-react';
+import { JarwizSpark } from './JarwizSpark';
 import { getBackendSnapshot, reprobeBackend, subscribeBackend } from '../lib/backend';
 import { isSidePanelOpen, openSidePanel, subscribeSidePanel } from './sidePanelStore';
 
@@ -63,7 +63,7 @@ export function DemoAccessCard() {
   return (
     <div className="jz-side-access">
       <div className="jz-side-access-head">
-        <Sparkles size={14} strokeWidth={1.8} aria-hidden />
+        <JarwizSpark size={14} />
         <span>You’re in the demo</span>
       </div>
       {pilot ? (
