@@ -590,6 +590,101 @@ body,
 }
 .jz-comment-dismiss:hover { color: var(--jz-ink-900); }
 
+/* ── Board search — spotlight over a darkened board (owner call, 2026-07-12) ─ */
+.jz-search-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 480; /* above canvas chrome, below focus mode (500) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* A dim, not a blackout — the board stays legible behind the spotlight so
+     a jump target's neighbourhood is still visible context. */
+  background: rgba(6, 7, 9, 0.45);
+  animation: jz-fade-in var(--jz-dur-fast) var(--jz-ease-out) both;
+}
+.jz-search-panel {
+  width: min(480px, calc(100vw - 80px));
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+  background: var(--jz-card);
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-lg);
+  box-shadow: var(--jz-e4);
+  padding: 8px;
+  animation: jz-search-pop var(--jz-dur-base) var(--jz-ease-out, ease) both;
+}
+@keyframes jz-search-pop {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.jz-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: var(--jz-text-body-sm-size);
+  color: var(--jz-ink-900);
+  background: var(--jz-surface-raised);
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-sm);
+  outline: none;
+}
+.jz-search-input:focus {
+  border-color: var(--jz-hairline-strong);
+}
+.jz-search-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+}
+.jz-search-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 8px;
+  text-align: left;
+  padding: 6px 8px;
+  font: inherit;
+  background: none;
+  border: none;
+  border-radius: var(--jz-radius-sm);
+  cursor: pointer;
+}
+.jz-search-row--active {
+  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+}
+.jz-search-row-title {
+  font-size: var(--jz-text-body-sm-size);
+  font-weight: 600;
+  color: var(--jz-ink-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jz-search-row-meta {
+  font-size: var(--jz-text-micro-size);
+  color: var(--jz-ink-400);
+  align-self: center;
+}
+.jz-search-row-snippet {
+  grid-column: 1 / -1;
+  font-size: var(--jz-text-caption-size);
+  line-height: var(--jz-text-caption-lh);
+  color: var(--jz-ink-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jz-search-empty {
+  padding: 10px 8px 6px;
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-400);
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-search-backdrop, .jz-search-panel { animation: none; }
+}
+
 /* ── Thinking Machines — rail tool flyout + on-canvas machine block ────────── */
 /* .jz-machines is deliberately NOT position:relative: the flyout anchors to
    the RAIL (the nearest positioned ancestor), whose middle sits at the
