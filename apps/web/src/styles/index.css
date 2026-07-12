@@ -4672,7 +4672,7 @@ body,
   font-size: var(--jz-text-body-size);
   font-weight: 600;
   color: var(--jz-ink-900);
-  margin-bottom: var(--jz-space-3);
+  margin-bottom: var(--jz-space-5);
 }
 
 .jz-side-access-count {
