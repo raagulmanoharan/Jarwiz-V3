@@ -761,7 +761,11 @@ body,
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin: 15px 0 12px;
+  /* No bottom margin — the run button owns the gap above itself (below), so
+   * the spacing is identical whether or not the options block is present
+   * (flex items don't collapse margins, so a bottom margin here would stack
+   * on top of the button's). */
+  margin: 15px 0 0;
 }
 .jz-machine-opt {
   display: inline-flex;
@@ -779,10 +783,12 @@ body,
   accent-color: var(--jz-accent);
   cursor: pointer;
 }
-/* Full-width run button. */
+/* Full-width run button. Owns the gap above itself so it never crowds the
+ * text — consistent whether or not the options block sits above it. */
 .jz-machine-card-run {
   width: 100%;
   flex: none;
+  margin-top: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
