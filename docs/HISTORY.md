@@ -1013,3 +1013,16 @@ too narrow. Include more, like planning a trip, planning a talk — at least 6."
   themed cast is possible polish if a "PM" carrying trip notes ever reads odd.
 - Verified against the production build: six cards render, and each new pick
   re-themes starters + composer + all four ambient cards, zero console errors.
+
+- **Follow-up (owner review):** three refinements to the same flow. (1) The
+  pick now *summons* the room — nothing plays behind "What brings you here?";
+  answering it brings the collaborators in crisp and centre-stage (the scene
+  used to run blurred behind the modal, wasting its best moments). (2) The
+  cast is contextual: a trip is carried in by Partner / Friend / Local guide /
+  Planner, a talk by Organiser / Mentor / Designer / Co-speaker — cursor hues
+  now belong to the stage slot, not the role. (3) Card kinds differ per use
+  case — two new postcard faces (checklist, mini comparison table) join
+  note/link/img/doc, and each use case tints its fake media its own way. The
+  hero question also speaks the pick's language ("Where are we off to?" for a
+  trip) with a matching sub-line. Ambient scene is keyed on the persona now —
+  the live mid-scene re-theme machinery went away with the reason for it.

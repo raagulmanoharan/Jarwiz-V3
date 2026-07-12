@@ -83,6 +83,28 @@ const INTRO_STARTERS: Record<Persona | 'default', Array<{ label: string; prompt:
   ],
 };
 
+// The intent screen speaks the visitor's language the moment they answer
+// "What brings you here?" — the hero question and its sub-line re-theme with
+// the pick (before any pick, `null` reads the default pair).
+const INTRO_HEAD: Record<Persona | 'default', string> = {
+  default: 'What are we figuring out?',
+  product: 'What are we building?',
+  research: 'What are we digging into?',
+  design: 'What are we designing?',
+  trip: 'Where are we off to?',
+  talk: 'What’s your talk about?',
+  decide: 'What are we deciding?',
+};
+const INTRO_SUB: Record<Persona | 'default', string> = {
+  default: 'Drop in an idea, a document, or your notes. I’ll lay it out as a board you can shape.',
+  product: 'Drop in an idea, a PRD, or your notes. I’ll lay it out as a board you can shape.',
+  research: 'Drop in a paper, a link, or a question. I’ll lay it out as a map you can explore.',
+  design: 'Drop in a flow, a screenshot, or crit notes. I’ll lay it out as a board you can shape.',
+  trip: 'Drop in links, dates, or half a plan. I’ll lay it out as a day-by-day board.',
+  talk: 'Drop in your notes or a rough outline. I’ll lay it out as a storyboard you can shape.',
+  decide: 'Drop in the options and what matters. I’ll lay it out so the answer shows itself.',
+};
+
 // The empty intent composer types these on its own and previews the shape it'd
 // build a few words in — the box is alive, and Jarwiz shows it understood
 // before you commit. Shapes are real ModeShape values so the preview chip reuses
@@ -636,8 +658,8 @@ export function PromptBar() {
       {introMounted ? (
         <div className={`jz-pb-intro${introMode ? '' : ' jz-pb-intro--leaving'}`}>
           <span className="jz-pb-intro-spark" aria-hidden>✦</span>
-          <h1 className="jz-pb-intro-head">What are we figuring out?</h1>
-          <p className="jz-pb-intro-sub">Drop in an idea, a document, or your notes. I’ll lay it out as a board you can shape.</p>
+          <h1 className="jz-pb-intro-head">{INTRO_HEAD[persona ?? 'default']}</h1>
+          <p className="jz-pb-intro-sub">{INTRO_SUB[persona ?? 'default']}</p>
           <div className="jz-pb-intro-chips" key={persona ?? 'default'}>
             {introStarters.map((s) => (
               <button key={s.label} className="jz-pb-intro-chip" onClick={() => useStarter(s.prompt)} title="Use this prompt (editable)">{s.label}</button>

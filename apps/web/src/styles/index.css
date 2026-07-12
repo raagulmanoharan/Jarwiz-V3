@@ -4093,7 +4093,7 @@ body,
   transition: box-shadow 0.45s ease;
 }
 .jz-amb-link { width: 232px; }
-.jz-amb-link .media { height: 112px; background: linear-gradient(135deg, #2c3566, #6d4a86 55%, #a85f74); }
+.jz-amb-link .media { height: 112px; background: var(--jz-amb-media, linear-gradient(135deg, #2c3566, #6d4a86 55%, #a85f74)); }
 .jz-amb-link .lbody { padding: 13px 14px 14px; }
 .jz-amb-link .ltitle { font-size: 13.5px; line-height: 1.35; color: var(--jz-ink-900); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .jz-amb-link .lfoot { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
@@ -4103,7 +4103,32 @@ body,
 .jz-amb-doc .dtitle { font-size: 14px; color: var(--jz-ink-900); font-weight: 560; letter-spacing: -0.01em; }
 .jz-amb-doc .dtext { font-size: 12.5px; line-height: 1.55; color: var(--jz-ink-400); margin-top: 9px; }
 .jz-amb-img { width: 224px; }
-.jz-amb-img .pic { height: 150px; background: linear-gradient(150deg, #3a3f7a, #7a4f8f 52%, #b06a7a); }
+.jz-amb-img .pic { height: 150px; background: var(--jz-amb-pic, linear-gradient(150deg, #3a3f7a, #7a4f8f 52%, #b06a7a)); }
+
+/* Checklist + mini-table faces — the use cases that live in lists (a trip's
+ * day plan, talk beats) and comparisons (a decision, a tool shortlist). */
+.jz-amb-list { width: 226px; padding: 16px 18px; }
+.jz-amb-table { width: 248px; padding: 16px 18px 10px; }
+.jz-amb-list .htit,
+.jz-amb-table .htit { font-size: 14px; color: var(--jz-ink-900); font-weight: 560; letter-spacing: -0.01em; }
+.jz-amb-list .li { display: flex; align-items: flex-start; gap: 9px; margin-top: 10px; font-size: 12.5px; line-height: 1.45; color: var(--jz-ink-400); }
+.jz-amb-list .li .bx { flex: none; width: 13px; height: 13px; margin-top: 2px; border-radius: 4px; border: 1.5px solid var(--jz-ink-300); }
+.jz-amb-list .li.done { color: var(--jz-ink-500); }
+.jz-amb-list .li.done .bx { background: var(--jz-accent); border-color: var(--jz-accent); position: relative; }
+.jz-amb-list .li.done .bx::after { content: ''; position: absolute; left: 3.5px; top: 1px; width: 4px; height: 7px; border: solid var(--jz-accent-ink); border-width: 0 1.5px 1.5px 0; transform: rotate(42deg); }
+.jz-amb-table .trows { margin-top: 6px; }
+.jz-amb-table .tr { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: 12.5px; line-height: 1.4; }
+.jz-amb-table .tr + .tr { border-top: 1px solid var(--jz-hairline); }
+.jz-amb-table .tk { color: var(--jz-ink-900); font-weight: 550; }
+.jz-amb-table .tv { color: var(--jz-ink-400); text-align: right; }
+
+/* Each use case tints its fake media so the rooms read visually distinct —
+ * decorative postcard art (like the default gradients above), not tokens. */
+.jz-ambient--research { --jz-amb-media: linear-gradient(135deg, #1e3a5c, #2f6b8a 55%, #58c7c0); --jz-amb-pic: linear-gradient(150deg, #23405f, #37708f 52%, #6fc7bd); }
+.jz-ambient--design { --jz-amb-media: linear-gradient(135deg, #4a2c58, #86466d 55%, #c76a8a); --jz-amb-pic: linear-gradient(150deg, #45305f, #8a4a78 52%, #d07a92); }
+.jz-ambient--trip { --jz-amb-media: linear-gradient(135deg, #1f4f46, #3f8a6e 55%, #d9b25c); --jz-amb-pic: linear-gradient(150deg, #274f63, #3f8a7a 52%, #e0c078); }
+.jz-ambient--talk { --jz-amb-media: linear-gradient(135deg, #402a55, #7a3f63 55%, #c77a4a); --jz-amb-pic: linear-gradient(150deg, #2e2440, #6b3f7a 52%, #d98a5f); }
+.jz-ambient--decide { --jz-amb-media: linear-gradient(135deg, #26364f, #3f5d7a 55%, #7a9ab0); --jz-amb-pic: linear-gradient(150deg, #232f45, #45638a 52%, #8fb0c4); }
 
 /* cursors — collaborators (coloured) and Jarwiz (ink, with a soft glow) */
 .jz-amb-cur {
@@ -4142,10 +4167,12 @@ body,
 .jz-amb-cur--persona .arrow { fill: var(--c); }
 .jz-amb-cur--persona .jz-amb-badge { background: var(--c); border-color: transparent; }
 .jz-amb-cur--persona .jz-amb-badge .nm { color: #17140c; }
-.jz-amb-cur--pm { --c: #e8b04b; }
-.jz-amb-cur--design { --c: #e8709a; }
-.jz-amb-cur--research { --c: #58c7c0; }
-.jz-amb-cur--founder { --c: #9b8cff; }
+/* Cursor hue belongs to the stage SLOT (corner), not the role — the cast
+ * changes with the chosen use case, but four distinct hues always read. */
+.jz-amb-cur--s0 { --c: #e8b04b; }
+.jz-amb-cur--s1 { --c: #58c7c0; }
+.jz-amb-cur--s2 { --c: #e8709a; }
+.jz-amb-cur--s3 { --c: #9b8cff; }
 
 /* Jarwiz — ink arrow (theme-safe), soft accent glow, brighter while working */
 .jz-amb-cur--jarwiz .arrow { fill: var(--jz-ink-900); }

@@ -1,8 +1,9 @@
 /**
  * "What brings you here?" — the ask-once persona modal over the intent screen.
- * Six identity cards (icon + a few example asks) float above the live
- * ambient scene; one tap re-themes the whole first run (starter prompts, the
- * composer's self-typing examples, the ambient cards) and persists, so no
+ * Six identity cards (icon + a few example asks) over a quiet backdrop; one
+ * tap SUMMONS the room — the ambient scene enters themed to the pick (its own
+ * cast and cards), and the hero question, starter prompts, and self-typing
+ * examples all speak that use case's language. The answer persists, so no
  * surface ever asks again. The six deliberately span work AND life (a trip, a
  * talk, a decision) — the canvas isn't only for product teams (owner call,
  * 2026-07-12). "Just exploring" (or Escape / clicking the
