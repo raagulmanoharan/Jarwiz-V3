@@ -121,9 +121,11 @@ function serialize(root: HTMLElement): MentionModel {
   return { plainText, promptText, mentionIds };
 }
 
-/** Build a mention chip element for a card. It's contenteditable=false so the
- *  browser treats it as one atom; the ✕ removes it explicitly. */
-function makeChip(card: MentionCard, onRemove: (id: string, el: HTMLElement) => void): HTMLElement {
+/** Build a mention token for a card. Rendered as inline highlighted text (the
+ *  @-mention idiom — Slack/Notion), NOT a dismissable pill: it's
+ *  contenteditable=false so the browser treats it as one atom, and it's removed
+ *  by Backspace (or by deselecting its card on canvas), never a ✕ button. */
+function makeChip(card: MentionCard): HTMLElement {
   const chip = document.createElement('span');
   chip.className = 'jz-mention';
   chip.contentEditable = 'false';
@@ -133,19 +135,6 @@ function makeChip(card: MentionCard, onRemove: (id: string, el: HTMLElement) => 
   label.className = 'jz-mention-label';
   label.textContent = card.label;
   chip.appendChild(label);
-  const x = document.createElement('button');
-  x.className = 'jz-mention-x';
-  x.type = 'button';
-  x.setAttribute('aria-label', `Remove ${card.label} from context`);
-  x.textContent = '✕';
-  x.addEventListener('mousedown', (e) => {
-    // mousedown (not click) so the chip goes before the editable's blur steals
-    // focus; preventDefault keeps the caret in the composer.
-    e.preventDefault();
-    e.stopPropagation();
-    onRemove(card.id, chip);
-  });
-  chip.appendChild(x);
   return chip;
 }
 
@@ -287,7 +276,7 @@ export const MentionInput = forwardRef<MentionInputHandle, MentionInputProps>(fu
       insertMention: (card, opts) => {
         const root = rootRef.current;
         if (!root || prevIds.current.includes(card.id)) return;
-        const chip = makeChip(card, (id, el) => removeChip(id, el, false));
+        const chip = makeChip(card);
         if (opts?.prepend) {
           root.insertBefore(chip, root.firstChild);
           const space = document.createTextNode(' ');
@@ -319,7 +308,7 @@ export const MentionInput = forwardRef<MentionInputHandle, MentionInputProps>(fu
         sel?.removeAllRanges();
         sel?.addRange(r);
       }
-      const chip = makeChip(card, (id, el) => removeChip(id, el, false));
+      const chip = makeChip(card);
       insertNodeAtCaret(chip, true);
       setQuery(null);
       setMenuIdx(0);

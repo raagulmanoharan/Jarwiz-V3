@@ -4979,56 +4979,27 @@ body,
   pointer-events: none;
 }
 
-/* An inline mention chip — an atomic, non-editable reference to a board card.
-   Accent-tinted and "@"-prefixed so it reads as a reference, not prose; it sits
-   in the text flow, so it can lead the prompt or land mid-sentence. */
+/* An inline @mention — a reference to a board card, rendered as HIGHLIGHTED
+   TEXT (the Slack/Notion idiom), not a dismissable pill. It flows in the prose,
+   reads as accent-tinted "@Name", and is removed by Backspace or by deselecting
+   its card — never a ✕. It's an atomic token (contenteditable=false), so a
+   Backspace deletes the whole reference, not a character. */
 .jz-mention {
-  display: inline-flex;
-  align-items: center;
-  gap: 1px;
-  vertical-align: baseline;
-  margin: 0 1px;
-  padding: 1px 3px 1px 6px;
-  border-radius: var(--jz-radius-pill);
-  background: color-mix(in srgb, var(--jz-accent) 13%, transparent);
-  color: color-mix(in srgb, var(--jz-accent) 70%, var(--jz-ink-900));
+  display: inline;
+  margin: 0 0.5px;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--jz-accent) 16%, transparent);
+  color: color-mix(in srgb, var(--jz-accent) 82%, var(--jz-ink-900));
   font-weight: 600;
-  font-size: 0.94em;
-  line-height: 1.3;
   white-space: nowrap;
-  user-select: none;
   cursor: default;
-}
-.jz-mention-label {
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 .jz-mention-label::before {
   content: '@';
-  opacity: 0.55;
-  margin-right: 0.5px;
-}
-.jz-mention-x {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: color-mix(in srgb, var(--jz-accent) 60%, var(--jz-ink-500));
-  font-size: 8px;
-  line-height: 1;
-  cursor: pointer;
-  transition: background var(--jz-dur-fast) var(--jz-ease-out);
-}
-.jz-mention-x:hover {
-  background: color-mix(in srgb, var(--jz-accent) 22%, transparent);
-  color: color-mix(in srgb, var(--jz-accent) 85%, var(--jz-ink-900));
+  opacity: 0.6;
 }
 
 /* The "@" card picker — same language as the "/" shape menu, anchored to the
