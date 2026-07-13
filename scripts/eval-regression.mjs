@@ -93,6 +93,8 @@ async function get(path) {
 /* ── event helpers ─────────────────────────────────────────────────────────── */
 
 const askText = (evs) => evs.filter((e) => e.type === 'card.delta').map((e) => e.textDelta).join('');
+// Autopilot and analyze stream bare `delta` events, not card.delta.
+const deltaText = (evs) => evs.filter((e) => e.type === 'delta').map((e) => e.textDelta).join('');
 const slotText = (evs, slot) => evs.filter((e) => e.type === 'slot' && e.slot === slot && e.event?.type === 'card.delta').map((e) => e.event.textDelta).join('');
 const created = (evs) => evs.find((e) => e.type === 'card.create');
 const finished = (evs) => evs.some((e) => e.type === 'done');
@@ -198,9 +200,9 @@ const CASES = [
 
   // ── analyze ──
   { id: 'analyze-tensions', group: 'analyze', llm: true, exec: () => post('/api/analyze', { mode: 'tensions', cards: [{ kind: 'doc', title: 'Plan A', text: 'Ship October, no localization to stay lean.' }, { kind: 'doc', title: 'Plan B', text: 'Localize into 8 languages for the October launch.' }] }, { sse: true, timeoutMs: 180_000 }),
-    inv: (r) => [['card created', Boolean(created(r.events))], ['streamed + done', askText(r.events).length > 40 && finished(r.events)]] },
+    inv: (r) => [['streamed + done', deltaText(r.events).length > 40 && finished(r.events)]] },
   { id: 'analyze-gaps', group: 'analyze', llm: true, exec: () => post('/api/analyze', { mode: 'gaps', cards: [{ kind: 'doc', title: 'Launch', text: 'Ship the onboarding revamp in October.' }] }, { sse: true, timeoutMs: 180_000 }),
-    inv: (r) => [['streamed + done', askText(r.events).length > 40 && finished(r.events)]] },
+    inv: (r) => [['streamed + done', deltaText(r.events).length > 40 && finished(r.events)]] },
 
   // ── seed prompts ──
   { id: 'seed-text', group: 'seed', llm: true, exec: () => post('/api/seed-prompts', { text: TRANSCRIPT, title: 'Product sync' }),
@@ -233,18 +235,37 @@ async function runSuite(label) {
   const cases = CASES.filter((c) => ONLY.length === 0 || ONLY.includes(c.group));
   console.log(`\n▶ ${label}: ${cases.length} cases, concurrency ${CONCURRENCY}\n`);
   const started = Date.now();
-  const records = await runPool(cases, async (c) => {
+  // The Claude CLI sidecar can drop a request under parallel load — a fast,
+  // empty/errored stream that is NOT a product failure. Retry such transients
+  // once (sequentially) so contention never masquerades as a regression; the
+  // successful attempt's latency is what we record, which is also the fairer
+  // uncontended number for the A/B. A genuine failure (invariant fails on a
+  // COMPLETE run) is never retried.
+  const transient = (c, r) =>
+    Boolean(r.error) ||
+    r.events.some((e) => e.type === 'error') ||
+    (c.llm && r.status !== undefined && !r.events.some((e) => e.type === 'done') && !r.json);
+  const execWithRetry = async (c) => {
     let r;
     try { r = await c.exec(); } catch (e) { r = { status: 0, events: [], json: null, ms: 0, ttfbMs: null, error: String(e) }; }
+    if (transient(c, r)) {
+      await new Promise((res) => setTimeout(res, 1500));
+      try { const r2 = await c.exec(); if (!transient(c, r2)) return { ...r2, retried: true }; return { ...r2, retried: true }; }
+      catch (e) { return { ...r, retried: true }; }
+    }
+    return r;
+  };
+  const records = await runPool(cases, async (c) => {
+    const r = await execWithRetry(c);
     let invariants = [];
     try { invariants = c.inv(r).map(([name, ok]) => ({ name, ok: Boolean(ok) })); }
     catch (e) { invariants = [{ name: 'invariant-threw', ok: false, detail: String(e).slice(0, 80) }]; }
     const meta = c.meta ? (() => { try { return c.meta(r); } catch { return {}; } })() : {};
     const ok = invariants.every((x) => x.ok) && !r.error;
-    const line = `${ok ? '✅' : '❌'} ${c.id.padEnd(24)} ${String(Math.round(r.ms)).padStart(6)}ms  ${invariants.filter((x) => x.ok).length}/${invariants.length}${r.error ? '  ERR ' + r.error : ''}`;
+    const line = `${ok ? '✅' : '❌'} ${c.id.padEnd(24)} ${String(Math.round(r.ms)).padStart(6)}ms  ${invariants.filter((x) => x.ok).length}/${invariants.length}${r.retried ? ' (retried)' : ''}${r.error ? '  ERR ' + r.error : ''}`;
     console.log(line);
     if (!ok) for (const x of invariants.filter((x) => !x.ok)) console.log(`      ✗ ${x.name}`);
-    return { id: c.id, group: c.group, llm: Boolean(c.llm), status: r.status, ms: r.ms, ttfbMs: r.ttfbMs, ok, invariants, meta };
+    return { id: c.id, group: c.group, llm: Boolean(c.llm), status: r.status, ms: r.ms, ttfbMs: r.ttfbMs, ok, retried: Boolean(r.retried), invariants, meta };
   });
   const llm = records.filter((r) => r.llm);
   const snapshot = {
