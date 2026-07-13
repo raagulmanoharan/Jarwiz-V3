@@ -298,6 +298,15 @@ export interface AskRequest {
    */
   noResearch?: boolean;
   /**
+   * Fully offline answer — the model gets NO web tools, NO find_image, and the
+   * WEB_DIRECTIVE (a "you can reach the live web + add an image" instruction) is
+   * omitted from the system prompt. For purely EXTRACTIVE work that must stay
+   * inside its sources — the meeting-debrief recipe reads a transcript and has
+   * no business searching or illustrating. Implies `noResearch` (the deep pass
+   * is web-bound). Owner-approved prompt-assembly cleanup, 2026-07-12.
+   */
+  noWeb?: boolean;
+  /**
    * Run a Thinking Machine skill (server-side): the machine's own system prompt
    * and research budget replace the normal router, and the `prompt` is just the
    * subject the user typed into the machine block. See server machines.ts.

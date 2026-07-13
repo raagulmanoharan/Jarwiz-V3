@@ -951,3 +951,30 @@ zoom menu, fine at 3 cards, dead at 40.
 - Browser-verified on a 6-card board spread across thousands of page units:
   a body-text query ("zebra") found the right card, Enter landed it selected
   and in view, ⌘K opened, Escape closed, no-match state honest.
+
+## 2026-07-12 — Prompt-assembly cleanup: directive conflicts + web gating
+
+**Intent:** "relook at the system prompt … better optimised for the
+capabilities we've added, better throughput, fewer logic conflicts." After a
+day of layering directives (SOURCES_USED, narration, the debrief recipe), the
+doc/list assembly stacked directives that fought each other.
+
+- **Checklist ↔ provenance no longer contradict.** `CHECKLIST_DIRECTIVE` said
+  "no sign-off"; `SOURCES_USED_DIRECTIVE` said "add ONE last line". Both apply
+  to a checklist-with-sources answer (the G5 Action-items card is exactly
+  this). Reworded so the machine provenance line is the explicit one exception
+  to "no prose sign-off" — they compose cleanly now.
+- **Web is gated, not unconditional.** `WEB_DIRECTIVE` (~180 words + the
+  "add an image" doctrine + web/find_image tools) was appended to EVERY
+  doc/list/table answer. New `AskRequest.noWeb` drops it — the model gets no
+  web tools, no find_image, and the directive is omitted; it implies
+  `noResearch` (the deep pass is web-bound). The meeting-debrief recipe sets
+  it: reading a transcript should never search or illustrate. Fewer tokens on
+  the hot path; extractive cards stay inside their source.
+- **Deferred (documented, not done):** splitting the static base prompt from
+  the variable directive suffix for prompt-caching (bigger, wants its own
+  eval pass), and tightening the over-broad `wantsChecklist` regex (a routing
+  change with its own regression surface).
+- Verified live (sidecar) across three paths: debrief cards carry no leaked
+  marker / no `Source:` lines / no images; a normal checklist-with-source ends
+  clean with `sources.used` still firing; a plain doc ask is unregressed.

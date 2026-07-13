@@ -183,9 +183,12 @@ rev = Markdown("**What reviewers agree on** — rock-solid at full height...\\n\
 alt = Table(["Desk", "Price", "Why consider"], [["Jarvis", "$599", "faster motor"], ["Uplift V2", "$639", "more options"]])
 srcs = Markdown("Source: [Example Review](https://example.com/review)")`;
 
-/** Steers a doc/list answer to render as an interactive markdown checklist. */
+/** Steers a doc/list answer to render as an interactive markdown checklist.
+ *  "No prose sign-off" (not "no sign-off"): a machine provenance line — see
+ *  SOURCES_USED_DIRECTIVE — is not prose and remains the one permitted trailer,
+ *  so the two directives no longer contradict when both apply. */
 const CHECKLIST_DIRECTIVE =
-  '\n\nFormat the actionable items as a markdown task list: every item on its own line beginning with "- [ ] " (an unchecked checkbox), one concrete action each. Use "- [x] " only for items the sources say are already done. An optional "# " title line is fine; otherwise no prose, no intro, no sign-off.';
+  '\n\nFormat the actionable items as a markdown task list: every item on its own line beginning with "- [ ] " (an unchecked checkbox), one concrete action each. Use "- [x] " only for items the sources say are already done. An optional "# " title line is fine; otherwise no prose — no intro, no summary section, no prose sign-off.';
 
 /** A cross-document conflict/clause-diff request (→ the clause-diff table). */
 function looksLikeDiff(prompt: string): boolean {
@@ -467,7 +470,7 @@ const CITE_DIRECTIVE =
 const SOURCES_USED_MARKER = 'SOURCES_USED:';
 
 const SOURCES_USED_DIRECTIVE =
-  `\n\nProvenance (machine-read): after the answer's final line, add ONE last line of exactly the form "${SOURCES_USED_MARKER} 1, 3" — the numbers of the numbered Sources above whose content you actually drew on. Count a source only if the answer genuinely uses its content; a source you read but ignored, and anything found on the live web, does not count. If you drew on none of them, write "${SOURCES_USED_MARKER} none". This line is removed before display — never mention it in the answer itself.`;
+  `\n\nProvenance (machine-read): after the answer's final line, add ONE last line of exactly the form "${SOURCES_USED_MARKER} 1, 3" — the numbers of the numbered Sources above whose content you actually drew on. Count a source only if the answer genuinely uses its content; a source you read but ignored, and anything found on the live web, does not count. If you drew on none of them, write "${SOURCES_USED_MARKER} none". This single machine line is stripped before display and is the ONE exception to any "no sign-off" instruction above — always include it, and never mention it in the answer itself.`;
 
 /** Parse the indices out of a captured marker line ("SOURCES_USED: 1, 3"). */
 function parseUsedSources(line: string, sourceCount: number): number[] {
@@ -992,7 +995,12 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   // Only prose-bound asks upgrade; an explicit "/table" (or a prompt that
   // routes to a table/diagram) keeps its format on the normal web budget.
   const routedShape = req.shape ?? pickShape(req.prompt, req.currentShape);
+  // `noWeb` is a fully-offline answer: no live web anywhere, so the deep pass
+  // (which is entirely web-bound) is off, and every path below gates its web
+  // tools + WEB_DIRECTIVE + find_image on this too.
+  const web = !req.noWeb;
   const deep =
+    web &&
     !req.noResearch &&
     (req.deep || (looksLikeResearch(req.prompt) && (routedShape === 'doc' || routedShape === 'list')));
   if (deep) {
@@ -1047,6 +1055,9 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   if (shape === 'table') {
     // Cross-document conflict requests get the clause-diff table treatment
     // (purely extractive across the given documents — no web there).
+    // Clause-diff is extractive across documents; `noWeb` is an explicit
+    // offline request — either way the table stays off the web.
+    const tableWeb = web && !looksLikeDiff(req.prompt);
     const isDiff = looksLikeDiff(req.prompt) && req.sources.filter((s) => s.assetId).length >= 2;
     // Tables return JSON, so the used-sources declaration rides as one more
     // key instead of the trailing marker line the doc stream uses.
@@ -1054,17 +1065,17 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
       req.sources.length > 0
         ? '\nAlso include a "usedSources": number[] key — the numbers of the numbered Sources whose content the table actually drew on (a source you ignored, and web results, do not count; [] if none).'
         : '';
-    const tableSystem = (isDiff ? CLAUSE_DIFF_SYSTEM : TABLE_SYSTEM + WEB_TABLE_DIRECTIVE) + tableUsedDirective;
+    const tableSystem = (isDiff ? CLAUSE_DIFF_SYSTEM : TABLE_SYSTEM + (tableWeb ? WEB_TABLE_DIRECTIVE : '')) + tableUsedDirective;
     // The table generates in one long blocking call — without a stage here
     // the whole build reads as silence until cells appear (G3.1).
     yield { type: 'status', message: 'building the table…' };
     const raw = await generate(tableSystem, user, signal, images, {
-      web: !isDiff,
+      web: tableWeb,
       framePaths,
       imageData,
       // Rows of visual things earn a thumbnail column — find_image gives the
-      // model real image URLs to fill it with (clause-diff stays text-only).
-      clientTools: isDiff ? undefined : FIND_IMAGE_CLIENT,
+      // model real image URLs to fill it with (clause-diff/offline stay text-only).
+      clientTools: tableWeb ? FIND_IMAGE_CLIENT : undefined,
     });
     if (signal.aborted) return;
     let columns: string[] = [];
@@ -1112,8 +1123,8 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
       yield { type: 'done' };
       return;
     }
-    // Not clean JSON — degrade to a written answer.
-    yield* streamDoc('doc', DOC_SYSTEM + WEB_DIRECTIVE, user, signal, images, { web: true, framePaths, imageData, clientTools: FIND_IMAGE_CLIENT });
+    // Not clean JSON — degrade to a written answer (honouring the web gate).
+    yield* streamDoc('doc', DOC_SYSTEM + (web ? WEB_DIRECTIVE : ''), user, signal, images, { web, framePaths, imageData, clientTools: web ? FIND_IMAGE_CLIENT : undefined });
     return;
   }
 
@@ -1121,14 +1132,18 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   let system = citable ? base + CITE_DIRECTIVE : base;
   if (linkRefs.length > 0) system += linkCiteDirective(linkRefs);
   if (wantsChecklist(req.prompt)) system += CHECKLIST_DIRECTIVE;
-  system += WEB_DIRECTIVE;
+  // WEB_DIRECTIVE is not free — it's ~180 words plus the "add an image" doctrine
+  // and it hands over web + find_image tools. Extractive/offline asks (`noWeb`,
+  // e.g. the debrief reading a transcript) skip it entirely (owner-approved
+  // cleanup, 2026-07-12).
+  if (web) system += WEB_DIRECTIVE;
   // With canvas sources riding along, the model declares which it actually
   // drew on — attached ≠ used, and lineage links only real use.
   if (req.sources.length > 0) system += SOURCES_USED_DIRECTIVE;
   yield { type: 'status', message: shape === 'list' ? 'writing the list…' : 'drafting the answer…' };
   // Everyday doc/list answers carry find_image too — the directive gates it
   // to answers a real image genuinely lifts (owner call, 2026-07-10).
-  yield* streamDoc(shape, system, user, signal, images, { web: true, framePaths, imageData, clientTools: FIND_IMAGE_CLIENT }, req.sources.length);
+  yield* streamDoc(shape, system, user, signal, images, { web, framePaths, imageData, clientTools: web ? FIND_IMAGE_CLIENT : undefined }, req.sources.length);
 }
 
 /**

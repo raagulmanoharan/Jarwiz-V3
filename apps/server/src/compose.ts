@@ -160,7 +160,9 @@ async function* streamDebrief(req: ComposeRequest, signal: AbortSignal): AsyncGe
       : '';
   for (const p of DEBRIEF_PLAN) {
     if (signal.aborted) return;
-    const askReq = { prompt: p.prompt + steer, sources: source, shape: p.type, skipClarify: true, noResearch: true };
+    // A debrief is purely EXTRACTIVE over the transcript — no web, no images.
+    // noWeb drops WEB_DIRECTIVE + the web/find_image tools from each card.
+    const askReq = { prompt: p.prompt + steer, sources: source, shape: p.type, skipClarify: true, noResearch: true, noWeb: true };
     try {
       for await (const ev of streamAsk(askReq, signal)) {
         if (ev.type === 'done' || ev.type === 'clarify') continue;
