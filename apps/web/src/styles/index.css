@@ -5142,6 +5142,63 @@ body,
 
 .jz-cardbar-group { position: relative; }
 
+/* Source chips — an answer's lineage, made clickable. Accent-tinted so they
+ * read as references (same family as composer @mentions); clicking one jumps
+ * the camera to that source card and selects it. */
+.jz-cardbar-sources {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.jz-cardbar-sources-lead {
+  padding-left: 3px;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-micro-size);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--jz-ink-400);
+}
+.jz-cardbar-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 150px;
+  border: none;
+  cursor: pointer;
+  padding: 5px 9px;
+  border-radius: var(--jz-radius-pill);
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  color: color-mix(in srgb, var(--jz-accent) 70%, var(--jz-ink-900));
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-sm-size);
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-cardbar-source:hover {
+  background: color-mix(in srgb, var(--jz-accent) 22%, transparent);
+}
+.jz-cardbar-source-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jz-cardbar-source--more {
+  color: var(--jz-ink-500);
+  background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
+}
+.jz-cardbar-source--more:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 14%, transparent);
+}
+.jz-cardbar-sources-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 3px 3px;
+  background: var(--jz-hairline);
+}
+
 /* ─── Focus mode — a text card as a full-screen page (Google-Docs-like) ── */
 
 .jz-focus-backdrop {
