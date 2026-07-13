@@ -57,7 +57,6 @@ import { DocFocusOverlay } from './ui/DocFocusOverlay';
 import { CardFocusOverlay } from './ui/CardFocusOverlay';
 import { EmptyState } from './ui/EmptyState';
 import { Topbar } from './ui/Topbar';
-import { PreviewNotice } from './ui/PreviewNotice';
 import { HelpLayer } from './ui/HelpLayer';
 import { SidePanel } from './ui/SidePanel';
 import { ErrorBoundary, Safe } from './ui/ErrorBoundary';
@@ -80,7 +79,6 @@ function JarwizOverlay() {
           docks to the app shell's right edge and pushes the canvas, so it
           lives beside the Tldraw tree in App, not over it.) */}
       <Safe label="Topbar"><Topbar /></Safe>
-      <Safe label="PreviewNotice"><PreviewNotice /></Safe>
       <Safe label="ToolRail"><ToolRail /></Safe>
       <Safe label="AmbientOnboarding"><AmbientOnboarding /></Safe>
       <Safe label="PromptBar"><PromptBar /></Safe>
