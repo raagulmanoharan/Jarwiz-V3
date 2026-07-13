@@ -1216,3 +1216,23 @@ the bottom ("You're in the demo") shows the budget meter, the demo's limits,
 and a **Get full Jarwiz access** CTA — deliberately unwired; its destination
 is a product decision he'll make later. All "add your key" copy (pill,
 mock answers, 429 message) now points at the panel card instead.
+
+## 2026-07-13 — Three "AI is off" bars become one
+
+**Intent:** owner screenshot of the hosted playground — three separate notices
+all saying the same thing: a top-left "Retry" error pill, a top-centre "live
+preview" banner, and the line above the composer. "Do we need 3 message bars?"
+
+- No. Consolidated to the single above-composer "Playground mode" line (owner
+  pick — it sits right where you'd try to ask and reassures "still saves in
+  this browser"):
+  - Removed `PreviewNotice` (the top-centre banner) entirely — component, its
+    render in App.tsx, and its CSS. It duplicated the composer line.
+  - Suppressed the futile error/Retry pill when the backend is known-down:
+    guarded at `setAgentTask` (the one place every agent error pill funnels
+    through), so ask/analyze/diagram/cluster all skip it in the playground.
+    Retrying can never succeed there and the standing notice already explains
+    it; a lingering running pill for the same action is cleared too.
+- Verified against the production build in playground mode (no API server):
+  top banner gone, composer line stays, a failed ask spawns no pill — one
+  message, zero console errors.
