@@ -185,10 +185,14 @@ export const MentionInput = forwardRef<MentionInputHandle, MentionInputProps>(fu
   ref,
 ) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const prevIds = useRef<string[]>([]);
   // The live "@" query and menu highlight. null query = menu closed.
   const [query, setQuery] = useState<string | null>(null);
   const [menuIdx, setMenuIdx] = useState(0);
+  // Where the "@" menu floats — anchored to the caret (left) and just above its
+  // line (bottom), both relative to the composer, like a typical mention popup.
+  const [menuPos, setMenuPos] = useState<{ left: number; bottom: number } | null>(null);
 
   const matches =
     query === null
@@ -325,16 +329,47 @@ export const MentionInput = forwardRef<MentionInputHandle, MentionInputProps>(fu
     [insertNodeAtCaret, onUserAddMention, removeChip, syncModel],
   );
 
+  // The caret's position relative to the composer wrapper: x from the last
+  // character before it (a collapsed range gives an empty rect in some
+  // browsers, so we measure the preceding glyph — the "@" is always there),
+  // y as the gap from the wrapper's bottom up to the caret line.
+  const caretPos = useCallback((): { left: number; bottom: number } | null => {
+    const wrap = wrapRef.current;
+    const sel = window.getSelection();
+    if (!wrap || !sel || sel.rangeCount === 0) return null;
+    const wrapRect = wrap.getBoundingClientRect();
+    const node = sel.anchorNode;
+    let x = wrapRect.left + 4;
+    let top = wrapRect.top;
+    if (node && node.nodeType === Node.TEXT_NODE && sel.anchorOffset > 0) {
+      const r = document.createRange();
+      r.setStart(node, sel.anchorOffset - 1);
+      r.setEnd(node, sel.anchorOffset);
+      const rect = r.getBoundingClientRect();
+      if (rect.width || rect.height) {
+        x = rect.right;
+        top = rect.top;
+      }
+    }
+    const left = Math.max(0, Math.min(x - wrapRect.left, wrapRect.width - 232));
+    const bottom = wrapRect.bottom - top + 8;
+    return { left, bottom };
+  }, []);
+
   const refreshQuery = useCallback(() => {
     const root = rootRef.current;
     if (!root) return;
     const q = mentionQueryAt(root);
+    if (q === null) {
+      setQuery(null);
+      return;
+    }
     setQuery((prev) => {
-      if (q === null) return null;
       if (prev !== q.query) setMenuIdx(0);
       return q.query;
     });
-  }, []);
+    setMenuPos(caretPos());
+  }, [caretPos]);
 
   const handleInput = useCallback(() => {
     syncModel();
@@ -431,7 +466,7 @@ export const MentionInput = forwardRef<MentionInputHandle, MentionInputProps>(fu
   }, []);
 
   return (
-    <div className="jz-mention-wrap">
+    <div className="jz-mention-wrap" ref={wrapRef}>
       <div
         ref={rootRef}
         className="jz-promptbar-input jz-mention-input"
@@ -454,7 +489,12 @@ export const MentionInput = forwardRef<MentionInputHandle, MentionInputProps>(fu
         }}
       />
       {query !== null ? (
-        <div className="jz-mention-menu" role="menu" aria-label="Mention a card">
+        <div
+          className="jz-mention-menu"
+          role="menu"
+          aria-label="Mention a card"
+          style={menuPos ? { left: menuPos.left, bottom: menuPos.bottom } : undefined}
+        >
           <span className="jz-mode-menu-title">Mention a card</span>
           {matches.length === 0 ? (
             <span className="jz-mode-item-hint" style={{ padding: '6px 8px' }}>

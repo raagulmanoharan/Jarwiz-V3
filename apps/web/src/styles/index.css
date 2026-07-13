@@ -4963,8 +4963,11 @@ body,
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   cursor: text;
-  min-height: 40px;
-  max-height: 120px;
+  line-height: 1.5;
+  /* Grows with what you type: two rows to start, up to four, then scrolls
+     internally (1.5em line-height × rows). */
+  min-height: calc(1.5em * 2);
+  max-height: calc(1.5em * 4);
   overflow-y: auto;
   margin-bottom: 0; /* the wrap owns the gap now */
 }
