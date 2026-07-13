@@ -164,25 +164,29 @@
       .sub b { color: var(--ink); font-weight: 600; }
       .hero-cta { display: flex; gap: 14px; justify-content: center; align-items: center; margin-top: 32px; flex-wrap: wrap; }
       /* Hero email capture — one input, no competing buttons */
-      .hero-form { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 32px; flex-wrap: wrap; }
-      .hero-form input {
-        width: 300px; max-width: 100%; font-family: inherit; font-size: 15px; color: var(--ink);
-        background: var(--surface); border: 1px solid var(--hairline-2); border-radius: 999px;
-        padding: 14px 20px; transition: border-color 0.2s var(--ease);
+      .hero-form { margin-top: 32px; }
+      /* Input + submit as one pill — the button sits inside the field. */
+      .hero-field {
+        display: flex; align-items: center; gap: 6px;
+        width: 440px; max-width: 100%; margin: 0 auto;
+        background: var(--surface); border: 1px solid var(--hairline-2);
+        border-radius: 999px; padding: 5px 5px 5px 4px;
+        transition: border-color 0.2s var(--ease);
       }
-      .hero-form input::placeholder { color: var(--ink-3); }
-      .hero-form input:focus { outline: none; border-color: rgba(255, 255, 255, 0.4); }
-      .hero-status { margin: 14px 0 0; min-height: 1.1em; font-size: 13.5px; color: var(--ink-3); }
-      .hero-status.ok { color: var(--ink); }
-      .hero-status.err { color: #ffb4b4; }
-      .hero-invite { margin: 12px 0 0; color: var(--ink-3); font-size: 13.5px; }
+      .hero-field:focus-within { border-color: rgba(255, 255, 255, 0.4); }
+      .hero-field input {
+        flex: 1; min-width: 0; background: transparent; border: none;
+        font-family: inherit; font-size: 15px; color: var(--ink); padding: 11px 18px;
+      }
+      .hero-field input:focus { outline: none; }
+      .hero-field input::placeholder { color: var(--ink-3); }
+      .hero-field .btn { flex: none; padding: 11px 20px; box-shadow: none; }
+      .hero-invite { margin: 14px 0 0; font-size: 13.5px; }
       .hero-invite a { color: var(--ink-2); font-weight: 600; transition: color 0.2s var(--ease); }
       .hero-invite a:hover { color: var(--ink); }
-      @media (max-width: 560px) {
-        .hero-form { flex-direction: column; align-items: stretch; }
-        .hero-form input { width: 100%; }
-        .hero-form .btn { width: 100%; }
-      }
+      .hero-status { margin: 10px 0 0; min-height: 0; font-size: 13.5px; color: var(--ink-3); }
+      .hero-status.ok { color: var(--ink); }
+      .hero-status.err { color: #ffb4b4; }
       .link-ghost { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 14.5px; font-weight: 600; transition: color 0.2s var(--ease); }
       .link-ghost:hover { color: var(--ink); }
       .link-ghost .gh { width: 1.15em; height: 1.15em; }
@@ -645,11 +649,13 @@
             take shape right in front of you, instead of scrolling back through a&nbsp;thread.
           </p>
           <form id="beta-hero" class="hero-form" novalidate>
-            <input type="email" name="email" placeholder="you@example.com" autocomplete="email" required aria-label="Email address" />
-            <button type="submit" class="btn btn-primary btn-lg">Request access</button>
+            <div class="hero-field">
+              <input type="email" name="email" placeholder="you@example.com" autocomplete="email" required aria-label="Email address" />
+              <button type="submit" class="btn btn-primary">Request access</button>
+            </div>
           </form>
+          <p class="hero-invite"><a href="#access">Have an invite code?</a></p>
           <p id="beta-hero-status" class="hero-status" role="status" aria-live="polite"></p>
-          <p class="hero-invite">Have an invite code? <a href="#access">Enter it&nbsp;↗</a></p>
 
           <!-- The live app, shown immediately (interactive demo in the hero) -->
           <div class="stage reveal">
