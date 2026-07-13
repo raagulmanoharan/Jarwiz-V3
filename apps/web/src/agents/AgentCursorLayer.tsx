@@ -39,8 +39,11 @@ const MAX_READ_MS = 25_000;
 /** Idle dwell between wander hops. */
 const DWELL_MS: [number, number] = [2600, 7200];
 /** How long Jarwiz rests merged inside the ✦ icon before soaring back out
- *  for a spontaneous roam. Long enough that the board stays calm. */
-const REST_MS: [number, number] = [11_000, 24_000];
+ *  for a spontaneous roam. Deliberately long and wide — its appearances
+ *  should feel sparse and delightful, not like constant background motion.
+ *  (Real activity — a drop to read, an agent run — always brings it out
+ *  immediately regardless of this.) */
+const REST_MS: [number, number] = [55_000, 140_000];
 /** How long each reading quip stays up before the next one lands. */
 const QUIP_MS: [number, number] = [1900, 2700];
 
@@ -74,9 +77,10 @@ interface Brain {
   emergeAt: number;
 }
 
-/** Quiet wander hops before the entity gives up roaming and settles into its
- *  home dock. A few beats of life, then calm. */
-const HOPS_BEFORE_DOCK = 3;
+/** Wander hops per outing before it dives back into the ✦ icon. Kept short so
+ *  a spontaneous appearance is a brief, graceful moment, not a lap of the
+ *  board. */
+const HOPS_BEFORE_DOCK = 2;
 
 export function AgentCursorLayer() {
   return <JarwizEntity />;
