@@ -18,7 +18,7 @@ import { getShapeTitle } from '../shapes/shapeTitle';
 import { useAsk } from './useAsk';
 import { useCompose } from '../agents/useCompose';
 import { useAnnotate } from '../agents/useAnnotate';
-import { classifyRefineIntent, INLINE_EDITABLE, REFINE_SHAPE } from './refineIntent';
+import { classifyRefineIntent, resolveMentionTarget, INLINE_EDITABLE, REFINE_SHAPE } from './refineIntent';
 import { useAnalyze } from '../agents/useAnalyze';
 import { gatherBoardCards } from '../agents/boardText';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
@@ -35,6 +35,7 @@ import { hasIngestibleFile } from '../ingest/registerIngestion';
 import { classifyFile, isAttachableText, looksLikeTranscript, makeTextAttachment, materializeAttachment, uploadAttachment, type Attachment } from '../ingest/attachments';
 import { useDebrief } from '../agents/useDebrief';
 import { getPersona, subscribePersona, type Persona } from '../onboarding/personaStore';
+import { MentionInput, type MentionCard, type MentionInputHandle, type MentionModel } from './MentionInput';
 
 // Intent-first onboarding: on a brand-new empty board the composer rises to the
 // centre with a heading and a few starter prompts, then glides down into its
@@ -158,6 +159,17 @@ const prefersReducedMotion = () =>
 
 const clip = (s: string, n = 22) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
+// Friendly noun for a shape kind — the muted right column of the "@" picker,
+// so a card with no title still reads as "PDF" / "Table" / "Note".
+const KIND_NOUN: Record<string, string> = {
+  'pdf-card': 'PDF', 'doc-card': 'Text', 'note-card': 'Note', 'table-card': 'Table',
+  'diagram-card': 'Diagram', 'prototype-card': 'Prototype', 'dashboard-card': 'Dashboard',
+  'map-card': 'Map', 'image-card': 'Image', 'link-card': 'Link', 'youtube-card': 'Video',
+  'sheet-card': 'Sheet', geo: 'Shape', text: 'Text', note: 'Note', frame: 'Section',
+  arrow: 'Connector', group: 'Diagram',
+};
+const cardKindNoun = (type: string) => KIND_NOUN[type] ?? 'Card';
+
 function shapeLabel(editor: Editor, shape: TLShape): string {
   // The primitive title (the tag above the selected card) IS the chip label.
   const title = getShapeTitle(shape).trim();
@@ -196,7 +208,19 @@ export function PromptBar() {
   const { run: debrief, phase: debriefPhase } = useDebrief();
   const { run: annotate, phase: annotatePhase } = useAnnotate();
   const { analyze, runningMode } = useAnalyze();
-  const [value, setValue] = useState('');
+  // The composer is a mention-aware contenteditable (MentionInput). Its model:
+  //  - plainText: prose only (mentions excluded) — the "/" command, the shape
+  //    suggester, and the "is there anything to send" gate all read this.
+  //  - promptText: prose with each mention rendered as its label — what we send.
+  //  - domMentions: the referenced card ids, in order. THESE ARE THE GROUNDS.
+  const inputRef = useRef<MentionInputHandle>(null);
+  const [plainText, setPlainText] = useState('');
+  const [promptText, setPromptText] = useState('');
+  const [domMentions, setDomMentions] = useState<string[]>([]);
+  // Cards referenced by TYPING "@" (not by canvas selection). Tracked so a
+  // deselect doesn't yank an explicit typed reference, and a removed typed chip
+  // doesn't try to deselect a card that was never selected.
+  const [typedMentionIds, setTypedMentionIds] = useState<string[]>([]);
   // The "/" mode selector: an explicitly chosen response shape, pinned as a
   // chip until the ask is sent (or the chip dismissed).
   const [mode, setMode] = useState<ModeShape | null>(null);
@@ -274,7 +298,7 @@ export function PromptBar() {
   // moment you focus or type.
   const [focused, setFocused] = useState(false);
   const [introPh, setIntroPh] = useState('');
-  const introAnim = introMode && !value.trim() && !focused && attachments.length === 0 && !prefersReducedMotion();
+  const introAnim = introMode && !plainText.trim() && domMentions.length === 0 && !focused && attachments.length === 0 && !prefersReducedMotion();
   // Who's here — the persona modal's one-tap pick. Tuning is instant: starters
   // and the self-typing examples re-theme in place the moment a card is tapped.
   const persona = useSyncExternalStore(subscribePersona, getPersona, getPersona);
@@ -282,7 +306,7 @@ export function PromptBar() {
   const introExamples = INTRO_ANIM[persona ?? 'default'];
   // The ambient scene stays alive until you actually reach for the composer —
   // focusing or typing hushes it the moment you engage, before the first send.
-  const introEngaged = introMode && (focused || Boolean(value.trim()) || attachments.length > 0);
+  const introEngaged = introMode && (focused || Boolean(plainText.trim()) || domMentions.length > 0 || attachments.length > 0);
   useEffect(() => {
     setOnboardingEngaged(introEngaged);
     return () => setOnboardingEngaged(false);
@@ -318,24 +342,89 @@ export function PromptBar() {
   }, [introAnim, persona]);
   // Inline filtering, Claude-Code style: while the input reads "/que…", the
   // menu narrows to matching modes. Opened from the button, it shows all.
-  const modeQuery = value.startsWith('/') ? value.slice(1).trim().toLowerCase() : '';
+  const modeQuery = plainText.startsWith('/') ? plainText.slice(1).trim().toLowerCase() : '';
   const visibleModes = modeQuery
     ? MODES.filter((m) => m.label.toLowerCase().startsWith(modeQuery) || m.shape.startsWith(modeQuery))
     : MODES;
-  const ground = useValue(
-    'promptbar-ground',
-    () => editor.getSelectedShapeIds()
-      .map((id) => ({ id, shape: editor.getShape(id) }))
-      // Content-gated: an empty card is the user's own scratch space, not
-      // context — it gets no ground chip and contributes nothing to the ask.
-      .filter((x) => x.shape && ASKABLE.has(x.shape.type) && hasAskableContent(editor, x.shape))
-      .map((x) => ({ id: x.id, label: shapeLabel(editor, x.shape!) })),
+  // Every askable board card, for the "@" picker — content-gated, so an empty
+  // card (the user's own scratch space) is never offered as context.
+  const askableCards = useValue<MentionCard[]>(
+    'promptbar-cards',
+    () =>
+      editor
+        .getCurrentPageShapes()
+        .filter((s) => ASKABLE.has(s.type) && hasAskableContent(editor, s))
+        .map((s) => ({ id: s.id, label: shapeLabel(editor, s), kind: cardKindNoun(s.type) })),
     [editor],
   );
-  const groundIds = ground.map((g) => g.id);
-  const dropGround = (id: string) => {
-    editor.setSelectedShapes(editor.getSelectedShapeIds().filter((x) => x !== id));
+  // The selected cards that qualify as context. Selection drops a synced
+  // mention chip into the composer (and pulling the chip deselects) — the
+  // effortless "click a card, ask about it" gesture, now inline in the prompt.
+  const selectedAskableIds = useValue<string[]>(
+    'promptbar-selected-askable',
+    () =>
+      editor.getSelectedShapeIds().filter((id) => {
+        const s = editor.getShape(id);
+        return Boolean(s && ASKABLE.has(s.type) && hasAskableContent(editor, s));
+      }),
+    [editor],
+  );
+  // Grounds ARE the mention chips: selection-synced ones plus anything typed
+  // with "@". The composer's chip row is the single source of truth.
+  const groundIds = domMentions;
+  // Keep the composer's chips in lockstep with canvas selection: a newly
+  // selected card gets a leading chip; a deselected card's chip goes — unless
+  // it was ALSO typed with "@" (an explicit reference outlives the selection).
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+    const byId = new Map(askableCards.map((c) => [c.id, c] as const));
+    for (const id of selectedAskableIds) {
+      if (!domMentions.includes(id)) {
+        const card = byId.get(id);
+        if (card) input.insertMention(card, { prepend: true });
+      }
+    }
+    for (const id of domMentions) {
+      if (!selectedAskableIds.includes(id) && !typedMentionIds.includes(id)) {
+        input.removeMention(id);
+      }
+    }
+  }, [selectedAskableIds, domMentions, typedMentionIds, askableCards]);
+
+  // The composer's model on every keystroke / chip change.
+  const onModelChange = (m: MentionModel) => {
+    setPlainText(m.plainText);
+    setPromptText(m.promptText);
+    setDomMentions(m.mentionIds);
+    setModeIdx(0);
+    if (onrampHint) setOnrampHint(null); // the hint served its moment
+    // A leading "/" is a command: open the shape menu and filter it live.
+    if (m.plainText.startsWith('/')) setModeMenu(true);
+    else setModeMenu(false);
   };
+  // The user picked a card from the "@" menu — a reference that stands on its
+  // own, whether or not the card is selected on canvas.
+  const onUserAddMention = (id: string) => {
+    setTypedMentionIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  };
+  // The user pulled a chip (its ✕ or a Backspace): deselect its card if it was
+  // selected, and forget any typed reference to it.
+  const onUserRemoveMention = (id: string) => {
+    if (editor.getSelectedShapeIds().includes(id as TLShapeId)) {
+      editor.setSelectedShapes(editor.getSelectedShapeIds().filter((x) => x !== id));
+    }
+    setTypedMentionIds((prev) => prev.filter((x) => x !== id));
+  };
+  // Drop typed references whose card has since been deleted, so a stale chip
+  // can't linger pointing at nothing.
+  useEffect(() => {
+    const missing = typedMentionIds.filter((id) => !editor.getShape(id as TLShapeId));
+    if (missing.length) {
+      missing.forEach((id) => inputRef.current?.removeMention(id));
+      setTypedMentionIds((prev) => prev.filter((id) => !missing.includes(id)));
+    }
+  }, [askableCards, typedMentionIds, editor]);
   // ── Composer attachments ──────────────────────────────────────────────────
   // Content you attach to the prompt as CONTEXT before it's on the board — a
   // transcript, a PDF, a screenshot. Distinct from grounding on a SELECTED card:
@@ -450,15 +539,13 @@ export function PromptBar() {
   const fill = useSyncExternalStore(subscribePromptFill, getPromptFill, getPromptFill);
   useEffect(() => {
     if (!fill) return;
+    // Grounding the fill on its card selects it, which reconciles a leading
+    // mention chip into the composer; the prose lands after it.
     if (fill.groundId && editor.getShape(fill.groundId)) editor.select(fill.groundId);
-    setValue(fill.text);
+    inputRef.current?.setText(fill.text);
     setMode(null);
     setModeSource(null);
-    requestAnimationFrame(() => {
-      const ta = document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input');
-      ta?.focus();
-      ta?.setSelectionRange(fill.text.length, fill.text.length);
-    });
+    requestAnimationFrame(() => inputRef.current?.focus());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fill?.nonce]);
 
@@ -475,13 +562,13 @@ export function PromptBar() {
       if (modeSource === 'auto') { setMode(null); setModeSource(null); }
       return;
     }
-    if (value.trim().length < 4 || value.startsWith('/')) {
+    if (plainText.trim().length < 4 || plainText.startsWith('/')) {
       if (modeSource === 'auto') { setMode(null); setModeSource(null); }
       return;
     }
     const ac = new AbortController();
     const t = setTimeout(() => {
-      void suggestShape(value, ac.signal).then((guess) => {
+      void suggestShape(plainText, ac.signal).then((guess) => {
         if (ac.signal.aborted) return;
         if (guess) {
           setMode((m) => (m === guess ? m : guess));
@@ -494,7 +581,7 @@ export function PromptBar() {
     }, 500); // let the typing settle before spending a model call
     return () => { ac.abort(); clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, groundIds.length, modeSource]);
+  }, [plainText, groundIds.length, modeSource]);
 
   // A transcript-looking text attachment auto-pins the Debrief recipe — the
   // detection is local (speaker-turn lines), the pin is the same suggestion
@@ -519,27 +606,46 @@ export function PromptBar() {
     setModeMenu(false);
     setModeIdx(0);
     // Swallow the "/query" that summoned the menu — it was a command, not prose.
-    setValue((v) => (v.startsWith('/') ? '' : v));
-    requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input')?.focus());
+    if (plainText.startsWith('/')) inputRef.current?.setText('');
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const composing = composePhase === 'planning' || composePhase === 'building' || debriefPhase === 'building';
   const annotating = annotatePhase === 'thinking';
-  // A single artifact card is selected and the user typed with no mode. Ask the
-  // model whether the instruction EDITS that card in place or makes a NEW card
-  // from it, then dispatch: an edit regenerates the same card (keeping its
-  // shape); a new request lands a fresh doc grounded on the selection.
-  const routeSelectedAsk = async (q: string, id: TLShapeId, cardType: string) => {
-    const intent = await classifyRefineIntent(q, cardType);
-    if (intent === 'edit') {
-      void ask(q, [id], { targetId: id, forceShape: REFINE_SHAPE[cardType], skipClarify: true });
+  // A grounded ask with no explicit mode. The TARGET is read from the PROMPT:
+  //  - one card → does the instruction EDIT it in place or make a NEW card?
+  //  - many @mentioned cards → which one (if any) does the prompt ask to update,
+  //    with the rest as source material? ("rewrite @Board Update using @Q2").
+  // An edit regenerates that card in place (keeping its shape); otherwise a
+  // fresh doc lands, grounded on every reference. `grounds` carries all sources
+  // (the target's own content plus the others) either way.
+  const routeGroundedAsk = async (
+    q: string,
+    grounds: TLShapeId[],
+    cards: Array<{ id: TLShapeId; title: string; type: string }>,
+  ) => {
+    let target: { id: TLShapeId; type: string } | null = null;
+    if (cards.length === 1) {
+      const c = cards[0]!;
+      if (INLINE_EDITABLE.has(c.type) && (await classifyRefineIntent(q, c.type)) === 'edit') target = c;
     } else {
-      void ask(q, [id], { forceShape: 'doc' });
+      const idx = await resolveMentionTarget(q, cards.map((c) => ({ title: c.title, type: c.type })));
+      const picked = idx != null ? cards[idx] : null;
+      if (picked && INLINE_EDITABLE.has(picked.type)) target = picked;
+    }
+    if (target) {
+      void ask(q, grounds, { targetId: target.id, forceShape: REFINE_SHAPE[target.type], skipClarify: true });
+    } else {
+      void ask(q, grounds, { forceShape: 'doc' });
     }
   };
 
   const submit = () => {
-    const q = value.trim();
+    // Gate on PROSE: a bare mention with no instruction isn't a send (same as
+    // an empty box today). The prompt we SEND is promptText — prose with each
+    // mention rendered as the card it names, so "@Pricing" reads as a reference.
+    const q = plainText.trim();
+    const prompt = promptText.trim() || q;
     if (!q || isAsking || composing || annotating) return;
     if (attachUploading) return; // wait for attachments to finish uploading
     // Onboarding: the first ask sends the composer gliding down into its dock.
@@ -557,31 +663,39 @@ export function PromptBar() {
         });
       setAttachments([]);
     }
-    const grounds = [...groundIds, ...attIds];
+    const grounds = [...(groundIds as TLShapeId[]), ...attIds];
     // SHAPE is explicit only — no implicit routing from the prompt text. With no
     // mode selected the answer is always a DOC (the composer's first-class
     // default); Board / Stickies / any other shape require picking the "/" mode
     // (owner call 2026-07-07). Whether a typed instruction EDITS a selected card
     // in place vs makes a new card is inferred from intent (see routeSelectedAsk).
     if (mode === 'board') {
-      void compose(q);
+      void compose(prompt);
     } else if (mode === 'debrief') {
       // The debrief recipe reads the transcript among the grounds (the
       // materialized attachment or a selected text card). Without one it
       // degrades to a plain doc ask — never a dead send.
-      void debrief(q, grounds).then((ran) => {
-        if (!ran) void ask(q, grounds, { forceShape: 'doc' });
+      void debrief(prompt, grounds).then((ran) => {
+        if (!ran) void ask(prompt, grounds, { forceShape: 'doc' });
       });
     } else if (mode === 'affinity') {
-      void annotate(q);
-    } else if (!mode && attIds.length === 0 && sole && !sole.pdf && INLINE_EDITABLE.has(sole.type)) {
-      // A single artifact card is selected, no mode, and nothing attached → let
-      // intent decide edit-in-place vs a new doc (async classify), then dispatch.
-      void routeSelectedAsk(q, sole.id, sole.type);
+      void annotate(prompt);
+    } else if (!mode && attIds.length === 0 && groundIds.length >= 1) {
+      // Grounded, no mode, nothing freshly attached → the prompt decides the
+      // target: edit one referenced card in place (with the rest as sources),
+      // or make a new doc. Works for one @mention or several.
+      const cards = groundIds
+        .map((id) => {
+          const s = editor.getShape(id as TLShapeId);
+          return s ? { id: id as TLShapeId, title: shapeLabel(editor, s), type: s.type as string } : null;
+        })
+        .filter((c): c is { id: TLShapeId; title: string; type: string } => Boolean(c));
+      void routeGroundedAsk(prompt, grounds, cards);
     } else {
-      void ask(q, grounds, { forceShape: (mode as AskShape) ?? 'doc' });
+      void ask(prompt, grounds, { forceShape: (mode as AskShape) ?? 'doc' });
     }
-    setValue('');
+    inputRef.current?.clear();
+    setTypedMentionIds([]);
     setMode(null); // the mode applies to one ask, like the text it rode with
     setModeSource(null);
   };
@@ -611,8 +725,8 @@ export function PromptBar() {
       void ask(q, [editingSole], { targetId: editingSole, skipClarify: true });
       return;
     }
-    setValue(q);
-    requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.jz-promptbar-input')?.focus());
+    inputRef.current?.setText(q);
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   // Precedence: a just-clicked on-ramp's how-to hint wins, then an attached
@@ -643,12 +757,12 @@ export function PromptBar() {
     groundIds.length === 1 && (seeds?.length ?? 0) > 0
       ? seeds!.map((s) => ({ label: s.label, prompt: s.prompt }))
       : [];
-  const showStarters = !runningMode && !isAsking && !soleBusy && !draftPending && !value.trim() && starters.length > 0;
+  const showStarters = !runningMode && !isAsking && !soleBusy && !draftPending && !plainText.trim() && starters.length > 0;
   // The 5-20s quiet gap while tailored pills are being generated (cache still
   // undefined = fetch in flight): show shimmering placeholder pills so the
   // wait reads as "thinking", not "nothing here" (feel pass, ROADMAP §10 #4).
   const showSeedWait =
-    !runningMode && !isAsking && !soleBusy && !draftPending && !value.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
+    !runningMode && !isAsking && !soleBusy && !draftPending && !plainText.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
 
   return (
     <div className={`jz-promptbar-dock${introMode ? ' jz-promptbar-dock--intro' : ''}`} onPointerDown={stopEventPropagation}>
@@ -710,19 +824,13 @@ export function PromptBar() {
         className={`jz-promptbar${dragActive ? ' jz-promptbar--drag' : ''}`}
         style={{ '--pb-max': '560px' } as CSSProperties}
       >
-        {ground.length > 0 || attachments.length > 0 ? (
+        {/* This row is now ATTACHMENTS ONLY — context you brought in, kept as a
+            dismissable chip. Selected cards are no longer pilled here; they ride
+            inside the composer as inline @mention chips (MentionInput), so a
+            card can be referenced anywhere in the prompt, not just as a header
+            tag (owner call, 2026-07-13). */}
+        {attachments.length > 0 ? (
           <div className="jz-pb-grounds">
-            {ground.slice(0, 3).map((g) => (
-              <span key={g.id} className="jz-pb-ground" title={g.label}>
-                {/* Label gets its own truncating span — ellipsis can't apply to
-                    bare text in a flex row, and without it a long title shoves
-                    the ✕ past the chip's clip edge (owner report, 2026-07-10). */}
-                <span className="jz-pb-ground-label">{g.label}</span>
-                <button className="jz-pb-ground-x" aria-label="Remove from context" onClick={() => dropGround(g.id)}>✕</button>
-              </span>
-            ))}
-            {ground.length > 3 ? <span className="jz-pb-ground jz-pb-ground--more">+{ground.length - 3}</span> : null}
-            {/* Attachments — context you brought, not a selected card. */}
             {attachments.map((a) => (
               <span
                 key={a.key}
@@ -743,38 +851,32 @@ export function PromptBar() {
           </div>
         ) : null}
 
-        <textarea
-          className="jz-promptbar-input"
-          value={value}
-          rows={2}
+        <MentionInput
+          ref={inputRef}
           placeholder={introAnim && introPh ? introPh : placeholder}
+          cardOptions={askableCards}
+          onChange={onModelChange}
+          onUserAddMention={onUserAddMention}
+          onUserRemoveMention={onUserRemoveMention}
           onFocus={() => setFocused(true)}
           onBlur={() => { setFocused(false); setOnrampHint(null); }}
-          onPaste={(e) => {
-            // A pasted file (a screenshot, a PDF) attaches as context; a long
-            // multi-line text paste (a transcript, notes) attaches too — it's
-            // CONTENT to ground on, not the prompt, and it becomes a source
-            // card on send. Short pastes fall through to the input as prose.
-            const files = Array.from(e.clipboardData.files);
-            if (files.length && hasIngestibleFile(files)) { e.preventDefault(); attachFiles(files); return; }
-            const pasted = e.clipboardData.getData('text/plain');
-            if (pasted && isAttachableText(pasted)) {
-              e.preventDefault();
-              setAttachments((list) => [...list, makeTextAttachment(`att-${attachSeq.current++}`, pasted)]);
+          // A pasted file (a screenshot, a PDF) attaches as context; a long
+          // multi-line text paste (a transcript, notes) attaches too — it's
+          // CONTENT to ground on, not the prompt. Short pastes become prose.
+          onPasteFiles={(files) => {
+            if (hasIngestibleFile(files)) { attachFiles(files); return true; }
+            return false;
+          }}
+          onPasteText={(text) => {
+            if (isAttachableText(text)) {
+              setAttachments((list) => [...list, makeTextAttachment(`att-${attachSeq.current++}`, text)]);
+              return true;
             }
+            return false;
           }}
-          onChange={(e) => {
-            const next = e.target.value;
-            setValue(next);
-            setModeIdx(0);
-            if (onrampHint) setOnrampHint(null); // the hint served its moment
-            // A leading "/" is a command: open the menu and filter it live as
-            // the user types (a "/" mid-sentence is just a character).
-            if (next.startsWith('/')) setModeMenu(true);
-            else if (modeMenu) setModeMenu(false);
-          }}
+          // Fires only when the "@" card picker is closed — so the "/" shape
+          // menu and Enter-to-send live here; the "@" menu owns its own keys.
           onKeyDown={(e) => {
-            e.stopPropagation();
             if (modeMenu) {
               // Number keys quick-pick; arrows walk; Enter takes the highlight.
               const n = Number(e.key);
@@ -792,8 +894,8 @@ export function PromptBar() {
               }
               if (e.key === 'Escape') { setModeMenu(false); return; }
             }
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
-            if (e.key === 'Escape') (e.target as HTMLTextAreaElement).blur();
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); return; }
+            if (e.key === 'Escape') inputRef.current?.focus(); // stay put; menus close on blur
           }}
         />
 
@@ -880,7 +982,7 @@ export function PromptBar() {
             // 30px button becomes a pill — the text no longer spills out of
             // the circle (G4.5).
             className={`jz-promptbar-send${composing || annotating || busyLabel ? ' jz-promptbar-send--busy' : ''}`}
-            disabled={!value.trim() || attachUploading || isAsking || composing || annotating}
+            disabled={!plainText.trim() || attachUploading || isAsking || composing || annotating}
             onClick={submit}
             title={attachUploading ? 'Attaching…' : 'Send (Enter)'}
           >

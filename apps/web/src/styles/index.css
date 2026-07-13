@@ -4950,6 +4950,93 @@ body,
   color: var(--jz-ink-400);
 }
 
+/* ── Mention composer ──────────────────────────────────────────────────────
+ * The contenteditable that carries inline @mention chips. It inherits the
+ * textarea look (.jz-promptbar-input) but grows with content and renders real
+ * newlines (pre-wrap), since we insert "\n" text nodes for Shift+Enter. */
+.jz-mention-wrap {
+  position: relative;
+  margin-bottom: 6px;
+}
+.jz-mention-input {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: text;
+  line-height: 1.5;
+  /* Grows with what you type: two rows to start, up to four, then scrolls
+     internally (1.5em line-height × rows). */
+  min-height: calc(1.5em * 2);
+  max-height: calc(1.5em * 4);
+  overflow-y: auto;
+  margin-bottom: 0; /* the wrap owns the gap now */
+}
+/* Placeholder overlay — a contenteditable has no native placeholder, so we
+   paint one while the box is empty (toggled by the .jz-mention-empty class). */
+.jz-mention-input.jz-mention-empty::before {
+  content: attr(data-placeholder);
+  color: var(--jz-ink-400);
+  pointer-events: none;
+}
+
+/* An inline @mention — a reference to a board card, rendered as HIGHLIGHTED
+   TEXT (the Slack/Notion idiom), not a dismissable pill. It flows in the prose,
+   reads as accent-tinted "@Name", and is removed by Backspace or by deselecting
+   its card — never a ✕. It's an atomic token (contenteditable=false), so a
+   Backspace deletes the whole reference, not a character. */
+.jz-mention {
+  display: inline;
+  margin: 0 0.5px;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--jz-accent) 16%, transparent);
+  color: color-mix(in srgb, var(--jz-accent) 82%, var(--jz-ink-900));
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: default;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.jz-mention-label::before {
+  content: '@';
+  opacity: 0.6;
+}
+
+/* The "@" card picker — same language as the "/" shape menu, anchored to the
+   composer and opening upward above it. */
+.jz-mention-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 350;
+  min-width: 230px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px;
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface-raised);
+  border: 1px solid var(--jz-hairline);
+  box-shadow: var(--jz-e3);
+  animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
+}
+/* The "@" glyph badge on each menu row (mirrors the "/" menu's number badge). */
+.jz-mention-menu-at {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  border-radius: var(--jz-radius-xs);
+  border: 1px solid var(--jz-hairline);
+  font-size: 10px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--jz-accent) 65%, var(--jz-ink-400));
+}
+
 /* Footer row: left icons · spacer · send */
 .jz-promptbar-footer {
   display: flex;
@@ -5025,6 +5112,63 @@ body,
 }
 
 .jz-cardbar-group { position: relative; }
+
+/* Source chips — an answer's lineage, made clickable. Accent-tinted so they
+ * read as references (same family as composer @mentions); clicking one jumps
+ * the camera to that source card and selects it. */
+.jz-cardbar-sources {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.jz-cardbar-sources-lead {
+  padding-left: 3px;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-micro-size);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--jz-ink-400);
+}
+.jz-cardbar-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 150px;
+  border: none;
+  cursor: pointer;
+  padding: 5px 9px;
+  border-radius: var(--jz-radius-pill);
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  color: color-mix(in srgb, var(--jz-accent) 70%, var(--jz-ink-900));
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-sm-size);
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-cardbar-source:hover {
+  background: color-mix(in srgb, var(--jz-accent) 22%, transparent);
+}
+.jz-cardbar-source-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jz-cardbar-source--more {
+  color: var(--jz-ink-500);
+  background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
+}
+.jz-cardbar-source--more:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 14%, transparent);
+}
+.jz-cardbar-sources-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 3px 3px;
+  background: var(--jz-hairline);
+}
 
 /* ─── Focus mode — a text card as a full-screen page (Google-Docs-like) ── */
 

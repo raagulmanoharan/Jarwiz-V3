@@ -1120,6 +1120,64 @@ export async function classifyRefineIntent(
   return ans.startsWith('EDIT') && !ans.includes('NEW') ? 'edit' : 'new';
 }
 
+/** Which referenced card (if any) the prompt asks to modify in place — the
+ *  multi-@mention case: "rewrite @Board Update using @Q2 Revenue" targets the
+ *  Board Update card, with Q2 Revenue as source material. The TARGET is read
+ *  from the prompt itself, not from which card is selected. Static system
+ *  prompt (cache-friendly); the card list + instruction ride the user turn.
+ *  Biased to NEW when unsure — a new card never overwrites work. */
+const MENTION_TARGET_SYSTEM = `A user typed an instruction into a canvas composer, referencing one or more cards by @mention. The referenced cards are listed with a number, title, and type. Decide whether the instruction asks to MODIFY one of those cards IN PLACE — and if so, WHICH one — or to produce a NEW separate card.
+
+Reply with EXACTLY one of:
+- NEW — the instruction produces a new, separate card: it summarizes, compares, critiques, or synthesizes a fresh artifact FROM the referenced cards, leaving them untouched. This is the default whenever you cannot clearly tell which single card is being changed.
+- EDIT <n> — the instruction is a command to change card number <n>'s OWN content in place (rewrite it, fill it in, update/expand/restructure/rename THAT card), using any other referenced cards as source material.
+
+Read the verb and its object: the TARGET is the card the instruction says to change. Only a card whose type can be edited in place — doc, table, diagram, prototype, dashboard, map — can be a target. A pdf, image, link, video, sheet, or note can never be the target → NEW.
+
+Examples:
+Cards: 1. "Board Update" (doc)  2. "Q2 Revenue" (doc)
+Instruction: "rewrite this using the figures from Q2 Revenue" → EDIT 1
+Cards: 1. "Q2 Revenue" (doc)  2. "Competitor Analysis" (doc)
+Instruction: "compare these in a table" → NEW
+Cards: 1. "Roadmap" (table)  2. "Customer Feedback" (doc)
+Instruction: "add a priority column to the roadmap based on the feedback" → EDIT 1
+Cards: 1. "Launch Plan" (doc)  2. "Risks" (doc)
+Instruction: "fold the risks into the launch plan" → EDIT 1
+Cards: 1. "Pricing" (table)  2. "Notes" (doc)
+Instruction: "draft an email summarizing both" → NEW
+Cards: 1. "Report" (pdf)  2. "Sales Data" (sheet)
+Instruction: "update the report with the sales data" → NEW
+Cards: 1. "Onboarding Flow" (diagram)  2. "New Steps" (doc)
+Instruction: "add the new steps to the flow" → EDIT 1
+
+Reply with EXACTLY \`NEW\` or \`EDIT <n>\` where <n> is a card number.`;
+
+export async function classifyMentionTarget(
+  prompt: string,
+  cards: Array<{ title: string; type: string }>,
+  signal: AbortSignal,
+): Promise<number | null> {
+  if (cards.length === 0 || !prompt.trim()) return null;
+  const list = cards
+    .map((c, i) => `${i + 1}. "${c.title || 'Untitled'}" (${(c.type || 'card').replace(/-card$/, '')})`)
+    .join('\n');
+  let raw: string;
+  try {
+    raw = await generate(
+      MENTION_TARGET_SYSTEM,
+      `Referenced cards:\n${list}\n\nInstruction: "${prompt.slice(0, 400)}"`,
+      signal,
+    );
+  } catch {
+    return null; // never block on the classifier — default to a new card
+  }
+  // A clear "EDIT <n>" (n in range) picks the target; anything else → new card.
+  const m = raw.trim().toUpperCase().match(/^EDIT\s+(\d+)/);
+  if (!m) return null;
+  const idx = Number.parseInt(m[1]!, 10) - 1;
+  return idx >= 0 && idx < cards.length ? idx : null;
+}
+
 /** Suggest which response SHAPE a from-scratch prompt wants, so the composer can
  *  pre-pin the "/" mode chip as the user types (they can always change it — the
  *  shape stays explicit). Model-inferred, not keyword-matched. Biased to DOC

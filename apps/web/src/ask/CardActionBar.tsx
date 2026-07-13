@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { stopEventPropagation, useEditor, useValue, type Editor, type TLShapeId } from 'tldraw';
+import { stopEventPropagation, useEditor, useValue, type Editor, type TLShape, type TLShapeId } from 'tldraw';
 import {
   AlertTriangle,
   BarChart3,
@@ -18,6 +18,7 @@ import {
   Clock,
   Columns3,
   Combine,
+  CornerUpLeft,
   Copy,
   Eye,
   Film,
@@ -55,7 +56,8 @@ import { uploadAsset } from '../lib/uploadAsset';
 import { openCardFocus } from '../ui/focusCard';
 import { canFocusCard } from '../ui/CardFocusOverlay';
 import { PROFILE_PROMPT } from './profilePrompt';
-import { PROMPT_META_KEY, PROV_META_KEY, useAsk } from './useAsk';
+import { PROMPT_META_KEY, PROV_META_KEY, sourceLabel, useAsk } from './useAsk';
+import { bringIntoView } from '../ui/bringIntoView';
 import { useDiagram } from '../agents/useDiagram';
 import { useDashboard } from '../agents/useDashboard';
 import { gridIsDashboardable } from '../lib/dashboardable';
@@ -199,6 +201,36 @@ export function CardActionBar() {
     },
     [editor],
   );
+
+  // The cards THIS answer was built from (its recorded lineage), still present
+  // on the board. Each becomes a clickable Source chip — the visible, reliable
+  // form of provenance (the hairline is drawn on selection; this is the way to
+  // JUMP to where an answer came from). Works for every card type uniformly.
+  const sources = useValue<Array<{ id: TLShapeId; label: string }>>(
+    'cardbar-sources',
+    () => {
+      const selIds = editor.getSelectedShapeIds();
+      if (selIds.length !== 1) return [];
+      const s = editor.getShape(selIds[0]!);
+      const srcIds = (s?.meta?.[PROV_META_KEY] as string[] | undefined) ?? [];
+      return srcIds
+        .map((sid) => editor.getShape(sid as TLShapeId))
+        .filter((x): x is TLShape => Boolean(x))
+        .map((x) => ({ id: x.id, label: sourceLabel(x) }));
+    },
+    [editor],
+  );
+  // Take me to a source: select it (so it's highlighted and its own lineage
+  // shows) and pan/zoom it into view at a readable size — the same navigation
+  // the search and rail use, so a jump always lands framed.
+  const goToSource = (sid: TLShapeId) => {
+    editor.select(sid);
+    bringIntoView(editor, sid);
+  };
+  const goToAllSources = (sids: TLShapeId[]) => {
+    editor.setSelectedShapes(sids);
+    editor.zoomToSelection();
+  };
 
   if (!sel) return null;
   const id = sel.id as TLShapeId;
@@ -438,6 +470,32 @@ export function CardActionBar() {
           if (target) void onPickImage(file, target);
         }}
       />
+      {sources.length > 0 ? (
+        <div className="jz-cardbar-sources" role="group" aria-label="Sources">
+          <span className="jz-cardbar-sources-lead" aria-hidden>From</span>
+          {sources.slice(0, 3).map((s) => (
+            <button
+              key={s.id}
+              className="jz-cardbar-source"
+              title={`Go to source: ${s.label}`}
+              onClick={() => goToSource(s.id)}
+            >
+              <CornerUpLeft size={11} strokeWidth={2.2} aria-hidden />
+              <span className="jz-cardbar-source-label">{s.label}</span>
+            </button>
+          ))}
+          {sources.length > 3 ? (
+            <button
+              className="jz-cardbar-source jz-cardbar-source--more"
+              title="Frame all sources"
+              onClick={() => goToAllSources(sources.map((s) => s.id))}
+            >
+              +{sources.length - 3}
+            </button>
+          ) : null}
+          <span className="jz-cardbar-sources-sep" aria-hidden />
+        </div>
+      ) : null}
       {profileable ? (
         <button
           className="jz-cardbar-btn"
