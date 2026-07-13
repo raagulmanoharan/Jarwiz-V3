@@ -163,6 +163,38 @@
       }
       .sub b { color: var(--ink); font-weight: 600; }
       .hero-cta { display: flex; gap: 14px; justify-content: center; align-items: center; margin-top: 32px; flex-wrap: wrap; }
+      /* Hero email capture — one input, no competing buttons */
+      /* Access box — one email field with an inline invite-code toggle. Used
+         in the hero and the closing CTA; no scrolling, no duplicate panels. */
+      .access-box { max-width: 440px; margin: 32px auto 0; }
+      /* Input + submit as one pill — the button sits inside the field. */
+      .access-field {
+        display: flex; align-items: center; gap: 6px;
+        background: var(--surface); border: 1px solid var(--hairline-2);
+        border-radius: 999px; padding: 5px 5px 5px 4px;
+        transition: border-color 0.2s var(--ease);
+      }
+      .access-field:focus-within { border-color: rgba(255, 255, 255, 0.4); }
+      .access-field input {
+        flex: 1; min-width: 0; background: transparent; border: none;
+        font-family: inherit; font-size: 15px; color: var(--ink); padding: 11px 18px;
+      }
+      .access-field input:focus { outline: none; }
+      .access-field input::placeholder { color: var(--ink-3); }
+      .access-field .btn { flex: none; padding: 11px 20px; box-shadow: none; }
+      /* Email by default; toggle swaps to the code field in place. */
+      .af-code { display: none; }
+      .access-box[data-mode="code"] .af-email { display: none; }
+      .access-box[data-mode="code"] .af-code { display: block; }
+      .af-toggle { margin: 14px 0 0; font-size: 13.5px; }
+      .af-toggle a { color: var(--ink-2); font-weight: 600; cursor: pointer; transition: color 0.2s var(--ease); }
+      .af-toggle a:hover { color: var(--ink); }
+      .to-email { display: none; }
+      .access-box[data-mode="code"] .to-code { display: none; }
+      .access-box[data-mode="code"] .to-email { display: inline; }
+      .af-status { margin: 10px 0 0; min-height: 0; font-size: 13.5px; color: var(--ink-3); }
+      .af-status.ok { color: var(--ink); }
+      .af-status.err { color: #ffb4b4; }
       .link-ghost { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 14.5px; font-weight: 600; transition: color 0.2s var(--ease); }
       .link-ghost:hover { color: var(--ink); }
       .link-ghost .gh { width: 1.15em; height: 1.15em; }
@@ -527,6 +559,18 @@
       .cta-note { margin: 16px auto 0; color: var(--ink-3); font-size: 13.5px; }
       .cta-note b { color: var(--ink-2); font-weight: 600; }
 
+      /* Access — closing CTA, same access-box as the hero */
+      .access {
+        text-align: center; padding: 72px 32px; border-radius: var(--r-xl);
+        background:
+          radial-gradient(600px 300px at 50% 0%, rgba(255,255,255,0.07), transparent 70%),
+          linear-gradient(180deg, var(--surface), var(--bg-2));
+        border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--hairline));
+      }
+      .access .sec-head { margin-bottom: 0; }
+      .access .access-box { margin-top: 40px; }
+      .access .cta-note { margin-top: 34px; }
+
       /* Footer */
       footer { padding: 48px 0; border-top: 1px solid var(--hairline); margin-top: 40px; }
       .foot { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
@@ -572,7 +616,7 @@
           <span class="gh-star ghost-sm" aria-hidden="false">
             <iframe title="Star raagulmanoharan/Jarwiz-V3 on GitHub" src="https://ghbtns.com/github-btn.html?user=raagulmanoharan&amp;repo=Jarwiz-V3&amp;type=star&amp;count=true&amp;size=large" frameborder="0" scrolling="0" width="116" height="30"></iframe>
           </span>
-          <a class="btn btn-primary" href="app/?start=1" target="_blank" rel="noopener">Try it free ↗</a>
+          <a class="btn btn-primary" href="#access">Request access</a>
         </div>
       </div>
     </header>
@@ -586,8 +630,24 @@
             An infinite canvas that thinks with you. Describe anything and watch it
             take shape right in front of you, instead of scrolling back through a&nbsp;thread.
           </p>
-          <div class="hero-cta">
-            <a class="btn btn-primary btn-lg" href="app/?start=1" target="_blank" rel="noopener">Try it free ↗</a>
+          <div class="access-box">
+            <form class="af-email" novalidate>
+              <div class="access-field">
+                <input type="email" name="email" placeholder="you@example.com" autocomplete="email" required aria-label="Email address" />
+                <button type="submit" class="btn btn-primary">Request access</button>
+              </div>
+            </form>
+            <form class="af-code" novalidate>
+              <div class="access-field">
+                <input type="text" name="code" placeholder="your invite code" autocomplete="off" spellcheck="false" aria-label="Invite code" />
+                <button type="submit" class="btn btn-primary">Enter&nbsp;↗</button>
+              </div>
+            </form>
+            <p class="af-toggle">
+              <a class="to-code" role="button" tabindex="0">Have an invite code?</a>
+              <a class="to-email" role="button" tabindex="0">Request an invite instead</a>
+            </p>
+            <p class="af-status" role="status" aria-live="polite"></p>
           </div>
 
           <!-- The live app, shown immediately (interactive demo in the hero) -->
@@ -802,17 +862,35 @@
         </div>
       </section>
 
-      <!-- CTA -->
-      <section>
+      <!-- ACCESS — request beta / enter invite code -->
+      <section id="access">
         <div class="wrap">
-          <div class="cta reveal">
-            <h2>Still brainstorming with a&nbsp;chatbot?</h2>
-            <p>Give your next idea a canvas instead. Describe it and watch it become real. It’s open source too, so clone it and bring your own key.</p>
-            <div class="hero-cta">
-              <a class="btn btn-primary btn-lg" href="app/?start=1" target="_blank" rel="noopener">Try it free ↗</a>
-              <a class="btn btn-ghost btn-lg" href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">View on GitHub ↗</a>
+          <div class="access reveal">
+            <div class="sec-head">
+              <span class="eyebrow">Private beta</span>
+              <h2>Get early access</h2>
+              <p>Jarwiz is in a small private beta. Request an invite, or jump straight in with a code you already&nbsp;have.</p>
             </div>
-            <p class="cta-note"><b>Runs in your browser.</b> No sign-up, no install.</p>
+            <div class="access-box">
+              <form class="af-email" novalidate>
+                <div class="access-field">
+                  <input type="email" name="email" placeholder="you@example.com" autocomplete="email" required aria-label="Email address" />
+                  <button type="submit" class="btn btn-primary">Request access</button>
+                </div>
+              </form>
+              <form class="af-code" novalidate>
+                <div class="access-field">
+                  <input type="text" name="code" placeholder="your invite code" autocomplete="off" spellcheck="false" aria-label="Invite code" />
+                  <button type="submit" class="btn btn-primary">Enter&nbsp;↗</button>
+                </div>
+              </form>
+              <p class="af-toggle">
+                <a class="to-code" role="button" tabindex="0">Have an invite code?</a>
+                <a class="to-email" role="button" tabindex="0">Request an invite instead</a>
+              </p>
+              <p class="af-status" role="status" aria-live="polite"></p>
+            </div>
+            <p class="cta-note"><b>Boards run in your browser.</b> Your work saves to this device — it’s open source too.</p>
           </div>
         </div>
       </section>
@@ -825,6 +903,7 @@
           <a href="#build">What it builds</a>
           <a href="#features">Features</a>
           <a href="#cases">Use cases</a>
+          <a href="#access">Get access</a>
           <a href="https://github.com/raagulmanoharan/Jarwiz-V3" target="_blank" rel="noopener">GitHub</a>
         </div>
         <span class="muted">Open source · MIT licensed</span>
@@ -999,6 +1078,90 @@
           });
         });
       })();
+
+      // ── Access: beta signup + invite code ────────────────────────────────
+      // Beta signups collect emails. Paste a Formspree form endpoint below to
+      // capture them in-page (create a free form at formspree.io → it looks
+      // like 'https://formspree.io/f/abcdwxyz'). Until it's set, the form opens
+      // the visitor's mail app addressed to BETA_CONTACT so nothing is lost.
+      const BETA_ENDPOINT = ''; // e.g. 'https://formspree.io/f/xxxxxxx'
+      const BETA_CONTACT = 'raagulmanoharan@gmail.com';
+
+      // Each .access-box holds one email form + one code form + a toggle that
+      // swaps between them in place (no scroll, no duplicate panels). Wired by
+      // class, so the same markup works in the hero and the closing CTA.
+      function wireAccessBox(box) {
+        const emailForm = box.querySelector('.af-email');
+        const codeForm = box.querySelector('.af-code');
+        const status = box.querySelector('.af-status');
+        const emailInput = emailForm && emailForm.querySelector('input');
+        const codeInput = codeForm && codeForm.querySelector('input');
+        const setMode = (mode) => {
+          if (mode === 'code') box.setAttribute('data-mode', 'code');
+          else box.removeAttribute('data-mode');
+          status.textContent = '';
+          status.className = 'af-status';
+          const focusEl = mode === 'code' ? codeInput : emailInput;
+          if (focusEl) focusEl.focus();
+        };
+        box.querySelectorAll('.to-code').forEach((el) => {
+          el.addEventListener('click', (e) => { e.preventDefault(); setMode('code'); });
+          el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setMode('code'); } });
+        });
+        box.querySelectorAll('.to-email').forEach((el) => {
+          el.addEventListener('click', (e) => { e.preventDefault(); setMode('email'); });
+          el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setMode('email'); } });
+        });
+
+        if (emailForm) emailForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const email = (emailInput.value || '').trim();
+          if (!email || !emailInput.checkValidity()) {
+            status.textContent = 'Enter a valid email address.';
+            status.className = 'af-status err';
+            return;
+          }
+          if (!BETA_ENDPOINT) {
+            // No form backend yet — hand the address to the owner's inbox.
+            const subject = encodeURIComponent('Jarwiz beta access');
+            const body = encodeURIComponent('Please add me to the Jarwiz beta:\n\n' + email);
+            window.location.href = 'mailto:' + BETA_CONTACT + '?subject=' + subject + '&body=' + body;
+            status.textContent = 'Opening your email app to finish…';
+            status.className = 'af-status ok';
+            return;
+          }
+          status.textContent = 'Sending…';
+          status.className = 'af-status';
+          try {
+            const res = await fetch(BETA_ENDPOINT, {
+              method: 'POST',
+              headers: { Accept: 'application/json' },
+              body: new FormData(emailForm),
+            });
+            if (!res.ok) throw new Error('bad status');
+            emailForm.reset();
+            status.textContent = 'You’re on the list — we’ll be in touch. ✓';
+            status.className = 'af-status ok';
+          } catch {
+            status.textContent = 'Something went wrong — email ' + BETA_CONTACT + ' instead.';
+            status.className = 'af-status err';
+          }
+        });
+
+        if (codeForm) codeForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const code = (codeInput.value || '').trim();
+          if (!code) {
+            status.textContent = 'Enter your invite code.';
+            status.className = 'af-status err';
+            return;
+          }
+          // Straight into the app with the code — the client stores it and
+          // strips it from the URL (apps/web/src/lib/api.ts).
+          window.open('app/?pilot=' + encodeURIComponent(code), '_blank', 'noopener');
+        });
+      }
+      document.querySelectorAll('.access-box').forEach(wireAccessBox);
     </script>
   </body>
 </html>
