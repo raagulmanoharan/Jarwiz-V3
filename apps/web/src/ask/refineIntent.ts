@@ -44,3 +44,25 @@ export async function classifyRefineIntent(prompt: string, cardType: string): Pr
     return 'new';
   }
 }
+
+/** Ask the server which @mentioned card (if any) the PROMPT asks to update in
+ *  place — the multi-card case ("rewrite @A using @B"). Returns the 0-based
+ *  index into `cards`, or null for a new card. Fails safe to null (new). */
+export async function resolveMentionTarget(
+  prompt: string,
+  cards: Array<{ title: string; type: string }>,
+): Promise<number | null> {
+  if (cards.length === 0) return null;
+  try {
+    const res = await fetch('/api/intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, cards }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { target?: number | null };
+    return typeof data.target === 'number' && data.target >= 0 && data.target < cards.length ? data.target : null;
+  } catch {
+    return null;
+  }
+}

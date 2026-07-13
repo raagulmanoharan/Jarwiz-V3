@@ -41,7 +41,7 @@ import { streamMachineBoard } from './machineBoard.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset, sniffMime } from './assets.js';
 import { cachedImageUrl } from './imageCache.js';
 import { locateStops, type ProposedStop } from './geo.js';
-import { classifyRefineIntent, generateWidgetHtml, proposeSeedPrompts, streamAsk, suggestShape } from './ask.js';
+import { classifyMentionTarget, classifyRefineIntent, generateWidgetHtml, proposeSeedPrompts, streamAsk, suggestShape } from './ask.js';
 import type { AnalyzeCard, AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ReviseRequest } from '@jarwiz/shared';
 import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
@@ -418,9 +418,12 @@ app.post('/api/autopilot/table', async (c) => {
   });
 });
 
-/** Edit-vs-new intent: with a single card selected and no "/" mode, does the
- *  typed instruction refine THAT card in place, or make a new doc from it? The
- *  composer calls this before dispatching. Fails safe to "new". */
+/** Edit-vs-new intent. Two shapes:
+ *  - single card ({ cardType }): does the typed instruction refine THAT card in
+ *    place, or make a new doc from it? → { intent: 'edit' | 'new' }.
+ *  - multiple @mentioned cards ({ cards[] }): which one (if any) does the PROMPT
+ *    ask to modify in place, with the rest as sources? → { target: index|null }.
+ *  The composer calls this before dispatching. Both fail safe to a new card. */
 app.post('/api/intent', async (c) => {
   let body: unknown;
   try {
@@ -428,12 +431,29 @@ app.post('/api/intent', async (c) => {
   } catch {
     return c.json({ intent: 'new' });
   }
-  const b = body as { prompt?: unknown; cardType?: unknown };
+  const b = body as { prompt?: unknown; cardType?: unknown; cards?: unknown };
   const prompt = typeof b.prompt === 'string' ? b.prompt : '';
-  const cardType = typeof b.cardType === 'string' ? b.cardType : '';
-  if (!prompt.trim()) return c.json({ intent: 'new' });
+  const cards = Array.isArray(b.cards)
+    ? b.cards.slice(0, 8).map((x) => ({
+        title: typeof (x as { title?: unknown })?.title === 'string' ? (x as { title: string }).title : '',
+        type: typeof (x as { type?: unknown })?.type === 'string' ? (x as { type: string }).type : '',
+      }))
+    : null;
   const ac = new AbortController();
   c.req.raw.signal?.addEventListener('abort', () => ac.abort());
+  // Multi-card: the prompt picks the target (or none → new card).
+  if (cards && cards.length > 0) {
+    if (!prompt.trim()) return c.json({ target: null });
+    try {
+      const target = await classifyMentionTarget(prompt, cards, ac.signal);
+      return c.json({ target });
+    } catch {
+      return c.json({ target: null });
+    }
+  }
+  // Single card: the tuned edit-vs-new classifier.
+  const cardType = typeof b.cardType === 'string' ? b.cardType : '';
+  if (!prompt.trim()) return c.json({ intent: 'new' });
   try {
     const intent = await classifyRefineIntent(prompt, cardType, ac.signal);
     return c.json({ intent });

@@ -18,7 +18,7 @@ import { getShapeTitle } from '../shapes/shapeTitle';
 import { useAsk } from './useAsk';
 import { useCompose } from '../agents/useCompose';
 import { useAnnotate } from '../agents/useAnnotate';
-import { classifyRefineIntent, INLINE_EDITABLE, REFINE_SHAPE } from './refineIntent';
+import { classifyRefineIntent, resolveMentionTarget, INLINE_EDITABLE, REFINE_SHAPE } from './refineIntent';
 import { useAnalyze } from '../agents/useAnalyze';
 import { gatherBoardCards } from '../agents/boardText';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
@@ -612,16 +612,31 @@ export function PromptBar() {
 
   const composing = composePhase === 'planning' || composePhase === 'building' || debriefPhase === 'building';
   const annotating = annotatePhase === 'thinking';
-  // A single artifact card is selected and the user typed with no mode. Ask the
-  // model whether the instruction EDITS that card in place or makes a NEW card
-  // from it, then dispatch: an edit regenerates the same card (keeping its
-  // shape); a new request lands a fresh doc grounded on the selection.
-  const routeSelectedAsk = async (q: string, id: TLShapeId, cardType: string) => {
-    const intent = await classifyRefineIntent(q, cardType);
-    if (intent === 'edit') {
-      void ask(q, [id], { targetId: id, forceShape: REFINE_SHAPE[cardType], skipClarify: true });
+  // A grounded ask with no explicit mode. The TARGET is read from the PROMPT:
+  //  - one card → does the instruction EDIT it in place or make a NEW card?
+  //  - many @mentioned cards → which one (if any) does the prompt ask to update,
+  //    with the rest as source material? ("rewrite @Board Update using @Q2").
+  // An edit regenerates that card in place (keeping its shape); otherwise a
+  // fresh doc lands, grounded on every reference. `grounds` carries all sources
+  // (the target's own content plus the others) either way.
+  const routeGroundedAsk = async (
+    q: string,
+    grounds: TLShapeId[],
+    cards: Array<{ id: TLShapeId; title: string; type: string }>,
+  ) => {
+    let target: { id: TLShapeId; type: string } | null = null;
+    if (cards.length === 1) {
+      const c = cards[0]!;
+      if (INLINE_EDITABLE.has(c.type) && (await classifyRefineIntent(q, c.type)) === 'edit') target = c;
     } else {
-      void ask(q, [id], { forceShape: 'doc' });
+      const idx = await resolveMentionTarget(q, cards.map((c) => ({ title: c.title, type: c.type })));
+      const picked = idx != null ? cards[idx] : null;
+      if (picked && INLINE_EDITABLE.has(picked.type)) target = picked;
+    }
+    if (target) {
+      void ask(q, grounds, { targetId: target.id, forceShape: REFINE_SHAPE[target.type], skipClarify: true });
+    } else {
+      void ask(q, grounds, { forceShape: 'doc' });
     }
   };
 
@@ -665,19 +680,17 @@ export function PromptBar() {
       });
     } else if (mode === 'affinity') {
       void annotate(prompt);
-    } else if (
-      !mode &&
-      attIds.length === 0 &&
-      sole &&
-      !sole.pdf &&
-      INLINE_EDITABLE.has(sole.type) &&
-      groundIds.length === 1 &&
-      groundIds[0] === sole.id
-    ) {
-      // The ONLY ground is a single selected artifact card, no mode, nothing
-      // attached → let intent decide edit-in-place vs a new doc. (A second
-      // mention means the ask spans cards — not an in-place edit.)
-      void routeSelectedAsk(prompt, sole.id, sole.type);
+    } else if (!mode && attIds.length === 0 && groundIds.length >= 1) {
+      // Grounded, no mode, nothing freshly attached → the prompt decides the
+      // target: edit one referenced card in place (with the rest as sources),
+      // or make a new doc. Works for one @mention or several.
+      const cards = groundIds
+        .map((id) => {
+          const s = editor.getShape(id as TLShapeId);
+          return s ? { id: id as TLShapeId, title: shapeLabel(editor, s), type: s.type as string } : null;
+        })
+        .filter((c): c is { id: TLShapeId; title: string; type: string } => Boolean(c));
+      void routeGroundedAsk(prompt, grounds, cards);
     } else {
       void ask(prompt, grounds, { forceShape: (mode as AskShape) ?? 'doc' });
     }
