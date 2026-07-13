@@ -163,6 +163,26 @@
       }
       .sub b { color: var(--ink); font-weight: 600; }
       .hero-cta { display: flex; gap: 14px; justify-content: center; align-items: center; margin-top: 32px; flex-wrap: wrap; }
+      /* Hero email capture — one input, no competing buttons */
+      .hero-form { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 32px; flex-wrap: wrap; }
+      .hero-form input {
+        width: 300px; max-width: 100%; font-family: inherit; font-size: 15px; color: var(--ink);
+        background: var(--surface); border: 1px solid var(--hairline-2); border-radius: 999px;
+        padding: 14px 20px; transition: border-color 0.2s var(--ease);
+      }
+      .hero-form input::placeholder { color: var(--ink-3); }
+      .hero-form input:focus { outline: none; border-color: rgba(255, 255, 255, 0.4); }
+      .hero-status { margin: 14px 0 0; min-height: 1.1em; font-size: 13.5px; color: var(--ink-3); }
+      .hero-status.ok { color: var(--ink); }
+      .hero-status.err { color: #ffb4b4; }
+      .hero-invite { margin: 12px 0 0; color: var(--ink-3); font-size: 13.5px; }
+      .hero-invite a { color: var(--ink-2); font-weight: 600; transition: color 0.2s var(--ease); }
+      .hero-invite a:hover { color: var(--ink); }
+      @media (max-width: 560px) {
+        .hero-form { flex-direction: column; align-items: stretch; }
+        .hero-form input { width: 100%; }
+        .hero-form .btn { width: 100%; }
+      }
       .link-ghost { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 14.5px; font-weight: 600; transition: color 0.2s var(--ease); }
       .link-ghost:hover { color: var(--ink); }
       .link-ghost .gh { width: 1.15em; height: 1.15em; }
@@ -624,10 +644,12 @@
             An infinite canvas that thinks with you. Describe anything and watch it
             take shape right in front of you, instead of scrolling back through a&nbsp;thread.
           </p>
-          <div class="hero-cta">
-            <a class="btn btn-primary btn-lg" href="#access">Request beta access</a>
-            <a class="btn btn-ghost btn-lg" href="#access">Have an invite code?</a>
-          </div>
+          <form id="beta-hero" class="hero-form" novalidate>
+            <input type="email" name="email" placeholder="you@example.com" autocomplete="email" required aria-label="Email address" />
+            <button type="submit" class="btn btn-primary btn-lg">Request access</button>
+          </form>
+          <p id="beta-hero-status" class="hero-status" role="status" aria-live="polite"></p>
+          <p class="hero-invite">Have an invite code? <a href="#access">Enter it&nbsp;↗</a></p>
 
           <!-- The live app, shown immediately (interactive demo in the hero) -->
           <div class="stage reveal">
@@ -1069,17 +1091,19 @@
       const BETA_ENDPOINT = ''; // e.g. 'https://formspree.io/f/xxxxxxx'
       const BETA_CONTACT = 'raagulmanoharan@gmail.com';
 
-      (function betaSignup() {
-        const form = document.getElementById('beta-form');
-        if (!form) return;
-        const status = document.getElementById('beta-status');
+      // One handler for every beta email form (the hero + the access section).
+      // `base` is the form's own status class so hero/access styles stay intact.
+      function wireBeta(formId, statusId, base) {
+        const form = document.getElementById(formId);
+        const status = document.getElementById(statusId);
+        if (!form || !status) return;
         const input = form.querySelector('input[type="email"]');
         form.addEventListener('submit', async (e) => {
           e.preventDefault();
           const email = (input.value || '').trim();
           if (!email || !input.checkValidity()) {
             status.textContent = 'Enter a valid email address.';
-            status.className = 'access-status err';
+            status.className = base + ' err';
             return;
           }
           if (!BETA_ENDPOINT) {
@@ -1088,11 +1112,11 @@
             const body = encodeURIComponent('Please add me to the Jarwiz beta:\n\n' + email);
             window.location.href = 'mailto:' + BETA_CONTACT + '?subject=' + subject + '&body=' + body;
             status.textContent = 'Opening your email app to finish…';
-            status.className = 'access-status ok';
+            status.className = base + ' ok';
             return;
           }
           status.textContent = 'Sending…';
-          status.className = 'access-status';
+          status.className = base;
           try {
             const res = await fetch(BETA_ENDPOINT, {
               method: 'POST',
@@ -1102,13 +1126,15 @@
             if (!res.ok) throw new Error('bad status');
             form.reset();
             status.textContent = 'You’re on the list — we’ll be in touch. ✓';
-            status.className = 'access-status ok';
+            status.className = base + ' ok';
           } catch {
             status.textContent = 'Something went wrong — email ' + BETA_CONTACT + ' instead.';
-            status.className = 'access-status err';
+            status.className = base + ' err';
           }
         });
-      })();
+      }
+      wireBeta('beta-hero', 'beta-hero-status', 'hero-status');
+      wireBeta('beta-form', 'beta-status', 'access-status');
 
       (function inviteCode() {
         const form = document.getElementById('code-form');
