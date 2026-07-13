@@ -1,8 +1,10 @@
 /**
  * Jarwiz presence — one avatar, one identity, alive on the board. Like a
  * collaborator's cursor on a FigJam board, Jarwiz is always somewhere: idly
- * roaming the viewport and pausing to look at cards when nothing is
- * happening, flying to a freshly dropped link/PDF/image and sweeping it
+ * roaming the viewport and pausing to look at cards for a few beats, then —
+ * once nothing's happening — retreating to its home dock (the ✦ brand mark,
+ * top-left) to rest so it isn't perpetually moving; flying to a freshly
+ * dropped link/PDF/image and sweeping it
  * line-by-line ("reading…") while it processes, and following the agent-run
  * choreography (Ask/Analyze/Autopilot/Cluster/Diagram write the presence
  * store, which takes absolute priority) whenever a run is in flight.
@@ -114,18 +116,22 @@ function JarwizEntity() {
     /** Card-corner park point — same spot the ask choreography uses. */
     const parkPoint = (b: { maxX: number; maxY: number }): Vec => ({ x: b.maxX - 14, y: b.maxY - 16 });
 
-    /** Home dock — a calm resting corner in the lower-right of the viewport,
-     *  clear of the left tool rail and the bottom-centre composer. After a
-     *  quiet spell the entity retreats here and only breathes, so it stops
-     *  perpetually roaming across whatever you're looking at. */
+    /** Home dock — the ✦ brand mark in the top-left (the logo button where
+     *  Jarwiz "lives", echoing the ambient scene where cursors are born from
+     *  the spark). Screen-anchored to the actual logo element, so it stays
+     *  tucked under the mark through pan/zoom. After a quiet spell the entity
+     *  retreats here and only breathes, instead of roaming across your work. */
     const homePoint = (): Vec => {
+      const logo = document.querySelector('.jz-logo-btn');
+      if (logo) {
+        const r = logo.getBoundingClientRect();
+        // Nestle just below-right of the mark: the up-left arrow leans toward
+        // it, and the trailing name pill sits in the empty top-left canvas.
+        return editor.screenToPage({ x: r.left + r.width * 0.5 + 8, y: r.bottom + 12 });
+      }
+      // Fallback (logo not mounted yet): top-left of the viewport, under the bar.
       const view = editor.getViewportPageBounds();
-      const engaged = engagedIds();
-      const primary = { x: view.maxX - view.w * 0.17, y: view.maxY - view.h * 0.22 };
-      if (!nearEngaged(primary, engaged, 64)) return primary;
-      // If you're working right in that corner, rest a touch higher instead.
-      const alt = { x: view.maxX - view.w * 0.17, y: view.minY + view.h * 0.26 };
-      return nearEngaged(alt, engaged, 64) ? primary : alt;
+      return { x: view.minX + view.w * 0.05, y: view.minY + view.h * 0.08 };
     };
 
     /** What the user is engaged with RIGHT NOW — the shape being edited plus
@@ -280,21 +286,26 @@ function JarwizEntity() {
           // Reduced motion: no roaming — the entity appears only while working.
           show(false, null);
         } else if (brain.docked) {
-          // 3a) Docked — resting at the home corner. No more wander hops; only
-          // a slow breathing drift that re-anchors to the corner, so a pan
-          // gently tugs it back home instead of leaving it stranded mid-board.
+          // 3a) Docked — resting at the ✦ home mark (top-left logo). No more
+          // wander hops; only a slow breath. Screen-anchored, so if the board
+          // pans/zooms under it, it glides back to stay tucked under the mark.
           show(true, null);
+          const home = homePoint();
           if (brain.mode === 'wander-move' && follower.settled) {
             brain.mode = 'wander-idle';
             brain.nextDriftAt = now + 1400 + Math.random() * 1600;
-          } else if (brain.mode !== 'wander-move' && follower.settled && now >= brain.nextDriftAt) {
-            const home = homePoint();
-            follower.moveTo(
-              { x: home.x + (Math.random() - 0.5) * 26 / zoom, y: home.y + (Math.random() - 0.5) * 18 / zoom },
-              now,
-              { zoom, speed: 0.3, gentle: true },
-            );
-            brain.nextDriftAt = now + 2200 + Math.random() * 2600;
+          } else if (brain.mode !== 'wander-move') {
+            const strayed = Math.hypot(follower.pos.x - home.x, follower.pos.y - home.y) > 70 / zoom;
+            if (strayed) {
+              follower.moveTo(home, now, { zoom, speed: 0.6 });
+            } else if (follower.settled && now >= brain.nextDriftAt) {
+              follower.moveTo(
+                { x: home.x + (Math.random() - 0.5) * 20 / zoom, y: home.y + (Math.random() - 0.5) * 14 / zoom },
+                now,
+                { zoom, speed: 0.3, gentle: true },
+              );
+              brain.nextDriftAt = now + 2200 + Math.random() * 2600;
+            }
           }
         } else {
           // 3b) Nothing to do — live on the board like a curious collaborator,
