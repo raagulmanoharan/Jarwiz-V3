@@ -58,7 +58,17 @@ interface Brain {
   dwellUntil: number;
   nextDriftAt: number;
   lastVisited: string | null;
+  /** Wander hops taken since the last real activity — once it crosses
+   *  HOPS_BEFORE_DOCK the entity retreats to its home dock and rests. */
+  idleHops: number;
+  /** Parked at the home corner, breathing only — no more roaming until a
+   *  run/read wakes it. Keeps a constantly-moving cursor from tiring the eye. */
+  docked: boolean;
 }
+
+/** Quiet wander hops before the entity gives up roaming and settles into its
+ *  home dock. A few beats of life, then calm. */
+const HOPS_BEFORE_DOCK = 3;
 
 export function AgentCursorLayer() {
   return <JarwizEntity />;
@@ -83,6 +93,8 @@ function JarwizEntity() {
       dwellUntil: performance.now() + 1800,
       nextDriftAt: 0,
       lastVisited: null,
+      idleHops: 0,
+      docked: false,
     };
     let shownStatus: string | null = null;
     let shownVisible = false;
@@ -101,6 +113,20 @@ function JarwizEntity() {
 
     /** Card-corner park point — same spot the ask choreography uses. */
     const parkPoint = (b: { maxX: number; maxY: number }): Vec => ({ x: b.maxX - 14, y: b.maxY - 16 });
+
+    /** Home dock — a calm resting corner in the lower-right of the viewport,
+     *  clear of the left tool rail and the bottom-centre composer. After a
+     *  quiet spell the entity retreats here and only breathes, so it stops
+     *  perpetually roaming across whatever you're looking at. */
+    const homePoint = (): Vec => {
+      const view = editor.getViewportPageBounds();
+      const engaged = engagedIds();
+      const primary = { x: view.maxX - view.w * 0.17, y: view.maxY - view.h * 0.22 };
+      if (!nearEngaged(primary, engaged, 64)) return primary;
+      // If you're working right in that corner, rest a touch higher instead.
+      const alt = { x: view.maxX - view.w * 0.17, y: view.minY + view.h * 0.26 };
+      return nearEngaged(alt, engaged, 64) ? primary : alt;
+    };
 
     /** What the user is engaged with RIGHT NOW — the shape being edited plus
      *  the selection. The entity is a polite collaborator: it never parks on
@@ -167,6 +193,10 @@ function JarwizEntity() {
       brain.scanQueue = [];
       brain.mode = 'wander-idle';
       brain.dwellUntil = now + 900;
+      // Real activity just happened — undock and let it roam a few fresh beats
+      // before it settles home again. This is how it "comes back to life."
+      brain.idleHops = 0;
+      brain.docked = false;
     };
 
     const frame = (now: number) => {
@@ -249,11 +279,37 @@ function JarwizEntity() {
         } else if (reduce) {
           // Reduced motion: no roaming — the entity appears only while working.
           show(false, null);
+        } else if (brain.docked) {
+          // 3a) Docked — resting at the home corner. No more wander hops; only
+          // a slow breathing drift that re-anchors to the corner, so a pan
+          // gently tugs it back home instead of leaving it stranded mid-board.
+          show(true, null);
+          if (brain.mode === 'wander-move' && follower.settled) {
+            brain.mode = 'wander-idle';
+            brain.nextDriftAt = now + 1400 + Math.random() * 1600;
+          } else if (brain.mode !== 'wander-move' && follower.settled && now >= brain.nextDriftAt) {
+            const home = homePoint();
+            follower.moveTo(
+              { x: home.x + (Math.random() - 0.5) * 26 / zoom, y: home.y + (Math.random() - 0.5) * 18 / zoom },
+              now,
+              { zoom, speed: 0.3, gentle: true },
+            );
+            brain.nextDriftAt = now + 2200 + Math.random() * 2600;
+          }
         } else {
-          // 3) Nothing to do — live on the board like a curious collaborator.
+          // 3b) Nothing to do — live on the board like a curious collaborator,
+          // but only for a few hops. Once it's wandered enough with nothing
+          // happening, it retreats to the home dock and rests (3a above).
           show(true, null);
           if (brain.mode !== 'wander-move' && now >= brain.dwellUntil) {
-            follower.moveTo(pickWanderTarget(), now, { zoom, speed: 0.9 });
+            if (brain.idleHops >= HOPS_BEFORE_DOCK) {
+              // Quiet spell over — glide home and settle.
+              brain.docked = true;
+              brain.lastVisited = null;
+              follower.moveTo(homePoint(), now, { zoom, speed: 0.7 });
+            } else {
+              follower.moveTo(pickWanderTarget(), now, { zoom, speed: 0.9 });
+            }
             brain.mode = 'wander-move';
           } else if (brain.mode === 'wander-move' && brain.lastVisited && engagedIds().has(brain.lastVisited)) {
             // The user grabbed the card we were flying toward — veer off to a
@@ -262,6 +318,7 @@ function JarwizEntity() {
             follower.moveTo(pickWanderTarget(), now, { zoom, speed: 0.9 });
           } else if (brain.mode === 'wander-move' && follower.settled) {
             brain.mode = 'wander-idle';
+            brain.idleHops += 1;
             brain.dwellUntil = now + DWELL_MS[0] + Math.random() * (DWELL_MS[1] - DWELL_MS[0]);
             brain.nextDriftAt = now + 700 + Math.random() * 900;
           } else if (brain.mode === 'wander-idle' && follower.settled && now >= brain.nextDriftAt) {
