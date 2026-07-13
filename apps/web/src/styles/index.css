@@ -4950,6 +4950,119 @@ body,
   color: var(--jz-ink-400);
 }
 
+/* ── Mention composer ──────────────────────────────────────────────────────
+ * The contenteditable that carries inline @mention chips. It inherits the
+ * textarea look (.jz-promptbar-input) but grows with content and renders real
+ * newlines (pre-wrap), since we insert "\n" text nodes for Shift+Enter. */
+.jz-mention-wrap {
+  position: relative;
+  margin-bottom: 6px;
+}
+.jz-mention-input {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: text;
+  min-height: 40px;
+  max-height: 120px;
+  overflow-y: auto;
+  margin-bottom: 0; /* the wrap owns the gap now */
+}
+/* Placeholder overlay — a contenteditable has no native placeholder, so we
+   paint one while the box is empty (toggled by the .jz-mention-empty class). */
+.jz-mention-input.jz-mention-empty::before {
+  content: attr(data-placeholder);
+  color: var(--jz-ink-400);
+  pointer-events: none;
+}
+
+/* An inline mention chip — an atomic, non-editable reference to a board card.
+   Accent-tinted and "@"-prefixed so it reads as a reference, not prose; it sits
+   in the text flow, so it can lead the prompt or land mid-sentence. */
+.jz-mention {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  vertical-align: baseline;
+  margin: 0 1px;
+  padding: 1px 3px 1px 6px;
+  border-radius: var(--jz-radius-pill);
+  background: color-mix(in srgb, var(--jz-accent) 13%, transparent);
+  color: color-mix(in srgb, var(--jz-accent) 70%, var(--jz-ink-900));
+  font-weight: 600;
+  font-size: 0.94em;
+  line-height: 1.3;
+  white-space: nowrap;
+  user-select: none;
+  cursor: default;
+}
+.jz-mention-label {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jz-mention-label::before {
+  content: '@';
+  opacity: 0.55;
+  margin-right: 0.5px;
+}
+.jz-mention-x {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: color-mix(in srgb, var(--jz-accent) 60%, var(--jz-ink-500));
+  font-size: 8px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-mention-x:hover {
+  background: color-mix(in srgb, var(--jz-accent) 22%, transparent);
+  color: color-mix(in srgb, var(--jz-accent) 85%, var(--jz-ink-900));
+}
+
+/* The "@" card picker — same language as the "/" shape menu, anchored to the
+   composer and opening upward above it. */
+.jz-mention-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 350;
+  min-width: 230px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px;
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface-raised);
+  border: 1px solid var(--jz-hairline);
+  box-shadow: var(--jz-e3);
+  animation: jz-menu-in var(--jz-dur-fast) var(--jz-ease-glide);
+}
+/* The "@" glyph badge on each menu row (mirrors the "/" menu's number badge). */
+.jz-mention-menu-at {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  border-radius: var(--jz-radius-xs);
+  border: 1px solid var(--jz-hairline);
+  font-size: 10px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--jz-accent) 65%, var(--jz-ink-400));
+}
+
 /* Footer row: left icons · spacer · send */
 .jz-promptbar-footer {
   display: flex;
