@@ -69,7 +69,6 @@ export const TldrStrip = forwardRef<HTMLDivElement, TldrStripProps>(function Tld
   if (!tldrPresent(status, tldr)) return null;
   return (
     <div className="jz-tldr" ref={ref}>
-      <span className="jz-tldr-label">TL;DR</span>
       {status === 'loading' ? (
         <div className="jz-tldr-lines" aria-label="Summarizing…">
           <div className="jz-skeleton" style={{ height: 9, width: '96%' }} />
