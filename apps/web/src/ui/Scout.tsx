@@ -12,8 +12,11 @@
  * cards. Adding a card drops it on the board (surfaced on top) and removes it
  * from the drawer, so the list is a to-do that empties as you go.
  *
- * Always present, but gated on board substance (≥3 contentful cards) before it
- * can fire. Lives in the topbar's right cluster.
+ * Always present, but gated on a readiness score before it can fire: Jarwiz
+ * re-reads the board on every change and scores how substantial AND cohesive
+ * it is (see boardConfidence.ts). That confidence drives the fill, so a
+ * scattered or thin board stays low no matter how many cards it has. Lives in
+ * the topbar's right cluster.
  */
 
 import { useState, useSyncExternalStore } from 'react';
@@ -22,6 +25,7 @@ import { Plus, X, Video, FileText, BookOpen, GitBranch, Link2, Newspaper, File }
 import { JarwizSpark } from './JarwizSpark';
 import type { ResourceKind, SuggestedResource } from '@jarwiz/shared';
 import { gatherBoardCards } from '../agents/boardText';
+import { scoutReadiness } from '../agents/boardConfidence';
 import { useDiscover } from '../ask/useDiscover';
 import { getTheme, subscribeTheme } from './theme';
 
@@ -42,15 +46,16 @@ export function Scout() {
   const { phase, resources, run, dismiss, addOne } = useDiscover();
   const [open, setOpen] = useState(false);
 
-  // The button is always shown, but only fires once there's a real collection
-  // to extend. Below the bar it reads as a progress meter that fills as
-  // contentful cards land; `progress` (0→1) drives the CSS fill width.
-  const NEEDED = 3;
-  const count = useValue('scout-count', () => gatherBoardCards(editor).length, [editor]);
-  const progress = Math.min(count / NEEDED, 1);
+  // The button is always shown, but only fires once the board holds a cohesive,
+  // substantial thread worth scouting. On every board change Jarwiz re-scores
+  // readiness (substance × cohesion — see boardConfidence.ts) and that
+  // confidence, not a headcount, drives the fill: three thin or unrelated cards
+  // stay low; three rich cards on one topic fill it up.
+  const readiness = useValue('scout-readiness', () => scoutReadiness(gatherBoardCards(editor)), [editor]);
+  const progress = readiness.progress;
   // "Filling" = at rest and not yet unlocked. Once research is in flight or has
-  // landed (thinking/ready/…), the button owns those states regardless of count.
-  const filling = phase === 'idle' && count < NEEDED;
+  // landed (thinking/ready/…), the button owns those states regardless of score.
+  const filling = phase === 'idle' && !readiness.active;
 
   const label =
     phase === 'thinking' ? 'Thinking…'
@@ -82,7 +87,7 @@ export function Scout() {
         aria-disabled={filling}
         title={
           filling
-            ? 'Add a few cards to your board to unlock Scout'
+            ? readiness.reason
             : phase === 'ready'
               ? 'Open the resources found for your board'
               : 'Scout the web for real resources related to your board'
