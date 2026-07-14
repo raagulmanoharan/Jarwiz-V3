@@ -1254,7 +1254,7 @@ body,
 }
 .jz-export-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 10px;
   border: none;
@@ -1298,7 +1298,9 @@ body,
 .jz-export-item-action {
   flex: 0 0 auto;
   margin-left: auto;
-  align-self: center;
+  /* Sit level with the title / leading icon, not floating in the row middle. */
+  align-self: flex-start;
+  margin-top: 1px;
 }
 /* Progress bar — eases up while a row is generating. */
 .jz-export-item-progress {
