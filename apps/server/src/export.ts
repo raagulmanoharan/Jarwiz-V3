@@ -33,7 +33,12 @@ const MAX_BOARD_CARDS = 40;
 const MAX_TEXT_PER_CARD = 1400;
 const SLIDESHOW_MAX_TOKENS = 8000;
 const MARKDOWN_MAX_TOKENS = 4000;
-const GEN_TIMEOUT_MS = 150_000;
+// A deck is a heavy, deliberate one-shot — the model reads the whole board,
+// (optionally) researches, then writes a full styled document. Give it real
+// headroom; the API path streams well inside this, and the slower CLI sidecar
+// needs the room. If it's ever exceeded, the run degrades to the (good)
+// deterministic deck rather than failing.
+const GEN_TIMEOUT_MS = 210_000;
 
 /* ─── Board → prompt material ─────────────────────────────────────────────── */
 
@@ -65,35 +70,57 @@ function userTurn(req: ExportRequest): string {
 
 /* ─── System prompts ──────────────────────────────────────────────────────── */
 
-const BRAND = `Jarwiz brand language — monochrome and editorial:
-- Palette (light): page #f5f5f5, ink #0a0a0a, muted ink #5a5a5a, hairline rgba(0,0,0,.10), one restrained near-black accent #0f0f0f. Generous whitespace; nothing loud.
-- Type: system UI stack — font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif. Large, confident headings; calm body. Tabular numerals for figures.
-- Feel: precise, quiet, expensive. Thin hairlines over heavy borders; soft shadows; rounded corners (12–20px). A single accent used sparingly (a rule, a dot, a key number) — never a rainbow.`;
+const DESIGN_PHILOSOPHY = `DESIGN DIRECTION — Jarwiz is warm-monochrome and editorial. This is what separates a designed deck from a generic one:
+- Spend ALL boldness on SCALE, negative space, and ONE solid-ink moment per slide — never on colour. The palette is a chosen warm neutral (already themed light + dark); no gradients, no coloured accent, no emoji, no drop shadows.
+- The type signature is a HEAVY grotesque display against MONO uppercase utility labels (kickers, captions, data). Lean on that contrast — it's the whole personality — not a novelty face.
+- Composition is LEFT-anchored and asymmetric. Do NOT centre everything (centred-everything is the templated AI look); reserve centring for at most the cover or one closing statement. Vary the composition slide to slide.
+- Show evidence, don't just tell it: tabulate a comparison, chart the numbers, break a stat out big.
+- AVOID the generic-AI-deck tells: every slide centred; Inter for everything; decorative 01/02/03 eyebrows where nothing is a sequence; cream-and-terracotta or a lone neon pop; rounded cards with a coloured left rail; emoji bullets; gradient heroes.`;
 
-/** The slideshow system prompt. The LIVE WEB paragraph is included ONLY when
- *  the caller actually granted web tools — otherwise the model, told it can
- *  research, narrates a `web_search(...)` call as text instead of writing the
- *  deck. */
+/**
+ * The slideshow prompt. Crucially the model authors ONLY slide CONTENT — the
+ * server wraps it in a tested shell (deckShell) that owns the palette, type,
+ * navigation, motion, theming, and chrome. Letting the model author the whole
+ * interactive document was too fragile (broken nav / blank slides varied run to
+ * run); confining it to composing slides from vetted building blocks makes
+ * every deck work while keeping the design genuinely bespoke per subject.
+ * The LIVE WEB paragraph is included only when web tools were actually granted.
+ */
 function slideshowSystem(web: boolean): string {
   const webPara = web
     ? `
 
-LIVE WEB (optional, use sparingly): you may web_search / web_fetch to enrich the deck with a current, relevant fact, figure, or example the board gestures at — do it only when it clearly strengthens the story, keep it to a couple of lookups, and stay grounded in the board. Never pad. Do all research first, then write the file once.`
+LIVE WEB (optional, sparingly): you may web_search / web_fetch to enrich a slide with a current, relevant fact or figure the board gestures at — only when it clearly strengthens the story, a couple of lookups at most, always grounded in the board. Research first, then write the slides once. You may embed ONE real https <img> you actually found; never invent an image URL.`
     : '';
-  return `You are Jarwiz's presentation designer. You turn a collaborator's infinite-canvas board into a slick, self-contained HTML slide deck that makes them look brilliant in the room.
+  return `You are Jarwiz's presentation designer — a design lead who ships decks that look like a top studio made them. You turn a collaborator's infinite-canvas board into a slick presentation that makes them look brilliant in the room.
 
-Read the whole board as your grounding, then SYNTHESISE — don't transcribe. Find the through-line and build a narrative: a strong title, an agenda, the argument told in the right order, and a clear "where next". Add genuine value the board only implies: distill messy notes into crisp points, draw the flow the cards describe, tabulate the comparison, chart the numbers, name the takeaway.
+Read the WHOLE board as grounding, then SYNTHESISE — don't transcribe. Find the through-line and build a narrative: a strong cover, the argument told in the right order, the evidence SHOWN (tables, charts, big stats), then a clear "where next". Distill messy notes into crisp points; write real copy in the user's voice — specific, active, never filler.
 
-${BRAND}
+${DESIGN_PHILOSOPHY}
 
-OUTPUT CONTRACT — return ONLY a complete, valid HTML5 document (start with <!DOCTYPE html>). No prose, no markdown, no code fences around it. It MUST be entirely self-contained:
-- ALL CSS in one <style>; ALL behaviour in one <script>. NO external stylesheets, NO web fonts, NO CDN scripts, NO frameworks — the file has to open offline and never make a network request.${web ? ' (An <img> with a real absolute https URL you actually found via research is the ONLY allowed remote resource; never invent image URLs.)' : ' Do not reference any remote image, font, or script.'}
-- Slides: 16:9, one visible at a time, centered in the viewport, sized in vw/vh so they scale to any screen. Quiet enter transition; honour prefers-reduced-motion.
-- Navigation that just works: ArrowRight/ArrowLeft/Space/PageUp/PageDown and click, plus discreet on-screen ‹ › controls, a slide counter (e.g. "03 / 12"), and a thin top progress bar. 'f' toggles fullscreen. Sync the slide index to location.hash so a deep link reopens the right slide. Everything keyboard-accessible.
-- Content: a title slide, an agenda/overview, then the body slides, then a closing "Next steps" or "Takeaways" slide. Speaker-quality concision — a few tight bullets or one strong statement per slide, never a wall of text. VARY the slide forms to fit the material: section dividers, a comparison table, a process/flow diagram (pure HTML+CSS or inline SVG), a bar or line chart (inline SVG — compute the geometry yourself, no chart library), a big-number stat slide, a quote/callout. Every slide earns its place.
-- A small persistent footer: the board title on the left, "Made with Jarwiz" on the right.${webPara}
+HOW OUTPUT WORKS — you write ONLY the slides; a Jarwiz deck shell wraps them and already provides the palette (CSS variables --ground/--panel/--ink/--muted/--hair/--solid, themed light AND dark), the type system, the 16:9 stage, ALL navigation (arrows/space/click/‹›, mono counter, progress bar, 'f' fullscreen, #hash deep-links), the staggered enter motion (reduced-motion aware), and the footer. DO NOT write <!DOCTYPE>, <html>, <head>, <style>, <script>, or any chrome/nav — yours would fight the shell. Just emit a run of slide sections.
 
-Be honest: never fabricate specific numbers, quotes, or sources. If you show a chart, its values must come from the board${web ? ' or from something you actually looked up' : ''}.`;
+Each slide:
+  <section class="slide"><div class="grid"> …building blocks… </div></section>
+Modifiers: <section class="slide slide--cover"> (hero — content sinks to lower-left) · <section class="slide slide--section"> (a divider on the panel ground). Put class="reveal" on each top-level block inside .grid to ride the staggered enter.
+
+BUILDING BLOCKS (compose these — all pre-themed; never hard-code a colour):
+- <p class="kicker">SECTION LABEL</p> — mono uppercase eyebrow.
+- <h1 class="display">…</h1> cover headline · <h2 class="display">…</h2> slide headline.
+- <div class="rule"></div> — a short solid rule.
+- <p class="lede">…</p> — a large muted intro line.
+- <div class="body"><p>…</p></div> — body copy (already measure-capped).
+- Two columns: <div class="split"><div class="col">thesis…</div><div class="col">evidence…</div></div>.
+- Numbered list: <ol class="steps"><li>…</li>…</ol> — auto mono indices + hairline dividers.
+- Stat row: <div class="stats"><div class="stat"><b>60%</b><span>never return</span></div>…</div> (2–4).
+- Comparison: <table class="cmp"><thead><tr><th>…</th></tr></thead><tbody><tr><td>…</td></tr></tbody></table>; add class="hot" to the cell(s) to emphasise a row/column in --solid.
+- Chart: <figure class="chart"> INLINE SVG </figure><figcaption class="caption">the TAKEAWAY, not "chart"</figcaption>. Draw with the tokens — stroke/fill var(--ink) for the key mark, var(--muted) for secondary, var(--hair) for gridlines; ONE axis, one hue by magnitude, emphasised endpoint, direct mono labels, NO legend, NO chart library. Compute geometry yourself.
+- Quote: <blockquote class="quote">…</blockquote><p class="cite">— source</p>.
+You MAY add inline style="…" for bespoke composition, referencing the same var(--…) tokens.
+
+OUTPUT CONTRACT — return ONLY the sequence of <section class="slide">…</section> blocks. No <html>/<head>/<style>/<script>, no wrapper, no prose, no code fences. First slide is the cover; last is a "Next steps"/"Takeaways" closing. 6–12 slides, each earning its place; genuinely VARY the archetypes (a deck of identical slides is the failure). Speaker-quality concision — a few tight lines or one strong statement per slide, never a wall of text.${webPara}
+
+Be honest: never fabricate specific numbers, quotes, or sources; every chart/stat value comes from the board${web ? ' or from something you actually looked up' : ''}. Design like it's going in your portfolio.`;
 }
 
 const MARKDOWN_SYSTEM = `You are Jarwiz's session archivist. Produce ONE comprehensive Markdown document that captures this working session so a DIFFERENT AI assistant can pick it up cold and continue the work with full context. This is a faithful handoff, not a highlight reel.
@@ -163,28 +190,31 @@ async function generateViaSidecar(req: ExportRequest, signal: AbortSignal): Prom
   });
 }
 
-/* ─── Cleanup ─────────────────────────────────────────────────────────────── */
+/* ─── Cleanup & assembly ──────────────────────────────────────────────────── */
 
-/** Strip a stray ```html / ``` wrapper the model sometimes adds around the whole
- *  document, and lift to the real start of the artifact. */
-function cleanArtifact(raw: string, mode: ExportRequest['mode']): string {
-  let s = raw.trim();
-  const fence = /^```(?:html|markdown|md)?\s*\n([\s\S]*?)\n```$/i.exec(s);
-  if (fence) s = fence[1]!.trim();
-  if (mode === 'slideshow') {
-    const doctype = s.search(/<!doctype html/i);
-    if (doctype > 0) s = s.slice(doctype);
-    else if (doctype === -1) {
-      // No doctype at all — lift to <html> if there's a preamble, then prepend
-      // one so the deck renders in standards mode (quirks mode breaks the
-      // vh/vw sizing and flexbox the layout relies on).
-      const html = s.search(/<html[\s>]/i);
-      if (html > 0) s = s.slice(html);
-      if (/^<html[\s>]/i.test(s)) s = `<!DOCTYPE html>\n${s}`;
-    }
-  }
-  return s.trim();
+/** Strip a stray ```markdown / ``` fence a model sometimes wraps the whole doc
+ *  in. (Markdown only — the slideshow is assembled by assembleDeck.) */
+function cleanMarkdown(raw: string): string {
+  const s = raw.trim();
+  const fence = /^```(?:markdown|md)?\s*\n([\s\S]*?)\n```$/i.exec(s);
+  return (fence ? fence[1]!.trim() : s).trim();
 }
+
+/**
+ * Assemble a deck from the model's output. The model authors only slide
+ * sections; we extract every top-level `<section class="slide …">…</section>`
+ * and drop it into the tested shell (nav/motion/theme/chrome all ours). Any
+ * stray prose, fences, or a wrapper the model added around the sections is
+ * discarded — only real slides survive. Returns '' when nothing parseable came
+ * back, so the caller falls to the deterministic deck rather than shipping junk.
+ */
+function assembleDeck(raw: string, title: string): string {
+  const sections = raw.match(/<section\b[^>]*\bclass=["'][^"']*\bslide\b[^"']*["'][^>]*>[\s\S]*?<\/section>/gi);
+  if (!sections || sections.length === 0) return '';
+  return deckShell(title, sections.join('\n'));
+}
+
+/* ─── Deterministic fallback (no model) ───────────────────────────────────── */
 
 /* ─── Deterministic fallback (no model) ───────────────────────────────────── */
 
@@ -196,39 +226,68 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-/** A faithful, presentable deck built with no model — title slide + one slide
- *  per board item, wrapped in the same brand chrome and nav the live path aims
- *  for. Never the star of the show, but never broken either. */
+/** A faithful, presentable deck built with no model — a cover, one content
+ *  slide per board item, and a closing, composed on the same warm-monochrome
+ *  editorial system the live path targets. Never the star, but genuinely
+ *  designed: left-anchored grid, mono utility labels, staggered enter. */
 function fallbackSlideshow(req: ExportRequest): string {
   const title = req.title?.trim() || 'Untitled board';
   const items = req.board.slice(0, MAX_BOARD_CARDS);
+  const count = `${items.length} item${items.length === 1 ? '' : 's'}`;
   const slidesHtml: string[] = [];
+
+  // Cover — kicker, oversized headline lower-left, rule, lede.
   slidesHtml.push(
-    `<section class="slide slide--title"><div><p class="eyebrow">Jarwiz board</p><h1>${escapeHtml(title)}</h1><p class="lede">${items.length} item${items.length === 1 ? '' : 's'} on the board</p></div></section>`,
+    `<section class="slide slide--cover"><div class="grid">
+      <p class="kicker reveal">Jarwiz deck</p>
+      <h1 class="display reveal">${escapeHtml(title)}</h1>
+      <div class="rule reveal"></div>
+      <p class="lede reveal">A working board, told as a presentation — ${count} synthesised into a narrative.</p>
+    </div></section>`,
   );
-  for (const c of items) {
-    const heading = escapeHtml(c.title?.trim() || c.kind);
+
+  // One content slide per item — eyebrow (kind), heading, body measure-capped.
+  items.forEach((c, idx) => {
+    const heading = escapeHtml(c.title?.trim() || `${c.kind} ${idx + 1}`);
     const kind = escapeHtml(c.kind);
     const body = (c.text || '').trim();
     const paras = body
       ? body
           .split(/\n{2,}/)
-          .slice(0, 8)
+          .slice(0, 6)
           .map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`)
           .join('')
-      : '<p class="muted">(no text)</p>';
+      : '<p class="muted">No text on this card.</p>';
     slidesHtml.push(
-      `<section class="slide"><div><p class="eyebrow">${kind}</p><h2>${heading}</h2><div class="body">${paras}</div></div></section>`,
+      `<section class="slide"><div class="grid">
+        <p class="kicker reveal">${kind}</p>
+        <h2 class="display reveal">${heading}</h2>
+        <div class="body reveal">${paras}</div>
+      </div></section>`,
     );
-  }
+  });
+
+  // Closing — a confident sign-off on the panel ground.
   slidesHtml.push(
-    `<section class="slide slide--title"><div><p class="eyebrow">Thank you</p><h2>Made with Jarwiz</h2></div></section>`,
+    `<section class="slide slide--panel slide--cover"><div class="grid">
+      <p class="kicker reveal">Where next</p>
+      <h2 class="display reveal">Take it further.</h2>
+      <p class="lede reveal">Every card here can be pushed, compared, or built out — back on the Jarwiz canvas.</p>
+    </div></section>`,
   );
+
   return deckShell(title, slidesHtml.join('\n'));
 }
 
-/** The self-contained brand chrome + navigation script the fallback deck lives
- *  in — light, editorial, monochrome, keyboard-driven. */
+/**
+ * The tested deck shell — the ONE self-contained document both the model path
+ * and the fallback ship inside. It owns the warm-monochrome palette (light +
+ * dark), the mono-utility ↔ heavy-display type system, the 16:9 stage, every
+ * building-block class the prompt documents (.split/.steps/.stats/.cmp/.chart/
+ * .quote…), the staggered slide-enter, and — critically — the navigation, so a
+ * deck's slides ALWAYS switch and never come up blank regardless of what the
+ * model authored inside each `<section>`.
+ */
 function deckShell(title: string, slides: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -237,29 +296,81 @@ function deckShell(title: string, slides: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(title)} — Jarwiz</title>
 <style>
-  :root { --page:#f5f5f5; --ink:#0a0a0a; --muted:#5a5a5a; --hair:rgba(0,0,0,.10); --accent:#0f0f0f; }
+  :root {
+    --ground:#faf9f7; --panel:#f1efea; --ink:#17150f; --muted:#6b675d;
+    --hair:rgba(23,21,15,.12); --solid:#17150f;
+    --sans:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --mono:ui-monospace,'SFMono-Regular',Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground:#100f0c; --panel:#1b1913; --ink:#f5f2ea; --muted:#a49e90;
+      --hair:rgba(245,242,234,.14); --solid:#f5f2ea;
+    }
+  }
   * { box-sizing:border-box; margin:0; padding:0; }
   html,body { height:100%; }
-  body { background:var(--page); color:var(--ink); font-family:'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif; -webkit-font-smoothing:antialiased; overflow:hidden; }
-  .progress { position:fixed; top:0; left:0; height:3px; background:var(--accent); width:0; transition:width .3s cubic-bezier(.2,0,0,1); z-index:10; }
-  .deck { height:100vh; display:grid; place-items:center; }
-  .slide { position:absolute; inset:0; display:none; place-items:center; padding:8vh 10vw; opacity:0; transition:opacity .4s cubic-bezier(.2,0,0,1); }
-  .slide.active { display:grid; opacity:1; }
-  .slide > div { max-width:60vw; }
-  .slide--title > div { text-align:left; }
-  .eyebrow { text-transform:uppercase; letter-spacing:.18em; font-size:1.6vh; font-weight:600; color:var(--muted); margin-bottom:2.4vh; }
-  h1 { font-size:7vh; line-height:1.02; font-weight:700; letter-spacing:-.02em; }
-  h2 { font-size:4.4vh; line-height:1.08; font-weight:700; letter-spacing:-.015em; margin-bottom:2.4vh; }
-  .lede { margin-top:3vh; font-size:2.4vh; color:var(--muted); }
-  .body { font-size:2.2vh; line-height:1.5; color:var(--ink); }
-  .body p { margin-bottom:1.4vh; max-width:52vw; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--sans); -webkit-font-smoothing:antialiased; overflow:hidden; }
+  .progress { position:fixed; top:0; left:0; height:2px; background:var(--solid); width:0; transition:width .45s cubic-bezier(.2,0,0,1); z-index:20; }
+  .deck { position:relative; height:100vh; }
+  .slide { position:absolute; inset:0; display:none; padding:9vh 9vw 13vh; overflow:hidden; }
+  .slide.active { display:grid; align-content:center; }
+  .slide--panel, .slide--section { background:var(--panel); }
+  .slide--cover.active { align-content:end; padding-bottom:17vh; }
+  .grid { width:min(84vw,1440px); }
+  /* Type & utility */
+  .kicker { font-family:var(--mono); text-transform:uppercase; letter-spacing:.16em; font-size:1.4vh; color:var(--muted); margin-bottom:3vh; }
+  .display { font-weight:790; letter-spacing:-.025em; line-height:1.03; text-wrap:balance; color:var(--ink); }
+  h1.display { font-size:clamp(40px,9vh,150px); }
+  h2.display { font-size:clamp(28px,5vh,80px); margin-bottom:2.6vh; }
+  .rule { width:11vw; max-width:220px; height:2px; background:var(--solid); margin:3.6vh 0; }
+  .lede { font-size:2.6vh; line-height:1.4; color:var(--muted); max-width:46ch; }
+  .body { font-size:2vh; line-height:1.5; color:var(--ink); max-width:54ch; }
+  .body p { margin-bottom:1.6vh; } .body p:last-child { margin-bottom:0; }
   .muted { color:var(--muted); }
-  .nav { position:fixed; bottom:3.5vh; right:4vw; display:flex; align-items:center; gap:1.4vw; z-index:10; }
-  .nav button { appearance:none; border:1px solid var(--hair); background:transparent; color:var(--ink); width:5vh; height:5vh; border-radius:50%; font-size:2.4vh; cursor:pointer; display:grid; place-items:center; transition:background .14s; }
-  .nav button:hover { background:rgba(0,0,0,.05); }
-  .counter { font-variant-numeric:tabular-nums; font-size:1.7vh; color:var(--muted); letter-spacing:.05em; }
-  .foot { position:fixed; bottom:3.5vh; left:4vw; right:auto; display:flex; gap:1vw; font-size:1.5vh; color:var(--muted); z-index:10; }
-  @media (prefers-reduced-motion: reduce) { .slide, .progress { transition:none; } }
+  /* Two-column */
+  .split { display:grid; grid-template-columns:1.02fr .98fr; gap:6vw; align-items:start; }
+  /* Numbered steps — auto mono index + hairline dividers */
+  .steps { list-style:none; counter-reset:s; max-width:60ch; }
+  .steps li { counter-increment:s; position:relative; padding:2vh 0 2vh 6ch; border-top:1px solid var(--hair); font-size:2vh; line-height:1.4; }
+  .steps li:last-child { border-bottom:1px solid var(--hair); }
+  .steps li::before { content:counter(s,decimal-leading-zero); position:absolute; left:0; top:2vh; font-family:var(--mono); font-size:1.4vh; letter-spacing:.12em; color:var(--muted); }
+  /* Stat row */
+  .stats { display:flex; flex-wrap:wrap; gap:0; }
+  .stat { padding:0 3vw; } .stat:first-child { padding-left:0; } .stat + .stat { border-left:1px solid var(--hair); }
+  .stat b { display:block; font-weight:800; letter-spacing:-.03em; font-size:clamp(28px,7vh,96px); font-variant-numeric:tabular-nums; line-height:1; }
+  .stat span { display:block; margin-top:1.4vh; font-family:var(--mono); text-transform:uppercase; letter-spacing:.14em; font-size:1.35vh; color:var(--muted); }
+  /* Comparison table */
+  .cmp { border-collapse:collapse; width:100%; max-width:1100px; font-size:1.9vh; }
+  .cmp th { text-align:left; font-family:var(--mono); text-transform:uppercase; letter-spacing:.12em; font-size:1.3vh; font-weight:500; color:var(--muted); padding:0 2.4ch 1.8vh 0; border-bottom:1px solid var(--hair); }
+  .cmp td { text-align:left; padding:1.9vh 2.4ch 1.9vh 0; border-bottom:1px solid var(--hair); font-variant-numeric:tabular-nums; color:var(--ink); }
+  .cmp .hot { font-weight:750; }
+  /* Chart */
+  .chart { width:100%; } .chart svg { width:100%; max-width:1000px; height:auto; overflow:visible; }
+  .caption { margin-top:2.2vh; font-family:var(--mono); text-transform:uppercase; letter-spacing:.12em; font-size:1.35vh; color:var(--muted); }
+  /* Quote */
+  .quote { font-size:clamp(24px,4.4vh,64px); font-weight:720; letter-spacing:-.02em; line-height:1.15; text-wrap:balance; max-width:22ch; }
+  .cite { margin-top:3vh; font-family:var(--mono); text-transform:uppercase; letter-spacing:.14em; font-size:1.4vh; color:var(--muted); }
+  /* Chrome */
+  .foot { position:fixed; left:9vw; right:9vw; bottom:5vh; display:flex; justify-content:space-between; align-items:center; font-family:var(--mono); text-transform:uppercase; letter-spacing:.12em; font-size:1.25vh; color:var(--muted); z-index:10; pointer-events:none; }
+  .nav { position:fixed; right:9vw; bottom:8.4vh; display:flex; align-items:center; gap:1.2vw; z-index:15; }
+  .counter { font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:1.5vh; letter-spacing:.1em; color:var(--muted); }
+  .nav button { appearance:none; border:1px solid var(--hair); background:transparent; color:var(--ink); width:4.6vh; height:4.6vh; border-radius:50%; font-size:2.2vh; cursor:pointer; display:grid; place-items:center; transition:background .15s cubic-bezier(.2,0,0,1); }
+  .nav button:hover { background:var(--panel); }
+  .nav button:focus-visible, .slide:focus-visible { outline:2px solid var(--ink); outline-offset:3px; }
+  /* One orchestrated move: staggered fade+rise of each active slide's blocks.
+     No base opacity:0 on .reveal, so content is visible even if this never runs. */
+  .slide.active .reveal { animation:rise .5s cubic-bezier(.2,0,0,1) both; }
+  .slide.active .reveal:nth-child(1){ animation-delay:.02s; }
+  .slide.active .reveal:nth-child(2){ animation-delay:.10s; }
+  .slide.active .reveal:nth-child(3){ animation-delay:.18s; }
+  .slide.active .reveal:nth-child(4){ animation-delay:.26s; }
+  .slide.active .reveal:nth-child(n+5){ animation-delay:.32s; }
+  @keyframes rise { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .progress { transition:none; }
+    .slide.active .reveal { animation:none; }
+  }
 </style>
 </head>
 <body>
@@ -267,16 +378,16 @@ function deckShell(title: string, slides: string): string {
   <div class="deck" id="deck">
 ${slides}
   </div>
-  <div class="foot"><span>${escapeHtml(title)}</span></div>
+  <div class="foot"><span>${escapeHtml(title)}</span><span>Made with Jarwiz</span></div>
   <div class="nav">
     <span class="counter" id="counter">01 / 01</span>
     <button id="prev" aria-label="Previous slide">‹</button>
     <button id="next" aria-label="Next slide">›</button>
-    <span class="foot-brand" style="color:var(--muted);font-size:1.5vh">Made with Jarwiz</span>
   </div>
 <script>
   (function () {
     var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    if (!slides.length) return;
     var i = 0;
     function clamp(n){ return Math.max(0, Math.min(slides.length - 1, n)); }
     function show(n){
@@ -387,10 +498,17 @@ export async function* streamExport(
   // object keeps TS from narrowing these to their initial values inside the
   // closure (same trick as autopilot's `waker`).
   const out: { artifact: string | null; error: Error | null } = { artifact: null, error: null };
+  const finish = (raw: string): string => {
+    // Slideshow → the model authored only slide sections; drop them into the
+    // tested shell. Markdown → just de-fence. Either can come back empty/junk,
+    // which the length gate below turns into the deterministic fallback.
+    const title = req.title?.trim() || 'Untitled board';
+    return req.mode === 'slideshow' ? assembleDeck(raw, title) : cleanMarkdown(raw);
+  };
   const work = (async () => {
     try {
-      if (useApi) out.artifact = cleanArtifact(await generateViaApi(req, signal), req.mode);
-      else if (useSidecar) out.artifact = cleanArtifact(await generateViaSidecar(req, signal), req.mode);
+      if (useApi) out.artifact = finish(await generateViaApi(req, signal));
+      else if (useSidecar) out.artifact = finish(await generateViaSidecar(req, signal));
     } catch (err) {
       out.error = err instanceof Error ? err : new Error('Export failed');
     }
