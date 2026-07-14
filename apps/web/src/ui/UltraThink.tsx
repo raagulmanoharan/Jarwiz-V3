@@ -10,8 +10,11 @@
  * cards. Adding a card drops it on the board (surfaced on top) and removes it
  * from the drawer, so the list is a to-do that empties as you go.
  *
- * Gated on board substance (≥3 contentful cards) so it never appears on a
- * blank canvas. Lives in the topbar's right cluster.
+ * Always present, but gated on board substance (≥3 contentful cards) before it
+ * can fire: at rest the button doubles as a progress meter — an accent fill
+ * creeps left→right as contentful cards land, and the button only "activates"
+ * (becomes clickable, solid accent) once the fill tops out. Lives in the
+ * topbar's right cluster.
  */
 
 import { useState, useSyncExternalStore } from 'react';
@@ -40,9 +43,15 @@ export function UltraThink() {
   const { phase, resources, run, dismiss, addOne } = useDiscover();
   const [open, setOpen] = useState(false);
 
-  // Gate: only worth offering once there's a real collection to extend.
-  const enough = useValue('ultrathink-gate', () => gatherBoardCards(editor).length >= 3, [editor]);
-  if (!enough && phase === 'idle') return null;
+  // The button is always shown, but only fires once there's a real collection
+  // to extend. Below the bar it reads as a progress meter that fills as
+  // contentful cards land; `progress` (0→1) drives the CSS fill width.
+  const NEEDED = 3;
+  const count = useValue('ultrathink-count', () => gatherBoardCards(editor).length, [editor]);
+  const progress = Math.min(count / NEEDED, 1);
+  // "Filling" = at rest and not yet unlocked. Once research is in flight or has
+  // landed (thinking/ready/…), the button owns those states regardless of count.
+  const filling = phase === 'idle' && count < NEEDED;
 
   const label =
     phase === 'thinking' ? 'Thinking…'
@@ -52,6 +61,7 @@ export function UltraThink() {
     : 'Deep think';
 
   const onClick = () => {
+    if (filling) return; // not enough on the board yet — the meter is still filling
     if (phase === 'idle' || phase === 'empty' || phase === 'error') {
       setOpen(false);
       run();
@@ -67,12 +77,16 @@ export function UltraThink() {
   return (
     <div className="jz-ultra">
       <button
-        className={`jz-ultra-btn${phase === 'thinking' ? ' jz-ultra-btn--busy' : ''}${phase === 'ready' ? ' jz-ultra-btn--ready' : ''}`}
+        className={`jz-ultra-btn${phase === 'thinking' ? ' jz-ultra-btn--busy' : ''}${phase === 'ready' ? ' jz-ultra-btn--ready' : ''}${filling ? ' jz-ultra-btn--filling' : ''}`}
+        style={{ '--jz-ultra-fill': progress } as React.CSSProperties}
         onClick={onClick}
+        aria-disabled={filling}
         title={
-          phase === 'ready'
-            ? 'Open the resources found for your board'
-            : 'Research real related resources from the web, grounded on your board'
+          filling
+            ? 'Add a few cards to your board to unlock Deep think'
+            : phase === 'ready'
+              ? 'Open the resources found for your board'
+              : 'Research real related resources from the web, grounded on your board'
         }
       >
         <JarwizSpark size={14} className="jz-ultra-spark" />

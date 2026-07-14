@@ -261,12 +261,14 @@ body,
  * lights up with an animated gradient (and a soft glow pulse) to pull the eye
  * back to the discoveries waiting in the drawer. */
 .jz-ultra-btn {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   height: 32px;
   padding: 0 13px;
-  border: none;
+  border: 1px solid transparent; /* constant box so the filling→active flip doesn't shift 1px */
   border-radius: var(--jz-radius-pill);
   color: var(--jz-accent-ink);
   font-size: 12.5px;
@@ -275,10 +277,44 @@ body,
   background: var(--jz-accent);
   background-size: 300% 100%;
   box-shadow: 0 1px 8px color-mix(in srgb, var(--jz-accent) 34%, transparent);
-  transition: filter var(--jz-dur-fast, 120ms) var(--jz-ease-out, ease);
+  transition:
+    filter var(--jz-dur-fast, 120ms) var(--jz-ease-out, ease),
+    color var(--jz-dur-base) var(--jz-ease-out),
+    border-color var(--jz-dur-base) var(--jz-ease-out),
+    background-color var(--jz-dur-base) var(--jz-ease-out),
+    box-shadow var(--jz-dur-base) var(--jz-ease-out);
+}
+/* Spark + label ride above the progress fill. */
+.jz-ultra-btn > * {
+  position: relative;
+  z-index: 1;
 }
 .jz-ultra-btn:hover {
   filter: brightness(1.06);
+}
+/* ── Filling: the resting button doubles as a progress meter ─────────────────
+ * A calm "track" (muted surface) with an accent fill that creeps left→right as
+ * contentful cards land (--jz-ultra-fill, 0→1). Not clickable until it tops
+ * out, at which point the modifier drops and the button becomes the solid
+ * accent above — a satisfying "unlock". */
+.jz-ultra-btn--filling {
+  background: var(--jz-surface-raised);
+  border-color: var(--jz-ink-300);
+  color: var(--jz-ink-700);
+  box-shadow: none;
+  cursor: default;
+}
+.jz-ultra-btn--filling:hover {
+  filter: none;
+}
+.jz-ultra-btn--filling::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: calc(var(--jz-ultra-fill, 0) * 100%);
+  background: color-mix(in srgb, var(--jz-accent) 22%, transparent);
+  transition: width var(--jz-dur-slow) var(--jz-ease-glide);
 }
 .jz-ultra-btn--busy .jz-ultra-spark {
   animation: jz-pdf-spin 1s linear infinite;
@@ -306,6 +342,9 @@ body,
   }
   .jz-ultra-btn--busy .jz-ultra-spark {
     animation: none;
+  }
+  .jz-ultra-btn--filling::before {
+    transition: none;
   }
 }
 
