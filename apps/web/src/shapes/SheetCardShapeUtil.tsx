@@ -22,6 +22,7 @@ import {
 } from 'tldraw';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
+import { TldrStrip, TLDR_STRIP_H, tldrPresent, useTldrReserve, type TldrStatus } from './TldrStrip';
 import { gridIsDashboardable } from '../lib/dashboardable';
 
 export type SheetStatus = 'uploading' | 'ready' | 'error';
@@ -35,6 +36,10 @@ export interface SheetCardProps {
   assetId: string;
   name: string;
   status: SheetStatus;
+  /** The one-glance gist (from the flattened grid), shown below the table. */
+  tldr?: string;
+  /** Lifecycle of the TL;DR strip (undefined = never requested → no strip). */
+  tldrStatus?: TldrStatus;
 }
 
 declare module '@tldraw/tlschema' {
@@ -66,6 +71,8 @@ export class SheetCardShapeUtil extends ShapeUtil<SheetCardShape> {
     assetId: T.string,
     name: T.string,
     status: T.literalEnum('uploading', 'ready', 'error'),
+    tldr: T.string.optional(),
+    tldrStatus: T.literalEnum('loading', 'ready', 'error').optional(),
   };
 
   override getDefaultProps(): SheetCardShape['props'] {
@@ -104,7 +111,10 @@ const MAX_FIT_H = 560;
 function SheetCardBody({ shape }: { shape: SheetCardShape }) {
   const editor = useEditor();
   const isSelected = useCardSelected(shape.id);
-  const { assetId, name, status } = shape.props;
+  const { assetId, name, status, tldr, tldrStatus } = shape.props;
+  // The table fills the card, so the strip claims a fixed slice below it.
+  const tldrOn = tldrPresent(tldrStatus, tldr);
+  useTldrReserve(shape.id, 'sheet-card', tldrOn);
   const [sheets, setSheets] = useState<Grid[] | null>(null);
   const [active, setActive] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -137,12 +147,15 @@ function SheetCardBody({ shape }: { shape: SheetCardShape }) {
     const table = scrollRef.current.querySelector('.jz-sheet-table') as HTMLElement | null;
     if (!table) return;
     fittedRef.current = true;
-    const target = Math.max(180, Math.min(Math.ceil(table.scrollHeight) + FOOTER_H + 8, MAX_FIT_H));
+    // Reserve the strip's slice in the same one-shot fit so the grid keeps its
+    // height (the toggle hook handles the strip arriving after this runs).
+    const reserve = tldrOn ? TLDR_STRIP_H : 0;
+    const target = Math.max(180, Math.min(Math.ceil(table.scrollHeight) + FOOTER_H + 8 + reserve, MAX_FIT_H));
     const cur = editor.getShape(shape.id);
     if (cur && Math.abs((cur.props as SheetCardProps).h - target) > 4) {
       editor.updateShape<SheetCardShape>({ id: shape.id, type: 'sheet-card', props: { h: target } });
     }
-  }, [grid, editor, shape.id]);
+  }, [grid, editor, shape.id, tldrOn]);
 
   // Data-aware gate for the "✦ Interactive dashboard" action: once the grid is
   // in hand, flag whether it actually holds chartable data (measures ×
@@ -215,6 +228,7 @@ function SheetCardBody({ shape }: { shape: SheetCardShape }) {
           </span>
         ) : null}
       </div>
+      <TldrStrip tldr={tldr} status={tldrStatus} fixedHeight={TLDR_STRIP_H} />
     </div>
   );
 }

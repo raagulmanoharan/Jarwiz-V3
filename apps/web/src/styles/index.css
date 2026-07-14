@@ -1355,6 +1355,47 @@ body,
   animation: jz-shimmer 1.6s ease-in-out infinite;
 }
 
+/* TL;DR strip — the one-glance gist on a dropped card, below its preview. A
+ * quiet labelled section (hairline-topped like the card's own seams); on media
+ * cards it's a fixed reserved box (.jz-tldr--fixed), on the link card it flows
+ * at its natural height and the card measures it in. */
+.jz-tldr {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px var(--jz-space-5) 11px;
+  border-top: 1px solid var(--jz-hairline);
+  background: var(--jz-card-surface);
+  box-sizing: border-box;
+}
+
+.jz-tldr--fixed {
+  flex: none;
+  overflow: hidden;
+}
+
+.jz-tldr-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--jz-ink-400);
+}
+
+.jz-tldr-text {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--jz-ink-500);
+}
+
+.jz-tldr-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-top: 3px;
+}
+
 /* Provenance overlay — the on-click lineage lines. A pointer-transparent SVG
  * spanning the viewport; a very subtle dotted hairline eases between a card and
  * its sources, shown only while one is selected. */
