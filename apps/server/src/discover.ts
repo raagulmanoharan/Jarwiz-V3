@@ -1,5 +1,5 @@
 /**
- * Ultra Think — grounded resource discovery. Read the board, then use Claude's
+ * Scout — grounded resource discovery. Read the board, then use Claude's
  * live web search to surface REAL related resources (videos, papers, docs,
  * articles, repos). Grounding is the whole point: an ungrounded model invents
  * dead arxiv IDs and 404 YouTube links, and one dead link kills the promise.
@@ -25,7 +25,7 @@ const SIDECAR_TIMEOUT_MS = 300_000;
 
 const KINDS: ResourceKind[] = ['video', 'news', 'article', 'paper', 'pdf', 'doc', 'repo', 'other'];
 
-const SYSTEM = `You are Ultra Think — a DEEP RESEARCH discovery engine on an infinite canvas. The user has collected things on their board; your job is to find the resources a sharp domain expert would hand them next. This is a researched artefact, NOT a top-5 Google dump.
+const SYSTEM = `You are Scout — a DEEP RESEARCH discovery engine on an infinite canvas. The user has collected things on their board; your job is to find the resources a sharp domain expert would hand them next. This is a researched artefact, NOT a top-5 Google dump.
 
 Work in two stages:
 1) THEME the board. First read everything and infer the 2–4 TOPICS the collection is really about — the throughlines, the open questions, the gaps the user is circling. Discovery is driven by these themes, not by matching individual cards one-to-one.
