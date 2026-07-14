@@ -1236,3 +1236,43 @@ preview" banner, and the line above the composer. "Do we need 3 message bars?"
 - Verified against the production build in playground mode (no API server):
   top banner gone, composer line stays, a failed ask spawns no pill — one
   message, zero console errors.
+
+## 2026-07-14 — "Deep Think" becomes Scout, a confidence meter you can watch fill
+
+**Intent:** the discovery button ("Deep think") was hidden until the board held
+≥3 cards, so on a fresh canvas nothing hinted it existed. Raagul: show it
+always, and make the button itself a progress meter that fills as you add
+content and activates when full.
+
+- **Always-present progress fill.** Dropped the hide-until-3-cards gate. At rest
+  the button is a muted "track" with an accent fill (`::before`, glides on
+  width via `--jz-scout-fill`) that grows as the board gains substance; it's
+  `aria-disabled` and unclickable until full, then flips to the solid accent —
+  a satisfying "unlock". Constant 1px transparent border so the flip doesn't
+  shift layout; reduced-motion guard on the fill.
+- **Renamed the feature to Scout** (owner pick from four directions —
+  Muse/Scout/Tangents/Radar). "Deep Think" described effort; the feature is a
+  second-brain companion that reads the board and brings back real web
+  resources. Renamed coherently: button label, `UltraThink.tsx` → `Scout.tsx`,
+  `jz-ultra-*` classes → `jz-scout-*`, the internal "Ultra Think" codename in
+  discover.ts (incl. the system-prompt identity)/index.ts/protocol.ts/
+  useDiscover.ts/JarwizSpark, and the marketing site heading. HISTORY's older
+  "Ultra Think" entries left as-is (dated log).
+- **Confidence, not a card count.** Raagul pushed back: three empty, thin, or
+  unrelated cards shouldn't unlock Scout. New `boardConfidence.ts` scores board
+  *readiness* on every change — `substance × cohesion`, multiplied so a board
+  needs both. Substance weighs real content (stubs barely count; PDFs/sheets
+  count as whole docs); cohesion is term overlap across cards (an off-topic card
+  drags it down, so a scattered board caps out ~50% no matter how much you add).
+  The fill maps confidence→activation, and a locked meter explains itself in the
+  tooltip ("Your cards are a bit scattered…").
+- **Verified end-to-end, incl. the real sidecar.** Heuristic: cohesive board →
+  100%/unlocked, three unrelated rich cards → ~42%/locked, three stubs →
+  ~2%/locked. Then drove the full UI against the live `claude` CLI sidecar
+  (`mode: sidecar`, no API key): Scout fired, ran live web search for ~2 min,
+  and the drawer filled with 9 genuine resources (GitLab handbook, Paul Graham,
+  HBR, an ADR repo…) across three themes it inferred itself. Couldn't
+  liveness-check the URLs from the sandbox (outbound proxy allowlisted to
+  GitHub/Anthropic) — recognizably canonical, model reached them via its own
+  web tooling. Constants in boardConfidence.ts are a tuned first pass; the
+  semantic (LLM) cohesion read is the noted upgrade path.
