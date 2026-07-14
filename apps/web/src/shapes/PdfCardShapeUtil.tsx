@@ -5,7 +5,7 @@
  * card holds only the asset URL, so the synced document stays light.
  */
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import {
   HTMLContainer,
   Rectangle2d,
@@ -25,7 +25,7 @@ import { setPdfSelection } from '../pdf/pdfSelection';
 import { getPdfHighlight, subscribePdfHighlight } from '../pdf/pdfHighlight';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
-import { TldrStrip, TLDR_STRIP_H, tldrPresent, type TldrStatus } from './TldrStrip';
+import { TldrStrip, type TldrStatus } from './TldrStrip';
 
 export type PdfStatus = 'uploading' | 'ready' | 'error';
 
@@ -57,11 +57,10 @@ export type PdfCardShape = TLShape<'pdf-card'>;
 export const PDF_CARD_SIZE = { w: 420, h: 540 };
 const FOOTER_H = 40;
 
-/** The height a present TL;DR strip reserves below the reader (0 when absent).
- *  The card's height is aspect-locked, so every place that computes it — resize,
- *  page-load, the present-change effect — folds this reserve in identically. */
-function tldrReserve(props: PdfCardShape['props']): number {
-  return tldrPresent(props.tldrStatus, props.tldr) ? TLDR_STRIP_H : 0;
+/** The measured TL;DR strip height, cached in meta so onResize (which sees only
+ *  the shape) can fold it into the aspect-locked height like everything else. */
+function tldrReserve(shape: PdfCardShape): number {
+  return Number(shape.meta.jzTldrH) || 0;
 }
 
 export class PdfCardShapeUtil extends ShapeUtil<PdfCardShape> {
@@ -98,7 +97,7 @@ export class PdfCardShapeUtil extends ShapeUtil<PdfCardShape> {
     // so the page always fills the stage edge-to-edge — no letterbox bars.
     const aspect = Number(shape.meta.jzPdfAspect);
     if (aspect > 0 && next.props?.w) {
-      next.props.h = Math.round(next.props.w * aspect) + FOOTER_H + tldrReserve(shape.props);
+      next.props.h = Math.round(next.props.w * aspect) + FOOTER_H + tldrReserve(shape);
     }
     return next;
   }
@@ -123,7 +122,9 @@ export class PdfCardShapeUtil extends ShapeUtil<PdfCardShape> {
 function PdfCardBody({ shape }: { shape: PdfCardShape }) {
   const editor = useEditor();
   const { src, name, status, w, h, tldr, tldrStatus } = shape.props;
-  const reserve = tldrReserve(shape.props);
+  const stripRef = useRef<HTMLDivElement | null>(null);
+  // Measured TL;DR strip height — mirrored into meta so onResize can read it.
+  const [stripH, setStripH] = useState(Number(shape.meta.jzTldrH) || 0);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const textRef = useRef<HTMLDivElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -154,7 +155,7 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
   // The page fills the stage completely — the card's aspect is locked to the
   // page's (below + onResize), so contain-fit leaves no bars.
   const areaW = Math.max(40, w);
-  const areaH = Math.max(40, h - FOOTER_H - reserve);
+  const areaH = Math.max(40, h - FOOTER_H - stripH);
 
   // Load (and cache) the document when the URL becomes available. Encrypted
   // PDFs surface a password prompt in the card; the entered password retries.
@@ -192,7 +193,7 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
               const aspect = vp1.height / vp1.width;
               const cur = editor.getShape(shape.id) as PdfCardShape | undefined;
               if (!cur) return;
-              const targetH = Math.round(cur.props.w * aspect) + FOOTER_H + tldrReserve(cur.props);
+              const targetH = Math.round(cur.props.w * aspect) + FOOTER_H + tldrReserve(cur);
               if (Math.abs(cur.props.h - targetH) > 2 || Number(cur.meta.jzPdfAspect) !== aspect) {
                 editor.updateShape<PdfCardShape>({
                   id: shape.id,
@@ -281,20 +282,31 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
     };
   }, [page, pageCount, areaW, areaH, highlight]);
 
-  // When the TL;DR strip appears (or an error clears it), re-lock the height to
-  // page-aspect + footer + reserve so the page keeps filling the stage. Before
-  // the page loads there's no aspect yet — the load effect above folds the
-  // reserve in when it sets it.
+  // Measure the strip (its height grows with the gist's text) and cache it in
+  // meta so onResize can read it. Runs before paint to avoid a reflow flash.
+  useLayoutEffect(() => {
+    const want = stripRef.current ? Math.ceil(stripRef.current.offsetHeight) : 0;
+    if (want === stripH) return;
+    setStripH(want);
+    const cur = editor.getShape(shape.id);
+    if (cur && (Number(cur.meta.jzTldrH) || 0) !== want) {
+      editor.updateShape<PdfCardShape>({ id: shape.id, type: 'pdf-card', meta: { ...cur.meta, jzTldrH: want } });
+    }
+  }, [tldrStatus, tldr, w, stripH, editor, shape.id]);
+
+  // Keep the height locked to page-aspect + footer + strip, so the page keeps
+  // filling the stage as the strip appears/grows/clears. Before the page loads
+  // there's no aspect yet — the load effect folds the strip in when it sets it.
   useEffect(() => {
     const cur = editor.getShape(shape.id) as PdfCardShape | undefined;
     if (!cur) return;
     const aspect = Number(cur.meta.jzPdfAspect);
     if (!(aspect > 0)) return;
-    const targetH = Math.round(cur.props.w * aspect) + FOOTER_H + reserve;
+    const targetH = Math.round(cur.props.w * aspect) + FOOTER_H + stripH;
     if (Math.abs(cur.props.h - targetH) > 2) {
       editor.updateShape<PdfCardShape>({ id: shape.id, type: 'pdf-card', props: { h: targetH } });
     }
-  }, [reserve, editor, shape.id]);
+  }, [stripH, editor, shape.id]);
 
   const total = pageCount || shape.props.pages || 0;
   const go = (delta: number) => setPdfPage(shape.id, Math.max(1, Math.min(total || 1, page + delta)));
@@ -394,7 +406,7 @@ function PdfCardBody({ shape }: { shape: PdfCardShape }) {
           </span>
         ) : null}
       </div>
-      <TldrStrip tldr={tldr} status={tldrStatus} fixedHeight={TLDR_STRIP_H} />
+      <TldrStrip ref={stripRef} tldr={tldr} status={tldrStatus} />
     </div>
   );
 }

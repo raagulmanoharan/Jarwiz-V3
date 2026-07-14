@@ -1356,28 +1356,24 @@ body,
 }
 
 /* TL;DR strip — the one-glance gist on a dropped card, below its preview. A
- * quiet labelled section (hairline-topped like the card's own seams); on media
- * cards it's a fixed reserved box (.jz-tldr--fixed), on the link card it flows
- * at its natural height and the card measures it in. */
+ * quiet labelled section, hairline-topped like the card's own seams; it flows
+ * at its natural height (a TL;DR is short — show all of it, never truncated). */
 .jz-tldr {
+  flex: none;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   padding: 9px var(--jz-space-5) 11px;
   border-top: 1px solid var(--jz-hairline);
   background: var(--jz-card-surface);
   box-sizing: border-box;
 }
 
-.jz-tldr--fixed {
-  flex: none;
-  overflow: hidden;
-}
-
+/* The app's eyebrow-label convention (cf. .jz-machines-title, .jz-tl-title). */
 .jz-tldr-label {
-  font-size: 9.5px;
+  font-size: var(--jz-text-micro-size);
   font-weight: 600;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--jz-ink-400);
 }
