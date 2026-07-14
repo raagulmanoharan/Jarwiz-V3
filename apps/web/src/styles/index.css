@@ -1293,211 +1293,82 @@ body,
   color: var(--jz-ink-500);
 }
 
-/* Modal — a centered dialog over a quiet backdrop (PersonaModal shell). */
-.jz-export-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 500;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: color-mix(in srgb, var(--jz-ink-900) 32%, transparent);
-  backdrop-filter: blur(3px);
-  pointer-events: auto;
-  animation: jz-export-fade var(--jz-dur-base) var(--jz-ease-out) both;
-}
-.jz-export-overlay--leaving {
-  animation: jz-export-fade var(--jz-dur-fast) var(--jz-ease-in) reverse both;
-}
-@keyframes jz-export-fade {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-.jz-export-panel {
-  width: min(560px, 100%);
-  max-height: min(86vh, 900px);
-  display: flex;
-  flex-direction: column;
-  background: var(--jz-surface-raised);
-  border: 1px solid var(--jz-hairline);
-  border-radius: var(--jz-radius-xl);
-  box-shadow: var(--jz-e4);
-  overflow: hidden;
-  animation: jz-export-rise var(--jz-dur-base) var(--jz-ease-glide) both;
-}
-.jz-export-panel--wide {
-  width: min(960px, 100%);
-}
-@keyframes jz-export-rise {
-  from { opacity: 0; transform: translateY(10px) scale(0.99); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .jz-export-overlay, .jz-export-overlay--leaving, .jz-export-panel { animation: none; }
-}
-.jz-export-head {
-  display: flex;
+/* Inline states inside the dropdown rows (no separate modal). */
+.jz-export-item--active {
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 18px 20px 14px;
-  border-bottom: 1px solid var(--jz-hairline);
+  cursor: default;
 }
-.jz-export-title {
-  font-size: var(--jz-text-title-size);
-  line-height: var(--jz-text-title-lh);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--jz-ink-900);
-}
-.jz-export-subtitle {
-  margin-top: 2px;
-  font-size: var(--jz-text-body-sm-size);
-  color: var(--jz-ink-500);
-}
-.jz-export-close {
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--jz-ink-500);
-  cursor: pointer;
-  transition: background var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
-}
-.jz-export-close:hover {
-  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
-  color: var(--jz-ink-900);
-}
-.jz-export-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 20px;
-  overflow: auto;
-}
-.jz-export-working {
-  align-items: center;
-  text-align: center;
-  padding: 40px 24px;
-  gap: 18px;
-}
-/* Progress bar — eases up while the deck is pieced together. */
-.jz-export-progress {
+.jz-export-item--active:hover { background: transparent; }
+.jz-export-item-text { flex: 1 1 auto; min-width: 0; }
+/* Progress bar — eases up while a row is generating. */
+.jz-export-item-progress {
+  display: block;
   width: 100%;
-  height: 5px;
+  height: 4px;
+  margin-top: 7px;
   border-radius: var(--jz-radius-pill);
-  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
+  background: color-mix(in srgb, var(--jz-ink-900) 9%, transparent);
   overflow: hidden;
 }
-.jz-export-progress-fill {
+.jz-export-item-progress > span {
   display: block;
   height: 100%;
   border-radius: inherit;
   background: var(--jz-accent);
   transition: width 0.35s var(--jz-ease-out);
 }
-.jz-export-status {
-  font-size: var(--jz-text-body-size);
-  font-weight: 600;
-  color: var(--jz-ink-900);
-}
-.jz-export-hint {
-  max-width: 42ch;
-  font-size: var(--jz-text-body-sm-size);
-  line-height: var(--jz-text-body-sm-lh);
+.jz-export-item-status {
+  margin-top: 6px;
+  font-size: 12px;
   color: var(--jz-ink-500);
 }
-.jz-export-preview {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: var(--jz-radius-md);
-  overflow: hidden;
-  border: 1px solid var(--jz-hairline);
-  background: var(--jz-paper);
-  box-shadow: var(--jz-e1);
-}
-/* The deck preview is a paged document — a taller frame; the deck scrolls
- *  inside the iframe to show every page. */
-.jz-export-preview--deck {
-  aspect-ratio: auto;
-  height: min(52vh, 480px);
-  background: #e7e5df;
-}
-.jz-export-iframe {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: none;
-  background: #e7e5df;
-}
-.jz-export-note {
-  margin-top: -4px;
-  font-size: var(--jz-text-caption-size);
-  line-height: var(--jz-text-caption-lh);
-  color: var(--jz-ink-500);
-}
-.jz-export-md {
-  max-height: 46vh;
-  overflow: auto;
-  margin: 0;
-  padding: 16px;
-  border-radius: var(--jz-radius-md);
-  border: 1px solid var(--jz-hairline);
-  background: var(--jz-paper);
-  color: var(--jz-ink-800);
-  font-family: var(--jz-font-mono);
-  font-size: 12.5px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.jz-export-md:focus-visible {
-  outline: 2px solid var(--jz-focus);
-  outline-offset: 2px;
-}
-.jz-export-actions {
+.jz-export-item-actions {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: 9px;
 }
-.jz-export-action {
-  height: 38px;
-  padding: 0 16px;
-  border: 1px solid var(--jz-hairline);
+.jz-export-dl {
+  height: 30px;
+  padding: 0 14px;
+  border: none;
   border-radius: var(--jz-radius-pill);
-  background: var(--jz-surface);
-  color: var(--jz-ink-900);
-  font-family: var(--jz-font-ui);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform var(--jz-dur-fast) var(--jz-ease-out), background var(--jz-dur-fast) var(--jz-ease-out);
-}
-.jz-export-action:hover {
-  transform: translateY(-1px);
-  background: color-mix(in srgb, var(--jz-ink-900) 5%, var(--jz-surface));
-}
-.jz-export-action--primary {
   background: var(--jz-accent);
   color: var(--jz-accent-ink);
-  border-color: transparent;
+  font-family: var(--jz-font-ui);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
 }
-.jz-export-action--primary:hover {
+.jz-export-dl:hover {
   background: color-mix(in srgb, var(--jz-accent) 88%, var(--jz-ink-500));
 }
-.jz-export-error {
-  gap: 18px;
+.jz-export-dl--ghost {
+  background: transparent;
+  color: var(--jz-ink-900);
+  border: 1px solid var(--jz-hairline);
 }
-.jz-export-error-msg {
-  font-size: var(--jz-text-body-size);
-  line-height: var(--jz-text-body-lh);
+.jz-export-dl--ghost:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
+}
+.jz-export-item-note {
+  font-size: 11px;
+  color: var(--jz-ink-400);
+}
+.jz-export-item-err {
+  font-size: 12px;
+  line-height: 16px;
   color: var(--jz-danger);
+}
+/* Ready dot on the button when the menu is closed. */
+.jz-export-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--jz-accent);
+  margin: 0 1px;
 }
 
 /* ─── Card chrome (shared by all custom shapes) ─────────────────────────── */

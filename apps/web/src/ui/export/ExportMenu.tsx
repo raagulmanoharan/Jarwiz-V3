@@ -1,29 +1,39 @@
 /**
- * Export menu — the header entry point. A pill button ("Export ▾") beside the
- * zoom control that opens a two-item menu:
+ * Export menu — the header entry point AND the whole export surface. A pill
+ * button ("Export ▾") opens a dropdown with two rows:
  *
- *   ✦ As a slideshow      — synthesise the board into a slick HTML deck
- *   ⌁ Markdown for an LLM  — a comprehensive handoff another model can continue
+ *   ✦ As a slideshow      — synthesise the board into a PDF deck
+ *   ⌁ Markdown for an LLM  — a comprehensive handoff to continue elsewhere
  *
- * The button lives inside the tldraw overlay (Topbar), so it has the editor:
- * on pick it gathers the board's cards and hands them to the export store,
- * which owns the run and drives the modal. Disabled while the board is empty —
- * there's nothing to export yet.
+ * There is no separate modal: each row carries its OWN state inline — idle →
+ * a progress bar while it generates → a Download button when ready. The two
+ * run INDEPENDENTLY, so the user can trigger both at once. The button lives
+ * inside the tldraw overlay (it has the editor); on start it gathers the board
+ * and hands it to the export store, which owns the runs.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { stopEventPropagation, useEditor, useValue } from 'tldraw';
 import type { ExportMode } from '@jarwiz/shared';
 import { gatherBoardCards } from '../../agents/boardText';
 import { getActiveBoard } from '../../boards/boardStore';
-import { openExport } from './exportStore';
+import {
+  getExportState,
+  retryExport,
+  startExport,
+  subscribeExport,
+  type ExportSlot,
+} from './exportStore';
+import { downloadText, printDeckToPdf, slugify } from './download';
 
 export function ExportMenu() {
   const editor = useEditor();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
+  const state = useSyncExternalStore(subscribeExport, getExportState, getExportState);
   // Enable as soon as there's anything on the board to read.
   const hasContent = useValue('topbar-can-export', () => editor.getCurrentPageShapes().length > 0, [editor]);
+  const anyReady = state.slideshow.phase === 'ready' || state.markdown.phase === 'ready';
 
   useEffect(() => {
     if (!open) return;
@@ -41,11 +51,12 @@ export function ExportMenu() {
     };
   }, [open]);
 
+  // Start a run WITHOUT closing the panel — so its progress shows inline and the
+  // other mode can be started too.
   const start = (mode: ExportMode) => {
-    setOpen(false);
     const cards = gatherBoardCards(editor);
     const title = getActiveBoard()?.name ?? 'Untitled board';
-    openExport(mode, cards, title);
+    startExport(mode, cards, title);
   };
 
   return (
@@ -61,26 +72,117 @@ export function ExportMenu() {
       >
         <ExportGlyph />
         <span className="jz-export-btn-label">Export</span>
+        {anyReady && !open ? <span className="jz-export-dot" aria-hidden /> : null}
         <ChevronDown className="jz-export-caret" />
       </button>
       {open ? (
         <div className="jz-export-menu" role="menu">
-          <button className="jz-export-item" role="menuitem" onClick={() => start('slideshow')}>
-            <span className="jz-export-item-icon"><SlidesGlyph /></span>
-            <span className="jz-export-item-text">
-              <span className="jz-export-item-title">As a slideshow</span>
-              <span className="jz-export-item-sub">A presentation-ready PDF deck built from your board</span>
-            </span>
-          </button>
-          <button className="jz-export-item" role="menuitem" onClick={() => start('markdown')}>
-            <span className="jz-export-item-icon"><DocGlyph /></span>
-            <span className="jz-export-item-text">
-              <span className="jz-export-item-title">Markdown for another LLM</span>
-              <span className="jz-export-item-sub">A comprehensive handoff to continue elsewhere</span>
-            </span>
-          </button>
+          <ExportRow
+            mode="slideshow"
+            slot={state.slideshow}
+            title={state.title}
+            icon={<SlidesGlyph />}
+            label="As a slideshow"
+            sub="A presentation-ready PDF deck built from your board"
+            onStart={() => start('slideshow')}
+          />
+          <ExportRow
+            mode="markdown"
+            slot={state.markdown}
+            title={state.title}
+            icon={<DocGlyph />}
+            label="Markdown for another LLM"
+            sub="A comprehensive handoff to continue elsewhere"
+            onStart={() => start('markdown')}
+          />
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** One export row: its whole lifecycle (idle → progress → download) inline. */
+function ExportRow({
+  mode,
+  slot,
+  title,
+  icon,
+  label,
+  sub,
+  onStart,
+}: {
+  mode: ExportMode;
+  slot: ExportSlot;
+  title: string;
+  icon: React.ReactNode;
+  label: string;
+  sub: string;
+  onStart: () => void;
+}) {
+  // A smoothly-easing bar while working: we can't know the true duration, so it
+  // decelerates toward ~92% and completes when the row flips to 'ready'.
+  const [pct, setPct] = useState(8);
+  useEffect(() => {
+    if (slot.phase !== 'working') {
+      setPct(slot.phase === 'ready' ? 100 : 8);
+      return;
+    }
+    setPct(8);
+    const id = window.setInterval(() => setPct((p) => (p >= 92 ? p : p + (92 - p) * 0.08)), 350);
+    return () => window.clearInterval(id);
+  }, [slot.phase]);
+
+  const download = () => {
+    if (mode === 'slideshow') printDeckToPdf(slot.text);
+    else downloadText(slot.text, `${slugify(title)}.md`, 'text/markdown');
+  };
+
+  // Idle: the whole row is the trigger.
+  if (slot.phase === 'idle') {
+    return (
+      <button className="jz-export-item" role="menuitem" onClick={onStart}>
+        <span className="jz-export-item-icon">{icon}</span>
+        <span className="jz-export-item-text">
+          <span className="jz-export-item-title">{label}</span>
+          <span className="jz-export-item-sub">{sub}</span>
+        </span>
+      </button>
+    );
+  }
+
+  // Working / ready / error: an inline status row (not a trigger).
+  return (
+    <div className="jz-export-item jz-export-item--active">
+      <span className="jz-export-item-icon">{icon}</span>
+      <span className="jz-export-item-text">
+        <span className="jz-export-item-title">{label}</span>
+        {slot.phase === 'working' ? (
+          <>
+            <span className="jz-export-item-progress">
+              <span style={{ width: `${pct}%` }} />
+            </span>
+            <span className="jz-export-item-status">{slot.status || 'Working…'}</span>
+          </>
+        ) : null}
+        {slot.phase === 'ready' ? (
+          <span className="jz-export-item-actions">
+            <button className="jz-export-dl" onClick={download}>
+              {mode === 'slideshow' ? 'Download PDF' : 'Download .md'}
+            </button>
+            {mode === 'slideshow' ? (
+              <span className="jz-export-item-note">Opens the print dialog — pick “Save as PDF”.</span>
+            ) : null}
+          </span>
+        ) : null}
+        {slot.phase === 'error' ? (
+          <span className="jz-export-item-actions">
+            <span className="jz-export-item-err">{slot.error}</span>
+            <button className="jz-export-dl jz-export-dl--ghost" onClick={() => retryExport(mode)}>
+              Try again
+            </button>
+          </span>
+        ) : null}
+      </span>
     </div>
   );
 }
@@ -95,7 +197,7 @@ function ExportGlyph() {
   );
 }
 
-/** Presentation screen — the slideshow item. */
+/** Presentation screen — the slideshow row. */
 function SlidesGlyph() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -105,7 +207,7 @@ function SlidesGlyph() {
   );
 }
 
-/** Document with a corner fold + text lines — the markdown item. */
+/** Document with a corner fold + text lines — the markdown row. */
 function DocGlyph() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
