@@ -57,6 +57,7 @@ import { DocFocusOverlay } from './ui/DocFocusOverlay';
 import { CardFocusOverlay } from './ui/CardFocusOverlay';
 import { EmptyState } from './ui/EmptyState';
 import { Topbar } from './ui/Topbar';
+import { ExportModal } from './ui/export/ExportModal';
 import { HelpLayer } from './ui/HelpLayer';
 import { SidePanel } from './ui/SidePanel';
 import { ErrorBoundary, Safe } from './ui/ErrorBoundary';
@@ -85,6 +86,7 @@ function JarwizOverlay() {
       <Safe label="PersonaModal"><PersonaModal /></Safe>
       <Safe label="AgentCursorLayer"><AgentCursorLayer /></Safe>
       <Safe label="HelpLayer"><HelpLayer /></Safe>
+      <Safe label="ExportModal"><ExportModal /></Safe>
 
       {/* Behavioural overlays — the ask/refine loop on cards. (Provenance
           lineage renders in the OnTheCanvas slot below, behind the shapes.) */}

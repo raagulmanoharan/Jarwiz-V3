@@ -112,6 +112,7 @@ const METERED_PATHS = [
   '/api/cluster',
   '/api/annotate',
   '/api/compose',
+  '/api/export',
   '/api/diagram',
   '/api/discover',
   '/api/image',

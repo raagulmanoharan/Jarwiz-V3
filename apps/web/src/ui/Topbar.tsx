@@ -11,6 +11,7 @@ import { Scout } from './Scout';
 import { JarwizSpark } from './JarwizSpark';
 import { DemoCounterChip } from './DemoAccess';
 import { canTidyBoard, useTidyBoard } from '../agents/tidyBoard';
+import { ExportMenu } from './export/ExportMenu';
 
 /**
  * Canvas chrome — top bar (Flora-aligned).
@@ -42,6 +43,7 @@ export function Topbar() {
       <div className="jz-topbar-right">
         <Scout />
         <TidyButton />
+        <ExportMenu />
         <ZoomDropdown />
         <ThemeToggleButton />
       </div>
