@@ -27,6 +27,53 @@ export function downloadText(text: string, filename: string, type: string): void
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
+/**
+ * Print a self-contained HTML deck to PDF via the browser's own engine — the
+ * deck's @page/print CSS lays it out one 16:9 slide per page, vector-crisp.
+ * We render it in an offscreen iframe and invoke print() on it, so the user
+ * stays in the app and just picks "Save as PDF" in the print dialog. The iframe
+ * is torn down after printing (afterprint), with a long fallback timeout in
+ * case the event never fires (some browsers).
+ */
+export function printDeckToPdf(html: string): void {
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  Object.assign(iframe.style, {
+    position: 'fixed',
+    right: '0',
+    bottom: '0',
+    width: '1px',
+    height: '1px',
+    opacity: '0',
+    border: '0',
+    pointerEvents: 'none',
+  } as CSSStyleDeclaration);
+  const remove = () => {
+    if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+  };
+  iframe.onload = () => {
+    const win = iframe.contentWindow;
+    if (!win) {
+      remove();
+      return;
+    }
+    // Clean up once the dialog closes; keep a generous fallback so a browser
+    // that never fires afterprint doesn't leak the iframe forever.
+    win.addEventListener('afterprint', () => setTimeout(remove, 300), { once: true });
+    setTimeout(() => {
+      if (document.body.contains(iframe)) remove();
+    }, 120_000);
+    try {
+      win.focus();
+      win.print();
+    } catch {
+      remove();
+    }
+  };
+  iframe.srcdoc = html;
+  document.body.appendChild(iframe);
+}
+
 /** Open a full HTML document in a new tab (blob URL, so it's a real navigable
  *  page — the deck's keyboard nav and fullscreen work). Falls back to a
  *  download if the tab is blocked by a popup blocker. */

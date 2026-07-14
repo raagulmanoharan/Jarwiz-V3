@@ -71,7 +71,7 @@ function userTurn(req: ExportRequest): string {
 /* ─── System prompts ──────────────────────────────────────────────────────── */
 
 const DESIGN_PHILOSOPHY = `DESIGN DIRECTION — Jarwiz is warm-monochrome and editorial. This is what separates a designed deck from a generic one:
-- Spend ALL boldness on SCALE, negative space, and ONE solid-ink moment per slide — never on colour. The palette is a chosen warm neutral (already themed light + dark); no gradients, no coloured accent, no emoji, no drop shadows.
+- Spend ALL boldness on SCALE, negative space, and ONE solid-ink moment per slide — never on colour. The palette is a chosen warm-paper neutral; no gradients, no coloured accent, no emoji, no drop shadows.
 - The type signature is a HEAVY grotesque display against MONO uppercase utility labels (kickers, captions, data). Lean on that contrast — it's the whole personality — not a novelty face.
 - Composition is LEFT-anchored and asymmetric. Do NOT centre everything (centred-everything is the templated AI look); reserve centring for at most the cover or one closing statement. Vary the composition slide to slide.
 - Show evidence, don't just tell it: tabulate a comparison, chart the numbers, break a stat out big.
@@ -98,11 +98,13 @@ Read the WHOLE board as grounding, then SYNTHESISE — don't transcribe. Find th
 
 ${DESIGN_PHILOSOPHY}
 
-HOW OUTPUT WORKS — you write ONLY the slides; a Jarwiz deck shell wraps them and already provides the palette (CSS variables --ground/--panel/--ink/--muted/--hair/--solid, themed light AND dark), the type system, the 16:9 stage, ALL navigation (arrows/space/click/‹›, mono counter, progress bar, 'f' fullscreen, #hash deep-links), the staggered enter motion (reduced-motion aware), and the footer. DO NOT write <!DOCTYPE>, <html>, <head>, <style>, <script>, or any chrome/nav — yours would fight the shell. Just emit a run of slide sections.
+THE DELIVERABLE IS A PDF — each slide is ONE printed 16:9 page, downloaded and shared as a document. There is NO on-screen navigation, no clicking or advancing — so never reference "click", "next", page numbers, or a counter. Design each slide as a self-contained page that reads on its own.
+
+HOW OUTPUT WORKS — you write ONLY the slides; a Jarwiz deck shell wraps them and already provides the palette (CSS variables --ground/--panel/--ink/--muted/--hair/--solid), the type system, the 16:9 page, and a small "Made with Jarwiz" mark on every page. DO NOT write <!DOCTYPE>, <html>, <head>, <style>, or <script>; DO NOT add your own footer, page number, logo, or nav — the shell owns all chrome. Just emit a run of slide sections.
 
 Each slide:
   <section class="slide"><div class="grid"> …building blocks… </div></section>
-Modifiers: <section class="slide slide--cover"> (hero — content sinks to lower-left) · <section class="slide slide--section"> (a divider on the panel ground). Put class="reveal" on each top-level block inside .grid to ride the staggered enter.
+Modifiers: <section class="slide slide--cover"> (hero — content sinks to the lower-left) · <section class="slide slide--section"> (a divider on the panel ground).
 
 BUILDING BLOCKS (compose these — all pre-themed; never hard-code a colour):
 - <p class="kicker">SECTION LABEL</p> — mono uppercase eyebrow.
@@ -239,10 +241,10 @@ function fallbackSlideshow(req: ExportRequest): string {
   // Cover — kicker, oversized headline lower-left, rule, lede.
   slidesHtml.push(
     `<section class="slide slide--cover"><div class="grid">
-      <p class="kicker reveal">Jarwiz deck</p>
-      <h1 class="display reveal">${escapeHtml(title)}</h1>
-      <div class="rule reveal"></div>
-      <p class="lede reveal">A working board, told as a presentation — ${count} synthesised into a narrative.</p>
+      <p class="kicker">Jarwiz deck</p>
+      <h1 class="display">${escapeHtml(title)}</h1>
+      <div class="rule"></div>
+      <p class="lede">A working board, told as a presentation — ${count} synthesised into a narrative.</p>
     </div></section>`,
   );
 
@@ -260,9 +262,9 @@ function fallbackSlideshow(req: ExportRequest): string {
       : '<p class="muted">No text on this card.</p>';
     slidesHtml.push(
       `<section class="slide"><div class="grid">
-        <p class="kicker reveal">${kind}</p>
-        <h2 class="display reveal">${heading}</h2>
-        <div class="body reveal">${paras}</div>
+        <p class="kicker">${kind}</p>
+        <h2 class="display">${heading}</h2>
+        <div class="body">${paras}</div>
       </div></section>`,
     );
   });
@@ -270,9 +272,9 @@ function fallbackSlideshow(req: ExportRequest): string {
   // Closing — a confident sign-off on the panel ground.
   slidesHtml.push(
     `<section class="slide slide--panel slide--cover"><div class="grid">
-      <p class="kicker reveal">Where next</p>
-      <h2 class="display reveal">Take it further.</h2>
-      <p class="lede reveal">Every card here can be pushed, compared, or built out — back on the Jarwiz canvas.</p>
+      <p class="kicker">Where next</p>
+      <h2 class="display">Take it further.</h2>
+      <p class="lede">Every card here can be pushed, compared, or built out — back on the Jarwiz canvas.</p>
     </div></section>`,
   );
 
@@ -280,13 +282,18 @@ function fallbackSlideshow(req: ExportRequest): string {
 }
 
 /**
- * The tested deck shell — the ONE self-contained document both the model path
- * and the fallback ship inside. It owns the warm-monochrome palette (light +
- * dark), the mono-utility ↔ heavy-display type system, the 16:9 stage, every
- * building-block class the prompt documents (.split/.steps/.stats/.cmp/.chart/
- * .quote…), the staggered slide-enter, and — critically — the navigation, so a
- * deck's slides ALWAYS switch and never come up blank regardless of what the
- * model authored inside each `<section>`.
+ * The deck shell — the ONE self-contained document both the model path and the
+ * fallback ship inside. The slideshow is a DOWNLOADABLE PDF, so this is a clean
+ * PAGED document, not an interactive player: each slide is a fixed 16:9 page,
+ * stacked (scrollable on screen, one-per-page in print), with no navigation
+ * chrome. It owns the warm-paper palette, the mono-utility ↔ heavy-display type
+ * system, every building-block class the prompt documents, and the single
+ * "Made with Jarwiz" mark on each page.
+ *
+ * WYSIWYG sizing: slides are size containers and all type is in container-query
+ * units (cqh/cqw), so a slide reads identically scaled-down in the modal preview
+ * and at full 1280×720 in the printed PDF. Print rules force one slide per page,
+ * exact background colours, and no on-screen shadows/gaps.
  */
 function deckShell(title: string, slides: string): string {
   return `<!DOCTYPE html>
@@ -302,115 +309,81 @@ function deckShell(title: string, slides: string): string {
     --sans:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
     --mono:ui-monospace,'SFMono-Regular',Menlo,monospace;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --ground:#100f0c; --panel:#1b1913; --ink:#f5f2ea; --muted:#a49e90;
-      --hair:rgba(245,242,234,.14); --solid:#f5f2ea;
-    }
-  }
   * { box-sizing:border-box; margin:0; padding:0; }
-  html,body { height:100%; }
-  body { background:var(--ground); color:var(--ink); font-family:var(--sans); -webkit-font-smoothing:antialiased; overflow:hidden; }
-  .progress { position:fixed; top:0; left:0; height:2px; background:var(--solid); width:0; transition:width .45s cubic-bezier(.2,0,0,1); z-index:20; }
-  .deck { position:relative; height:100vh; }
-  .slide { position:absolute; inset:0; display:none; padding:9vh 9vw 13vh; overflow:hidden; }
-  .slide.active { display:grid; align-content:center; }
+  body { background:#e7e5df; font-family:var(--sans); color:var(--ink); -webkit-font-smoothing:antialiased; }
+  .deck { display:flex; flex-direction:column; align-items:center; gap:26px; padding:26px; }
+  /* A slide is a fixed 16:9 page and a size container, so its type scales as one. */
+  .slide {
+    container-type:size;
+    position:relative;
+    width:min(100%,1280px); aspect-ratio:16/9;
+    background:var(--ground); color:var(--ink);
+    overflow:hidden;
+    border:1px solid var(--hair); border-radius:8px;
+    box-shadow:0 10px 34px rgba(23,21,15,.10);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    display:flex; flex-direction:column; justify-content:center;
+    padding:11cqh 8.5cqw 12cqh;
+  }
+  .slide--cover { justify-content:flex-end; }
   .slide--panel, .slide--section { background:var(--panel); }
-  .slide--cover.active { align-content:end; padding-bottom:17vh; }
-  .grid { width:min(84vw,1440px); }
+  .grid { width:100%; }
+  /* The one persistent mark — clean, minimal, brand. */
+  .slide::after {
+    content:"Made with Jarwiz";
+    position:absolute; right:8.5cqw; bottom:5cqh;
+    font-family:var(--mono); text-transform:uppercase; letter-spacing:.18em;
+    font-size:1.3cqh; color:var(--muted);
+  }
   /* Type & utility */
-  .kicker { font-family:var(--mono); text-transform:uppercase; letter-spacing:.16em; font-size:1.4vh; color:var(--muted); margin-bottom:3vh; }
-  .display { font-weight:790; letter-spacing:-.025em; line-height:1.03; text-wrap:balance; color:var(--ink); }
-  h1.display { font-size:clamp(40px,9vh,150px); }
-  h2.display { font-size:clamp(28px,5vh,80px); margin-bottom:2.6vh; }
-  .rule { width:11vw; max-width:220px; height:2px; background:var(--solid); margin:3.6vh 0; }
-  .lede { font-size:2.6vh; line-height:1.4; color:var(--muted); max-width:46ch; }
-  .body { font-size:2vh; line-height:1.5; color:var(--ink); max-width:54ch; }
-  .body p { margin-bottom:1.6vh; } .body p:last-child { margin-bottom:0; }
+  .kicker { font-family:var(--mono); text-transform:uppercase; letter-spacing:.18em; font-size:1.7cqh; color:var(--muted); margin-bottom:3.4cqh; }
+  .display { font-weight:800; letter-spacing:-.025em; line-height:1.02; text-wrap:balance; color:var(--ink); }
+  h1.display { font-size:12cqh; }
+  h2.display { font-size:6.6cqh; margin-bottom:3cqh; }
+  .rule { width:9cqw; height:2px; background:var(--solid); margin:3.4cqh 0; }
+  .lede { font-size:3.2cqh; line-height:1.4; color:var(--muted); max-width:44ch; }
+  .display + .lede { margin-top:2.8cqh; }
+  .body { font-size:2.5cqh; line-height:1.5; color:var(--ink); max-width:54ch; }
+  .body p { margin-bottom:1.8cqh; } .body p:last-child { margin-bottom:0; }
   .muted { color:var(--muted); }
   /* Two-column */
-  .split { display:grid; grid-template-columns:1.02fr .98fr; gap:6vw; align-items:start; }
+  .split { display:grid; grid-template-columns:1.02fr .98fr; gap:6cqw; align-items:start; }
   /* Numbered steps — auto mono index + hairline dividers */
-  .steps { list-style:none; counter-reset:s; max-width:60ch; }
-  .steps li { counter-increment:s; position:relative; padding:2vh 0 2vh 6ch; border-top:1px solid var(--hair); font-size:2vh; line-height:1.4; }
+  .steps { list-style:none; counter-reset:s; max-width:62ch; }
+  .steps li { counter-increment:s; position:relative; padding:2.4cqh 0 2.4cqh 6ch; border-top:1px solid var(--hair); font-size:2.5cqh; line-height:1.4; }
   .steps li:last-child { border-bottom:1px solid var(--hair); }
-  .steps li::before { content:counter(s,decimal-leading-zero); position:absolute; left:0; top:2vh; font-family:var(--mono); font-size:1.4vh; letter-spacing:.12em; color:var(--muted); }
+  .steps li::before { content:counter(s,decimal-leading-zero); position:absolute; left:0; top:2.4cqh; font-family:var(--mono); font-size:1.7cqh; letter-spacing:.12em; color:var(--muted); }
   /* Stat row */
-  .stats { display:flex; flex-wrap:wrap; gap:0; }
-  .stat { padding:0 3vw; } .stat:first-child { padding-left:0; } .stat + .stat { border-left:1px solid var(--hair); }
-  .stat b { display:block; font-weight:800; letter-spacing:-.03em; font-size:clamp(28px,7vh,96px); font-variant-numeric:tabular-nums; line-height:1; }
-  .stat span { display:block; margin-top:1.4vh; font-family:var(--mono); text-transform:uppercase; letter-spacing:.14em; font-size:1.35vh; color:var(--muted); }
+  .stats { display:flex; flex-wrap:wrap; }
+  .stat { padding:0 3cqw; } .stat:first-child { padding-left:0; } .stat + .stat { border-left:1px solid var(--hair); }
+  .stat b { display:block; font-weight:800; letter-spacing:-.03em; font-size:11cqh; font-variant-numeric:tabular-nums; line-height:1; }
+  .stat span { display:block; margin-top:1.6cqh; font-family:var(--mono); text-transform:uppercase; letter-spacing:.14em; font-size:1.6cqh; color:var(--muted); }
   /* Comparison table */
-  .cmp { border-collapse:collapse; width:100%; max-width:1100px; font-size:1.9vh; }
-  .cmp th { text-align:left; font-family:var(--mono); text-transform:uppercase; letter-spacing:.12em; font-size:1.3vh; font-weight:500; color:var(--muted); padding:0 2.4ch 1.8vh 0; border-bottom:1px solid var(--hair); }
-  .cmp td { text-align:left; padding:1.9vh 2.4ch 1.9vh 0; border-bottom:1px solid var(--hair); font-variant-numeric:tabular-nums; color:var(--ink); }
+  .cmp { border-collapse:collapse; width:100%; font-size:2.4cqh; }
+  .cmp th { text-align:left; font-family:var(--mono); text-transform:uppercase; letter-spacing:.12em; font-size:1.6cqh; font-weight:500; color:var(--muted); padding:0 2.4ch 2.2cqh 0; border-bottom:1px solid var(--hair); }
+  .cmp td { text-align:left; padding:2.2cqh 2.4ch; border-bottom:1px solid var(--hair); font-variant-numeric:tabular-nums; color:var(--ink); }
+  .cmp td:first-child, .cmp th:first-child { padding-left:0; }
   .cmp .hot { font-weight:750; }
   /* Chart */
-  .chart { width:100%; } .chart svg { width:100%; max-width:1000px; height:auto; overflow:visible; }
-  .caption { margin-top:2.2vh; font-family:var(--mono); text-transform:uppercase; letter-spacing:.12em; font-size:1.35vh; color:var(--muted); }
+  .chart { width:100%; } .chart svg { width:100%; max-width:100%; height:auto; overflow:visible; }
+  .caption { margin-top:2.6cqh; font-family:var(--mono); text-transform:uppercase; letter-spacing:.12em; font-size:1.6cqh; color:var(--muted); }
   /* Quote */
-  .quote { font-size:clamp(24px,4.4vh,64px); font-weight:720; letter-spacing:-.02em; line-height:1.15; text-wrap:balance; max-width:22ch; }
-  .cite { margin-top:3vh; font-family:var(--mono); text-transform:uppercase; letter-spacing:.14em; font-size:1.4vh; color:var(--muted); }
-  /* Chrome */
-  .foot { position:fixed; left:9vw; right:9vw; bottom:5vh; display:flex; justify-content:space-between; align-items:center; font-family:var(--mono); text-transform:uppercase; letter-spacing:.12em; font-size:1.25vh; color:var(--muted); z-index:10; pointer-events:none; }
-  .nav { position:fixed; right:9vw; bottom:8.4vh; display:flex; align-items:center; gap:1.2vw; z-index:15; }
-  .counter { font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:1.5vh; letter-spacing:.1em; color:var(--muted); }
-  .nav button { appearance:none; border:1px solid var(--hair); background:transparent; color:var(--ink); width:4.6vh; height:4.6vh; border-radius:50%; font-size:2.2vh; cursor:pointer; display:grid; place-items:center; transition:background .15s cubic-bezier(.2,0,0,1); }
-  .nav button:hover { background:var(--panel); }
-  .nav button:focus-visible, .slide:focus-visible { outline:2px solid var(--ink); outline-offset:3px; }
-  /* One orchestrated move: staggered fade+rise of each active slide's blocks.
-     No base opacity:0 on .reveal, so content is visible even if this never runs. */
-  .slide.active .reveal { animation:rise .5s cubic-bezier(.2,0,0,1) both; }
-  .slide.active .reveal:nth-child(1){ animation-delay:.02s; }
-  .slide.active .reveal:nth-child(2){ animation-delay:.10s; }
-  .slide.active .reveal:nth-child(3){ animation-delay:.18s; }
-  .slide.active .reveal:nth-child(4){ animation-delay:.26s; }
-  .slide.active .reveal:nth-child(n+5){ animation-delay:.32s; }
-  @keyframes rise { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
-  @media (prefers-reduced-motion: reduce) {
-    .progress { transition:none; }
-    .slide.active .reveal { animation:none; }
+  .quote { font-size:5.2cqh; font-weight:740; letter-spacing:-.02em; line-height:1.16; text-wrap:balance; max-width:20ch; }
+  .cite { margin-top:3.4cqh; font-family:var(--mono); text-transform:uppercase; letter-spacing:.14em; font-size:1.7cqh; color:var(--muted); }
+  /* Print: one slide per page, exact colours, no screen shadows/gaps. */
+  @media print {
+    @page { size:1280px 720px; margin:0; }
+    body { background:#fff; }
+    .deck { gap:0; padding:0; }
+    .slide { width:1280px; height:720px; aspect-ratio:auto; border:none; border-radius:0; box-shadow:none; break-after:page; page-break-after:always; }
+    .slide:last-child { break-after:auto; page-break-after:auto; }
   }
 </style>
 </head>
 <body>
-  <div class="progress" id="progress"></div>
-  <div class="deck" id="deck">
+  <div class="deck">
 ${slides}
   </div>
-  <div class="foot"><span>${escapeHtml(title)}</span><span>Made with Jarwiz</span></div>
-  <div class="nav">
-    <span class="counter" id="counter">01 / 01</span>
-    <button id="prev" aria-label="Previous slide">‹</button>
-    <button id="next" aria-label="Next slide">›</button>
-  </div>
-<script>
-  (function () {
-    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
-    if (!slides.length) return;
-    var i = 0;
-    function clamp(n){ return Math.max(0, Math.min(slides.length - 1, n)); }
-    function show(n){
-      i = clamp(n);
-      slides.forEach(function(s, k){ s.classList.toggle('active', k === i); });
-      var pct = slides.length > 1 ? (i / (slides.length - 1)) * 100 : 100;
-      document.getElementById('progress').style.width = pct + '%';
-      var pad = function(x){ return (x < 10 ? '0' : '') + x; };
-      document.getElementById('counter').textContent = pad(i + 1) + ' / ' + pad(slides.length);
-      if (location.hash !== '#' + (i + 1)) history.replaceState(null, '', '#' + (i + 1));
-    }
-    function go(d){ show(i + d); }
-    document.getElementById('next').onclick = function(){ go(1); };
-    document.getElementById('prev').onclick = function(){ go(-1); };
-    document.addEventListener('keydown', function(e){
-      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { go(1); e.preventDefault(); }
-      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { go(-1); e.preventDefault(); }
-      else if (e.key === 'f' || e.key === 'F') { if (!document.fullscreenElement) document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); else document.exitFullscreen && document.exitFullscreen(); }
-    });
-    var start = parseInt((location.hash || '').slice(1), 10);
-    show(isNaN(start) ? 0 : start - 1);
-  })();
-</script>
 </body>
 </html>`;
 }

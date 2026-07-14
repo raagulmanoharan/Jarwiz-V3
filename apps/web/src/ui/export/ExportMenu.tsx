@@ -69,7 +69,7 @@ export function ExportMenu() {
             <span className="jz-export-item-icon"><SlidesGlyph /></span>
             <span className="jz-export-item-text">
               <span className="jz-export-item-title">As a slideshow</span>
-              <span className="jz-export-item-sub">A slick, presentation-ready deck built from your board</span>
+              <span className="jz-export-item-sub">A presentation-ready PDF deck built from your board</span>
             </span>
           </button>
           <button className="jz-export-item" role="menuitem" onClick={() => start('markdown')}>

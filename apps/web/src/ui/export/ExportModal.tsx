@@ -19,7 +19,7 @@ import {
   retryExport,
   subscribeExport,
 } from './exportStore';
-import { copyText, downloadText, openHtmlInNewTab, slugify } from './download';
+import { copyText, downloadText, openHtmlInNewTab, printDeckToPdf, slugify } from './download';
 
 export function ExportModal() {
   const state = useSyncExternalStore(subscribeExport, getExportState, getExportState);
@@ -89,17 +89,25 @@ export function ExportModal() {
 }
 
 function WorkingView({ status, slideshow }: { status: string; slideshow: boolean }) {
+  // A smoothly-easing progress bar: we can't know the true duration, so it
+  // decelerates toward ~92% and the view swaps to the result on done. Reads as
+  // the deck being "pieced together" rather than a dead spinner.
+  const [pct, setPct] = useState(6);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setPct((p) => (p >= 92 ? p : p + (92 - p) * 0.08));
+    }, 350);
+    return () => window.clearInterval(id);
+  }, []);
   return (
     <div className="jz-export-body jz-export-working">
-      <div className="jz-export-spinner" aria-hidden>
-        <span />
-        <span />
-        <span />
+      <div className="jz-export-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}>
+        <span className="jz-export-progress-fill" style={{ width: `${pct}%` }} />
       </div>
       <p className="jz-export-status">{status || 'Working…'}</p>
       <p className="jz-export-hint">
         {slideshow
-          ? 'Jarwiz is reading the whole board and designing a presentation — this takes a moment.'
+          ? 'Piecing together your slides — Jarwiz is reading the whole board and designing each page.'
           : 'Jarwiz is capturing the session into a comprehensive handoff.'}
       </p>
     </div>
@@ -123,42 +131,31 @@ function ErrorView({ message }: { message: string }) {
 }
 
 function SlideshowResult({ html, title }: { html: string; title: string }) {
-  const filename = `${slugify(title)}-slideshow.html`;
-  const [copied, setCopied] = useState(false);
-  const doCopy = async () => {
-    if (await copyText(html)) {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
-    }
-  };
+  const filename = `${slugify(title)}-slides.html`;
   return (
     <div className="jz-export-body">
-      <div className="jz-export-preview" aria-label="Slideshow preview">
-        {/* allow-same-origin so the deck's location.hash deep-linking works;
-            allow-scripts for its nav; sandboxed otherwise. It's our own
-            generated content shown back to the same user. */}
+      <div className="jz-export-preview jz-export-preview--deck" aria-label="Slideshow preview">
+        {/* The deck is a static paged document (no scripts) — a plain sandbox
+            is enough; it scrolls to show every page. */}
         <iframe
           className="jz-export-iframe"
           title="Slideshow preview"
           srcDoc={html}
-          sandbox="allow-scripts allow-same-origin allow-modals allow-popups"
-          allow="fullscreen"
+          sandbox=""
         />
       </div>
       <div className="jz-export-actions">
         <button
           className="jz-export-action jz-export-action--primary"
-          onClick={() => openHtmlInNewTab(html, filename)}
+          onClick={() => printDeckToPdf(html)}
         >
-          Open full screen
+          Download PDF
         </button>
-        <button className="jz-export-action" onClick={() => downloadText(html, filename, 'text/html')}>
-          Download .html
-        </button>
-        <button className="jz-export-action" onClick={doCopy}>
-          {copied ? 'Copied ✓' : 'Copy HTML'}
+        <button className="jz-export-action" onClick={() => openHtmlInNewTab(html, filename)}>
+          Open in new tab
         </button>
       </div>
+      <p className="jz-export-note">In the print dialog, choose “Save as PDF”. Each slide becomes one page.</p>
     </div>
   );
 }
