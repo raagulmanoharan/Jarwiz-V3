@@ -46,41 +46,48 @@ import { MentionInput, type MentionCard, type MentionInputHandle, type MentionMo
 //
 // The starters and self-typing examples are keyed on WHO is here — the
 // ask-once persona modal's pick (personaStore). `null` = generic/exploring.
-const INTRO_STARTERS: Record<Persona | 'default', Array<{ label: string; prompt: string }>> = {
+// Each starter can pin the ANSWER SHAPE it implies (`mode`), not just seed the
+// prompt text — so a first tap teaches the canvas-native move (a whole Board, a
+// Table, a Map…) instead of quietly resolving to one doc card. Every study-ish
+// persona leads with a **Board** starter (compose → a planned multi-card
+// workspace): the highest-value move, otherwise invisible until you type "/".
+// Modes are pinned only where the shape is a reliable match for the prompt; the
+// pin stays a dismissible suggestion (tap the chip → change or clear it).
+const INTRO_STARTERS: Record<Persona | 'default', Array<{ label: string; prompt: string; mode?: ModeShape }>> = {
   default: [
-    { label: 'Compare a few tools', prompt: 'Compare Notion, Linear and Asana for a small team' },
+    { label: 'Build a board', mode: 'board', prompt: 'Build a workspace comparing Notion, Linear and Asana for a small team: features, pricing, and a recommendation' },
+    { label: 'Compare a few tools', mode: 'table', prompt: 'Compare Notion, Linear and Asana for a small team in a table' },
     { label: 'Brainstorm a feature', prompt: 'Brainstorm features for a habit-tracking app' },
-    { label: 'Break down a plan', prompt: 'Break down a launch plan for a new product' },
   ],
   product: [
+    { label: 'Build a launch board', mode: 'board', prompt: 'Build a launch workspace for a new product: the plan, the risks, a rollout timeline, and the success metrics' },
     { label: 'Break down a launch', prompt: 'Break down a launch plan for a new product' },
-    { label: 'Brainstorm a feature', prompt: 'Brainstorm features for a habit-tracking app' },
-    { label: 'Compare a few tools', prompt: 'Compare Notion, Linear and Asana for a small team' },
+    { label: 'Compare a few tools', mode: 'table', prompt: 'Compare Notion, Linear and Asana for a small team in a table' },
   ],
   research: [
-    { label: 'Map a topic', prompt: 'Map the research landscape around habit formation' },
-    { label: 'Compare findings', prompt: 'Compare the main studies on remote work productivity in a table' },
+    { label: 'Build a research board', mode: 'board', prompt: 'Build a research workspace on habit formation: the landscape, the key players, a comparison, and the open questions' },
+    { label: 'Compare findings', mode: 'table', prompt: 'Compare the main studies on remote work productivity in a table' },
     { label: 'Digest a long read', prompt: 'Summarize the key arguments of a long report into one page' },
   ],
   design: [
-    { label: 'Map a user flow', prompt: 'Map the onboarding flow for a mobile app end to end' },
-    { label: 'Prototype an idea', prompt: 'Prototype a focus-timer app I can click through' },
+    { label: 'Map a user flow', mode: 'diagram', prompt: 'Map the onboarding flow for a mobile app end to end' },
+    { label: 'Prototype an idea', mode: 'prototype', prompt: 'Prototype a focus-timer app I can click through' },
     { label: 'Explore concepts', prompt: 'Brainstorm three directions for a pricing page' },
   ],
   trip: [
-    { label: 'Plan an itinerary', prompt: 'Plan a five-day Tokyo itinerary as a day-by-day board' },
-    { label: 'Compare stays', prompt: 'Compare three Lisbon neighbourhoods for a week-long stay' },
-    { label: 'Pack smart', prompt: 'Build a packing checklist for two weeks of mixed weather' },
+    { label: 'Plan an itinerary', mode: 'board', prompt: 'Plan a five-day Tokyo itinerary as a day-by-day board' },
+    { label: 'Compare stays', mode: 'table', prompt: 'Compare three Lisbon neighbourhoods for a week-long stay in a table' },
+    { label: 'Pack smart', mode: 'list', prompt: 'Build a packing checklist for two weeks of mixed weather' },
   ],
   talk: [
-    { label: 'Outline a talk', prompt: 'Outline a 20-minute conference talk on design systems' },
-    { label: 'Storyboard slides', prompt: 'Storyboard the slide flow for a product demo' },
+    { label: 'Outline a talk', mode: 'list', prompt: 'Outline a 20-minute conference talk on design systems' },
+    { label: 'Storyboard slides', mode: 'board', prompt: 'Storyboard the slide flow for a product demo' },
     { label: 'Sharpen the message', prompt: 'Distill my talk notes into three memorable takeaways' },
   ],
   decide: [
-    { label: 'Compare options', prompt: 'Compare three laptops for video editing in a table' },
+    { label: 'Build a decision board', mode: 'board', prompt: 'Build a decision workspace for choosing a laptop for video editing: the options, the criteria, a scored comparison, and the trade-offs' },
+    { label: 'Compare options', mode: 'table', prompt: 'Compare three laptops for video editing in a table' },
     { label: 'Weigh a big call', prompt: 'Lay out the pros and cons of relocating to Berlin' },
-    { label: 'Find the blind spots', prompt: 'What am I missing before signing a two-year lease?' },
   ],
 };
 
@@ -715,7 +722,7 @@ export function PromptBar() {
     },
     [editor],
   );
-  const useStarter = (q: string) => {
+  const useStarter = (q: string, starterMode?: ModeShape) => {
     if (editingSole) {
       // Hand off in READ mode: edit mode shows raw markdown and its height
       // only ratchets up (the "long empty card" bug) — read mode renders the
@@ -726,6 +733,10 @@ export function PromptBar() {
       return;
     }
     inputRef.current?.setText(q);
+    // A capability starter pins its answer shape so the tap teaches the move
+    // (a whole Board, a Table…) rather than falling through to a doc; pickMode
+    // marks it a user choice, so the auto-suggest hands off (it stays editable).
+    if (starterMode) pickMode(starterMode);
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
@@ -775,7 +786,7 @@ export function PromptBar() {
           <p className="jz-pb-intro-sub">{INTRO_SUB[persona ?? 'default']}</p>
           <div className="jz-pb-intro-chips" key={persona ?? 'default'}>
             {introStarters.map((s) => (
-              <button key={s.label} className="jz-pb-intro-chip" onClick={() => useStarter(s.prompt)} title="Use this prompt (editable)">{s.label}</button>
+              <button key={s.label} className="jz-pb-intro-chip" onClick={() => useStarter(s.prompt, s.mode)} title={s.mode === 'board' ? 'Build a whole board (editable)' : 'Use this prompt (editable)'}>{s.label}</button>
             ))}
           </div>
         </div>
