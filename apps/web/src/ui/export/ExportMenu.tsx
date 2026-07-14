@@ -140,7 +140,9 @@ function ExportRow({
   // The trailing action morphs with state: + (kick off) → spinner → ↓ (download).
   const action =
     slot.phase === 'working' ? (
-      <span className="jz-icon-btn jz-icon-btn--spin" aria-label="Generating" role="status" />
+      <span className="jz-icon-btn jz-icon-btn--busy" aria-label="Generating" role="status">
+        <span className="jz-spinner" />
+      </span>
     ) : slot.phase === 'ready' ? (
       <button
         className="jz-icon-btn jz-icon-btn--go"

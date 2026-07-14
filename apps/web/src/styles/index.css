@@ -1241,7 +1241,7 @@ body,
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  width: 320px;
+  width: 360px;
   padding: 6px;
   border-radius: var(--jz-radius-md);
   background: var(--jz-surface-raised);
@@ -1254,7 +1254,7 @@ body,
 }
 .jz-export-item {
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 12px;
   padding: 10px;
   border: none;
@@ -1265,6 +1265,7 @@ body,
   font-family: var(--jz-font-ui);
 }
 .jz-export-item-icon {
+  align-self: flex-start;
   flex: 0 0 auto;
   display: grid;
   place-items: center;
@@ -1282,6 +1283,9 @@ body,
 .jz-export-item-title {
   font-size: 13.5px;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .jz-export-item-sub {
   font-size: 12px;
@@ -1298,9 +1302,9 @@ body,
 .jz-export-item-action {
   flex: 0 0 auto;
   margin-left: auto;
-  /* Sit level with the title / leading icon, not floating in the row middle. */
-  align-self: flex-start;
-  margin-top: 1px;
+  /* Span the full text block (title + description). */
+  align-self: stretch;
+  display: flex;
 }
 /* Progress bar — eases up while a row is generating. */
 .jz-export-item-progress {
@@ -1330,23 +1334,24 @@ body,
   line-height: 16px;
   color: var(--jz-danger);
 }
-/* The morphing action button: + (kick off) → spinner → download. */
+/* The morphing action control: + (kick off) → spinner → download. It fills the
+ * height of the row's text block (title + description). */
 .jz-icon-btn {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: 40px;
+  min-height: 40px;
+  border-radius: var(--jz-radius-md);
   border: 1px solid var(--jz-hairline);
   background: var(--jz-surface);
   color: var(--jz-ink-900);
   cursor: pointer;
-  transition: background var(--jz-dur-fast) var(--jz-ease-out),
-    transform var(--jz-dur-fast) var(--jz-ease-out);
+  transition: background var(--jz-dur-fast) var(--jz-ease-out);
 }
 .jz-icon-btn:hover {
   background: color-mix(in srgb, var(--jz-ink-900) 7%, var(--jz-surface));
-  transform: translateY(-1px);
 }
 /* Ready → the download button reads as the primary CTA (accent-filled). */
 .jz-icon-btn--go {
@@ -1357,22 +1362,26 @@ body,
 .jz-icon-btn--go:hover {
   background: color-mix(in srgb, var(--jz-accent) 88%, var(--jz-ink-500));
 }
-/* Working → a quiet spinner in the same slot. */
-.jz-icon-btn--spin {
+/* Working → the same frame, holding a small circular spinner. */
+.jz-icon-btn--busy {
   cursor: default;
-  border-color: var(--jz-hairline);
+}
+.jz-icon-btn--busy:hover {
+  background: var(--jz-surface);
+}
+.jz-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--jz-hairline);
   border-top-color: var(--jz-accent);
   animation: jz-export-spin 0.7s linear infinite;
-}
-.jz-icon-btn--spin:hover {
-  background: var(--jz-surface);
-  transform: none;
 }
 @keyframes jz-export-spin {
   to { transform: rotate(360deg); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .jz-icon-btn--spin { animation-duration: 1.6s; }
+  .jz-spinner { animation-duration: 1.6s; }
 }
 /* Ready dot on the button when the menu is closed. */
 .jz-export-dot {
