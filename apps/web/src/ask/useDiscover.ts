@@ -1,5 +1,5 @@
 /**
- * Ultra Think client — reads the board, asks the server for grounded related
+ * Scout client — reads the board, asks the server for grounded related
  * resources, and spawns accepted ones onto the canvas. The server does the
  * real work (grounded search + validation, see discover.ts); this hook owns
  * the request, the collected board summary, and the add-to-canvas action.

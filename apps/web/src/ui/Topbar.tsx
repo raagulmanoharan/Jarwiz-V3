@@ -7,7 +7,7 @@ import {
   subscribeSidePanel,
   toggleSidePanel,
 } from './sidePanelStore';
-import { UltraThink } from './UltraThink';
+import { Scout } from './Scout';
 import { JarwizSpark } from './JarwizSpark';
 import { DemoCounterChip } from './DemoAccess';
 import { canTidyBoard, useTidyBoard } from '../agents/tidyBoard';
@@ -40,7 +40,7 @@ export function Topbar() {
         <DemoCounterChip />
       </div>
       <div className="jz-topbar-right">
-        <UltraThink />
+        <Scout />
         <TidyButton />
         <ZoomDropdown />
         <ThemeToggleButton />

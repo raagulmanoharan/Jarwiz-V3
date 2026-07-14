@@ -253,20 +253,22 @@ body,
   gap: 8px;
 }
 
-/* ── Ultra Think — the gradient discovery button + results drawer ────────── */
-.jz-ultra {
+/* ── Scout — the gradient discovery button + results drawer ──────────────── */
+.jz-scout {
   position: relative;
 }
 /* At rest / thinking the button is a calm solid accent. Only the "ready" state
  * lights up with an animated gradient (and a soft glow pulse) to pull the eye
  * back to the discoveries waiting in the drawer. */
-.jz-ultra-btn {
+.jz-scout-btn {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   height: 32px;
   padding: 0 13px;
-  border: none;
+  border: 1px solid transparent; /* constant box so the filling→active flip doesn't shift 1px */
   border-radius: var(--jz-radius-pill);
   color: var(--jz-accent-ink);
   font-size: 12.5px;
@@ -275,41 +277,78 @@ body,
   background: var(--jz-accent);
   background-size: 300% 100%;
   box-shadow: 0 1px 8px color-mix(in srgb, var(--jz-accent) 34%, transparent);
-  transition: filter var(--jz-dur-fast, 120ms) var(--jz-ease-out, ease);
+  transition:
+    filter var(--jz-dur-fast, 120ms) var(--jz-ease-out, ease),
+    color var(--jz-dur-base) var(--jz-ease-out),
+    border-color var(--jz-dur-base) var(--jz-ease-out),
+    background-color var(--jz-dur-base) var(--jz-ease-out),
+    box-shadow var(--jz-dur-base) var(--jz-ease-out);
 }
-.jz-ultra-btn:hover {
+/* Spark + label ride above the progress fill. */
+.jz-scout-btn > * {
+  position: relative;
+  z-index: 1;
+}
+.jz-scout-btn:hover {
   filter: brightness(1.06);
 }
-.jz-ultra-btn--busy .jz-ultra-spark {
+/* ── Filling: the resting button doubles as a progress meter ─────────────────
+ * A calm "track" (muted surface) with an accent fill that creeps left→right as
+ * contentful cards land (--jz-scout-fill, 0→1). Not clickable until it tops
+ * out, at which point the modifier drops and the button becomes the solid
+ * accent above — a satisfying "unlock". */
+.jz-scout-btn--filling {
+  background: var(--jz-surface-raised);
+  border-color: var(--jz-ink-300);
+  color: var(--jz-ink-700);
+  box-shadow: none;
+  cursor: default;
+}
+.jz-scout-btn--filling:hover {
+  filter: none;
+}
+.jz-scout-btn--filling::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: calc(var(--jz-scout-fill, 0) * 100%);
+  background: color-mix(in srgb, var(--jz-accent) 22%, transparent);
+  transition: width var(--jz-dur-slow) var(--jz-ease-glide);
+}
+.jz-scout-btn--busy .jz-scout-spark {
   animation: jz-pdf-spin 1s linear infinite;
 }
-.jz-ultra-btn--ready {
+.jz-scout-btn--ready {
   background-image: linear-gradient(100deg, #8f8f8f, #cccccc, #9a9a9a, #8f8f8f);
   color: #111; /* black label reads on the light-grey shimmer, both themes */
-  animation: jz-ultra-shimmer 6s linear infinite, jz-ultra-glow 2.4s ease-in-out infinite;
+  animation: jz-scout-shimmer 6s linear infinite, jz-scout-glow 2.4s ease-in-out infinite;
 }
-.jz-ultra-spark {
+.jz-scout-spark {
   flex: none;
 }
-@keyframes jz-ultra-shimmer {
+@keyframes jz-scout-shimmer {
   to {
     background-position: 300% 0;
   }
 }
-@keyframes jz-ultra-glow {
+@keyframes jz-scout-glow {
   0%, 100% { box-shadow: 0 1px 8px color-mix(in srgb, var(--jz-accent) 34%, transparent); }
   50% { box-shadow: 0 2px 16px rgba(255, 255, 255, 0.32); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .jz-ultra-btn--ready {
+  .jz-scout-btn--ready {
     animation: none;
   }
-  .jz-ultra-btn--busy .jz-ultra-spark {
+  .jz-scout-btn--busy .jz-scout-spark {
     animation: none;
+  }
+  .jz-scout-btn--filling::before {
+    transition: none;
   }
 }
 
-.jz-ultra-drawer {
+.jz-scout-drawer {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
@@ -325,7 +364,7 @@ body,
   z-index: 60;
   animation: jz-tl-in var(--jz-dur-base) var(--jz-ease-out, ease);
 }
-.jz-ultra-drawer-head {
+.jz-scout-drawer-head {
   flex: none;
   display: flex;
   align-items: center;
@@ -333,7 +372,7 @@ body,
   padding: 11px 12px;
   border-bottom: 1px solid var(--jz-hairline);
 }
-.jz-ultra-drawer-title {
+.jz-scout-drawer-title {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -341,15 +380,15 @@ body,
   font-weight: 600;
   color: var(--jz-ink-900);
 }
-.jz-ultra-drawer-title .jz-ultra-spark {
+.jz-scout-drawer-title .jz-scout-spark {
   color: var(--jz-accent);
 }
-.jz-ultra-drawer-actions {
+.jz-scout-drawer-actions {
   display: flex;
   align-items: center;
   gap: 6px;
 }
-.jz-ultra-again {
+.jz-scout-again {
   border: 1px solid var(--jz-hairline);
   background: transparent;
   color: var(--jz-ink-600);
@@ -358,10 +397,10 @@ body,
   border-radius: var(--jz-radius-pill);
   cursor: pointer;
 }
-.jz-ultra-again:hover {
+.jz-scout-again:hover {
   background: var(--jz-surface-raised);
 }
-.jz-ultra-close {
+.jz-scout-close {
   display: inline-flex;
   border: none;
   background: transparent;
@@ -369,15 +408,15 @@ body,
   cursor: pointer;
   padding: 2px;
 }
-.jz-ultra-list {
+.jz-scout-list {
   overflow-y: auto;
   padding: 4px;
 }
 /* A theme header groups the resources researched for one board topic. */
-.jz-ultra-group + .jz-ultra-group {
+.jz-scout-group + .jz-scout-group {
   margin-top: 2px;
 }
-.jz-ultra-topic {
+.jz-scout-topic {
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -386,7 +425,7 @@ body,
   padding: 8px 8px 3px;
 }
 /* The whole row is a click-to-add button — full width, left-aligned. */
-.jz-ultra-row {
+.jz-scout-row {
   width: 100%;
   display: flex;
   gap: 9px;
@@ -397,14 +436,14 @@ body,
   border-radius: var(--jz-radius-sm);
   cursor: pointer;
 }
-.jz-ultra-row:hover {
+.jz-scout-row:hover {
   background: var(--jz-surface-raised);
 }
-.jz-ultra-row:hover .jz-ultra-add {
+.jz-scout-row:hover .jz-scout-add {
   border-color: var(--jz-accent);
   color: var(--jz-accent);
 }
-.jz-ultra-kind {
+.jz-scout-kind {
   flex: none;
   width: 22px;
   height: 22px;
@@ -415,16 +454,16 @@ body,
   background: var(--jz-surface-raised);
   color: var(--jz-ink-500);
 }
-.jz-ultra-row:hover .jz-ultra-kind {
+.jz-scout-row:hover .jz-scout-kind {
   background: var(--jz-card);
 }
-.jz-ultra-body {
+.jz-scout-body {
   flex: 1;
   min-width: 0;
 }
 /* No URL, no domain — just a title, a brief description, and a one-line reason.
  * The title is a single clamped line; the reason is deliberately one line. */
-.jz-ultra-rtitle {
+.jz-scout-rtitle {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--jz-ink-900);
@@ -432,7 +471,7 @@ body,
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.jz-ultra-desc {
+.jz-scout-desc {
   font-size: 11.5px;
   line-height: 1.4;
   color: var(--jz-ink-600);
@@ -442,7 +481,7 @@ body,
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.jz-ultra-reason {
+.jz-scout-reason {
   margin-top: 4px;
   font-size: 11px;
   line-height: 1.4;
@@ -451,7 +490,7 @@ body,
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.jz-ultra-add {
+.jz-scout-add {
   flex: none;
   align-self: center;
   width: 26px;

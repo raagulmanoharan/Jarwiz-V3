@@ -389,7 +389,7 @@ export interface AnalyzeResult {
   text: string;
 }
 
-/* ─── Discover (Ultra Think — grounded resource discovery) ────────────────────
+/* ─── Discover (Scout — grounded resource discovery) ──────────────────────────
  * Read the board and surface REAL related resources from the live web (Claude
  * grounded search). The links must be real — an ungrounded model invents dead
  * URLs — so the server validates and dedupes before returning them.

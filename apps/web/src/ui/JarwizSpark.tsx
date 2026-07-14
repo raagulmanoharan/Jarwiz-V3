@@ -1,7 +1,7 @@
 /**
  * The Jarwiz sparkle — THE brand mark (the four-point star from the topbar
  * logo), as a shared component so every surface that speaks in the app's
- * voice (action bar, sync/draft pills, comments, prompt bar, Ultra Think)
+ * voice (action bar, sync/draft pills, comments, prompt bar, Scout)
  * draws the exact same glyph. One path, one source: before this, the spark
  * appeared as a ✦ text glyph here and lucide's three-star Sparkles there
  * (owner call 2026-07-11 — one mark everywhere). Inherits `currentColor`.

@@ -634,7 +634,7 @@ app.post('/api/analyze', async (c) => {
   });
 });
 
-/** Ultra Think — grounded discovery of real related resources for the board. */
+/** Scout — grounded discovery of real related resources for the board. */
 app.post('/api/discover', async (c) => {
   let body: unknown;
   try {
