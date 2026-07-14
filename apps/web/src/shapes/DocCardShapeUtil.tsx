@@ -194,6 +194,10 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
     // Cards grow as tall as their content needs — no clamp, no Expand toggle
     // (owner call). `overflowing` therefore stays false and never collapses.
     maxHeight: Infinity,
+    // Grow to fit a long answer, but once settled never shrink below the card's
+    // current height — a one-line card kept a stable height instead of
+    // collapsing to that line after a drag/re-measure (owner call, 2026-07-14).
+    growOnly: true,
     growWidth: { max: 800, step: 128, ratio: 1.4 },
   });
   const collapsed = overflowing && !expanded && !isStreaming;
