@@ -137,53 +137,88 @@ function ExportRow({
     else downloadText(slot.text, `${slugify(title)}.md`, 'text/markdown');
   };
 
-  // Idle: the whole row is the trigger.
-  if (slot.phase === 'idle') {
-    return (
-      <button className="jz-export-item" role="menuitem" onClick={onStart}>
-        <span className="jz-export-item-icon">{icon}</span>
-        <span className="jz-export-item-text">
-          <span className="jz-export-item-title">{label}</span>
-          <span className="jz-export-item-sub">{sub}</span>
-        </span>
+  // The trailing action morphs with state: + (kick off) → spinner → ↓ (download).
+  const action =
+    slot.phase === 'working' ? (
+      <span className="jz-icon-btn jz-icon-btn--spin" aria-label="Generating" role="status" />
+    ) : slot.phase === 'ready' ? (
+      <button
+        className="jz-icon-btn jz-icon-btn--go"
+        onClick={download}
+        title={mode === 'slideshow' ? 'Download PDF' : 'Download .md'}
+        aria-label={mode === 'slideshow' ? 'Download PDF' : 'Download markdown'}
+      >
+        <DownloadIcon />
+      </button>
+    ) : slot.phase === 'error' ? (
+      <button className="jz-icon-btn" onClick={() => retryExport(mode)} title="Try again" aria-label="Try again">
+        <RetryIcon />
+      </button>
+    ) : (
+      <button
+        className="jz-icon-btn"
+        onClick={onStart}
+        title={`Build the ${mode === 'slideshow' ? 'slideshow' : 'markdown'}`}
+        aria-label={`Build the ${mode === 'slideshow' ? 'slideshow' : 'markdown'}`}
+      >
+        <PlusIcon />
       </button>
     );
-  }
 
-  // Working / ready / error: an inline status row (not a trigger).
+  // The secondary line under the title reflects state.
+  const secondary =
+    slot.phase === 'working' ? (
+      <>
+        <span className="jz-export-item-progress" aria-hidden>
+          <span style={{ width: `${pct}%` }} />
+        </span>
+        <span className="jz-export-item-status">{slot.status || 'Working…'}</span>
+      </>
+    ) : slot.phase === 'ready' ? (
+      <span className="jz-export-item-sub">
+        {mode === 'slideshow' ? 'Ready — download as PDF' : 'Ready — download .md'}
+      </span>
+    ) : slot.phase === 'error' ? (
+      <span className="jz-export-item-err">{slot.error}</span>
+    ) : (
+      <span className="jz-export-item-sub">{sub}</span>
+    );
+
   return (
-    <div className="jz-export-item jz-export-item--active">
+    <div className={`jz-export-item${slot.phase !== 'idle' ? ' jz-export-item--active' : ''}`} role="menuitem">
       <span className="jz-export-item-icon">{icon}</span>
       <span className="jz-export-item-text">
         <span className="jz-export-item-title">{label}</span>
-        {slot.phase === 'working' ? (
-          <>
-            <span className="jz-export-item-progress">
-              <span style={{ width: `${pct}%` }} />
-            </span>
-            <span className="jz-export-item-status">{slot.status || 'Working…'}</span>
-          </>
-        ) : null}
-        {slot.phase === 'ready' ? (
-          <span className="jz-export-item-actions">
-            <button className="jz-export-dl" onClick={download}>
-              {mode === 'slideshow' ? 'Download PDF' : 'Download .md'}
-            </button>
-            {mode === 'slideshow' ? (
-              <span className="jz-export-item-note">Opens the print dialog — pick “Save as PDF”.</span>
-            ) : null}
-          </span>
-        ) : null}
-        {slot.phase === 'error' ? (
-          <span className="jz-export-item-actions">
-            <span className="jz-export-item-err">{slot.error}</span>
-            <button className="jz-export-dl jz-export-dl--ghost" onClick={() => retryExport(mode)}>
-              Try again
-            </button>
-          </span>
-        ) : null}
+        {secondary}
       </span>
+      <span className="jz-export-item-action">{action}</span>
     </div>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 4v11M12 15l-4-4M12 15l4-4" />
+      <path d="M5 19h14" />
+    </svg>
+  );
+}
+
+function RetryIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+      <path d="M21 3v5h-5" />
+    </svg>
   );
 }
 

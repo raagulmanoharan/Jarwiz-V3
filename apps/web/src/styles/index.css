@@ -1254,19 +1254,15 @@ body,
 }
 .jz-export-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
-  padding: 10px 10px;
+  padding: 10px;
   border: none;
   border-radius: var(--jz-radius-sm);
   background: transparent;
   color: var(--jz-ink-900);
-  cursor: pointer;
   text-align: left;
   font-family: var(--jz-font-ui);
-}
-.jz-export-item:hover {
-  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
 }
 .jz-export-item-icon {
   flex: 0 0 auto;
@@ -1293,19 +1289,24 @@ body,
   color: var(--jz-ink-500);
 }
 
-/* Inline states inside the dropdown rows (no separate modal). */
-.jz-export-item--active {
-  align-items: flex-start;
-  cursor: default;
+/* Inline row states (no separate modal). The row is a static container; the
+ * trailing icon button is the only control. */
+.jz-export-item-text {
+  flex: 1 1 auto;
+  min-width: 0;
 }
-.jz-export-item--active:hover { background: transparent; }
-.jz-export-item-text { flex: 1 1 auto; min-width: 0; }
+.jz-export-item-action {
+  flex: 0 0 auto;
+  margin-left: auto;
+  align-self: center;
+}
 /* Progress bar — eases up while a row is generating. */
 .jz-export-item-progress {
   display: block;
   width: 100%;
+  max-width: 200px;
   height: 4px;
-  margin-top: 7px;
+  margin-top: 6px;
   border-radius: var(--jz-radius-pill);
   background: color-mix(in srgb, var(--jz-ink-900) 9%, transparent);
   overflow: hidden;
@@ -1318,49 +1319,58 @@ body,
   transition: width 0.35s var(--jz-ease-out);
 }
 .jz-export-item-status {
-  margin-top: 6px;
+  margin-top: 5px;
   font-size: 12px;
   color: var(--jz-ink-500);
-}
-.jz-export-item-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 9px;
-}
-.jz-export-dl {
-  height: 30px;
-  padding: 0 14px;
-  border: none;
-  border-radius: var(--jz-radius-pill);
-  background: var(--jz-accent);
-  color: var(--jz-accent-ink);
-  font-family: var(--jz-font-ui);
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background var(--jz-dur-fast) var(--jz-ease-out);
-}
-.jz-export-dl:hover {
-  background: color-mix(in srgb, var(--jz-accent) 88%, var(--jz-ink-500));
-}
-.jz-export-dl--ghost {
-  background: transparent;
-  color: var(--jz-ink-900);
-  border: 1px solid var(--jz-hairline);
-}
-.jz-export-dl--ghost:hover {
-  background: color-mix(in srgb, var(--jz-ink-900) 6%, transparent);
-}
-.jz-export-item-note {
-  font-size: 11px;
-  color: var(--jz-ink-400);
 }
 .jz-export-item-err {
   font-size: 12px;
   line-height: 16px;
   color: var(--jz-danger);
+}
+/* The morphing action button: + (kick off) → spinner → download. */
+.jz-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--jz-hairline);
+  background: var(--jz-surface);
+  color: var(--jz-ink-900);
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out),
+    transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-icon-btn:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 7%, var(--jz-surface));
+  transform: translateY(-1px);
+}
+/* Ready → the download button reads as the primary CTA (accent-filled). */
+.jz-icon-btn--go {
+  background: var(--jz-accent);
+  color: var(--jz-accent-ink);
+  border-color: transparent;
+}
+.jz-icon-btn--go:hover {
+  background: color-mix(in srgb, var(--jz-accent) 88%, var(--jz-ink-500));
+}
+/* Working → a quiet spinner in the same slot. */
+.jz-icon-btn--spin {
+  cursor: default;
+  border-color: var(--jz-hairline);
+  border-top-color: var(--jz-accent);
+  animation: jz-export-spin 0.7s linear infinite;
+}
+.jz-icon-btn--spin:hover {
+  background: var(--jz-surface);
+  transform: none;
+}
+@keyframes jz-export-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-icon-btn--spin { animation-duration: 1.6s; }
 }
 /* Ready dot on the button when the menu is closed. */
 .jz-export-dot {
