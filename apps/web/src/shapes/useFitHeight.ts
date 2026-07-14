@@ -33,13 +33,22 @@ interface FitOpts {
   expanded?: boolean;
   maxHeight?: number;
   growWidth?: GrowWidth;
+  /**
+   * When settled (not streaming), only ever GROW the card to fit — never shrink
+   * it below the height it already has. Keeps a card's height stable: a card
+   * with one line no longer collapses to that line, and a manual resize taller
+   * than the content is preserved. Streaming still grows and shrinks freely so
+   * the page-shaping width/height reflow works. (Owner call — text/doc cards
+   * keep a fixed height, 2026-07-14.)
+   */
+  growOnly?: boolean;
 }
 
 export function useFitHeight(
   shapeId: TLShapeId,
   ref: RefObject<HTMLElement | null>,
   deps: unknown[] = [],
-  { enabled = true, streaming = false, expanded = false, maxHeight = Infinity, growWidth }: FitOpts = {},
+  { enabled = true, streaming = false, expanded = false, maxHeight = Infinity, growWidth, growOnly = false }: FitOpts = {},
 ): boolean {
   const editor = useEditor();
   const [overflowing, setOverflowing] = useState(false);
@@ -70,7 +79,12 @@ export function useFitHeight(
       setOverflowing(over);
       const target = streaming || expanded || !over ? full : maxHeight;
       const curH = (cur.props as { h?: number }).h ?? 0;
-      if (target > 0 && Math.abs(target - curH) > 1) {
+      // Settled + growOnly: grow to fit a taller body, but never shrink below
+      // the card's current height (so a one-line card doesn't collapse, and a
+      // manual resize is kept). While streaming we still track exactly so the
+      // width/height reflow can shrink the card into a page shape.
+      const changed = growOnly && !streaming ? target > curH + 1 : Math.abs(target - curH) > 1;
+      if (target > 0 && changed) {
         editor.updateShape({ id: shapeId, type: cur.type, props: { h: target } } as Parameters<
           typeof editor.updateShape
         >[0]);
