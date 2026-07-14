@@ -70,11 +70,12 @@ function userTurn(req: ExportRequest): string {
 
 /* ─── System prompts ──────────────────────────────────────────────────────── */
 
-const DESIGN_PHILOSOPHY = `DESIGN DIRECTION — Jarwiz is warm-monochrome and editorial. This is what separates a designed deck from a generic one:
-- Spend ALL boldness on SCALE, negative space, and ONE solid-ink moment per slide — never on colour. The palette is a chosen warm-paper neutral; no gradients, no coloured accent, no emoji, no drop shadows.
-- The type signature is a HEAVY grotesque display against MONO uppercase utility labels (kickers, captions, data). Lean on that contrast — it's the whole personality — not a novelty face.
-- Composition is LEFT-anchored and asymmetric. Do NOT centre everything (centred-everything is the templated AI look); reserve centring for at most the cover or one closing statement. Vary the composition slide to slide.
-- Show evidence, don't just tell it: tabulate a comparison, chart the numbers, break a stat out big.
+const DESIGN_PHILOSOPHY = `DESIGN DIRECTION — Jarwiz is warm-monochrome and editorial. Design like a top studio; this is what separates a designed deck from a generic one:
+- ONE idea per slide. The best slides say a single thing with conviction and a lot of air. Keep body copy under ~25 words; if a slide wants more, split it or cut it. Whitespace is the design — never fill the page.
+- Spend ALL boldness on SCALE and negative space and ONE solid-ink moment per slide — never on colour. The palette is a chosen warm-paper neutral; no gradients, no coloured accent, no emoji, no drop shadows.
+- The type signature is a HEAVY grotesque display against MONO uppercase utility labels (kickers, captions, data). That contrast IS the personality — lean on it, not a novelty face. Trust the shell's type scale and hierarchy; your job is choosing the RIGHT blocks and showing restraint, not resizing.
+- Composition is LEFT-anchored and asymmetric. Do NOT centre everything (centred-everything is the templated AI look); reserve centring for at most the cover or one closing statement. VARY the layout slide to slide — a deck where every slide is kicker+headline+bullets is a failure.
+- Show evidence, don't just tell it: a comparison → a table; numbers over time or across items → a chart or a big stat; a sequence → steps; a claim + support → a two-column split.
 - AVOID the generic-AI-deck tells: every slide centred; Inter for everything; decorative 01/02/03 eyebrows where nothing is a sequence; cream-and-terracotta or a lone neon pop; rounded cards with a coloured left rail; emoji bullets; gradient heroes.`;
 
 /**
@@ -120,7 +121,9 @@ BUILDING BLOCKS (compose these — all pre-themed; never hard-code a colour):
 - Quote: <blockquote class="quote">…</blockquote><p class="cite">— source</p>.
 You MAY add inline style="…" for bespoke composition, referencing the same var(--…) tokens.
 
-OUTPUT CONTRACT — return ONLY the sequence of <section class="slide">…</section> blocks. No <html>/<head>/<style>/<script>, no wrapper, no prose, no code fences. First slide is the cover; last is a "Next steps"/"Takeaways" closing. 6–12 slides, each earning its place; genuinely VARY the archetypes (a deck of identical slides is the failure). Speaker-quality concision — a few tight lines or one strong statement per slide, never a wall of text.${webPara}
+PLAN THE ARC FIRST (think before you compose, don't print your plan): decide the deck's spine — cover → the tension/problem → the evidence → the turn → where next — then for EACH slide fix its single job and pick the ONE layout that serves it (statement, split, stat, steps, table, chart, quote). Deliberately alternate those layouts so no two adjacent slides look alike.
+
+OUTPUT CONTRACT — return ONLY the sequence of <section class="slide">…</section> blocks. No <html>/<head>/<style>/<script>, no wrapper, no prose, no code fences. First slide is the cover; last is a "Next steps"/"Takeaways" closing. 6–10 slides, each earning its place and carrying ONE idea; genuinely VARY the archetypes (a deck of identical slides is the failure). Ruthless concision — a few tight lines or one strong statement per slide, never a wall of text.${webPara}
 
 Be honest: never fabricate specific numbers, quotes, or sources; every chart/stat value comes from the board${web ? ' or from something you actually looked up' : ''}. Design like it's going in your portfolio.`;
 }
@@ -323,53 +326,57 @@ function deckShell(title: string, slides: string): string {
     box-shadow:0 10px 34px rgba(23,21,15,.10);
     -webkit-print-color-adjust:exact; print-color-adjust:exact;
     display:flex; flex-direction:column; justify-content:center;
-    padding:11cqh 8.5cqw 12cqh;
+    padding:13cqh 9.5cqw 13cqh;
   }
-  .slide--cover { justify-content:flex-end; }
+  .slide--cover { justify-content:flex-end; padding-bottom:15cqh; }
   .slide--panel, .slide--section { background:var(--panel); }
   .grid { width:100%; }
+  /* Vertical rhythm: layout does the spacing, so any stack of blocks the model
+     composes gets consistent, generous separation. The eyebrow hugs its heading. */
+  .grid > * + * { margin-top:3cqh; }
+  .col > * + * { margin-top:2.6cqh; }
+  .kicker + * { margin-top:1.8cqh; }
   /* The one persistent mark — clean, minimal, brand. */
   .slide::after {
     content:"Made with Jarwiz";
-    position:absolute; right:8.5cqw; bottom:5cqh;
-    font-family:var(--mono); text-transform:uppercase; letter-spacing:.18em;
-    font-size:1.3cqh; color:var(--muted);
+    position:absolute; right:9.5cqw; bottom:5.5cqh;
+    font-family:var(--mono); text-transform:uppercase; letter-spacing:.2em;
+    font-size:1.25cqh; color:var(--muted); opacity:.9;
   }
-  /* Type & utility */
-  .kicker { font-family:var(--mono); text-transform:uppercase; letter-spacing:.18em; font-size:1.7cqh; color:var(--muted); margin-bottom:3.4cqh; }
-  .display { font-weight:800; letter-spacing:-.025em; line-height:1.02; text-wrap:balance; color:var(--ink); }
-  h1.display { font-size:12cqh; }
-  h2.display { font-size:6.6cqh; margin-bottom:3cqh; }
-  .rule { width:9cqw; height:2px; background:var(--solid); margin:3.4cqh 0; }
-  .lede { font-size:3.2cqh; line-height:1.4; color:var(--muted); max-width:44ch; }
-  .display + .lede { margin-top:2.8cqh; }
-  .body { font-size:2.5cqh; line-height:1.5; color:var(--ink); max-width:54ch; }
-  .body p { margin-bottom:1.8cqh; } .body p:last-child { margin-bottom:0; }
+  /* Type & utility — a confident editorial scale, tight tracking on display. */
+  .kicker { font-family:var(--mono); text-transform:uppercase; letter-spacing:.22em; font-size:1.65cqh; color:var(--muted); }
+  .display { font-weight:820; letter-spacing:-.03em; line-height:1.0; text-wrap:balance; color:var(--ink); }
+  h1.display { font-size:13cqh; }
+  h2.display { font-size:6.6cqh; }
+  .rule { width:8cqw; height:2px; background:var(--solid); }
+  .lede { font-size:3.1cqh; line-height:1.42; color:var(--muted); max-width:40ch; }
+  .body { font-size:2.5cqh; line-height:1.55; color:var(--ink); max-width:52ch; }
+  .body p { margin-bottom:2cqh; } .body p:last-child { margin-bottom:0; }
   .muted { color:var(--muted); }
-  /* Two-column */
-  .split { display:grid; grid-template-columns:1.02fr .98fr; gap:6cqw; align-items:start; }
+  /* Two-column — generous gutter, top-aligned columns. */
+  .split { display:grid; grid-template-columns:1fr 1fr; gap:7cqw; align-items:start; }
   /* Numbered steps — auto mono index + hairline dividers */
-  .steps { list-style:none; counter-reset:s; max-width:62ch; }
-  .steps li { counter-increment:s; position:relative; padding:2.4cqh 0 2.4cqh 6ch; border-top:1px solid var(--hair); font-size:2.5cqh; line-height:1.4; }
+  .steps { list-style:none; counter-reset:s; max-width:60ch; }
+  .steps li { counter-increment:s; position:relative; padding:2.8cqh 0 2.8cqh 6.5ch; border-top:1px solid var(--hair); font-size:2.5cqh; line-height:1.4; }
   .steps li:last-child { border-bottom:1px solid var(--hair); }
-  .steps li::before { content:counter(s,decimal-leading-zero); position:absolute; left:0; top:2.4cqh; font-family:var(--mono); font-size:1.7cqh; letter-spacing:.12em; color:var(--muted); }
-  /* Stat row */
-  .stats { display:flex; flex-wrap:wrap; }
-  .stat { padding:0 3cqw; } .stat:first-child { padding-left:0; } .stat + .stat { border-left:1px solid var(--hair); }
-  .stat b { display:block; font-weight:800; letter-spacing:-.03em; font-size:11cqh; font-variant-numeric:tabular-nums; line-height:1; }
-  .stat span { display:block; margin-top:1.6cqh; font-family:var(--mono); text-transform:uppercase; letter-spacing:.14em; font-size:1.6cqh; color:var(--muted); }
-  /* Comparison table */
-  .cmp { border-collapse:collapse; width:100%; font-size:2.4cqh; }
-  .cmp th { text-align:left; font-family:var(--mono); text-transform:uppercase; letter-spacing:.12em; font-size:1.6cqh; font-weight:500; color:var(--muted); padding:0 2.4ch 2.2cqh 0; border-bottom:1px solid var(--hair); }
-  .cmp td { text-align:left; padding:2.2cqh 2.4ch; border-bottom:1px solid var(--hair); font-variant-numeric:tabular-nums; color:var(--ink); }
+  .steps li::before { content:counter(s,decimal-leading-zero); position:absolute; left:0; top:2.8cqh; font-family:var(--mono); font-size:1.65cqh; letter-spacing:.12em; color:var(--muted); }
+  /* Stat row — big figures, mono labels, hairline dividers. */
+  .stats { display:flex; flex-wrap:wrap; row-gap:5cqh; }
+  .stat { padding:0 3.4cqw; } .stat:first-child { padding-left:0; } .stat + .stat { border-left:1px solid var(--hair); }
+  .stat b { display:block; font-weight:820; letter-spacing:-.035em; font-size:12cqh; font-variant-numeric:tabular-nums; line-height:.95; }
+  .stat span { display:block; margin-top:2cqh; font-family:var(--mono); text-transform:uppercase; letter-spacing:.16em; font-size:1.55cqh; color:var(--muted); max-width:22ch; }
+  /* Comparison table — roomy rows, mono head, hairline rules only. */
+  .cmp { border-collapse:collapse; width:100%; font-size:2.45cqh; }
+  .cmp th { text-align:left; font-family:var(--mono); text-transform:uppercase; letter-spacing:.14em; font-size:1.5cqh; font-weight:500; color:var(--muted); padding:0 2.6ch 2.6cqh 0; border-bottom:1px solid var(--hair); }
+  .cmp td { text-align:left; padding:2.6cqh 2.6ch; border-bottom:1px solid var(--hair); font-variant-numeric:tabular-nums; color:var(--ink); }
   .cmp td:first-child, .cmp th:first-child { padding-left:0; }
   .cmp .hot { font-weight:750; }
   /* Chart */
   .chart { width:100%; } .chart svg { width:100%; max-width:100%; height:auto; overflow:visible; }
-  .caption { margin-top:2.6cqh; font-family:var(--mono); text-transform:uppercase; letter-spacing:.12em; font-size:1.6cqh; color:var(--muted); }
+  .caption { font-family:var(--mono); text-transform:uppercase; letter-spacing:.14em; font-size:1.55cqh; color:var(--muted); }
   /* Quote */
-  .quote { font-size:5.2cqh; font-weight:740; letter-spacing:-.02em; line-height:1.16; text-wrap:balance; max-width:20ch; }
-  .cite { margin-top:3.4cqh; font-family:var(--mono); text-transform:uppercase; letter-spacing:.14em; font-size:1.7cqh; color:var(--muted); }
+  .quote { font-size:5.4cqh; font-weight:760; letter-spacing:-.025em; line-height:1.14; text-wrap:balance; max-width:19ch; }
+  .cite { font-family:var(--mono); text-transform:uppercase; letter-spacing:.16em; font-size:1.65cqh; color:var(--muted); }
   /* Print: one slide per page, exact colours, no screen shadows/gaps. */
   @media print {
     @page { size:1280px 720px; margin:0; }
