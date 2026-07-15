@@ -248,25 +248,45 @@ export function MapViewport({
  *  stop-independent; the pins keep the real relative geography on top. */
 function MockBasemap() {
   return (
-    <svg className="jz-map-mock-base" viewBox="0 0 160 100" preserveAspectRatio="none" aria-hidden>
-      <path className="jz-map-mock-water" d="M0 70 C 26 63, 52 79, 84 71 S 138 64, 160 73 L160 100 L0 100 Z" />
-      <rect className="jz-map-mock-park" x="16" y="15" width="28" height="22" rx="3" />
+    <svg className="jz-map-mock-base" viewBox="0 0 320 200" preserveAspectRatio="none" aria-hidden>
+      {/* Water: a river winding across + a small lake. */}
+      <path
+        className="jz-map-mock-water"
+        d="M-12 58 C 60 42, 104 96, 168 80 C 232 64, 276 92, 332 80 L332 100 C 276 112, 232 84, 168 100 C 104 116, 60 62, -12 78 Z"
+      />
+      <ellipse className="jz-map-mock-water" cx="252" cy="152" rx="34" ry="20" />
+      {/* Parks / green space. */}
+      <path className="jz-map-mock-park" d="M26 118 q 20 -16 42 -4 q 14 22 -6 36 q -28 8 -42 -10 q -6 -14 6 -22 Z" />
+      <rect className="jz-map-mock-park" x="150" y="16" width="48" height="30" rx="9" />
+      {/* City blocks. */}
       <g className="jz-map-mock-block">
-        <rect x="52" y="12" width="30" height="16" rx="1.5" />
-        <rect x="92" y="10" width="24" height="18" rx="1.5" />
-        <rect x="124" y="16" width="24" height="14" rx="1.5" />
-        <rect x="54" y="40" width="26" height="15" rx="1.5" />
-        <rect x="96" y="40" width="30" height="14" rx="1.5" />
-        <rect x="20" y="46" width="24" height="14" rx="1.5" />
+        <rect x="96" y="92" width="34" height="22" rx="2" />
+        <rect x="136" y="94" width="26" height="20" rx="2" />
+        <rect x="202" y="102" width="30" height="24" rx="2" />
+        <rect x="240" y="104" width="24" height="20" rx="2" />
+        <rect x="94" y="150" width="30" height="24" rx="2" />
+        <rect x="130" y="152" width="34" height="22" rx="2" />
+        <rect x="60" y="24" width="30" height="22" rx="2" />
+        <rect x="96" y="22" width="26" height="24" rx="2" />
+        <rect x="270" y="30" width="36" height="24" rx="2" />
+        <rect x="176" y="150" width="30" height="22" rx="2" />
+      </g>
+      {/* Roads: a few curved primaries + a secondary grid. */}
+      <g className="jz-map-mock-road jz-map-mock-road--primary">
+        <path d="M-10 86 C 80 80, 160 108, 332 94" />
+        <path d="M120 -10 C 128 70, 116 140, 134 210" />
+        <path d="M-10 150 C 90 146, 212 158, 332 150" />
       </g>
       <g className="jz-map-mock-road">
-        <line x1="0" y1="34" x2="160" y2="31" />
-        <line x1="0" y1="63" x2="160" y2="60" />
-        <line x1="49" y1="0" x2="52" y2="100" />
-        <line x1="88" y1="0" x2="91" y2="100" />
-        <line x1="121" y1="0" x2="126" y2="100" />
-        <line className="jz-map-mock-road--minor" x1="0" y1="4" x2="160" y2="50" />
-        <line className="jz-map-mock-road--minor" x1="70" y1="0" x2="160" y2="90" />
+        <line x1="60" y1="-10" x2="66" y2="210" />
+        <line x1="204" y1="-10" x2="212" y2="210" />
+        <line x1="266" y1="-10" x2="272" y2="210" />
+        <line x1="-10" y1="40" x2="332" y2="34" />
+        <line x1="-10" y1="122" x2="332" y2="118" />
+        <line x1="-10" y1="178" x2="332" y2="172" />
+        <line className="jz-map-mock-road--minor" x1="-10" y1="8" x2="210" y2="126" />
+        <line className="jz-map-mock-road--minor" x1="160" y1="-10" x2="332" y2="66" />
+        <line className="jz-map-mock-road--minor" x1="10" y1="210" x2="150" y2="20" />
       </g>
     </svg>
   );

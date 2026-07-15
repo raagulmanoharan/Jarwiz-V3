@@ -361,7 +361,7 @@ export function EmbedUseCases() {
         } else if (card.kind === 'prototype') {
           editor.createShape({ id, type: 'prototype-card', x, y, props: { w: W[card.slot] ?? 460, h: H0[card.slot] ?? 400, html: card.html, title: card.title, prompt: card.title, status: 'done' } });
         } else if (card.kind === 'video') {
-          editor.createShape({ id, type: 'youtube-card', x, y, props: { w: W[card.slot] ?? 440, h: H0[card.slot] ?? 300, videoId: card.videoId, url: card.url, title: card.title } });
+          editor.createShape({ id, type: 'youtube-card', x, y, props: { w: W[card.slot] ?? 440, h: H0[card.slot] ?? 300, videoId: card.videoId, url: card.url, title: card.title, mock: true } });
         }
       }
       // Wire provenance for whatever slots this persona actually has.

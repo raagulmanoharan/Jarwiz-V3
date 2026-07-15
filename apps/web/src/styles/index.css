@@ -1488,6 +1488,33 @@ body,
 .jz-yt-poster img.jz-yt-poster-img--dead {
   visibility: hidden; /* unreachable thumbnail → dark face + glyph only */
 }
+/* Self-contained mock video still (marketing board / dead thumbnail): a
+   cinematic gradient so the card reads as a video without any remote image. */
+.jz-yt-poster--mock {
+  background:
+    radial-gradient(120% 85% at 28% 22%, rgba(150, 160, 180, 0.28), transparent 60%),
+    radial-gradient(110% 95% at 82% 88%, rgba(120, 95, 80, 0.32), transparent 55%),
+    linear-gradient(158deg, #262a31 0%, #16161a 100%);
+}
+.jz-yt-poster--mock::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0.03) 0 2px,
+    transparent 2px 9px
+  );
+  pointer-events: none;
+}
+.jz-yt-poster--mock .jz-yt-play {
+  width: 58px;
+  height: 40px;
+  border-radius: 11px;
+  background: #f0342b;
+  border: 0;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
 .jz-yt-play {
   position: relative;
   width: 54px;
@@ -6790,31 +6817,38 @@ body,
   pointer-events: none;
 }
 .jz-map-mock-water {
-  fill: var(--jz-ink-300);
-  opacity: 0.45;
+  fill: var(--jz-ink-400);
+  opacity: 0.42;
 }
 .jz-map-mock-park {
   fill: var(--jz-ink-300);
-  opacity: 0.3;
+  opacity: 0.42;
 }
 .jz-map-mock-block rect {
   fill: var(--jz-ink-300);
-  opacity: 0.22;
+  opacity: 0.26;
 }
-.jz-map-mock-road line {
+.jz-map-mock-road line,
+.jz-map-mock-road path {
   stroke: var(--jz-ink-400);
   stroke-width: 2;
+  fill: none;
   opacity: 0.5;
+}
+.jz-map-mock-road--primary path {
+  stroke: var(--jz-ink-500);
+  stroke-width: 3.4;
+  opacity: 0.55;
 }
 .jz-map-mock-road .jz-map-mock-road--minor {
   stroke-width: 1;
-  opacity: 0.32;
+  opacity: 0.3;
 }
 .jz-map-mock-route polyline {
-  stroke: var(--jz-ink-500);
+  stroke: var(--jz-ink-600);
   stroke-width: 0.8;
-  stroke-dasharray: 1.6 2.2;
-  opacity: 0.8;
+  stroke-dasharray: 1.8 2.2;
+  opacity: 0.85;
 }
 
 .jz-map-fallback .jz-map-pin {
