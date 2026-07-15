@@ -26,6 +26,7 @@ const THEME_CSS = `
     --hair:rgba(23,21,15,.12); --solid:#17150f; --backdrop:#e7e5df;
     --font-display:var(--font-sans); --font-body:var(--font-sans);
     --display-weight:820; --display-tracking:-.03em; --rule-h:2px; --radius:8px;
+    --frame:8cqh;
   }
   * { box-sizing:border-box; margin:0; padding:0; }
   body { background:var(--backdrop); font-family:var(--font-body); color:var(--ink); -webkit-font-smoothing:antialiased; }
@@ -37,22 +38,27 @@ const THEME_CSS = `
     border:1px solid var(--hair); border-radius:var(--radius);
     box-shadow:0 10px 34px rgba(0,0,0,.10);
     -webkit-print-color-adjust:exact; print-color-adjust:exact;
-    display:flex; flex-direction:column;
-    /* Consistent frame: header anchored to a fixed top baseline; the footer band
-       is reserved at the bottom so content never collides with the brand mark. */
-    justify-content:flex-start;
-    padding:12cqh 9.5cqw 11cqh;
+  }
+  /* The frame lives on an inner .page (a CHILD of the slide), so its padding and
+     the footer's offset resolve cqh against the SAME reference (the slide) — the
+     header-top gap and footer-bottom gap are then truly equal (--frame). The
+     larger padding-bottom just reserves room so tall content never collides
+     with the footer. */
+  .page {
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; justify-content:flex-start;
+    padding:var(--frame) 9.5cqw calc(var(--frame) + 4cqh);
   }
   /* The cover is the one deliberate exception — its title sinks to the lower-left. */
-  .slide--cover { justify-content:flex-end; padding-bottom:14cqh; }
+  .slide--cover .page { justify-content:flex-end; padding-bottom:calc(var(--frame) + 5cqh); }
   .slide--panel, .slide--section { background:var(--panel); }
   .grid { width:100%; }
   .grid > * + * { margin-top:3cqh; }
   .col > * + * { margin-top:2.6cqh; }
   .kicker + * { margin-top:1.8cqh; }
-  /* One fixed footer position on every slide. */
+  /* Footer: same gap from the bottom as the header is from the top. */
   .slide::after {
-    content:"Made with Jarwiz"; position:absolute; right:9.5cqw; bottom:5.5cqh;
+    content:"Made with Jarwiz"; position:absolute; right:9.5cqw; bottom:var(--frame);
     font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.2em;
     font-size:1.25cqh; color:var(--muted); opacity:.9;
   }
@@ -92,8 +98,18 @@ const THEME_CSS = `
   }
 `;
 
+/** Wrap each slide's inner content in a `.page` element so the frame padding
+ *  resolves against the slide (see .page in THEME_CSS). Idempotent enough for
+ *  our inputs: model/fallback slides never already contain a `.page`. */
+function framePages(sections: string): string {
+  return sections.replace(
+    /(<section\b[^>]*>)([\s\S]*?)(<\/section>)/gi,
+    (_m, open: string, inner: string, close: string) => `${open}<div class="page">${inner}</div>${close}`,
+  );
+}
+
 /** Wrap the model's slide sections in a full, self-contained, brand-native deck
  *  document — what gets printed / downloaded. */
 export function buildDeck(sections: string, title: string): string {
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} — Jarwiz</title><style>${THEME_CSS}</style></head><body><div class="deck">${sections}</div></body></html>`;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} — Jarwiz</title><style>${THEME_CSS}</style></head><body><div class="deck">${framePages(sections)}</div></body></html>`;
 }
