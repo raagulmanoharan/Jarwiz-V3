@@ -1080,10 +1080,18 @@
       })();
 
       // ── Access: beta signup + invite code ────────────────────────────────
-      // Beta signups collect emails. Paste a Formspree form endpoint below to
-      // capture them in-page (create a free form at formspree.io → it looks
-      // like 'https://formspree.io/f/abcdwxyz'). Until it's set, the form opens
-      // the visitor's mail app addressed to BETA_CONTACT so nothing is lost.
+      // Beta signups collect an email and send back a confirmation. Three
+      // capture paths, tried in order (first one wired wins):
+      //   1. Our agent server's /api/beta/signup — records the email AND emails
+      //      the visitor a confirmation (see apps/server/src/beta.ts). BETA_API_BASE
+      //      is the server origin; the Pages workflow injects it from the same
+      //      JARWIZ_API_BASE repo variable the app uses. This is the path that
+      //      delivers a confirmation email.
+      //   2. A Formspree endpoint (BETA_ENDPOINT) — a no-backend fallback that
+      //      captures the email but can't send a confirmation on the free tier.
+      //   3. Neither set — open the visitor's mail app to BETA_CONTACT so an
+      //      address is never lost.
+      const BETA_API_BASE = ''; // build-time: JARWIZ_API_BASE injected by pages.yml
       const BETA_ENDPOINT = ''; // e.g. 'https://formspree.io/f/xxxxxxx'
       const BETA_CONTACT = 'raagulmanoharan@gmail.com';
 
@@ -1113,6 +1121,19 @@
           el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setMode('email'); } });
         });
 
+        // Which CTA converted — the closing section carries id="access".
+        const source = box.closest('#access') ? 'cta' : 'hero';
+
+        // Last resort when no backend is reachable: open the visitor's mail app
+        // so an address is never silently dropped.
+        const openMailFallback = (email) => {
+          const subject = encodeURIComponent('Jarwiz beta access');
+          const body = encodeURIComponent('Please add me to the Jarwiz beta:\n\n' + email);
+          window.location.href = 'mailto:' + BETA_CONTACT + '?subject=' + subject + '&body=' + body;
+          status.textContent = 'Opening your email app to finish…';
+          status.className = 'af-status ok';
+        };
+
         if (emailForm) emailForm.addEventListener('submit', async (e) => {
           e.preventDefault();
           const email = (emailInput.value || '').trim();
@@ -1121,31 +1142,58 @@
             status.className = 'af-status err';
             return;
           }
-          if (!BETA_ENDPOINT) {
-            // No form backend yet — hand the address to the owner's inbox.
-            const subject = encodeURIComponent('Jarwiz beta access');
-            const body = encodeURIComponent('Please add me to the Jarwiz beta:\n\n' + email);
-            window.location.href = 'mailto:' + BETA_CONTACT + '?subject=' + subject + '&body=' + body;
-            status.textContent = 'Opening your email app to finish…';
-            status.className = 'af-status ok';
+
+          // Path 1 — our server: records the email and sends a confirmation.
+          if (BETA_API_BASE) {
+            status.textContent = 'Sending…';
+            status.className = 'af-status';
+            try {
+              const res = await fetch(BETA_API_BASE.replace(/\/+$/, '') + '/api/beta/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, source }),
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) {
+                status.textContent = (data && data.error) || 'Something went wrong — please try again.';
+                status.className = 'af-status err';
+                return;
+              }
+              emailForm.reset();
+              status.textContent = data.confirmationSent
+                ? 'You’re on the list — check your inbox to confirm. ✓'
+                : 'You’re on the list — we’ll be in touch. ✓';
+              status.className = 'af-status ok';
+            } catch {
+              // Server unreachable (cold start, offline) — don't lose the address.
+              openMailFallback(email);
+            }
             return;
           }
-          status.textContent = 'Sending…';
-          status.className = 'af-status';
-          try {
-            const res = await fetch(BETA_ENDPOINT, {
-              method: 'POST',
-              headers: { Accept: 'application/json' },
-              body: new FormData(emailForm),
-            });
-            if (!res.ok) throw new Error('bad status');
-            emailForm.reset();
-            status.textContent = 'You’re on the list — we’ll be in touch. ✓';
-            status.className = 'af-status ok';
-          } catch {
-            status.textContent = 'Something went wrong — email ' + BETA_CONTACT + ' instead.';
-            status.className = 'af-status err';
+
+          // Path 2 — Formspree: captures the email (no confirmation on free tier).
+          if (BETA_ENDPOINT) {
+            status.textContent = 'Sending…';
+            status.className = 'af-status';
+            try {
+              const res = await fetch(BETA_ENDPOINT, {
+                method: 'POST',
+                headers: { Accept: 'application/json' },
+                body: new FormData(emailForm),
+              });
+              if (!res.ok) throw new Error('bad status');
+              emailForm.reset();
+              status.textContent = 'You’re on the list — we’ll be in touch. ✓';
+              status.className = 'af-status ok';
+            } catch {
+              status.textContent = 'Something went wrong — email ' + BETA_CONTACT + ' instead.';
+              status.className = 'af-status err';
+            }
+            return;
           }
+
+          // Path 3 — no backend configured: hand off to the mail app.
+          openMailFallback(email);
         });
 
         if (codeForm) codeForm.addEventListener('submit', (e) => {

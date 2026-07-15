@@ -76,6 +76,30 @@ defaults). Caveat: counts persist on the free tier's ephemeral disk, so a
 redeploy resets them — the global ceiling still bounds each deploy's spend;
 bump `JARWIZ_PILOT_TOTAL` down if you redeploy often mid-pilot.
 
+## Beta access signups (the "Request access" bar)
+
+The landing page's email bar POSTs to the agent server's
+`POST /api/beta/signup`, which records the address and — when an email
+provider is configured — sends the visitor a confirmation. The bar reaches the
+server through the same `JARWIZ_API_BASE` repo variable the app uses (the Pages
+workflow injects it into the landing page), so once the Render step above is
+done, signups already flow.
+
+To turn on the confirmation email, set these on the Render service
+(Environment tab; put the key in the dashboard as a **secret**):
+
+- `RESEND_API_KEY` — a [Resend](https://resend.com) API key (free tier is
+  plenty for a beta list). No SDK is added; the server calls Resend's REST API.
+- `JARWIZ_BETA_FROM` — the verified From address, e.g.
+  `Jarwiz <hello@yourdomain.com>`. Resend requires a domain you've verified.
+- `JARWIZ_BETA_NOTIFY` *(optional)* — an address to CC on each new signup, so
+  you see them land in your own inbox.
+
+Without these, nothing breaks: the address is still recorded (best-effort, on
+the free tier's ephemeral disk) and the page shows "you're on the list" instead
+of "check your inbox". With no `JARWIZ_API_BASE` at all, the bar falls back to
+opening the visitor's mail app addressed to you — nothing is lost either way.
+
 ## Free-tier realities (fine for a trial, know them anyway)
 
 - **Cold starts** — the free service sleeps after ~15 min idle; the first

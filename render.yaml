@@ -33,3 +33,14 @@ services:
       #   value: "100"
       # - key: JARWIZ_PILOT_TOTAL
       #   value: "1000"
+      #
+      # Beta signups (landing page "Request access" bar → /api/beta/signup).
+      # Set these to email each signup a confirmation via Resend (resend.com);
+      # unset, the address is still recorded and the client just says "you're on
+      # the list" (see docs/DEPLOYMENT.md → "Beta access signups").
+      # - key: RESEND_API_KEY         # dashboard secret, not here
+      #   value: re_xxx
+      # - key: JARWIZ_BETA_FROM
+      #   value: Jarwiz <hello@yourdomain.com>
+      # - key: JARWIZ_BETA_NOTIFY     # optional: CC each signup to you
+      #   value: raagulmanoharan@gmail.com
