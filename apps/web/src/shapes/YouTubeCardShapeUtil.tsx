@@ -33,6 +33,11 @@ export interface YouTubeCardProps {
   tldr?: string;
   /** Lifecycle of the TL;DR strip (undefined = never requested → no strip). */
   tldrStatus?: TldrStatus;
+  /** Render a self-contained mock poster instead of loading the remote
+   *  thumbnail — the marketing board wants a deterministic video face that
+   *  never depends on ytimg.com (which the host CSP may block). Optional so
+   *  real, pasted videos are unaffected. */
+  mock?: boolean;
 }
 
 declare module '@tldraw/tlschema' {
@@ -59,6 +64,7 @@ export class YouTubeCardShapeUtil extends ShapeUtil<YouTubeCardShape> {
     frames: T.arrayOf(T.string).optional(),
     tldr: T.string.optional(),
     tldrStatus: T.literalEnum('loading', 'ready', 'error').optional(),
+    mock: T.boolean.optional(),
   };
 
   override getDefaultProps(): YouTubeCardShape['props'] {
@@ -98,7 +104,7 @@ export class YouTubeCardShapeUtil extends ShapeUtil<YouTubeCardShape> {
 function YouTubeCardBody({ shape }: { shape: YouTubeCardShape }) {
   const isEditing = useIsEditing(shape.id);
   const isSelected = useCardSelected(shape.id);
-  const { videoId, url, title, hasTranscript, frames, tldr, tldrStatus, w } = shape.props;
+  const { videoId, url, title, hasTranscript, frames, tldr, tldrStatus, w, mock } = shape.props;
   // The player fills the card, so grow the card by the strip's measured height
   // (a TL;DR is short and shown in full — never truncated).
   const stripRef = useRef<HTMLDivElement | null>(null);
@@ -157,8 +163,10 @@ function YouTubeCardBody({ shape }: { shape: YouTubeCardShape }) {
         ) : (
           // At rest the card wears the video's poster + a play glyph — an
           // inert iframe reads as a broken embed and steals scroll/drag focus.
-          <div className="jz-yt-poster">
-            {poster ? (
+          // `mock` skips the remote thumbnail for a self-contained video face
+          // (a cinematic gradient) so it never depends on ytimg.com.
+          <div className={`jz-yt-poster${mock ? ' jz-yt-poster--mock' : ''}`}>
+            {poster && !mock ? (
               <img
                 src={poster}
                 alt=""
