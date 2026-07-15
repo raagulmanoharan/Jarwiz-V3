@@ -78,6 +78,15 @@ HARD REQUIREMENTS — the document is rendered in a sandboxed iframe with NO net
 - FILL THE FRAME. The document is the screen: set html,body{margin:0} and let the UI span the full width and height — the app's own background reaches every edge, with NO outer page margin or a small card floating in empty space. Put breathing room INSIDE the layout (padding, spacing), not as a dead border around it.
 - MULTI-SCREEN when the request calls for it (a website, an app with several views, a signup or checkout flow): build ALL the screens into this ONE document and wire real client-side navigation between them — nav links, tabs, or buttons that show one screen at a time (e.g. toggle an ".active" class on ".screen" sections, or a tiny hashchange router). The navigation MUST actually work when clicked, each screen fills the frame, and only one shows at a time. Include just the handful of screens that matter — don't pad.
 - Make it real, not a static picture: wire up the obvious interactions with a little inline JS (navigation between screens, a timer counting down, a button toggling, a tab switching, an input updating a value). Clean, modern, clear visual hierarchy.
+- RESULTS THAT LEAVE THE CARD: whenever you show a HEADLINE OUTPUT figure (a total, break-even, margin, score, KPI, monthly revenue…), put \`data-jz-output="<short label>"\` on the element whose text IS that figure — e.g. \`<div class="figure" data-jz-output="Break-even">62/day</div>\`. Tag 2–6 of them. The element's text is the value; keep updating it as things recompute. NEVER write postMessage or window.parent code yourself — the canvas reads these tags automatically. REQUIRED for any calculator, dashboard, or model.
+
+DATA-DRIVEN MODELS — when the request is a calculator, model, estimator, planner, budget, or pricing / unit-economics tool, OR when the source content is quantitative (numbers, prices, rates, a table of figures):
+- Build a WORKING model, not a static screenshot. Surface the key drivers as interactive inputs (range sliders, number fields, selects) and COMPUTE the outputs live in inline JS every time an input changes.
+- SEED every input from the real numbers in the sources — use them as the default values and label each with its figure — so the model opens on the researched baseline, not zeros. Never invent a number a source already gives you.
+- Put the outputs that drive the decision (e.g. break-even, contribution margin, monthly total, TAM) up top, large, recomputing on every change.
+- If the sources describe several entities (cities, plans, options), add a select or tabs so the SAME model runs on each one's numbers — switching updates the inputs and outputs.
+
+- Tag every headline output element with \`data-jz-output="<label>"\` (see RESULTS THAT LEAVE THE CARD above) — this is how the model's numbers reach the rest of the board.
 
 Output ONLY the raw HTML document — no prose, no explanation, NO \`\`\` code fences before or after.`;
 
@@ -419,14 +428,18 @@ const SEED_SYSTEM = `You are given the text of a card on a user's canvas (a drop
 Match each move's phrasing to the answer's best FORMAT — the canvas picks the response card from the prompt's wording:
 - If the text holds two or more comparable things (concepts, options, approaches, parties, methods, versions), include ONE move that compares them. Its "prompt" MUST use comparison wording ("Compare X and Y side by side", "X versus Y") so the answer lands as a comparison table; make the "label" name both sides (e.g. "Compare X vs Y").
 - If the text implies obligations or actions, phrase that move as a checklist ("Turn the … requirements into a checklist").
+- If the text is QUANTITATIVE — prices, costs, a unit-economics or financial model, a scorecard, KPIs, or several figures a reader would naturally want to vary — include ONE move that turns it into a LIVE, INTERACTIVE model the reader can play with (inputs / sliders they change, outputs recomputing). Phrase it as building a tool and NAME the metrics ("Build a break-even calculator you can adjust", "Model the unit economics across cities"), and set that move's "shape" to "prototype". Set "shape":"prototype" on AT MOST ONE move — the single build-a-tool move — and NEVER on a comparison move (comparisons stay tables, no shape). Offer it only when the numbers genuinely invite adjusting.
 - If the text is ITSELF a review naming gaps, unanswered questions, or contradictions (a "what's missing" / "tensions" scan of other work), the moves must CREATE or RESOLVE — one per named gap, most consequential first, phrased as generation ("Draft the success metrics for the beta", "Write the rollback plan", "Propose a decision rule for date vs quality"). The scan found the problem; each pill offers its solution.
 - Why/how/deep-dive moves stay plain questions (prose answers).
 
-Return ONLY a JSON array of objects {"label": string, "prompt": string}: "label" is a 2–4 word button caption; "prompt" is the full question to ask. No prose, no code fences.`;
+Return ONLY a JSON array of objects {"label": string, "prompt": string, "shape"?: string}: "label" is a 2–4 word button caption; "prompt" is the full question to ask. Include "shape":"prototype" ONLY on an interactive-model move; omit "shape" entirely on every other move. No prose, no code fences.`;
 
 export interface SeedPrompt {
   label: string;
   prompt: string;
+  /** A pill that opts into a specific answer shape (only 'prototype' today — an
+   *  interactive model). Omitted pills route by phrasing / the doc default. */
+  shape?: AskShape;
 }
 
 /** Predefined, content-aware Ask prompts for a freshly dropped PDF. */
@@ -462,7 +475,10 @@ export async function proposeSeedPrompts(
       // produced pills like "Challenge type-stability assumpt".
       const capped =
         label.length <= 36 ? label : `${label.slice(0, 35).replace(/\s+\S*$/, '')}…`;
-      if (label && prompt) out.push({ label: capped, prompt: prompt.slice(0, 400) });
+      // Only 'prototype' is honoured as a pill shape today (an interactive
+      // model); anything else stays phrasing-routed like every other move.
+      const shape = String((item as Record<string, unknown>).shape ?? '').trim() === 'prototype' ? ('prototype' as AskShape) : undefined;
+      if (label && prompt) out.push({ label: capped, prompt: prompt.slice(0, 400), ...(shape ? { shape } : {}) });
       if (out.length >= 4) break;
     }
     return out;

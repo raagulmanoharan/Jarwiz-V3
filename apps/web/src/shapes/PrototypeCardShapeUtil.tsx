@@ -14,8 +14,9 @@
  * UI is directly interactive; while it's still streaming the frame stays inert.
  */
 
-import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import {
+  createShapeId,
   HTMLContainer,
   Rectangle2d,
   ShapeUtil,
@@ -65,6 +66,20 @@ function stripFences(html: string): string {
   return html.replace(/^\s*```(?:html)?\s*/i, '').replace(/```\s*$/i, '');
 }
 
+/**
+ * Results-out bridge, injected into every prototype's document. Rather than ask
+ * the model to hand-wire postMessage into every recompute (unreliable), the
+ * model just marks its headline outputs with `data-jz-output="<label>"`; this
+ * script reads those elements' text and publishes them to the parent on load
+ * and whenever they change (MutationObserver, debounced). Inert when nothing is
+ * marked. Runs inside the same sandbox (allow-scripts) — one-way, no reads. */
+const PROTO_OUTPUT_BRIDGE = `<script>(function(){try{
+  function collect(){var els=document.querySelectorAll('[data-jz-output]');var out=[];els.forEach(function(el){var label=(el.getAttribute('data-jz-output')||'').trim();var value=(el.getAttribute('data-jz-value')||el.textContent||'').trim().replace(/\\s+/g,' ');if(label||value)out.push({label:label.slice(0,48),value:value.slice(0,48)});});if(out.length)parent.postMessage({type:'jz:proto',outputs:out.slice(0,6)},'*');}
+  var t;function schedule(){clearTimeout(t);t=setTimeout(collect,120);}
+  if(document.readyState!=='loading')schedule();else addEventListener('DOMContentLoaded',schedule);
+  new MutationObserver(schedule).observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['data-jz-output','data-jz-value']});
+}catch(e){}})();<\/script>`;
+
 export class PrototypeCardShapeUtil extends ShapeUtil<PrototypeCardShape> {
   static override type = 'prototype-card' as const;
 
@@ -107,6 +122,9 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
   const { html, title, prompt, status } = shape.props;
   const doc = stripFences(html);
   const hasDoc = Boolean(doc.trim());
+  // Append the results-out bridge so any element the model marked with
+  // data-jz-output publishes itself to the canvas (see PROTO_OUTPUT_BRIDGE).
+  const framedDoc = hasDoc ? doc + PROTO_OUTPUT_BRIDGE : doc;
   const running = status === 'running';
   const errored = status === 'error';
 
@@ -135,6 +153,48 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
     requestPrototypeRun(shape.id);
   };
 
+  // Results-out: a model prototype can publish its computed outputs to the
+  // canvas. The sandboxed frame can't touch our DOM/storage (no
+  // allow-same-origin), but a one-way postMessage from THIS frame is allowed —
+  // we accept only messages whose source is our own iframe, of the exact shape,
+  // and keep them in ephemeral state (no schema change). They surface below the
+  // card and can be pushed out as a real note the rest of the board can use.
+  const frameRef = useRef<HTMLIFrameElement | null>(null);
+  const [outputs, setOutputs] = useState<Array<{ label: string; value: string }>>([]);
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      if (!frameRef.current || e.source !== frameRef.current.contentWindow) return;
+      const data = e.data as { type?: string; outputs?: unknown } | null;
+      if (!data || data.type !== 'jz:proto' || !Array.isArray(data.outputs)) return;
+      const clean = (data.outputs as Array<Record<string, unknown>>)
+        .slice(0, 6)
+        .map((o) => ({ label: String(o?.label ?? '').slice(0, 48), value: String(o?.value ?? '').slice(0, 48) }))
+        .filter((o) => o.label || o.value);
+      if (clean.length) setOutputs(clean);
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
+  // Reloading / regenerating the frame drops any stale published outputs.
+  useEffect(() => { setOutputs([]); }, [refreshNonce]);
+
+  const pushToNote = () => {
+    if (!outputs.length) return;
+    const bounds = editor.getShapePageBounds(shape.id);
+    const x = bounds ? bounds.maxX + 40 : shape.x + shape.props.w + 40;
+    const y = bounds ? bounds.minY : shape.y;
+    const body = outputs.map((o) => `- ${o.label}: **${o.value}**`).join('\n');
+    const id = createShapeId();
+    editor.createShape({
+      id,
+      type: 'note-card',
+      x,
+      y,
+      props: { w: 264, h: 200, text: `**${(title || 'Model').trim()} — results**\n\n${body}` },
+    });
+    editor.setSelectedShapes([id]);
+  };
+
   // Auto-grow the prompt input with its content, and focus a freshly-dropped
   // (empty) card so the user can start typing straight away.
   useLayoutEffect(() => {
@@ -155,13 +215,35 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
       <div className={`jz-prototype${interactive ? ' jz-prototype--interactive' : ''}${sel}`}>
         <iframe
           key={refreshNonce}
+          ref={frameRef}
           className="jz-prototype-frame"
           title={title || 'Prototype'}
           sandbox="allow-scripts allow-forms"
           referrerPolicy="no-referrer"
-          srcDoc={doc}
+          srcDoc={framedDoc}
           style={{ pointerEvents: interactive ? 'auto' : 'none' }}
         />
+        {outputs.length ? (
+          <div className="jz-proto-outputs" onPointerDown={stopEventPropagation}>
+            <div className="jz-proto-outputs-list">
+              {outputs.map((o, i) => (
+                <span key={i} className="jz-proto-output">
+                  <span className="jz-proto-output-label">{o.label}</span>
+                  <span className="jz-proto-output-value">{o.value}</span>
+                </span>
+              ))}
+            </div>
+            <button
+              className="jz-proto-outputs-push"
+              style={{ pointerEvents: 'all' }}
+              onPointerDown={stopEventPropagation}
+              onClick={pushToNote}
+              title="Push these results to a note on the board"
+            >
+              Push to note
+            </button>
+          </div>
+        ) : null}
       </div>
     );
   }

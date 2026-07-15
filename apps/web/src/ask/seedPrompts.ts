@@ -7,9 +7,14 @@
  * over the static per-type fallbacks. (docs/PDF-JOURNEY.md §3)
  */
 
+import type { ModeShape } from './modeShape';
+
 export interface SeedPrompt {
   label: string;
   prompt: string;
+  /** A pill that opts into a specific answer shape (server sends 'prototype'
+   *  for an interactive-model move) — tapping pins that shape. */
+  shape?: ModeShape;
 }
 
 const cache = new Map<string, SeedPrompt[]>();

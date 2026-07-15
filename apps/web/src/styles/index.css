@@ -3749,6 +3749,7 @@ body,
    fills it edge-to-edge; the card's name rides above it as a floating label tag
    (CardTitleTag), like the doc/diagram cards. */
 .jz-prototype {
+  position: relative; /* anchors the results-out strip (.jz-proto-outputs) */
   width: 100%;
   height: 100%;
   display: flex;
@@ -3777,6 +3778,51 @@ body,
   display: block;
   background: #fff;
 }
+
+/* Results-out: a model prototype publishes its headline outputs via postMessage
+   (one-way, from its own sandboxed frame); they surface as a glassy strip along
+   the bottom edge and can be pushed out as a real note the board can reuse. */
+.jz-proto-outputs {
+  position: absolute;
+  left: var(--jz-space-2);
+  right: var(--jz-space-2);
+  bottom: var(--jz-space-2);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--jz-space-2);
+  padding: 6px 8px;
+  border-radius: var(--jz-radius-md, 10px);
+  background: color-mix(in srgb, var(--jz-card-surface) 82%, transparent);
+  border: 1px solid var(--jz-hairline-strong);
+  box-shadow: var(--jz-e2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.jz-proto-outputs-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+.jz-proto-output { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+.jz-proto-output-label { font-size: var(--jz-text-micro-size); color: var(--jz-ink-500); }
+.jz-proto-output-value { font-size: var(--jz-text-body-sm-size); font-weight: 600; color: var(--jz-ink-900); }
+.jz-proto-outputs-push {
+  flex: 0 0 auto;
+  border: 1px solid var(--jz-hairline-strong);
+  background: var(--jz-card-surface);
+  color: var(--jz-ink-700);
+  font-size: var(--jz-text-micro-size);
+  font-family: var(--jz-font-ui);
+  padding: 4px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.jz-proto-outputs-push:hover { background: var(--jz-surface-raised); color: var(--jz-ink-900); }
 
 /* The small prompt card (dropped from the rail) / the generating state — styled
    to match the Thinking-Machine block, but monochromatic (no accent). */
@@ -4506,6 +4552,17 @@ body,
 .jz-pb-chip:hover {
   transform: translateY(-1px);
   color: var(--jz-ink-900);
+}
+
+/* An interactive-model seed pill — a special "make something live" move, so it
+   reads a touch warmer than a plain next-move chip (the spark leads it too). */
+.jz-pb-chip--make {
+  border-color: var(--jz-hairline-strong);
+  color: var(--jz-ink-900);
+  background: color-mix(in srgb, var(--jz-accent) 6%, var(--jz-card-surface));
+}
+.jz-pb-chip--make:hover {
+  background: color-mix(in srgb, var(--jz-accent) 11%, var(--jz-card-surface));
 }
 
 /* Hosted-trial notice — sits above the composer when there's no agent runtime

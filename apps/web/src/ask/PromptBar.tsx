@@ -764,9 +764,9 @@ export function PromptBar() {
   // Nothing scripted: until the tailored pills arrive (or if the card is
   // empty) we show nothing. Predictable operations live on the card's
   // floating bar (Refine), not here.
-  const starters: Array<{ label: string; prompt: string }> =
+  const starters: Array<{ label: string; prompt: string; shape?: ModeShape }> =
     groundIds.length === 1 && (seeds?.length ?? 0) > 0
-      ? seeds!.map((s) => ({ label: s.label, prompt: s.prompt }))
+      ? seeds!.map((s) => ({ label: s.label, prompt: s.prompt, shape: s.shape }))
       : [];
   const showStarters = !runningMode && !isAsking && !soleBusy && !draftPending && !plainText.trim() && starters.length > 0;
   // The 5-20s quiet gap while tailored pills are being generated (cache still
@@ -812,7 +812,7 @@ export function PromptBar() {
       {showStarters ? (
         <div className="jz-promptbar-chips">
           {starters.map((s) => (
-            <button key={s.label} className="jz-pb-chip" title="Use this prompt (editable)" onClick={() => useStarter(s.prompt)}>{s.label}</button>
+            <button key={s.label} className={`jz-pb-chip${s.shape === 'prototype' ? ' jz-pb-chip--make' : ''}`} title={s.shape === 'prototype' ? 'Build a live, interactive model from this card (editable)' : 'Use this prompt (editable)'} onClick={() => useStarter(s.prompt, s.shape)}>{s.shape === 'prototype' ? <JarwizSpark size={11} className="jz-spark-inline" /> : null}{s.label}</button>
           ))}
         </div>
       ) : showSeedWait ? (
