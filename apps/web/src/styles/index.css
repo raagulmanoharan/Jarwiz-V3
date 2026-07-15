@@ -1365,63 +1365,6 @@ body,
   background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
   color: var(--jz-accent);
 }
-/* Template picker — a live "pick a look" strip under the ready slideshow row. */
-.jz-export-templates {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  padding-bottom: 2px;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--jz-ink-300) transparent;
-}
-.jz-export-tpl {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-}
-.jz-export-tpl-thumb {
-  display: block;
-  width: 96px;
-  height: 54px;
-  border-radius: var(--jz-radius-sm);
-  overflow: hidden;
-  border: 1.5px solid var(--jz-hairline);
-  background: var(--jz-paper);
-  transition: border-color var(--jz-dur-fast) var(--jz-ease-out),
-    transform var(--jz-dur-fast) var(--jz-ease-out);
-}
-.jz-export-tpl:hover .jz-export-tpl-thumb {
-  transform: translateY(-1px);
-  border-color: var(--jz-ink-300);
-}
-.jz-export-tpl--on .jz-export-tpl-thumb {
-  border-color: var(--jz-accent);
-  box-shadow: 0 0 0 1.5px var(--jz-accent);
-}
-.jz-export-tpl-thumb iframe {
-  display: block;
-  width: 96px;
-  height: 54px;
-  border: none;
-  pointer-events: none;
-}
-.jz-export-tpl-name {
-  font-size: 10.5px;
-  letter-spacing: 0.02em;
-  color: var(--jz-ink-500);
-}
-.jz-export-tpl--on .jz-export-tpl-name {
-  color: var(--jz-ink-900);
-  font-weight: 600;
-}
-
 /* Ready dot on the button when the menu is closed. */
 .jz-export-dot {
   width: 6px;

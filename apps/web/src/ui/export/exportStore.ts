@@ -29,8 +29,6 @@ export interface ExportState {
   markdown: ExportSlot;
   /** Board title for download filenames (from the last started run). */
   title: string;
-  /** The chosen slideshow template id (deckTemplates.ts) — restyles instantly. */
-  template: string;
 }
 
 const idleSlot = (): ExportSlot => ({ phase: 'idle', status: '', text: '', format: null, error: null });
@@ -39,7 +37,6 @@ let state: ExportState = {
   slideshow: idleSlot(),
   markdown: idleSlot(),
   title: 'Untitled board',
-  template: 'editorial',
 };
 const listeners = new Set<() => void>();
 
@@ -59,12 +56,6 @@ export function subscribeExport(l: () => void): () => void {
 
 export function getExportState(): ExportState {
   return state;
-}
-
-/** Pick the slideshow template (restyles the generated deck instantly — no
- *  regeneration; the client re-wraps the same slides). */
-export function setExportTemplate(id: string): void {
-  if (id !== state.template) commit({ ...state, template: id });
 }
 
 // Per-mode in-flight handle + remembered inputs (for Try again).
