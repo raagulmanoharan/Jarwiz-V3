@@ -299,7 +299,20 @@ const GUTTER = 64; // horizontal space between columns
 const BASE_GAP = 40; // minimum vertical space between stacked cards
 const TARGET_ASPECT = 1.78; // ≈ the stage viewport, so each region fills it
 const COL_TOP = -700;
-const BOTTOM_BAND = 110; // clear space below the cards for the controller
+const BOTTOM_BAND = 64; // clear space below the cards for the controller
+const FRAME_PAD = 28; // breathing room around the content when framing a board
+const FRAME_INSET = 8; // px the fit leaves inside the viewport edges
+
+// How much of a board's span to actually show — < 1 zooms the camera IN past a
+// plain fit, so the cards read large and the outer (emptier) margin is cropped
+// off rather than framed. Applied around the content's centre.
+const VIEW_FILL = 0.9;
+function viewBox(b: Box): Box {
+  const w = b.w * VIEW_FILL, h = b.h * VIEW_FILL;
+  // Centre horizontally, but keep most of the TOP (the use-case title + first
+  // cards live there) and crop the emptier bottom band.
+  return new Box(b.x + (b.w - w) / 2, b.y + (b.h - h) * 0.25, w, h);
+}
 
 interface FlowCard { id: TLShapeId; type: string; w: number; h: number }
 interface PinCard { id: TLShapeId; anchor: string; corner: Corner }
@@ -371,7 +384,30 @@ export function EmbedUseCases() {
     // to the stage's wide aspect so the workspace fills the frame side-to-side.
     // Run a few times because Mermaid renders asynchronously; each pass re-reads
     // settled heights.
+    // Correct any doc whose grown height over-shoots its real content. The doc
+    // card's height is growOnly (never shrinks after a tall first measurement),
+    // so a doc that briefly mis-measured tall stays tall — reserving an empty
+    // band below its text. Read the TRUE content height from the card's own
+    // auto-height element (`.jz-doc-auto`, whose scrollHeight is the content, in
+    // canvas units) and set props.h to it, so the masonry packs to the real size.
+    const correctDocHeights = () => {
+      for (const { bySlot } of regions) {
+        for (const id of Object.values(bySlot)) {
+          const shape = editor.getShape(id);
+          if (!shape || shape.type !== 'doc-card') continue;
+          const node = document.querySelector(`[data-shape-id="${id}"] .jz-doc-auto`) as HTMLElement | null;
+          if (!node) continue;
+          const trueH = Math.ceil(node.scrollHeight);
+          const curH = (shape.props as { h: number }).h;
+          if (trueH > 48 && trueH < curH - 2) {
+            editor.updateShape({ id, type: 'doc-card', props: { h: trueH } } as Parameters<typeof editor.updateShape>[0]);
+          }
+        }
+      }
+    };
+
     const reflow = () => {
+      correctDocHeights();
       const newFrames: Box[] = [];
       for (const { cx, bySlot, pins } of regions) {
         // Gather flow cards in reading order with their ACTUAL sizes.
@@ -460,14 +496,16 @@ export function EmbedUseCases() {
           maxY = Math.max(maxY, ny + NOTE_H);
         }
 
-        const pad = 56;
-        newFrames.push(new Box(minX - pad, minY - pad, maxX - minX + pad * 2, maxY - minY + pad * 2 + BOTTOM_BAND));
+        newFrames.push(new Box(minX - FRAME_PAD, minY - FRAME_PAD, maxX - minX + FRAME_PAD * 2, maxY - minY + FRAME_PAD * 2 + BOTTOM_BAND));
       }
       framesRef.current = newFrames;
       const frame = newFrames[idxRef.current];
-      if (frame) editor.zoomToBounds(frame, { inset: 16, animation: { duration: 0 } });
+      if (frame) editor.zoomToBounds(viewBox(frame), { inset: FRAME_INSET, animation: { duration: 0 } });
     };
-    const timers = [350, 900, 1600, 2600].map((ms) => window.setTimeout(reflow, ms));
+    // Several passes: Mermaid renders async and the doc-height correction above
+    // only takes effect on the NEXT pass (the re-render lands a tick later), so
+    // the later passes read the corrected, settled heights and lay out on them.
+    const timers = [300, 700, 1200, 1800, 2600, 3400].map((ms) => window.setTimeout(reflow, ms));
 
     return () => timers.forEach((t) => window.clearTimeout(t));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -479,7 +517,7 @@ export function EmbedUseCases() {
     const n = (next + frames.length) % frames.length;
     idxRef.current = n;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    editor.zoomToBounds(frames[n]!, { inset: 16, animation: { duration: reduce ? 0 : 950 } });
+    editor.zoomToBounds(viewBox(frames[n]!), { inset: FRAME_INSET, animation: { duration: reduce ? 0 : 950 } });
   };
 
   return (
