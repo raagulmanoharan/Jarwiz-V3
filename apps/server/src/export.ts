@@ -80,12 +80,11 @@ const DESIGN_PHILOSOPHY = `DESIGN DIRECTION — Jarwiz is warm-monochrome and ed
 
 /**
  * The slideshow prompt. Crucially the model authors ONLY slide CONTENT — the
- * server wraps it in a tested shell (deckShell) that owns the palette, type,
- * navigation, motion, theming, and chrome. Letting the model author the whole
- * interactive document was too fragile (broken nav / blank slides varied run to
- * run); confining it to composing slides from vetted building blocks makes
- * every deck work while keeping the design genuinely bespoke per subject.
- * The LIVE WEB paragraph is included only when web tools were actually granted.
+ * client wraps it in a chosen template (see deckTemplates.ts) that owns the
+ * palette, type, and chrome. Letting the model author the whole document was
+ * too fragile; confining it to composing slides from vetted building blocks
+ * makes every deck work AND lets the user restyle it instantly by swapping
+ * templates. The LIVE WEB paragraph is included only when web tools were granted.
  */
 function slideshowSystem(web: boolean): string {
   const webPara = web
@@ -117,7 +116,7 @@ BUILDING BLOCKS (compose these — all pre-themed; never hard-code a colour):
 - Numbered list: <ol class="steps"><li>…</li>…</ol> — auto mono indices + hairline dividers.
 - Stat row: <div class="stats"><div class="stat"><b>60%</b><span>never return</span></div>…</div> (2–4).
 - Comparison: <table class="cmp"><thead><tr><th>…</th></tr></thead><tbody><tr><td>…</td></tr></tbody></table>; add class="hot" to the cell(s) to emphasise a row/column in --solid.
-- Chart: <figure class="chart"> INLINE SVG </figure><figcaption class="caption">the TAKEAWAY, not "chart"</figcaption>. Draw with the tokens — stroke/fill var(--ink) for the key mark, var(--muted) for secondary, var(--hair) for gridlines; ONE axis, one hue by magnitude, emphasised endpoint, direct mono labels, NO legend, NO chart library. Compute geometry yourself.
+- Chart: <figure class="chart"> INLINE SVG </figure><figcaption class="caption">the TAKEAWAY, not "chart"</figcaption>. Draw with the tokens (so it restyles per template) — stroke/fill var(--solid) for the ONE key/emphasised mark, var(--muted) for the secondary marks, var(--hair) for gridlines, var(--ink)/var(--muted) for labels; ONE axis, one measure by magnitude, an emphasised endpoint, direct mono labels, NO legend, NO chart library. Compute geometry yourself.
 - Quote: <blockquote class="quote">…</blockquote><p class="cite">— source</p>.
 You MAY add inline style="…" for bespoke composition, referencing the same var(--…) tokens.
 
@@ -206,17 +205,17 @@ function cleanMarkdown(raw: string): string {
 }
 
 /**
- * Assemble a deck from the model's output. The model authors only slide
- * sections; we extract every top-level `<section class="slide …">…</section>`
- * and drop it into the tested shell (nav/motion/theme/chrome all ours). Any
- * stray prose, fences, or a wrapper the model added around the sections is
- * discarded — only real slides survive. Returns '' when nothing parseable came
- * back, so the caller falls to the deterministic deck rather than shipping junk.
+ * Extract the model's slide sections. The model authors only a run of
+ * `<section class="slide …">…</section>` blocks; we pull them out (dropping any
+ * stray prose, fences, or wrapper it added) and return them joined. The CLIENT
+ * wraps these in the chosen template — so a deck can be restyled instantly
+ * without regenerating. Returns '' when nothing parseable came back, so the
+ * caller falls to the deterministic deck rather than shipping junk.
  */
-function assembleDeck(raw: string, title: string): string {
+function assembleDeck(raw: string): string {
   const sections = raw.match(/<section\b[^>]*\bclass=["'][^"']*\bslide\b[^"']*["'][^>]*>[\s\S]*?<\/section>/gi);
   if (!sections || sections.length === 0) return '';
-  return deckShell(title, sections.join('\n'));
+  return sections.join('\n');
 }
 
 /* ─── Deterministic fallback (no model) ───────────────────────────────────── */
@@ -232,9 +231,8 @@ function escapeHtml(s: string): string {
 }
 
 /** A faithful, presentable deck built with no model — a cover, one content
- *  slide per board item, and a closing, composed on the same warm-monochrome
- *  editorial system the live path targets. Never the star, but genuinely
- *  designed: left-anchored grid, mono utility labels, staggered enter. */
+ *  slide per board item, and a closing. Returns the SAME `<section class="slide">`
+ *  sections a model would, so the client wraps it in the chosen template too. */
 function fallbackSlideshow(req: ExportRequest): string {
   const title = req.title?.trim() || 'Untitled board';
   const items = req.board.slice(0, MAX_BOARD_CARDS);
@@ -281,119 +279,9 @@ function fallbackSlideshow(req: ExportRequest): string {
     </div></section>`,
   );
 
-  return deckShell(title, slidesHtml.join('\n'));
+  return slidesHtml.join('\n');
 }
 
-/**
- * The deck shell — the ONE self-contained document both the model path and the
- * fallback ship inside. The slideshow is a DOWNLOADABLE PDF, so this is a clean
- * PAGED document, not an interactive player: each slide is a fixed 16:9 page,
- * stacked (scrollable on screen, one-per-page in print), with no navigation
- * chrome. It owns the warm-paper palette, the mono-utility ↔ heavy-display type
- * system, every building-block class the prompt documents, and the single
- * "Made with Jarwiz" mark on each page.
- *
- * WYSIWYG sizing: slides are size containers and all type is in container-query
- * units (cqh/cqw), so a slide reads identically scaled-down in the modal preview
- * and at full 1280×720 in the printed PDF. Print rules force one slide per page,
- * exact background colours, and no on-screen shadows/gaps.
- */
-function deckShell(title: string, slides: string): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(title)} — Jarwiz</title>
-<style>
-  :root {
-    --ground:#faf9f7; --panel:#f1efea; --ink:#17150f; --muted:#6b675d;
-    --hair:rgba(23,21,15,.12); --solid:#17150f;
-    --sans:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
-    --mono:ui-monospace,'SFMono-Regular',Menlo,monospace;
-  }
-  * { box-sizing:border-box; margin:0; padding:0; }
-  body { background:#e7e5df; font-family:var(--sans); color:var(--ink); -webkit-font-smoothing:antialiased; }
-  .deck { display:flex; flex-direction:column; align-items:center; gap:26px; padding:26px; }
-  /* A slide is a fixed 16:9 page and a size container, so its type scales as one. */
-  .slide {
-    container-type:size;
-    position:relative;
-    width:min(100%,1280px); aspect-ratio:16/9;
-    background:var(--ground); color:var(--ink);
-    overflow:hidden;
-    border:1px solid var(--hair); border-radius:8px;
-    box-shadow:0 10px 34px rgba(23,21,15,.10);
-    -webkit-print-color-adjust:exact; print-color-adjust:exact;
-    display:flex; flex-direction:column; justify-content:center;
-    padding:13cqh 9.5cqw 13cqh;
-  }
-  .slide--cover { justify-content:flex-end; padding-bottom:15cqh; }
-  .slide--panel, .slide--section { background:var(--panel); }
-  .grid { width:100%; }
-  /* Vertical rhythm: layout does the spacing, so any stack of blocks the model
-     composes gets consistent, generous separation. The eyebrow hugs its heading. */
-  .grid > * + * { margin-top:3cqh; }
-  .col > * + * { margin-top:2.6cqh; }
-  .kicker + * { margin-top:1.8cqh; }
-  /* The one persistent mark — clean, minimal, brand. */
-  .slide::after {
-    content:"Made with Jarwiz";
-    position:absolute; right:9.5cqw; bottom:5.5cqh;
-    font-family:var(--mono); text-transform:uppercase; letter-spacing:.2em;
-    font-size:1.25cqh; color:var(--muted); opacity:.9;
-  }
-  /* Type & utility — a confident editorial scale, tight tracking on display. */
-  .kicker { font-family:var(--mono); text-transform:uppercase; letter-spacing:.22em; font-size:1.65cqh; color:var(--muted); }
-  .display { font-weight:820; letter-spacing:-.03em; line-height:1.0; text-wrap:balance; color:var(--ink); }
-  h1.display { font-size:13cqh; }
-  h2.display { font-size:6.6cqh; }
-  .rule { width:8cqw; height:2px; background:var(--solid); }
-  .lede { font-size:3.1cqh; line-height:1.42; color:var(--muted); max-width:40ch; }
-  .body { font-size:2.5cqh; line-height:1.55; color:var(--ink); max-width:52ch; }
-  .body p { margin-bottom:2cqh; } .body p:last-child { margin-bottom:0; }
-  .muted { color:var(--muted); }
-  /* Two-column — generous gutter, top-aligned columns. */
-  .split { display:grid; grid-template-columns:1fr 1fr; gap:7cqw; align-items:start; }
-  /* Numbered steps — auto mono index + hairline dividers */
-  .steps { list-style:none; counter-reset:s; max-width:60ch; }
-  .steps li { counter-increment:s; position:relative; padding:2.8cqh 0 2.8cqh 6.5ch; border-top:1px solid var(--hair); font-size:2.5cqh; line-height:1.4; }
-  .steps li:last-child { border-bottom:1px solid var(--hair); }
-  .steps li::before { content:counter(s,decimal-leading-zero); position:absolute; left:0; top:2.8cqh; font-family:var(--mono); font-size:1.65cqh; letter-spacing:.12em; color:var(--muted); }
-  /* Stat row — big figures, mono labels, hairline dividers. */
-  .stats { display:flex; flex-wrap:wrap; row-gap:5cqh; }
-  .stat { padding:0 3.4cqw; } .stat:first-child { padding-left:0; } .stat + .stat { border-left:1px solid var(--hair); }
-  .stat b { display:block; font-weight:820; letter-spacing:-.035em; font-size:12cqh; font-variant-numeric:tabular-nums; line-height:.95; }
-  .stat span { display:block; margin-top:2cqh; font-family:var(--mono); text-transform:uppercase; letter-spacing:.16em; font-size:1.55cqh; color:var(--muted); max-width:22ch; }
-  /* Comparison table — roomy rows, mono head, hairline rules only. */
-  .cmp { border-collapse:collapse; width:100%; font-size:2.45cqh; }
-  .cmp th { text-align:left; font-family:var(--mono); text-transform:uppercase; letter-spacing:.14em; font-size:1.5cqh; font-weight:500; color:var(--muted); padding:0 2.6ch 2.6cqh 0; border-bottom:1px solid var(--hair); }
-  .cmp td { text-align:left; padding:2.6cqh 2.6ch; border-bottom:1px solid var(--hair); font-variant-numeric:tabular-nums; color:var(--ink); }
-  .cmp td:first-child, .cmp th:first-child { padding-left:0; }
-  .cmp .hot { font-weight:750; }
-  /* Chart */
-  .chart { width:100%; } .chart svg { width:100%; max-width:100%; height:auto; overflow:visible; }
-  .caption { font-family:var(--mono); text-transform:uppercase; letter-spacing:.14em; font-size:1.55cqh; color:var(--muted); }
-  /* Quote */
-  .quote { font-size:5.4cqh; font-weight:760; letter-spacing:-.025em; line-height:1.14; text-wrap:balance; max-width:19ch; }
-  .cite { font-family:var(--mono); text-transform:uppercase; letter-spacing:.16em; font-size:1.65cqh; color:var(--muted); }
-  /* Print: one slide per page, exact colours, no screen shadows/gaps. */
-  @media print {
-    @page { size:1280px 720px; margin:0; }
-    body { background:#fff; }
-    .deck { gap:0; padding:0; }
-    .slide { width:1280px; height:720px; aspect-ratio:auto; border:none; border-radius:0; box-shadow:none; break-after:page; page-break-after:always; }
-    .slide:last-child { break-after:auto; page-break-after:auto; }
-  }
-</style>
-</head>
-<body>
-  <div class="deck">
-${slides}
-  </div>
-</body>
-</html>`;
-}
 
 /** A faithful Markdown capture built with no model — organised by board item,
  *  everything preserved, framed as an LLM handoff. */
@@ -479,11 +367,11 @@ export async function* streamExport(
   // closure (same trick as autopilot's `waker`).
   const out: { artifact: string | null; error: Error | null } = { artifact: null, error: null };
   const finish = (raw: string): string => {
-    // Slideshow → the model authored only slide sections; drop them into the
-    // tested shell. Markdown → just de-fence. Either can come back empty/junk,
-    // which the length gate below turns into the deterministic fallback.
-    const title = req.title?.trim() || 'Untitled board';
-    return req.mode === 'slideshow' ? assembleDeck(raw, title) : cleanMarkdown(raw);
+    // Slideshow → extract the model's slide sections (the client wraps them in
+    // the chosen template). Markdown → just de-fence. Either can come back
+    // empty/junk, which the length gate below turns into the deterministic
+    // fallback.
+    return req.mode === 'slideshow' ? assembleDeck(raw) : cleanMarkdown(raw);
   };
   const work = (async () => {
     try {

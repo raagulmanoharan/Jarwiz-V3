@@ -12,7 +12,7 @@
  * and hands it to the export store, which owns the runs.
  */
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { stopEventPropagation, useEditor, useValue } from 'tldraw';
 import type { ExportMode } from '@jarwiz/shared';
 import { gatherBoardCards } from '../../agents/boardText';
@@ -20,11 +20,13 @@ import { getActiveBoard } from '../../boards/boardStore';
 import {
   getExportState,
   retryExport,
+  setExportTemplate,
   startExport,
   subscribeExport,
   type ExportSlot,
 } from './exportStore';
 import { downloadText, printDeckToPdf, slugify } from './download';
+import { buildDeck, buildThumb, DECK_TEMPLATES } from './deckTemplates';
 
 export function ExportMenu() {
   const editor = useEditor();
@@ -81,6 +83,7 @@ export function ExportMenu() {
             mode="slideshow"
             slot={state.slideshow}
             title={state.title}
+            template={state.template}
             icon={<SlidesGlyph />}
             label="As a slideshow"
             sub="A presentation-ready PDF deck built from your board"
@@ -106,6 +109,7 @@ function ExportRow({
   mode,
   slot,
   title,
+  template,
   icon,
   label,
   sub,
@@ -114,6 +118,7 @@ function ExportRow({
   mode: ExportMode;
   slot: ExportSlot;
   title: string;
+  template?: string;
   icon: React.ReactNode;
   label: string;
   sub: string;
@@ -133,7 +138,7 @@ function ExportRow({
   }, [slot.phase]);
 
   const download = () => {
-    if (mode === 'slideshow') printDeckToPdf(slot.text);
+    if (mode === 'slideshow') printDeckToPdf(buildDeck(slot.text, title, template ?? 'editorial'));
     else downloadText(slot.text, `${slugify(title)}.md`, 'text/markdown');
   };
 
@@ -182,8 +187,41 @@ function ExportRow({
           </span>
         ) : null}
         {slot.phase === 'error' ? <span className="jz-export-item-err">{slot.error}</span> : null}
+        {mode === 'slideshow' && slot.phase === 'ready' ? (
+          <TemplatePicker sections={slot.text} title={title} selected={template ?? 'editorial'} />
+        ) : null}
       </span>
       {action ? <span className="jz-export-item-action">{action}</span> : null}
+    </div>
+  );
+}
+
+/** Live "pick a look" strip — a real thumbnail of the deck's cover in each
+ *  template. Selecting one restyles the download instantly (no regeneration).
+ *  The thumbnails are memoised on the slides so re-selecting doesn't reload the
+ *  iframes — only the highlight moves. */
+function TemplatePicker({ sections, title, selected }: { sections: string; title: string; selected: string }) {
+  const thumbs = useMemo(
+    () => DECK_TEMPLATES.map((t) => ({ id: t.id, name: t.name, html: buildThumb(sections, title, t.id) })),
+    [sections, title],
+  );
+  return (
+    <div className="jz-export-templates" onPointerDown={stopEventPropagation}>
+      {thumbs.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          className={`jz-export-tpl${t.id === selected ? ' jz-export-tpl--on' : ''}`}
+          onClick={() => setExportTemplate(t.id)}
+          title={t.name}
+          aria-pressed={t.id === selected}
+        >
+          <span className="jz-export-tpl-thumb">
+            <iframe srcDoc={t.html} sandbox="" tabIndex={-1} title={`${t.name} preview`} aria-hidden />
+          </span>
+          <span className="jz-export-tpl-name">{t.name}</span>
+        </button>
+      ))}
     </div>
   );
 }
