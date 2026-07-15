@@ -15,7 +15,7 @@ import { type ModeShape } from './modeShape';
 import { suggestShape } from './suggestShape';
 import { ASKABLE, hasAskableContent } from './askable';
 import { getShapeTitle } from '../shapes/shapeTitle';
-import { useAsk } from './useAsk';
+import { useAsk, PROV_META_KEY } from './useAsk';
 import { useCompose } from '../agents/useCompose';
 import { useAnnotate } from '../agents/useAnnotate';
 import { classifyRefineIntent, resolveMentionTarget, INLINE_EDITABLE, REFINE_SHAPE } from './refineIntent';
@@ -764,9 +764,28 @@ export function PromptBar() {
   // Nothing scripted: until the tailored pills arrive (or if the card is
   // empty) we show nothing. Predictable operations live on the card's
   // floating bar (Refine), not here.
+  // Anticipate, don't nag: once a card already has a model built FROM it, drop
+  // the "make a model" pill — the move is done, so re-offering it on every
+  // reselect is noise (owner feedback 2026-07-15). Provenance lives in the
+  // generated prototype's meta.jzSources.
+  const soleGroundId = groundIds.length === 1 ? (groundIds[0] as TLShapeId) : null;
+  const alreadyModeled = useValue(
+    'promptbar-already-modeled',
+    () =>
+      soleGroundId
+        ? editor.getCurrentPageShapes().some((s) => {
+            if (s.type !== 'prototype-card') return false;
+            const src = (s.meta as Record<string, unknown>)?.[PROV_META_KEY];
+            return Array.isArray(src) && (src as TLShapeId[]).includes(soleGroundId);
+          })
+        : false,
+    [editor, soleGroundId],
+  );
   const starters: Array<{ label: string; prompt: string; shape?: ModeShape }> =
     groundIds.length === 1 && (seeds?.length ?? 0) > 0
-      ? seeds!.map((s) => ({ label: s.label, prompt: s.prompt, shape: s.shape }))
+      ? seeds!
+          .map((s) => ({ label: s.label, prompt: s.prompt, shape: s.shape }))
+          .filter((s) => !(s.shape === 'prototype' && alreadyModeled))
       : [];
   const showStarters = !runningMode && !isAsking && !soleBusy && !draftPending && !plainText.trim() && starters.length > 0;
   // The 5-20s quiet gap while tailored pills are being generated (cache still
