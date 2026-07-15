@@ -14,6 +14,7 @@ import {
 import { domainInitial, domainOf } from '../lib/url';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
+import { TldrStrip, type TldrStatus } from './TldrStrip';
 
 export interface LinkCardProps {
   w: number;
@@ -29,6 +30,10 @@ export interface LinkCardProps {
   /** Readable page text (server-extracted, capped) — what asks ground on.
    *  Optional so link cards persisted before extraction stay valid. */
   text?: string;
+  /** The one-glance gist, generated on drop and shown below the preview. */
+  tldr?: string;
+  /** Lifecycle of the TL;DR strip (undefined = never requested → no strip). */
+  tldrStatus?: TldrStatus;
 }
 
 declare module '@tldraw/tlschema' {
@@ -56,6 +61,8 @@ export class LinkCardShapeUtil extends ShapeUtil<LinkCardShape> {
     siteName: T.string,
     loading: T.boolean,
     text: T.string.optional(),
+    tldr: T.string.optional(),
+    tldrStatus: T.literalEnum('loading', 'ready', 'error').optional(),
   };
 
   override getDefaultProps(): LinkCardShape['props'] {
@@ -104,7 +111,7 @@ function LinkCardAuto({ shape }: { shape: LinkCardShape }) {
   const editor = useEditor();
   const fitRef = useRef<HTMLDivElement | null>(null);
   const isSelected = useCardSelected(shape.id);
-  const { loading, title, description, image, url, w, h } = shape.props;
+  const { loading, title, description, image, url, w, h, tldr, tldrStatus } = shape.props;
   useLayoutEffect(() => {
     const el = fitRef.current;
     if (!el) return;
@@ -112,7 +119,9 @@ function LinkCardAuto({ shape }: { shape: LinkCardShape }) {
     if (target > 40 && Math.abs(target - h) > 2) {
       editor.updateShape<LinkCardShape>({ id: shape.id, type: 'link-card', props: { h: target } });
     }
-  }, [editor, shape.id, loading, title, description, image, url, w, h]);
+    // tldr/tldrStatus in the deps: the strip appearing (skeleton → text) grows
+    // the card's measured content, so re-fit height when it changes.
+  }, [editor, shape.id, loading, title, description, image, url, w, h, tldr, tldrStatus]);
   return (
     <div ref={fitRef} className="jz-link-fit">
       {loading ? <LinkCardSkeleton selected={isSelected} /> : <LinkCardBody {...shape.props} selected={isSelected} />}
@@ -140,7 +149,7 @@ function LinkCardSkeleton({ selected }: { selected?: boolean }) {
 }
 
 function LinkCardBody(props: LinkCardShape['props'] & { selected?: boolean }) {
-  const { url, title, description, image, favicon, themeColor, siteName, selected } = props;
+  const { url, title, description, image, favicon, themeColor, siteName, selected, tldr, tldrStatus } = props;
   const domain = domainOf(url);
 
   return (
@@ -171,6 +180,9 @@ function LinkCardBody(props: LinkCardShape['props'] & { selected?: boolean }) {
           ) : null}
         </div>
       </div>
+      {/* The link card is content-height, so the strip flows at its natural
+          height and the fit measure above folds it in. */}
+      <TldrStrip tldr={tldr} status={tldrStatus} />
     </div>
   );
 }

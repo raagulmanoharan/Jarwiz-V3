@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import {
   HTMLContainer,
   Rectangle2d,
@@ -11,6 +12,7 @@ import {
 } from 'tldraw';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
+import { TldrStrip, useTldrGrowth, type TldrStatus } from './TldrStrip';
 import { apiUrl } from '../lib/api';
 
 export interface YouTubeCardProps {
@@ -27,6 +29,10 @@ export interface YouTubeCardProps {
   /** Watched frames (asset ids, time order) — asks ship these as vision
    *  inputs so the model sees the video, not just its transcript. */
   frames?: string[];
+  /** The one-glance gist (from the transcript), shown below the player. */
+  tldr?: string;
+  /** Lifecycle of the TL;DR strip (undefined = never requested → no strip). */
+  tldrStatus?: TldrStatus;
 }
 
 declare module '@tldraw/tlschema' {
@@ -51,6 +57,8 @@ export class YouTubeCardShapeUtil extends ShapeUtil<YouTubeCardShape> {
     text: T.string.optional(),
     hasTranscript: T.boolean.optional(),
     frames: T.arrayOf(T.string).optional(),
+    tldr: T.string.optional(),
+    tldrStatus: T.literalEnum('loading', 'ready', 'error').optional(),
   };
 
   override getDefaultProps(): YouTubeCardShape['props'] {
@@ -90,7 +98,11 @@ export class YouTubeCardShapeUtil extends ShapeUtil<YouTubeCardShape> {
 function YouTubeCardBody({ shape }: { shape: YouTubeCardShape }) {
   const isEditing = useIsEditing(shape.id);
   const isSelected = useCardSelected(shape.id);
-  const { videoId, url, title, hasTranscript, frames } = shape.props;
+  const { videoId, url, title, hasTranscript, frames, tldr, tldrStatus, w } = shape.props;
+  // The player fills the card, so grow the card by the strip's measured height
+  // (a TL;DR is short and shown in full — never truncated).
+  const stripRef = useRef<HTMLDivElement | null>(null);
+  useTldrGrowth(shape.id, 'youtube-card', stripRef, `${tldrStatus ?? ''}|${tldr ?? ''}|${w}`);
   // Direct media URLs (no YouTube id) play in a native <video> and wear the
   // first WATCHED frame as their poster — the pipeline's stills do the job
   // YouTube's thumbnail server does for youtube ids.
@@ -161,6 +173,7 @@ function YouTubeCardBody({ shape }: { shape: YouTubeCardShape }) {
           </div>
         )}
       </div>
+      <TldrStrip ref={stripRef} tldr={tldr} status={tldrStatus} />
     </div>
   );
 }

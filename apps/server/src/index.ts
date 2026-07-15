@@ -30,6 +30,7 @@ import type {
   TableAutopilotRequest,
 } from '@jarwiz/shared';
 import { buildLinkPreview, fetchYouTubeText, SsrfError } from './linkPreview.js';
+import { generateTldr, type TldrInput, type TldrKind } from './tldr.js';
 import { ingestVideo, videoTools } from './video.js';
 import { parseSheetGrid } from './sheets.js';
 import { discoverResources } from './discover.js';
@@ -295,6 +296,42 @@ app.post('/api/youtube/text', async (c) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Transcript fetch failed';
     return c.json({ error: message }, 502);
+  }
+});
+
+/**
+ * TL;DR for a dropped card — the one-glance gist that fills in ON the card
+ * (link/video/PDF/sheet) below its preview. Links & videos carry their own
+ * text; PDFs & sheets pass an assetId the server extracts. Best-effort: an
+ * empty { tldr } is a valid answer (thin content, no key) and the card just
+ * shows no strip.
+ */
+app.post('/api/tldr', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected JSON: { kind, text? | assetId? }' }, 400);
+  }
+  const raw = body as { kind?: unknown; title?: unknown; text?: unknown; assetId?: unknown };
+  const KINDS: TldrKind[] = ['link', 'youtube', 'pdf', 'sheet'];
+  if (!KINDS.includes(raw.kind as TldrKind)) {
+    return c.json({ error: 'kind must be one of: link, youtube, pdf, sheet' }, 400);
+  }
+  const assetId = typeof raw.assetId === 'string' && isValidAssetId(raw.assetId) ? raw.assetId : undefined;
+  const input: TldrInput = {
+    kind: raw.kind as TldrKind,
+    title: typeof raw.title === 'string' ? raw.title.slice(0, 300) : undefined,
+    text: typeof raw.text === 'string' ? raw.text.slice(0, 20_000) : undefined,
+    assetId,
+  };
+  try {
+    const tldr = await generateTldr(input, c.req.raw.signal);
+    return c.json({ tldr });
+  } catch (error) {
+    // A failed generation is not a card error — the card lives without a TL;DR.
+    const message = error instanceof Error ? error.message : 'TL;DR failed';
+    return c.json({ tldr: '', error: message });
   }
 });
 
@@ -634,7 +671,7 @@ app.post('/api/analyze', async (c) => {
   });
 });
 
-/** Ultra Think — grounded discovery of real related resources for the board. */
+/** Scout — grounded discovery of real related resources for the board. */
 app.post('/api/discover', async (c) => {
   let body: unknown;
   try {

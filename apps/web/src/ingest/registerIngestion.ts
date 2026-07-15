@@ -10,6 +10,7 @@
 
 import { createShapeId, type Editor, type TLShapeId, type VecLike } from 'tldraw';
 import { noteIngestion } from '../agents/jarwizLife';
+import { startTldr } from './tldr';
 import { domainOf } from '../lib/url';
 import { uploadAsset } from '../lib/uploadAsset';
 import { logEvent } from '../log/eventLog';
@@ -109,6 +110,12 @@ function placeYouTube(editor: Editor, url: string, videoId: string, center: VecL
           frames: (t?.frames ?? []).map((f) => String(f?.assetId ?? '')).filter(Boolean),
         },
       });
+      // A TL;DR needs something to read — only a video with a real transcript
+      // gets one; a metadata-only video wears its "processing/no captions"
+      // badge instead of a summary of nothing.
+      if (t?.text?.trim()) {
+        startTldr(editor, id, 'youtube-card', { kind: 'youtube', title: t.title, text: t.text });
+      }
     })
     .catch(() => {
       if (!editor.getShape(id)) return;
@@ -166,6 +173,11 @@ function placeLink(editor: Editor, url: string, center: VecLike): void {
           text: p?.text ?? '',
         },
       });
+      // Summarize the page onto the card the moment we have its text — a bare
+      // preview with no readable body just stays a preview (no strip).
+      if (p?.text?.trim()) {
+        startTldr(editor, id, 'link-card', { kind: 'link', title: p.title, text: p.text });
+      }
     })
     .catch(() => {
       if (!editor.getShape(id)) return;
@@ -267,6 +279,8 @@ function placePdf(editor: Editor, file: File, center: VecLike): TLShapeId {
       if (editor.getShape(id)) {
         editor.select(id);
         logEvent(editor, { kind: 'pdf', label: `Added ${file.name}`, shapeIds: [id] });
+        // The server extracts the PDF's text from the asset for the gist.
+        startTldr(editor, id, 'pdf-card', { kind: 'pdf', title: file.name, assetId });
       }
     })
     .catch(() => updatePdf(editor, id, { status: 'error' }));
@@ -296,6 +310,8 @@ function placeSheet(editor: Editor, file: File, center: VecLike): TLShapeId {
       editor.updateShape<SheetCardShape>({ id, type: 'sheet-card', props: { src: url, assetId, status: 'ready' } });
       editor.select(id);
       logEvent(editor, { kind: 'artefact', label: `Added ${file.name}`, detail: 'Spreadsheet', shapeIds: [id] });
+      // The server flattens the grid to text for the gist.
+      startTldr(editor, id, 'sheet-card', { kind: 'sheet', title: file.name, assetId });
     })
     .catch(() => {
       if (editor.getShape(id)) editor.updateShape<SheetCardShape>({ id, type: 'sheet-card', props: { status: 'error' } });
