@@ -140,9 +140,8 @@ function ExportRow({
   // The trailing action morphs with state: + (kick off) → spinner → ↓ (download).
   const action =
     slot.phase === 'working' ? (
-      <span className="jz-icon-btn jz-icon-btn--busy" aria-label="Generating" role="status">
-        <span className="jz-spinner" />
-      </span>
+      // No spinner — the progress bar under the description carries the state.
+      null
     ) : slot.phase === 'ready' ? (
       <button
         className="jz-icon-btn jz-icon-btn--go"
@@ -167,33 +166,24 @@ function ExportRow({
       </button>
     );
 
-  // The secondary line under the title reflects state.
-  const secondary =
-    slot.phase === 'working' ? (
-      <>
-        <span className="jz-export-item-progress" aria-hidden>
-          <span style={{ width: `${pct}%` }} />
-        </span>
-        <span className="jz-export-item-status">{slot.status || 'Working…'}</span>
-      </>
-    ) : slot.phase === 'ready' ? (
-      <span className="jz-export-item-sub">
-        {mode === 'slideshow' ? 'Ready — download as PDF' : 'Ready — download .md'}
-      </span>
-    ) : slot.phase === 'error' ? (
-      <span className="jz-export-item-err">{slot.error}</span>
-    ) : (
-      <span className="jz-export-item-sub">{sub}</span>
-    );
-
   return (
     <div className={`jz-export-item${slot.phase !== 'idle' ? ' jz-export-item--active' : ''}`} role="menuitem">
       <span className="jz-export-item-icon">{icon}</span>
       <span className="jz-export-item-text">
         <span className="jz-export-item-title">{label}</span>
-        {secondary}
+        <span className="jz-export-item-sub">{sub}</span>
+        {slot.phase === 'working' ? (
+          // Below the description → the card grows to fit it.
+          <span className="jz-export-item-progress-wrap">
+            <span className="jz-export-item-progress" aria-hidden>
+              <span style={{ width: `${pct}%` }} />
+            </span>
+            <span className="jz-export-item-status">{slot.status || 'Working…'}</span>
+          </span>
+        ) : null}
+        {slot.phase === 'error' ? <span className="jz-export-item-err">{slot.error}</span> : null}
       </span>
-      <span className="jz-export-item-action">{action}</span>
+      {action ? <span className="jz-export-item-action">{action}</span> : null}
     </div>
   );
 }

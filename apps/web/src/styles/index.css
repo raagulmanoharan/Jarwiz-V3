@@ -1254,7 +1254,7 @@ body,
 }
 .jz-export-item {
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   gap: 12px;
   padding: 10px;
   border: none;
@@ -1302,17 +1302,19 @@ body,
 .jz-export-item-action {
   flex: 0 0 auto;
   margin-left: auto;
-  /* Span the full text block (title + description). */
-  align-self: stretch;
-  display: flex;
+  /* A bare icon, level with the title. */
+  align-self: flex-start;
 }
-/* Progress bar — eases up while a row is generating. */
+/* Progress bar — sits BELOW the description while generating, so the row grows
+ * to fit it (the card visibly expands). */
+.jz-export-item-progress-wrap {
+  display: block;
+  margin-top: 8px;
+}
 .jz-export-item-progress {
   display: block;
   width: 100%;
-  max-width: 200px;
   height: 4px;
-  margin-top: 6px;
   border-radius: var(--jz-radius-pill);
   background: color-mix(in srgb, var(--jz-ink-900) 9%, transparent);
   overflow: hidden;
@@ -1325,63 +1327,43 @@ body,
   transition: width 0.35s var(--jz-ease-out);
 }
 .jz-export-item-status {
-  margin-top: 5px;
+  display: block;
+  margin-top: 6px;
   font-size: 12px;
   color: var(--jz-ink-500);
 }
 .jz-export-item-err {
+  margin-top: 6px;
   font-size: 12px;
   line-height: 16px;
   color: var(--jz-danger);
 }
-/* The morphing action control: + (kick off) → spinner → download. It fills the
- * height of the row's text block (title + description). */
+/* Bare icon control (no box): + to kick off, download icon when ready. */
 .jz-icon-btn {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  align-self: stretch;
-  width: 40px;
-  min-height: 40px;
-  border-radius: var(--jz-radius-md);
-  border: 1px solid var(--jz-hairline);
-  background: var(--jz-surface);
-  color: var(--jz-ink-900);
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--jz-ink-700);
   cursor: pointer;
-  transition: background var(--jz-dur-fast) var(--jz-ease-out);
+  transition: background var(--jz-dur-fast) var(--jz-ease-out),
+    color var(--jz-dur-fast) var(--jz-ease-out);
 }
 .jz-icon-btn:hover {
-  background: color-mix(in srgb, var(--jz-ink-900) 7%, var(--jz-surface));
+  background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
+  color: var(--jz-ink-900);
 }
-/* Ready → the download button reads as the primary CTA (accent-filled). */
+/* Ready → the download icon is the accent-coloured cue (still bare). */
 .jz-icon-btn--go {
-  background: var(--jz-accent);
-  color: var(--jz-accent-ink);
-  border-color: transparent;
+  color: var(--jz-accent);
 }
 .jz-icon-btn--go:hover {
-  background: color-mix(in srgb, var(--jz-accent) 88%, var(--jz-ink-500));
-}
-/* Working → the same frame, holding a small circular spinner. */
-.jz-icon-btn--busy {
-  cursor: default;
-}
-.jz-icon-btn--busy:hover {
-  background: var(--jz-surface);
-}
-.jz-spinner {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 2px solid var(--jz-hairline);
-  border-top-color: var(--jz-accent);
-  animation: jz-export-spin 0.7s linear infinite;
-}
-@keyframes jz-export-spin {
-  to { transform: rotate(360deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .jz-spinner { animation-duration: 1.6s; }
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  color: var(--jz-accent);
 }
 /* Ready dot on the button when the menu is closed. */
 .jz-export-dot {
