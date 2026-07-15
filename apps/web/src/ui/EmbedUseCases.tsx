@@ -33,7 +33,7 @@ type CardSpec =
   | { kind: 'doc'; slot: string; title: string; text: string }
   | { kind: 'table'; slot: string; columns: string[]; rows: string[][] }
   | { kind: 'diagram'; slot: string; title: string; code: string }
-  | { kind: 'link'; slot: string; url: string; siteName: string; title: string; description: string }
+  | { kind: 'link'; slot: string; url: string; siteName: string; title: string; description: string; tldr: string }
   | { kind: 'img'; slot: string; src: string; name: string }
   | { kind: 'map'; slot: string; title: string; intro: string; ordered: boolean; stops: Stop[] }
   | { kind: 'dashboard'; slot: string; title: string; spec: string }
@@ -62,7 +62,7 @@ const H0: Record<string, number> = {
   doc: 380, doc2: 260, research: 280,
   table: 210, table2: 200, table3: 200,
   diagram: 420, diagram2: 260,
-  link: 150, link2: 150, link3: 150, link4: 150, link5: 150,
+  link: 230, link2: 230, link3: 230, link4: 230, link5: 230,
   img: 330, img2: 300, img3: 300,
   map: 360, dashboard: 440, prototype: 400, video: 300,
 };
@@ -140,9 +140,9 @@ const PERSONAS: Persona[] = [
       { kind: 'dashboard', slot: 'dashboard', title: 'Launch metrics', spec: LAUNCH_DASH },
       { kind: 'diagram', slot: 'diagram', title: 'User flow', code: 'flowchart TD\n  A[Open list] --> B[Apply filters]\n  B --> C{Save?}\n  C -->|No| Z[Just browse]\n  C -->|Yes| D[Name view]\n  D --> E{Share?}\n  E -->|Private| F[My views]\n  E -->|Team| G[Team views]\n  G --> H{Set default?}\n  H -->|Yes| I[Team default]\n  H -->|No| F\n  F --> J[Reopen anytime]\n  I --> J' },
       { kind: 'diagram', slot: 'diagram2', title: 'Release ramp', code: 'flowchart LR\n  A[Dogfood] --> B[Beta 5%]\n  B --> C{Crash-free?}\n  C -->|No| D[Fix + hold]\n  D --> B\n  C -->|Yes| E[Ramp 50%]\n  E --> F[GA]' },
-      { kind: 'link', slot: 'link', url: 'https://linear.app/docs/views', siteName: 'Linear', title: 'Custom views & filters', description: 'How Linear models saved, shareable views.' },
-      { kind: 'link', slot: 'link2', url: 'https://support.atlassian.com/jira', siteName: 'Atlassian', title: 'JQL & saved filters', description: 'Jira’s filter + subscription model.' },
-      { kind: 'link', slot: 'link3', url: 'https://height.app/changelog', siteName: 'Height', title: 'Views — changelog', description: 'How a lighter tool shipped views.' },
+      { kind: 'link', slot: 'link', url: 'https://linear.app/docs/views', siteName: 'Linear', title: 'Custom views & filters', description: 'How Linear models saved, shareable views.', tldr: 'Linear’s views are per-team, shareable, and settable as a default — the model to copy for a fast, lightweight filter experience.' },
+      { kind: 'link', slot: 'link2', url: 'https://support.atlassian.com/jira', siteName: 'Atlassian', title: 'JQL & saved filters', description: 'Jira’s filter + subscription model.', tldr: 'Jira saves filters via JQL and lets you subscribe to them — powerful, but the flexibility comes with real setup cost.' },
+      { kind: 'link', slot: 'link3', url: 'https://height.app/changelog', siteName: 'Height', title: 'Views — changelog', description: 'How a lighter tool shipped views.', tldr: 'Height shipped views as one simple, opinionated feature — a good reference for scoping the MVP tight.' },
       { kind: 'img', slot: 'img', src: 'wireframe', name: 'Feature wireframes' },
       { kind: 'pin', slot: 'note1', text: 'P0 — ship this first', anchor: 'doc', corner: 'tr' },
       { kind: 'pin', slot: 'note2', text: '← the gap we own', anchor: 'table', corner: 'bl' },
@@ -161,9 +161,9 @@ const PERSONAS: Persona[] = [
       { kind: 'diagram', slot: 'diagram', title: 'Concept map', code: 'flowchart TD\n  A[Attention] --> B[Self-attention]\n  A --> C[Cross-attention]\n  B --> D[Transformers]\n  D --> E[Encoder]\n  D --> F[Decoder]\n  E --> G[BERT]\n  F --> H[GPT]\n  D --> I[Scaling laws]\n  G --> J[Fine-tuning]\n  H --> J\n  I --> K[Emergent ability]' },
       { kind: 'diagram', slot: 'diagram2', title: 'Method lineage', code: 'flowchart LR\n  A[RNN] --> B[LSTM]\n  B --> C[Attention]\n  C --> D[Transformer]\n  D --> E[Pretrain + FT]' },
       { kind: 'video', slot: 'video', videoId: 'eMlx5fFNoYc', url: 'https://www.youtube.com/watch?v=eMlx5fFNoYc', title: 'Attention in transformers, visually explained — 3Blue1Brown' },
-      { kind: 'link', slot: 'link', url: 'https://arxiv.org/abs/1706.03762', siteName: 'arXiv', title: 'Attention Is All You Need', description: 'Vaswani et al., 2017 — the Transformer.' },
-      { kind: 'link', slot: 'link2', url: 'https://jalammar.github.io/illustrated-transformer', siteName: 'jalammar.github.io', title: 'The Illustrated Transformer', description: 'The canonical visual explainer.' },
-      { kind: 'link', slot: 'link3', url: 'https://paperswithcode.com/method/transformer', siteName: 'Papers with Code', title: 'Transformer — leaderboard', description: 'Benchmarks and implementations.' },
+      { kind: 'link', slot: 'link', url: 'https://arxiv.org/abs/1706.03762', siteName: 'arXiv', title: 'Attention Is All You Need', description: 'Vaswani et al., 2017 — the Transformer.', tldr: 'The 2017 paper that replaced recurrence with self-attention — parallel training, positional encodings, and the basis for every modern LLM.' },
+      { kind: 'link', slot: 'link2', url: 'https://jalammar.github.io/illustrated-transformer', siteName: 'jalammar.github.io', title: 'The Illustrated Transformer', description: 'The canonical visual explainer.', tldr: 'A visual, step-by-step walkthrough of attention and the Transformer block — the clearest on-ramp before the math.' },
+      { kind: 'link', slot: 'link3', url: 'https://paperswithcode.com/method/transformer', siteName: 'Papers with Code', title: 'Transformer — leaderboard', description: 'Benchmarks and implementations.', tldr: 'Benchmarks and open implementations of Transformer variants, ranked by task — handy for picking a baseline.' },
       { kind: 'img', slot: 'img', src: 'radar', name: 'Fig — AI capability by job' },
       { kind: 'pin', slot: 'note1', text: 'cite every claim', anchor: 'doc', corner: 'tr' },
       { kind: 'pin', slot: 'note2', text: 'start with [1]', anchor: 'link', corner: 'tl' },
@@ -181,8 +181,8 @@ const PERSONAS: Persona[] = [
       { kind: 'table', slot: 'table2', columns: ['Signal', 'Count', 'Move'], rows: [['Wants templates', '4/5', 'P0'], ['Confused start', '5/5', 'P0'], ['Likes shortcuts', '2/5', 'P2']] },
       { kind: 'diagram', slot: 'diagram', title: 'Journey map', code: 'flowchart TD\n  A[Discover] --> B[Landing]\n  B --> C{Sign up?}\n  C -->|No| X[Bounce]\n  C -->|Yes| D[Onboarding]\n  D --> E{Connect data?}\n  E -->|No| F[The cliff]\n  F --> G[Email nudge]\n  G --> E\n  E -->|Yes| H[First value]\n  H --> I{Return D2?}\n  I -->|Yes| J[Habit]\n  I -->|No| G' },
       { kind: 'prototype', slot: 'prototype', title: 'Onboarding — template gallery', html: TEMPLATE_GALLERY_HTML },
-      { kind: 'link', slot: 'link', url: 'https://maze.co/reports/ux-research', siteName: 'Maze', title: 'Usability test readout', description: 'The 12-participant onboarding study.' },
-      { kind: 'link', slot: 'link2', url: 'https://baymard.com/blog', siteName: 'Baymard', title: 'Onboarding UX benchmarks', description: 'What great first-runs have in common.' },
+      { kind: 'link', slot: 'link', url: 'https://maze.co/reports/ux-research', siteName: 'Maze', title: 'Usability test readout', description: 'The 12-participant onboarding study.', tldr: 'Most participants stalled at “connect data” and asked “where do I start?” — templates consistently beat a blank canvas.' },
+      { kind: 'link', slot: 'link2', url: 'https://baymard.com/blog', siteName: 'Baymard', title: 'Onboarding UX benchmarks', description: 'What great first-runs have in common.', tldr: 'High-performing first-runs show value fast, defer setup, and guide the empty state instead of leaving it blank.' },
       { kind: 'img', slot: 'img', src: 'storyboard', name: 'UX storyboard' },
       { kind: 'img', slot: 'img2', src: 'des-ui', name: 'UI reference' },
       { kind: 'img', slot: 'img3', src: 'proxilexis', name: 'Concept board' },
@@ -208,11 +208,11 @@ const PERSONAS: Persona[] = [
       { kind: 'table', slot: 'table', columns: ['Area', 'Vibe', '€/night', 'Best for'], rows: [['Kyoto Station', 'Connected, modern', '€120', 'First trip, day trips'], ['Gion / Higashiyama', 'Traditional, quiet', '€180', 'Atmosphere, walkability'], ['Karasuma / Downtown', 'Central, lively', '€140', 'Food & nightlife'], ['Arashiyama', 'Leafy, remote', '€160', 'Slow mornings']] },
       { kind: 'table', slot: 'table2', columns: ['Getting around', 'Covers', 'Cost'], rows: [['City bus', 'Temples, center', '€2 / ride'], ['Subway', 'N–S, E–W lines', '€2–3'], ['JR train', 'Inari, Arashiyama', 'Pass'], ['Walk', 'Higashiyama', '—']] },
       { kind: 'diagram', slot: 'diagram', title: 'Days at a glance', code: 'flowchart LR\n  A[Day 1 · East Kyoto] --> B[Day 2 · Arashiyama]\n  B --> C[Day 3 · Downtown]' },
-      { kind: 'link', slot: 'link5', url: 'https://www.klook.com/en-US/city/20-kyoto-things-to-do', siteName: 'Klook', title: 'Kyoto experiences', description: 'Tea ceremony, kimono rental, day tours.' },
-      { kind: 'link', slot: 'link', url: 'https://www.booking.com/city/jp/kyoto.html', siteName: 'Booking.com', title: 'Kyoto stays', description: 'Ryokan and hotels by district.' },
-      { kind: 'link', slot: 'link2', url: 'https://www.japan-guide.com/e/e2158.html', siteName: 'japan-guide.com', title: 'Kyoto travel guide', description: 'The definitive area-by-area guide.' },
-      { kind: 'link', slot: 'link3', url: 'https://www.japanrailpass.net', siteName: 'japanrailpass.net', title: 'JR Pass', description: 'Worth it if you day-trip beyond the city.' },
-      { kind: 'link', slot: 'link4', url: 'https://www.timeout.com/kyoto/restaurants', siteName: 'Time Out', title: 'Where to eat in Kyoto', description: 'Kaiseki to conveyor-belt sushi.' },
+      { kind: 'link', slot: 'link5', url: 'https://www.klook.com/en-US/city/20-kyoto-things-to-do', siteName: 'Klook', title: 'Kyoto experiences', description: 'Tea ceremony, kimono rental, day tours.', tldr: 'Book tea ceremonies, kimono rental, and small-group day tours ahead — the popular slots sell out in season.' },
+      { kind: 'link', slot: 'link', url: 'https://www.booking.com/city/jp/kyoto.html', siteName: 'Booking.com', title: 'Kyoto stays', description: 'Ryokan and hotels by district.', tldr: 'Ryokan and hotels filterable by district — cross-reference with the “where to stay” table before you book.' },
+      { kind: 'link', slot: 'link2', url: 'https://www.japan-guide.com/e/e2158.html', siteName: 'japan-guide.com', title: 'Kyoto travel guide', description: 'The definitive area-by-area guide.', tldr: 'Area-by-area guide: which temples cluster together, how to move between them, and the best time of day to go.' },
+      { kind: 'link', slot: 'link3', url: 'https://www.japanrailpass.net', siteName: 'japanrailpass.net', title: 'JR Pass', description: 'Worth it if you day-trip beyond the city.', tldr: 'A JR Pass pays off only if you day-trip beyond Kyoto — for a city-only stay, single tickets are cheaper.' },
+      { kind: 'link', slot: 'link4', url: 'https://www.timeout.com/kyoto/restaurants', siteName: 'Time Out', title: 'Where to eat in Kyoto', description: 'Kaiseki to conveyor-belt sushi.', tldr: 'From kaiseki to conveyor-belt sushi — where locals actually eat, sorted by neighbourhood.' },
       { kind: 'pin', slot: 'note1', text: 'book Inari for dawn', anchor: 'map', corner: 'tr' },
       { kind: 'pin', slot: 'note2', text: 'best value ↑', anchor: 'table', corner: 'bl' },
       { kind: 'pin', slot: 'note3', text: 'buy before you fly', anchor: 'link3', corner: 'br' },
@@ -230,9 +230,9 @@ const PERSONAS: Persona[] = [
       { kind: 'table', slot: 'table2', columns: ['Dry-run check', 'Status'], rows: [['Timed under 18m', '✓'], ['Demo works offline', '✓'], ['Backup PDF on USB', '—'], ['Q&A prompts ready', '✓']] },
       { kind: 'video', slot: 'video', videoId: 'qp0HIF3SfI4', url: 'https://www.youtube.com/watch?v=qp0HIF3SfI4', title: 'How great leaders inspire action — Simon Sinek' },
       { kind: 'img', slot: 'img', src: 'storyboard', name: 'Slide storyboard' },
-      { kind: 'link', slot: 'link', url: 'https://www.ted.com/participate/organize-a-local-tedx-event/tedx-organizer-guide/speakers-program/prepare-your-speaker', siteName: 'TED', title: 'How to give a great talk', description: 'TED’s own speaker guide.' },
-      { kind: 'link', slot: 'link2', url: 'https://www.duarte.com/slideology', siteName: 'Duarte', title: 'slide:ology', description: 'The reference on visual storytelling.' },
-      { kind: 'link', slot: 'link3', url: 'https://speaking.io', siteName: 'speaking.io', title: 'Talk delivery tips', description: 'Practical advice on presence and pacing.' },
+      { kind: 'link', slot: 'link', url: 'https://www.ted.com/participate/organize-a-local-tedx-event/tedx-organizer-guide/speakers-program/prepare-your-speaker', siteName: 'TED', title: 'How to give a great talk', description: 'TED’s own speaker guide.', tldr: 'TED’s rule: one idea, earn it with a story, and cut everything that doesn’t serve the through-line.' },
+      { kind: 'link', slot: 'link2', url: 'https://www.duarte.com/slideology', siteName: 'Duarte', title: 'slide:ology', description: 'The reference on visual storytelling.', tldr: 'The reference on visual storytelling — make slides evidence for your point, not a teleprompter for you.' },
+      { kind: 'link', slot: 'link3', url: 'https://speaking.io', siteName: 'speaking.io', title: 'Talk delivery tips', description: 'Practical advice on presence and pacing.', tldr: 'Delivery craft: pacing, deliberate pauses, and handling nerves — the mechanics behind a talk that lands.' },
       { kind: 'pin', slot: 'note1', text: 'open with the pain', anchor: 'doc', corner: 'tr' },
       { kind: 'pin', slot: 'note2', text: 'land these three', anchor: 'doc2', corner: 'br' },
       { kind: 'pin', slot: 'note3', text: 'study the pacing', anchor: 'video', corner: 'tr' },
@@ -250,9 +250,9 @@ const PERSONAS: Persona[] = [
       { kind: 'dashboard', slot: 'dashboard', title: 'Weighted scorecard', spec: DECISION_DASH },
       { kind: 'diagram', slot: 'diagram', title: 'Decision tree', code: 'flowchart TD\n  A[Need product analytics] --> B{Data must stay in-VPC?}\n  B -->|Yes| C[Self-host PostHog]\n  B -->|No| D{Team to build & maintain?}\n  D -->|Yes| E[Build in-house]\n  D -->|No| F{Budget > $160k / 3yr?}\n  F -->|Yes| G[Amplitude]\n  F -->|No| C' },
       { kind: 'img', slot: 'img', src: 'fnd-chart', name: '3-yr cost projection' },
-      { kind: 'link', slot: 'link', url: 'https://posthog.com/pricing', siteName: 'PostHog', title: 'PostHog pricing', description: 'Usage tiers and the self-host plan.' },
-      { kind: 'link', slot: 'link2', url: 'https://amplitude.com/pricing', siteName: 'Amplitude', title: 'Amplitude plans', description: 'Seat + event-based pricing.' },
-      { kind: 'link', slot: 'link3', url: 'https://www.g2.com/categories/product-analytics', siteName: 'G2', title: 'Product analytics — reviews', description: 'Side-by-side ratings from real teams.' },
+      { kind: 'link', slot: 'link', url: 'https://posthog.com/pricing', siteName: 'PostHog', title: 'PostHog pricing', description: 'Usage tiers and the self-host plan.', tldr: 'Usage-based pricing with a self-host tier that keeps data in your VPC — the reason it wins the scorecard.' },
+      { kind: 'link', slot: 'link2', url: 'https://amplitude.com/pricing', siteName: 'Amplitude', title: 'Amplitude plans', description: 'Seat + event-based pricing.', tldr: 'Seat + event-based pricing; strong analytics, but data lives with the vendor and costs climb with volume.' },
+      { kind: 'link', slot: 'link3', url: 'https://www.g2.com/categories/product-analytics', siteName: 'G2', title: 'Product analytics — reviews', description: 'Side-by-side ratings from real teams.', tldr: 'Side-by-side ratings from real teams — a sanity check on the scorecard’s flexibility and support scores.' },
       { kind: 'pin', slot: 'note1', text: 'the call ↑', anchor: 'doc', corner: 'tr' },
       { kind: 'pin', slot: 'note2', text: 'winner', anchor: 'dashboard', corner: 'tr' },
       { kind: 'pin', slot: 'note3', text: 'confirm with legal', anchor: 'doc2', corner: 'br' },
@@ -350,7 +350,7 @@ export function EmbedUseCases() {
         } else if (card.kind === 'diagram') {
           editor.createShape({ id, type: 'diagram-card', x, y, props: { w: W[card.slot] ?? 580, h: H0[card.slot] ?? 400, title: card.title, code: card.code } });
         } else if (card.kind === 'link') {
-          editor.createShape({ id, type: 'link-card', x, y, props: { w: W[card.slot] ?? 460, h: H0[card.slot] ?? 150, url: card.url, title: card.title, description: card.description, image: '', favicon: '', siteName: card.siteName, loading: false } });
+          editor.createShape({ id, type: 'link-card', x, y, props: { w: W[card.slot] ?? 460, h: H0[card.slot] ?? 230, url: card.url, title: card.title, description: card.description, image: '', favicon: '', siteName: card.siteName, loading: false, tldr: card.tldr, tldrStatus: 'ready' } });
         } else if (card.kind === 'img') {
           const w = W[card.slot] ?? 480;
           editor.createShape({ id, type: 'image-card', x, y, props: { w, h: H0[card.slot] ?? Math.round(w * 0.66), src: IMG(card.src), name: card.name } });
@@ -455,15 +455,23 @@ export function EmbedUseCases() {
 
         const boardW = cols * pitch - GUTTER;
         const left = cx - boardW / 2;
-        // Pure masonry: stack each column tight with a fixed small gap. The
-        // adaptive column count already balanced total height across columns, so
-        // the columns end near-even and the bottom edge is only lightly ragged —
-        // a real workspace look. We deliberately DON'T stretch cards to a common
-        // bottom: against one very tall card (a grown doc or a big diagram) that
-        // would open large gaps inside the shorter columns, which reads as empty.
+        // Bottom-fill: nudge each column toward the tallest column's height so
+        // the board ends on a roughly even bottom edge instead of trailing off
+        // into dead space. The doc-height correction + link TL;DRs keep the
+        // columns close, so the added gaps stay small and even — capped so a
+        // short column never opens a big void.
+        const naturalH = colItems.map(
+          (items) => items.reduce((s, c) => s + c.h, 0) + BASE_GAP * Math.max(0, items.length - 1),
+        );
+        const targetH = Math.max(...naturalH);
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         colItems.forEach((items, k) => {
           if (!items.length) return;
+          const contentH = items.reduce((s, c) => s + c.h, 0);
+          const gaps = Math.max(1, items.length - 1);
+          let gap = BASE_GAP;
+          if (contentH + BASE_GAP * gaps < targetH) gap = (targetH - contentH) / gaps;
+          gap = Math.min(gap, 150);
           const x = left + k * pitch;
           let y = COL_TOP;
           for (const c of items) {
@@ -472,7 +480,7 @@ export function EmbedUseCases() {
             minY = Math.min(minY, y);
             maxX = Math.max(maxX, x + c.w);
             maxY = Math.max(maxY, y + c.h);
-            y += c.h + BASE_GAP;
+            y += c.h + gap;
           }
         });
 
