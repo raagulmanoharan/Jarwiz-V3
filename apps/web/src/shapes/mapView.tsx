@@ -3,8 +3,10 @@
  * standalone map card, the inline map block inside doc answers, and the
  * full-screen trip view (CardFocusOverlay). MapLibre GL over OpenFreeMap
  * vector tiles (keyless; attribution kept visible), lazy-loaded so the main
- * bundle stays lean; basemap follows the app theme; tiles-unreachable
- * degrades to token paper with linearly projected pins. See docs/MAPS.md.
+ * bundle stays lean; basemap follows the app theme. When tiles are unreachable
+ * — or a map opts into `mock` (the marketing board) — it degrades to a
+ * schematic basemap: abstract roads/blocks with the route and linearly
+ * projected pins, never a broken frame. See docs/MAPS.md.
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
@@ -77,6 +79,7 @@ export function MapViewport({
   ordered,
   interactive,
   activeIndex = null,
+  mock = false,
 }: {
   stops: MapStop[];
   ordered: boolean;
@@ -84,6 +87,10 @@ export function MapViewport({
   /** Highlighted stop (the trip rail's hover/click) — its pin lifts and the
    *  camera eases to it. Null = the whole-trip framing. */
   activeIndex?: number | null;
+  /** Skip live tiles entirely and render the schematic mock basemap. Used by
+   *  the marketing use-case board, where a deterministic, instant map beats a
+   *  live one that can be slow to load or blocked by the host's CSP. */
+  mock?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Marker[]>([]);
@@ -94,6 +101,7 @@ export function MapViewport({
 
   // Create the map (once per theme — the basemap style follows light/dark).
   useEffect(() => {
+    if (mock) return; // the marketing board wants the schematic mock, not tiles
     let cancelled = false;
     let created: MapLibreMap | null = null;
     setStyleReady(false);
@@ -136,7 +144,7 @@ export function MapViewport({
       setMap(null);
       created?.remove();
     };
-  }, [theme]);
+  }, [theme, mock]);
 
   // Sync pins: a handful of markers, rebuilt whenever the stops change (new
   // pins wear the materialize spring via CSS; reduced-motion stills it).
@@ -214,7 +222,11 @@ export function MapViewport({
     });
   }, [map, styleReady, stops, ordered]);
 
-  if (failed) return <MapFallback stops={stops} activeIndex={activeIndex} />;
+  // Mock = intentional schematic (no note); failed = genuine tile outage (a
+  // quiet, honest caption). Both render the same map-like fallback surface.
+  if (mock || failed) {
+    return <MapFallback stops={stops} activeIndex={activeIndex} ordered={ordered} note={mock ? '' : 'offline · schematic map'} />;
+  }
 
   return (
     <>
@@ -230,27 +242,74 @@ export function MapViewport({
   );
 }
 
-/** Tiles unreachable — designed degrade, never a broken frame: the pins keep
- *  their relative geography on plain paper via a linear lat/lng projection. */
-function MapFallback({ stops, activeIndex }: { stops: MapStop[]; activeIndex?: number | null }) {
+/** A schematic street-map texture drawn behind the pins — abstract roads,
+ *  blocks, a park and a river in the design system's monochrome ink, so the
+ *  fallback reads as a MAP rather than a broken frame. Purely decorative and
+ *  stop-independent; the pins keep the real relative geography on top. */
+function MockBasemap() {
+  return (
+    <svg className="jz-map-mock-base" viewBox="0 0 160 100" preserveAspectRatio="none" aria-hidden>
+      <path className="jz-map-mock-water" d="M0 70 C 26 63, 52 79, 84 71 S 138 64, 160 73 L160 100 L0 100 Z" />
+      <rect className="jz-map-mock-park" x="16" y="15" width="28" height="22" rx="3" />
+      <g className="jz-map-mock-block">
+        <rect x="52" y="12" width="30" height="16" rx="1.5" />
+        <rect x="92" y="10" width="24" height="18" rx="1.5" />
+        <rect x="124" y="16" width="24" height="14" rx="1.5" />
+        <rect x="54" y="40" width="26" height="15" rx="1.5" />
+        <rect x="96" y="40" width="30" height="14" rx="1.5" />
+        <rect x="20" y="46" width="24" height="14" rx="1.5" />
+      </g>
+      <g className="jz-map-mock-road">
+        <line x1="0" y1="34" x2="160" y2="31" />
+        <line x1="0" y1="63" x2="160" y2="60" />
+        <line x1="49" y1="0" x2="52" y2="100" />
+        <line x1="88" y1="0" x2="91" y2="100" />
+        <line x1="121" y1="0" x2="126" y2="100" />
+        <line className="jz-map-mock-road--minor" x1="0" y1="4" x2="160" y2="50" />
+        <line className="jz-map-mock-road--minor" x1="70" y1="0" x2="160" y2="90" />
+      </g>
+    </svg>
+  );
+}
+
+/** Tiles unreachable OR an intentional mock — a designed degrade, never a
+ *  broken frame: a schematic basemap with the ordered route and the pins in
+ *  their real relative geography (linear lat/lng projection). */
+function MapFallback({
+  stops,
+  activeIndex,
+  ordered = true,
+  note = '',
+}: {
+  stops: MapStop[];
+  activeIndex?: number | null;
+  ordered?: boolean;
+  note?: string;
+}) {
   const lats = stops.map((s) => s.lat);
   const lngs = stops.map((s) => s.lng);
   const minLat = Math.min(...lats);
   const maxLat = Math.max(...lats);
   const minLng = Math.min(...lngs);
   const maxLng = Math.max(...lngs);
-  const pos = (stop: MapStop) => ({
-    // 12% inset so edge pins don't clip; a single stop centres.
-    left: `${maxLng === minLng ? 50 : 12 + (76 * (stop.lng - minLng)) / (maxLng - minLng)}%`,
-    top: `${maxLat === minLat ? 50 : 12 + (76 * (maxLat - stop.lat)) / (maxLat - minLat)}%`,
-  });
+  // 12% inset so edge pins don't clip; a single stop centres. Same math for the
+  // pins (via %) and the route polyline (SVG stretched to fill), so they align.
+  const px = (s: MapStop) => (maxLng === minLng ? 50 : 12 + (76 * (s.lng - minLng)) / (maxLng - minLng));
+  const py = (s: MapStop) => (maxLat === minLat ? 50 : 12 + (76 * (maxLat - s.lat)) / (maxLat - minLat));
+  const route = ordered && stops.length > 1 ? stops.map((s) => `${px(s)},${py(s)}`).join(' ') : '';
   return (
     <div className="jz-map-fallback">
+      <MockBasemap />
+      {route ? (
+        <svg className="jz-map-mock-route" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
+          <polyline points={route} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ) : null}
       {stops.map((stop, i) => (
         <div
           key={`${stop.lat},${stop.lng},${i}`}
           className={`jz-map-pin${stop.approx ? ' jz-map-pin--approx' : ''}${i === activeIndex ? ' jz-map-pin--active' : ''}`}
-          style={{ position: 'absolute', ...pos(stop) }}
+          style={{ position: 'absolute', left: `${px(stop)}%`, top: `${py(stop)}%` }}
           title={`${stop.name} · open in Google Maps`}
           role="link"
           onClick={(ev) => {
@@ -261,7 +320,7 @@ function MapFallback({ stops, activeIndex }: { stops: MapStop[]; activeIndex?: n
           {stops.length > 1 ? i + 1 : ''}
         </div>
       ))}
-      <span className="jz-map-fallback-note">map tiles unavailable</span>
+      {note ? <span className="jz-map-fallback-note">{note}</span> : null}
     </div>
   );
 }

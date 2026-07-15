@@ -41,6 +41,10 @@ export interface MapCardProps {
   ordered: boolean;
   /** 'running' (pins still landing) | 'done' | 'error'. */
   status: string;
+  /** Render the schematic mock basemap instead of live tiles (marketing board:
+   *  deterministic + instant, never a slow/blocked tile load). Optional so
+   *  real, tile-backed maps stay valid. */
+  mock?: boolean;
 }
 
 declare module '@tldraw/tlschema' {
@@ -75,6 +79,7 @@ export class MapCardShapeUtil extends ShapeUtil<MapCardShape> {
     ),
     ordered: T.boolean,
     status: T.string,
+    mock: T.boolean.optional(),
   };
 
   override getDefaultProps(): MapCardShape['props'] {
@@ -114,7 +119,7 @@ export class MapCardShapeUtil extends ShapeUtil<MapCardShape> {
 function MapCardBody({ shape }: { shape: MapCardShape }) {
   const isEditing = useIsEditing(shape.id);
   const isSelected = useCardSelected(shape.id);
-  const { stops, ordered, status } = shape.props;
+  const { stops, ordered, status, mock } = shape.props;
 
   return (
     <div className={`jz-card${isSelected ? ' jz-card-selected' : ''}`} data-status={status}>
@@ -125,7 +130,7 @@ function MapCardBody({ shape }: { shape: MapCardShape }) {
         onPointerDown={isEditing ? stopEventPropagation : undefined}
         onWheelCapture={isEditing ? stopEventPropagation : undefined}
       >
-        <MapViewport stops={stops} ordered={ordered} interactive={isEditing} />
+        <MapViewport stops={stops} ordered={ordered} interactive={isEditing} mock={mock} />
         {status === 'running' ? (
           <span className="jz-map-float jz-map-float--live"><JarwizSpark size={11} className="jz-spark-inline" /> placing stops</span>
         ) : status === 'error' ? (

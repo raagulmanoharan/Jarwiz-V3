@@ -355,7 +355,7 @@ export function EmbedUseCases() {
           const w = W[card.slot] ?? 480;
           editor.createShape({ id, type: 'image-card', x, y, props: { w, h: H0[card.slot] ?? Math.round(w * 0.66), src: IMG(card.src), name: card.name } });
         } else if (card.kind === 'map') {
-          editor.createShape({ id, type: 'map-card', x, y, props: { w: W[card.slot] ?? 560, h: H0[card.slot] ?? 360, title: card.title, intro: card.intro, stops: card.stops, ordered: card.ordered, status: 'done' } });
+          editor.createShape({ id, type: 'map-card', x, y, props: { w: W[card.slot] ?? 560, h: H0[card.slot] ?? 360, title: card.title, intro: card.intro, stops: card.stops, ordered: card.ordered, status: 'done', mock: true } });
         } else if (card.kind === 'dashboard') {
           editor.createShape({ id, type: 'dashboard-card', x, y, props: { w: W[card.slot] ?? 620, h: H0[card.slot] ?? 470, title: card.title, spec: card.spec, status: 'done' } });
         } else if (card.kind === 'prototype') {
