@@ -353,7 +353,131 @@ Target: `site/index.html` `:root` (self-contained) — mirror into
 
 ---
 
-## 5. Recommendation / next step
+## 5. Craft deep-dive — mocks, typography, layout, borders (measured)
+
+All values are computed styles read off the live DOM (not eyeballed).
+
+### 5.1 Product mocks — how they're framed
+The mocks are the whole site's engine, and they follow one consistent recipe:
+
+- **The frame is the product window, not a laptop/browser bezel.** No traffic-
+  light chrome, no address bar. Each mock is a plain rounded app window
+  (radius 18–24px) with a hairline border — the UI *is* the hero, so they don't
+  wrap it in skeuomorphic device dressing. (Jarwiz currently wraps its embeds in
+  a fake browser bar with dots + `jarwiz · my workspace` — a valid alternate
+  choice, but note Thesys deliberately drops it.)
+- **Bleed + hard clip = "a window into a real app."** Product mocks are *larger
+  than their container* and clipped at the panel's rounded edge. The mock is
+  bottom/edge-anchored so its content runs off the frame — you're peeking into
+  something bigger. (This is the exact device Jarwiz's bento already uses; Thesys
+  applies it to every product section.)
+- **Layered planes for depth.** OpenUI Cloud stacks a **code-editor window**
+  (darker, own rounded corners, line numbers, syntax colour) *on top of* a
+  dashboard window, offset right. Reports overlaps report pages; Agent Builder
+  floats driver-comparison cards over the console. Two z-planes, a soft gap
+  between them — depth without drop shadows.
+- **Real, plausible data — never lorem.** "Hamilton vs Verstappen", "R²=0.72,
+  every $1M → $3.8M", "148,320 active users +12.4%". The mocks read as genuine
+  product output, which is what makes the "show don't tell" land.
+- **Monochrome frame, colour only in the data.** The window chrome is grey/
+  black; the *only* saturated colour on the entire page lives inside the
+  rendered charts — blue spend bars (~`#5B8DEF`), indigo sales bars (~`#7C6FF0`),
+  green deltas (`+4.8%`), an amber KPI icon. This is the single most important
+  craft rule and it's worth stealing verbatim.
+- **Hero "before/after" construction (measured):** outer glass panel radius
+  **36px**, bg **`rgba(0,0,0,0.62)`** floating over an ambient glow, 1px
+  `rgba(255,255,255,0.08)` border, 16px padding. Split 50/50 by a vertical
+  hairline; each half tagged by a small pill (`AI Apps` / `AI Apps with
+  Generative UI`). A floating rounded prompt-bar sits at the bottom with a
+  circular send button; a segmented control (`Charts·Cards·Dashboards·Slides·
+  Reports`) floats below with a **pressed inset shadow** (see 5.4).
+
+### 5.2 Typography scale (measured)
+| Role | Font | Size | Weight | Line-height | Letter-spacing | Colour |
+|---|---|---|---|---|---|---|
+| H1 (hero) | Inter **Display** | 60px | **500** | 75px (1.25) | normal | `#fff` |
+| H2 (section) | Inter Display | 40px | **500** | 50px (1.25) | normal | `#fff` |
+| H4 (tile title / "Trusted by") | Inter Display | 21px | **400** | 26px (1.25) | normal | `#fff` or white@50% |
+| Section subhead (role of H3) | Inter | 17px | 400 | 24.6px (1.45) | −0.17px | **white@50%** |
+| Body `p` | Inter | 18px | **375** | 27px (1.5) | −0.18px | **white@50%** |
+| Eyebrow/label | Inter Display | 13px | 375 | — | normal | in a white pill |
+| Button | Inter | 14px | 500 (primary) / 400 (ghost) | 18px | normal | — |
+
+**The headline reads.** Nothing on the page is ≥ weight 500. Body sits at a
+custom **375** variable weight (lighter than regular). No gradient text
+anywhere. Letter-spacing is left at **normal** on big type (they don't tighten).
+The premium, calm feel is almost entirely this restraint.
+
+> **Jarwiz delta:** today `h1` = weight **800** + gradient fill + `−0.04em`;
+> `h2` = **800** + `−0.032em`; stat numbers = 36px **800** gradient. Moving to
+> ~500–600, solid fills, and near-normal tracking is the biggest single quality
+> lever, and it's a few token edits.
+
+### 5.3 Layout & spacing (measured)
+- **Container max-width 1200px**, side padding **48px** (Jarwiz: 1140 / 24px —
+  Thesys breathes wider with bigger gutters).
+- **Asymmetric hero grid `720px / 360px`, 96px gap** — heading占 the left 720,
+  subhead floats top-right in the 360 column. A recurring "heading left, muted
+  subhead right" pattern also used on section headers (`Built for every use
+  case` left, explainer right).
+- **Feature/product card grids:** `repeat(3, 400px)` gap **24px**; benefit tiles
+  `repeat(3, ~194px)` gap **32px** (a 3×2 grid, not big-number stats).
+- **Vertical rhythm is large:** section vertical padding ~96px + an 80px flex
+  gap between blocks; hero adds ~200px top. Lots of black air.
+- **Section background `#050505`** — a *hair* lighter than the `#000` body, so
+  stacked sections separate by a barely-perceptible tonal step rather than a
+  border. Subtle but deliberate layering.
+
+### 5.4 Borders, radius, depth (measured)
+- **Border = white at a laddered opacity, always 1px:**
+  `0.06` (default hairline) → `0.08` (hero panel) → `0.10` (ghost button) →
+  `0.12` (accordion / emphasis). No solid-grey borders anywhere.
+- **Radius ladder:** pills/buttons **100px** · hero glass panel **36px** ·
+  product/use-case panels **24–28px** · inner app windows **18px** · small
+  chips/icon-boxes ~10–12px. A clear, consistent hierarchy.
+- **Cards are flat fills** (`#121212`) with a hairline — minimal gradients on the
+  chrome (gradients are reserved for a faint sheen on a couple of hero cards).
+- **Buttons carry NO drop shadow** — they're flat white/ghost pills. Depth is
+  created *only* where it means something:
+  - **Segmented control (pressed look):** layered **inset** shadows —
+    `inset 0 -10px 12px rgba(0,0,0,.12)`, `inset 0 2px 2px rgba(0,0,0,.25)`,
+    plus a soft outer `0 4px 8px`. Reads like a physical toggle.
+  - **Accordion / list rows:** `inset 0 1px 0 rgba(255,255,255,.12)` — a 1px
+    top catch-light bevel that separates stacked rows without a divider line.
+- **Icons:** thin ~1.5px line icons (outline geometric set) inside ~40px
+  rounded-square boxes with a `rgba(255,255,255,.06)` fill + hairline. Muted,
+  never filled/coloured.
+
+> **Jarwiz delta:** Jarwiz's primary button has `box-shadow: 0 6px 22px` and
+> cards lean on gradients (`linear-gradient(180deg, var(--surface), var(--bg-2))`)
+> with an animated conic sheen border. That's more "designed"; Thesys is flatter
+> and quieter. Recommendation: keep Jarwiz's richer *bento* treatment (it's a
+> signature), but **flatten the utility cards** (features, steps, stats) toward
+> Thesys's `#121212` + hairline + inset-bevel, and **drop the primary-button drop
+> shadow** for a flat pill.
+
+### 5.5 The measured cheat-sheet (drop-in reference for the rebuild)
+```
+Chrome bg        #000000 (body) / #050505 (sections)   [Jarwiz keeps warm #09090b]
+Card fill        #121212
+Hairline         rgba(255,255,255, .06 / .08 / .10 / .12)   (1px, laddered)
+Text             #ffffff · muted = white @ 50% opacity
+Headings         Inter Display, weight 500, tracking normal, lh 1.25
+  H1 60 · H2 40 · tile-title 21
+Body             Inter, weight 375, 18/1.5, muted
+Buttons          pill r=100px, pad 10x16, wt 500/400, NO shadow
+  primary        #fff bg / #000 text     ghost bg rgba(255,255,255,.04) border .10
+Radius ladder    100 (pill) · 36 (hero) · 24–28 (panels) · 18 (windows) · 10–12 (chips)
+Container        max-width 1200, side pad 48
+Hero grid        720 / 360, gap 96 (heading left, subhead right)
+Card grid        3 × 400, gap 24
+Depth            flat cards; inset shadows for segmented controls & row bevels
+Colour           ONLY inside product mocks (chart blues/indigo, green deltas, amber)
+```
+
+---
+
+## 6. Recommendation / next step
 Biggest wins, in order: **(1)** promote the before/after "text vs. board" into
 the hero and let the live embed carry the proof; **(2)** calm the headline type
 (drop gradient/800 weight); **(3)** reintroduce agent-identity hues *inside
