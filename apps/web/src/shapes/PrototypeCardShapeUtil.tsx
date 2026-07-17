@@ -30,7 +30,7 @@ import {
 } from 'tldraw';
 import { AppWindow, ArrowRight, Loader2 } from 'lucide-react';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
-import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
+import { useStreamState } from './useStreamState';
 import { requestPrototypeRun } from '../agents/prototypeRun';
 import { getPrototypeRefresh, subscribePrototypeRefresh } from '../agents/prototypeRefresh';
 
@@ -110,8 +110,11 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
   const running = status === 'running';
   const errored = status === 'error';
 
-  const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
-  const isStreaming = streamingSet.has(shape.id) || running;
+  // Generating (compose fan-out) counts the same as streaming here: an empty,
+  // being-built prototype shows the "Generating the UI…" state, never the idle
+  // prompt composer.
+  const { isGenerating } = useStreamState(shape.id);
+  const isStreaming = isGenerating || running;
   // The one shared selected state (the CSS ring) — the sole thing that thickens
   // a card's edge, identical across every card type.
   const isSelected = useValue('prototype-selected', () => editor.getSelectedShapeIds().includes(shape.id), [editor]);

@@ -13,11 +13,13 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { createShapeId, useEditor, type Box, type Editor, type TLShape, type TLShapeId, type TLShapePartial } from 'tldraw';
-import type { ComposeEvent } from '@jarwiz/shared';
+import type { AskShape, ComposeEvent } from '@jarwiz/shared';
 import { DOC_CARD_SIZE, TABLE_CARD_SIZE, PROTOTYPE_CARD_SIZE, type DocCardShape, type TableCardShape, type PrototypeCardShape } from '../shapes';
 import { setShapeTitle } from '../shapes/shapeTitle';
 import { readSSE } from './sse';
 import { gatherBoardCards } from './boardText';
+import { startGenerating, stopGenerating } from './streaming';
+import { makeCardFollower } from './followCamera';
 
 export type ComposePhase = 'idle' | 'planning' | 'building' | 'done' | 'error';
 
@@ -66,6 +68,9 @@ export function useCompose() {
     const created: TLShapeId[] = [];
     let isGrid = false; // a machine board that supplied col/row → grid layout
     let framed = false;
+    // Keeps the currently-writing card in view when cards fill sequentially;
+    // yields the instant the user pans/zooms/edits (followCamera.ts).
+    const follower = makeCardFollower(editor);
 
     const relayout = () => {
       if (!isGrid) return shelfPack(editor, created, originX, originY);
@@ -77,41 +82,76 @@ export function useCompose() {
       gridPack(editor, cells, originX, originY);
     };
 
+    // Materialise one planned card as a titled placeholder at the origin (the
+    // layout engine positions it). Tables start column-less and show the
+    // "Building this table…" cue until the slot's own card.create brings the
+    // header. Marked GENERATING (not streaming) so the caret + placeholder show
+    // without the width-grow that would jostle neighbours in a fixed grid.
+    const precreate = (slotIdx: number, type: AskShape) => {
+      if (slots.get(slotIdx)?.cardId) return; // already placed
+      const id = createShapeId();
+      created.push(id);
+      const g = gridPos.get(slotIdx);
+      const gridW = g ? g.span * CELL_W + (g.span - 1) * H_GAP : CELL_W;
+      const title = titles.get(slotIdx) ?? '';
+      if (type === 'table') {
+        editor.createShape<TableCardShape>({
+          id, type: 'table-card', x: originX, y: originY,
+          props: { w: isGrid ? gridW : tableWidth(3), h: TABLE_CARD_SIZE.h, columns: [], rows: [] },
+        });
+        slots.set(slotIdx, { cardId: id, kind: 'table', cols: [], rows: [] });
+      } else if (type === 'prototype') {
+        editor.createShape<PrototypeCardShape>({
+          id, type: 'prototype-card', x: originX, y: originY,
+          props: { w: isGrid ? gridW : PROTOTYPE_CARD_SIZE.w, h: PROTOTYPE_CARD_SIZE.h, html: '', title },
+        });
+        slots.set(slotIdx, { cardId: id, kind: 'prototype' });
+      } else {
+        editor.createShape<DocCardShape>({
+          id, type: 'doc-card', x: originX, y: originY,
+          props: { w: isGrid ? gridW : DOC_W, h: DOC_CARD_SIZE.h, title, text: '', sourcePdfId: '' },
+        });
+        slots.set(slotIdx, { cardId: id, kind: 'doc' });
+      }
+      const shape = editor.getShape(id);
+      if (title && shape) setShapeTitle(editor, shape, title);
+      startGenerating(id);
+    };
+
+    /** Populate a table slot with the real columns/rows its create event carries. */
+    const fillTableHeader = (slotIdx: number, cardId: TLShapeId, ev: Extract<ComposeEvent, { type: 'slot' }>['event']) => {
+      if (ev.type !== 'card.create' || ev.shape !== 'table') return;
+      const cols = (ev.columns ?? []).slice(0, 6);
+      const rows = Array.from({ length: ev.rowCount ?? 0 }, () => cols.map(() => ''));
+      const g = gridPos.get(slotIdx);
+      const w = isGrid && g ? g.span * CELL_W + (g.span - 1) * H_GAP : tableWidth(cols.length);
+      editor.updateShape<TableCardShape>({ id: cardId, type: 'table-card', props: { columns: cols, rows, w } });
+      slots.set(slotIdx, { cardId, kind: 'table', cols, rows });
+    };
+
     const applySlot = (slotIdx: number, ev: Extract<ComposeEvent, { type: 'slot' }>['event']) => {
       const slot = slots.get(slotIdx);
       switch (ev.type) {
         case 'card.create': {
-          const id = createShapeId();
-          created.push(id);
-          // In a grid, a card's width is its span of cells; else its natural width.
-          const g = gridPos.get(slotIdx);
-          const gridW = g ? g.span * CELL_W + (g.span - 1) * H_GAP : CELL_W;
-          if (ev.shape === 'table') {
-            const cols = (ev.columns ?? []).slice(0, 6);
-            const rows = Array.from({ length: ev.rowCount ?? 0 }, () => cols.map(() => ''));
-            editor.createShape<TableCardShape>({
-              id, type: 'table-card', x: originX, y: originY,
-              props: { w: isGrid ? gridW : tableWidth(cols.length), h: TABLE_CARD_SIZE.h, columns: cols, rows },
-            });
-            slots.set(slotIdx, { cardId: id, kind: 'table', cols, rows });
-          } else if (ev.shape === 'prototype') {
-            editor.createShape<PrototypeCardShape>({
-              id, type: 'prototype-card', x: originX, y: originY,
-              props: { w: isGrid ? gridW : PROTOTYPE_CARD_SIZE.w, h: PROTOTYPE_CARD_SIZE.h, html: '', title: titles.get(slotIdx) ?? '' },
-            });
-            slots.set(slotIdx, { cardId: id, kind: 'prototype' });
-          } else {
-            editor.createShape<DocCardShape>({
-              id, type: 'doc-card', x: originX, y: originY,
-              props: { w: isGrid ? gridW : DOC_W, h: DOC_CARD_SIZE.h, title: titles.get(slotIdx) ?? '', text: '', sourcePdfId: '' },
-            });
-            slots.set(slotIdx, { cardId: id, kind: 'doc' });
+          // The card was placed up front from the plan — fill in what only the
+          // slot's own create carries (a table's header), then follow it.
+          if (slot?.cardId) {
+            if (ev.shape === 'table' && slot.kind === 'table') {
+              fillTableHeader(slotIdx, slot.cardId, ev);
+              relayout();
+            }
+            follower.follow(slot.cardId);
+            break;
           }
-          const title = titles.get(slotIdx);
-          const shape = editor.getShape(id);
-          if (title && shape) setShapeTitle(editor, shape, title);
-          relayout(); // place the newcomer after the finished cards
-          if (!framed) { framed = true; frame(editor, created); }
+          // Fallback: a slot with no plan entry (shouldn't happen) — place now.
+          precreate(slotIdx, ev.shape);
+          const placed = slots.get(slotIdx);
+          if (placed?.cardId) {
+            fillTableHeader(slotIdx, placed.cardId, ev);
+            relayout();
+            if (!framed) { framed = true; frame(editor, created); }
+            follower.follow(placed.cardId);
+          }
           break;
         }
         case 'card.title': // plan titles are authoritative — ignore the generated one
@@ -133,6 +173,7 @@ export function useCompose() {
               props: { text: (s.props as { text: string }).text + ev.textDelta },
             } as Parameters<typeof editor.updateShape>[0]);
           }
+          follower.follow(slot.cardId);
           break;
         }
         case 'table.cell': {
@@ -140,10 +181,12 @@ export function useCompose() {
           slot.rows = slot.rows.map((r) => [...r]);
           slot.rows[ev.r]![ev.c] = ev.text;
           editor.updateShape<TableCardShape>({ id: slot.cardId, type: 'table-card', props: { rows: slot.rows } });
+          follower.follow(slot.cardId);
           break;
         }
         case 'card.done': {
           if (!slot?.cardId) break;
+          stopGenerating(slot.cardId); // caret + placeholder off; card is settled
           // A slot that produced no content (a rare generation miss) shouldn't
           // leave an empty husk on the board — drop it.
           const s = editor.getShape(slot.cardId);
@@ -176,6 +219,12 @@ export function useCompose() {
               isGrid = true;
             }
           }
+          // Show the whole set as placeholders at once — every planned card as a
+          // titled empty block — instead of popping in one at a time as each
+          // slot streams. In slot order so the flow layout reads left to right.
+          for (const c of [...e.cards].sort((a, b) => a.slot - b.slot)) precreate(c.slot, c.type);
+          relayout();
+          if (!framed && created.length) { framed = true; frame(editor, created); }
         } else if (e.type === 'slot') {
           applySlot(e.slot, e.event);
         } else if (e.type === 'error') {
@@ -187,6 +236,7 @@ export function useCompose() {
       for (const id of [...created]) {
         const s = editor.getShape(id);
         if (!s || isEmptyCard(s)) {
+          stopGenerating(id);
           if (s) editor.deleteShapes([id]);
           const i = created.indexOf(id);
           if (i >= 0) created.splice(i, 1);
@@ -207,6 +257,10 @@ export function useCompose() {
     } catch (err) {
       if ((err as Error).name !== 'AbortError') setPhase('error');
     } finally {
+      // Clear any lingering generating flags (abort/error can skip card.done)
+      // and detach the follow listeners.
+      for (const id of created) stopGenerating(id);
+      follower.dispose();
       if (abortRef.current === ac) abortRef.current = null;
     }
   }, [editor, phase]);

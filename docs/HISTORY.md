@@ -1276,3 +1276,45 @@ content and activates when full.
   GitHub/Anthropic) — recognizably canonical, model reached them via its own
   web tooling. Constants in boardConfidence.ts are a tuned first pass; the
   semantic (LLM) cohesion read is the noted upgrade path.
+
+## 2026-07-17 — You can see it thinking: placeholders, a named wait, a camera that follows
+
+**Intent:** Raagul, dogfooding: "when a response is streaming I don't know
+what's getting streamed or if anything's happening in the back end. If several
+cards are coming, show placeholders for all of them; if they fill one after
+another, the camera should follow each — unless I'm editing something; and every
+streaming card should at least say the response is streaming in."
+
+- **A second stream signal.** The single-card Ask path already dropped an empty
+  card and followed it; the gap was the multi-card flows (Board fan-out,
+  meeting-debrief) and the bare-caret empty state. Split the streaming store in
+  two: `streaming` (page-shaping — caret + placeholder + width-grow, for
+  single-card Ask/Analyze/Autopilot) and a new `generating` (caret + placeholder
+  ONLY). Compose/debrief cards a layout owns use `generating`, so they show the
+  live cue without the width-grow that would jostle a fixed grid. A
+  `useStreamState` hook reads both; card bodies show the caret/placeholder on
+  either, page-shape on the former.
+- **"Writing this in…".** An empty streaming card used to show only a blinking
+  caret. New `StreamingPlaceholder` names the wait — a pulsing spark + label
+  ("Writing this in…", "Building this table…", "Drawing this in…"), reduced-motion
+  guarded. Wired into doc / note / table / diagram / prototype cards.
+- **All placeholders up front.** Both fan-out flows already receive a `plan`
+  event listing every card; they were materialising each card lazily as its slot
+  streamed, so cards popped in one at a time. Now the plan pre-creates every card
+  as a titled empty placeholder immediately — the whole shape of what's coming is
+  visible at once — and the slots fill the pre-placed cards (tables show
+  "Building this table…" until their columns arrive).
+- **A camera that follows, then yields.** New `followCamera.ts`: as each card
+  starts writing, gently keep it in view (pan at the current zoom; zoom in only
+  if it'd be a speck; ride a tall card's bottom edge). It **yields the instant
+  the user takes over** — editing a card, or panning/zooming the board (pointer
+  or wheel) — and never touches the camera again for that run. Directly answers
+  the "unless I'm editing" ask (and the trackpad-pan complaint from the same
+  session — the follow must never fight the hand).
+- **Verified.** Typecheck + build green. Drove the real Board fan-out in the
+  preview: a five-card plan landed all at once as titled placeholders ("Writing
+  this in…" / "Building this table…") — screenshot on the PR. Sandbox model
+  latency meant the cards were still filling at capture time; the Autopilot
+  screenshot separately confirms delta-streaming into a card (compose reuses the
+  identical fill path). Sequential fill + camera-follow are the manual check for
+  Raagul on his machine.

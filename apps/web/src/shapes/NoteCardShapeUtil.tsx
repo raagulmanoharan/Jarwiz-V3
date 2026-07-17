@@ -1,4 +1,3 @@
-import { useSyncExternalStore } from 'react';
 import {
   HTMLContainer,
   Rectangle2d,
@@ -12,13 +11,14 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
-import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { continueProse } from '../agents/autopilotStore';
 import { useAutopilot } from '../agents/useAutopilot';
 import { useTypingPause } from '../agents/useTypingPause';
 import { NOTE_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
+import { useStreamState } from './useStreamState';
 import { JarwizSpark } from '../ui/JarwizSpark';
+import { StreamingPlaceholder } from '../ui/StreamingPlaceholder';
 
 export interface NoteCardProps {
   w: number;
@@ -102,11 +102,10 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
   const isEditing = useIsEditing(shape.id);
   const isSelected = useCardSelected(shape.id);
   const { text, color } = shape.props;
-  const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
-  const isStreaming = streamingSet.has(shape.id);
+  const { isGenerating } = useStreamState(shape.id);
   const autopilot = useAutopilot();
   const [paused, resetPause] = useTypingPause(isEditing ? text : '', 1800);
-  const showNudge = isEditing && paused && !isStreaming;
+  const showNudge = isEditing && paused && !isGenerating;
 
   return (
     <div className={`jz-note${isSelected ? ' jz-card-selected' : ''}`} style={{ background: color || NOTE_PAPER }}>
@@ -149,8 +148,8 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
         </>
       ) : (
         <div className={`jz-note-text${text ? '' : ' jz-note-placeholder'}`}>
-          {text || 'Double-click to write'}
-          {isStreaming && <span className="jz-stream-caret" aria-hidden />}
+          {text ? text : isGenerating ? <StreamingPlaceholder /> : 'Double-click to write'}
+          {isGenerating && text ? <span className="jz-stream-caret" aria-hidden /> : null}
         </div>
       )}
     </div>
