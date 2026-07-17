@@ -1,10 +1,11 @@
 /**
- * Gently keep the currently-writing card in view during a sequential multi-card
- * run (compose fan-out, debrief recipe). When cards fill one after another, the
- * later ones can land off-screen or as a speck after the opening frame — so as
- * each one starts writing we pan (and, only when it'd be too small to read,
- * zoom) to bring it into view. Motion is minimal by design: a card already
- * comfortably framed is left alone.
+ * Gently keep the streaming cards in view during a multi-card run (compose
+ * fan-out, debrief recipe). Cards fill a few at once, growing taller as content
+ * arrives, so their combined bounds can spill past the opening frame — as they
+ * grow we pan (and, only when they'd be too small to read, zoom) to keep them
+ * in view. Motion is minimal by design: a set already comfortably framed is
+ * left alone. Pass one id or several — several are unioned, so the whole
+ * building cluster stays framed rather than the camera chasing one card.
  *
  * It YIELDS the moment the person takes over — editing a card, or panning /
  * zooming the board (pointer or wheel) — and never touches the camera again for
@@ -12,7 +13,7 @@
  * 2026-07-17).
  */
 
-import type { Editor, TLShapeId } from 'tldraw';
+import type { Box, Editor, TLShapeId } from 'tldraw';
 
 /** Below this zoom a card is too small to read — bring it up to a readable size. */
 const READABLE_ZOOM = 0.6;
@@ -22,8 +23,9 @@ const MARGIN = 100;
 const THROTTLE_MS = 300;
 
 export interface CardFollower {
-  /** Bring `id` into view if it isn't already (throttled; no-op after yield). */
-  follow(id: TLShapeId): void;
+  /** Bring the shape(s) into view if they aren't already (throttled; no-op
+   *  after yield). Several ids are unioned into one bounds. */
+  follow(ids: TLShapeId | TLShapeId[]): void;
   /** Detach the take-over listeners. Call in the run's finally block. */
   dispose(): void;
 }
@@ -40,13 +42,17 @@ export function makeCardFollower(editor: Editor): CardFollower {
   container.addEventListener('pointerdown', yieldNow, { passive: true });
 
   return {
-    follow(id) {
+    follow(ids) {
       if (yielded) return;
       if (editor.getEditingShapeId()) return; // never yank the view while editing
       const now = Date.now();
       if (now - last < THROTTLE_MS) return;
-      const b = editor.getShapePageBounds(id);
-      if (!b) return;
+      const arr = Array.isArray(ids) ? ids : [ids];
+      const boxes = arr
+        .map((id) => editor.getShapePageBounds(id))
+        .filter((box): box is Box => Boolean(box));
+      if (boxes.length === 0) return;
+      const b = boxes.reduce((acc, box) => acc.union(box), boxes[0]!.clone());
 
       const vpPage = editor.getViewportPageBounds();
       const vpScreen = editor.getViewportScreenBounds();

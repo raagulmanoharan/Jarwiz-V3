@@ -80,7 +80,7 @@ export function useDebrief() {
       const slots = new Map<number, TLShapeId>();
       const created: TLShapeId[] = [];
       let framed = false;
-      // Keeps the currently-writing card in view as the three fill in turn;
+      // Keeps the building cluster in view as the three fill (in parallel);
       // yields the instant the user pans/zooms/edits (followCamera.ts).
       const follower = makeCardFollower(editor);
 
@@ -148,7 +148,7 @@ export function useDebrief() {
             startFocus(id);
             const b = editor.getShapePageBounds(id);
             if (b) setPresenceCursor(PRESENCE.id, b.maxX - 14, b.maxY - 16);
-            follower.follow(id);
+            follower.follow(created);
             break;
           }
           case 'card.delta': {
@@ -161,7 +161,7 @@ export function useDebrief() {
               type: s.type,
               props: { text: (s.props as { text: string }).text + ev.textDelta },
             } as Parameters<typeof editor.updateShape>[0]);
-            follower.follow(cardId);
+            follower.follow(created);
             break;
           }
           case 'card.done': {

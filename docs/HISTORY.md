@@ -1334,3 +1334,18 @@ streaming card should at least say the response is streaming in."
   screenshot separately confirms delta-streaming into a card (compose reuses the
   identical fill path). Sequential fill + camera-follow are the manual check for
   Raagul on his machine.
+- **Fan-outs now stream a few cards AT ONCE.** Raagul: "is it possible to stream
+  multiple cards at once?" It was — the wire protocol already tags every event
+  with its card's slot and the client fills each slot independently, so the only
+  thing making a fan-out one-at-a-time was a sequential `for` loop on the server.
+  Replaced it (compose AND the debrief recipe) with a shared `streamSlots` merge
+  that runs up to `FANOUT_CONCURRENCY` (3) card generations at once — capped so a
+  big set doesn't fire six concurrent model streams and trip rate limits — and
+  refills as each finishes. Client side: the focus set already handles multiple
+  cards glowing at once, and the camera follower now keeps the whole building
+  SET in view (union bounds) rather than chasing one card. Verified via server
+  logs: three slots start together (`running=3`), the 4th/5th start as earlier
+  ones complete. The parallel *streaming* isn't visually obvious in this sandbox
+  (the keyless `claude` sidecar is non-streaming, so each card returns
+  fully-formed after its call) — with a real API key's token streaming, the
+  cards visibly fill together. Capped concurrency = owner pick over all-at-once.

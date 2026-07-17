@@ -68,8 +68,8 @@ export function useCompose() {
     const created: TLShapeId[] = [];
     let isGrid = false; // a machine board that supplied col/row → grid layout
     let framed = false;
-    // Keeps the currently-writing card in view when cards fill sequentially;
-    // yields the instant the user pans/zooms/edits (followCamera.ts).
+    // Keeps the building set of cards in view as they fill (a few stream at
+    // once); yields the instant the user pans/zooms/edits (followCamera.ts).
     const follower = makeCardFollower(editor);
 
     const relayout = () => {
@@ -142,7 +142,7 @@ export function useCompose() {
               fillTableHeader(slotIdx, slot.cardId, ev);
               relayout();
             }
-            follower.follow(slot.cardId);
+            follower.follow(created);
             break;
           }
           // Fallback: a slot with no plan entry (shouldn't happen) — place now.
@@ -153,7 +153,7 @@ export function useCompose() {
             fillTableHeader(slotIdx, placed.cardId, ev);
             relayout();
             if (!framed) { framed = true; frame(editor, created); }
-            follower.follow(placed.cardId);
+            follower.follow(created);
           }
           break;
         }
@@ -176,7 +176,7 @@ export function useCompose() {
               props: { text: (s.props as { text: string }).text + ev.textDelta },
             } as Parameters<typeof editor.updateShape>[0]);
           }
-          follower.follow(slot.cardId);
+          follower.follow(created);
           break;
         }
         case 'table.cell': {
@@ -184,7 +184,7 @@ export function useCompose() {
           slot.rows = slot.rows.map((r) => [...r]);
           slot.rows[ev.r]![ev.c] = ev.text;
           editor.updateShape<TableCardShape>({ id: slot.cardId, type: 'table-card', props: { rows: slot.rows } });
-          follower.follow(slot.cardId);
+          follower.follow(created);
           break;
         }
         case 'card.done': {
