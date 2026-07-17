@@ -1,12 +1,16 @@
 /**
  * Agent-task control store — the "one language" for an AI action in flight.
  * Presence (the avatar + status) shows the agent *working*; this carries the
- * controls every action needs at its destination: Cancel while running, and a
- * human error + Retry when it fails. Never silent, never a dead end.
+ * Cancel control at the work while it runs. When a task FAILS, the error no
+ * longer lives here as an anchored pill — it's forwarded to the agent-error
+ * banner above the composer (agentError.ts), the single home for failures, so
+ * a dead action never pops up at a random canvas spot. Never silent, never a
+ * dead end.
  */
 
 import type { TLShapeId } from 'tldraw';
 import { backendDown } from '../lib/backend';
+import { setAgentError } from './agentError';
 
 export interface AgentTask {
   id: string;
@@ -24,14 +28,16 @@ const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((l) => l());
 
 export function setAgentTask(task: AgentTask): void {
-  // On the hosted playground (no backend) every agent action fails for the one
-  // same reason, and the standing "agents are off" notice above the composer
-  // already owns that message. Spawning a per-action error pill with a Retry
-  // that can never succeed is just redundant noise — swallow it, and clear any
-  // running pill for the same action so it doesn't hang. (Only the futile
-  // error state is suppressed; normal running/error elsewhere is untouched.)
-  if (task.status === 'error' && backendDown()) {
+  // A FAILED task doesn't render at the work — its error belongs in the one
+  // banner above the composer (agentError.ts). Clear any running pill for this
+  // action so it doesn't hang, then hand the message + Retry to that banner.
+  // (On the hosted playground agentError swallows it — the standing "agents are
+  // off" notice already owns that reason.)
+  if (task.status === 'error') {
     clearAgentTask(task.id);
+    if (task.error && !backendDown()) {
+      setAgentError({ message: task.error, onRetry: task.onRetry });
+    }
     return;
   }
   const next = new Map(tasks);

@@ -1,8 +1,9 @@
 /**
- * Renders the controls for in-flight (or failed) agent tasks, anchored at the
- * work. Running → a Cancel chip; error → a human message + Retry. The avatar
- * (AgentCursorLayer) shows the agent itself + status; this is just the controls,
- * so an AI action is always cancellable and never a silent dead end.
+ * Renders the controls for in-flight agent tasks, anchored at the work: a
+ * Cancel chip while it runs. The avatar (AgentCursorLayer) shows the agent
+ * itself + status; this is just the running control, so an AI action is always
+ * cancellable. Failures don't render here — they surface in the agent-error
+ * banner above the composer (agentError.ts), the single home for errors.
  */
 
 import { useSyncExternalStore, type CSSProperties } from 'react';
@@ -42,14 +43,6 @@ export function AgentTaskLayer() {
     <>
       {positioned.map(({ task, x, y }) => {
         const style = { left: x, top: y } as CSSProperties;
-        if (task.status === 'error') {
-          return (
-            <div key={task.id} className="jz-task jz-task--error" style={style} onPointerDown={stopEventPropagation}>
-              <span className="jz-task-err">{task.error ?? "That didn't go through."}</span>
-              {task.onRetry ? <button className="jz-task-btn" onClick={task.onRetry}>Retry</button> : null}
-            </div>
-          );
-        }
         return (
           <div key={task.id} className="jz-task" style={style} onPointerDown={stopEventPropagation}>
             <span className="jz-task-label">{task.label}</span>
