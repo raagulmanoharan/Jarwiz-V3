@@ -1,8 +1,11 @@
 /**
  * Jarwiz presence — one avatar, one identity, alive on the board. Like a
- * collaborator's cursor on a FigJam board, Jarwiz is always somewhere: idly
- * roaming the viewport and pausing to look at cards when nothing is
- * happening, flying to a freshly dropped link/PDF/image and sweeping it
+ * collaborator's cursor on a FigJam board, Jarwiz is always somewhere: it
+ * lives in the ✦ brand mark (top-left logo) and, when there's nothing to do,
+ * rests MERGED inside it — no cursor loitering on the canvas. Every so often
+ * it springs back out of the mark to roam a few beats, then dives home again
+ * (echoing the ambient scene, where cursors are born from the spark). It
+ * flies out to a freshly dropped link/PDF/image and sweeps it
  * line-by-line ("reading…") while it processes, and following the agent-run
  * choreography (Ask/Analyze/Autopilot/Cluster/Diagram write the presence
  * store, which takes absolute priority) whenever a run is in flight.
@@ -35,10 +38,16 @@ const MIN_READ_MS = 2800;
 const MAX_READ_MS = 25_000;
 /** Idle dwell between wander hops. */
 const DWELL_MS: [number, number] = [2600, 7200];
+/** How long Jarwiz rests merged inside the ✦ icon before soaring back out
+ *  for a spontaneous roam. Deliberately long and wide — its appearances
+ *  should feel sparse and delightful, not like constant background motion.
+ *  (Real activity — a drop to read, an agent run — always brings it out
+ *  immediately regardless of this.) */
+const REST_MS: [number, number] = [55_000, 140_000];
 /** How long each reading quip stays up before the next one lands. */
 const QUIP_MS: [number, number] = [1900, 2700];
 
-type Mode = 'wander-idle' | 'wander-move' | 'read-seek' | 'read-scan' | 'run';
+type Mode = 'wander-idle' | 'wander-move' | 'home-seek' | 'read-seek' | 'read-scan' | 'run';
 
 interface Reading extends IngestedCard {
   /** Earliest finish — even an instant card gets a beat of attention. */
@@ -58,7 +67,20 @@ interface Brain {
   dwellUntil: number;
   nextDriftAt: number;
   lastVisited: string | null;
+  /** Wander hops taken this outing — once it crosses HOPS_BEFORE_DOCK the
+   *  entity flies back into the ✦ icon and rests. */
+  idleHops: number;
+  /** Merged inside the ✦ icon (avatar hidden), at rest — no roaming until it
+   *  soars back out. Keeps a constantly-moving cursor from tiring the eye. */
+  docked: boolean;
+  /** While docked, when to spontaneously soar out for the next roam. */
+  emergeAt: number;
 }
+
+/** Wander hops per outing before it dives back into the ✦ icon. Kept short so
+ *  a spontaneous appearance is a brief, graceful moment, not a lap of the
+ *  board. */
+const HOPS_BEFORE_DOCK = 2;
 
 export function AgentCursorLayer() {
   return <JarwizEntity />;
@@ -83,6 +105,9 @@ function JarwizEntity() {
       dwellUntil: performance.now() + 1800,
       nextDriftAt: 0,
       lastVisited: null,
+      idleHops: 0,
+      docked: false,
+      emergeAt: 0,
     };
     let shownStatus: string | null = null;
     let shownVisible = false;
@@ -101,6 +126,24 @@ function JarwizEntity() {
 
     /** Card-corner park point — same spot the ask choreography uses. */
     const parkPoint = (b: { maxX: number; maxY: number }): Vec => ({ x: b.maxX - 14, y: b.maxY - 16 });
+
+    /** Home dock — the ✦ brand mark in the top-left (the logo button where
+     *  Jarwiz "lives", echoing the ambient scene where cursors are born from
+     *  the spark). Screen-anchored to the actual logo element, so it stays
+     *  tucked under the mark through pan/zoom. After a quiet spell the entity
+     *  retreats here and only breathes, instead of roaming across your work. */
+    const homePoint = (): Vec => {
+      const logo = document.querySelector('.jz-logo-btn');
+      if (logo) {
+        const r = logo.getBoundingClientRect();
+        // Nestle just below-right of the mark: the up-left arrow leans toward
+        // it, and the trailing name pill sits in the empty top-left canvas.
+        return editor.screenToPage({ x: r.left + r.width * 0.5 + 8, y: r.bottom + 12 });
+      }
+      // Fallback (logo not mounted yet): top-left of the viewport, under the bar.
+      const view = editor.getViewportPageBounds();
+      return { x: view.minX + view.w * 0.05, y: view.minY + view.h * 0.08 };
+    };
 
     /** What the user is engaged with RIGHT NOW — the shape being edited plus
      *  the selection. The entity is a polite collaborator: it never parks on
@@ -167,6 +210,10 @@ function JarwizEntity() {
       brain.scanQueue = [];
       brain.mode = 'wander-idle';
       brain.dwellUntil = now + 900;
+      // Real activity just happened — undock and let it roam a few fresh beats
+      // before it settles home again. This is how it "comes back to life."
+      brain.idleHops = 0;
+      brain.docked = false;
     };
 
     const frame = (now: number) => {
@@ -249,12 +296,49 @@ function JarwizEntity() {
         } else if (reduce) {
           // Reduced motion: no roaming — the entity appears only while working.
           show(false, null);
+        } else if (brain.docked) {
+          // 3a) MERGED inside the ✦ icon (top-left logo) — the avatar is
+          // hidden, so there's no cursor/box loitering on the board; the mark
+          // IS Jarwiz at rest. Keep the hidden entity parked exactly on the
+          // icon so, when it soars back out, it launches from there (like the
+          // ambient scene births cursors from the spark).
+          show(false, null);
+          follower.jumpTo(homePoint());
+          if (now >= brain.emergeAt) {
+            // Calm spell over — spring out of the icon and roam the board.
+            brain.docked = false;
+            brain.idleHops = 0;
+            follower.jumpTo(homePoint());
+            show(true, null);
+            follower.moveTo(pickWanderTarget(), now, { zoom, speed: 1.05 });
+            brain.mode = 'wander-move';
+          }
+        } else if (brain.mode === 'home-seek') {
+          // 3b) Flying back INTO the ✦ icon; merge (hide + rest) on arrival.
+          show(true, null);
+          if (follower.settled) {
+            brain.docked = true;
+            brain.emergeAt = now + REST_MS[0] + Math.random() * (REST_MS[1] - REST_MS[0]);
+            brain.mode = 'wander-idle';
+          } else {
+            // Keep steering at the live icon point in case the board pans.
+            follower.moveTo(homePoint(), now, { zoom, speed: 0.95 });
+          }
         } else {
-          // 3) Nothing to do — live on the board like a curious collaborator.
+          // 3c) Out on the board — a curious collaborator, but only for a few
+          // beats. Once it's wandered enough with nothing happening, it dives
+          // back into the ✦ icon (3b → 3a) instead of roaming forever.
           show(true, null);
           if (brain.mode !== 'wander-move' && now >= brain.dwellUntil) {
-            follower.moveTo(pickWanderTarget(), now, { zoom, speed: 0.9 });
-            brain.mode = 'wander-move';
+            if (brain.idleHops >= HOPS_BEFORE_DOCK) {
+              // Outing over — head home and merge into the mark.
+              brain.lastVisited = null;
+              follower.moveTo(homePoint(), now, { zoom, speed: 0.95 });
+              brain.mode = 'home-seek';
+            } else {
+              follower.moveTo(pickWanderTarget(), now, { zoom, speed: 0.9 });
+              brain.mode = 'wander-move';
+            }
           } else if (brain.mode === 'wander-move' && brain.lastVisited && engagedIds().has(brain.lastVisited)) {
             // The user grabbed the card we were flying toward — veer off to a
             // different target instead of landing on their selection.
@@ -262,6 +346,7 @@ function JarwizEntity() {
             follower.moveTo(pickWanderTarget(), now, { zoom, speed: 0.9 });
           } else if (brain.mode === 'wander-move' && follower.settled) {
             brain.mode = 'wander-idle';
+            brain.idleHops += 1;
             brain.dwellUntil = now + DWELL_MS[0] + Math.random() * (DWELL_MS[1] - DWELL_MS[0]);
             brain.nextDriftAt = now + 700 + Math.random() * 900;
           } else if (brain.mode === 'wander-idle' && follower.settled && now >= brain.nextDriftAt) {
