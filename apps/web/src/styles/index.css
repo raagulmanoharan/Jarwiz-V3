@@ -6557,19 +6557,32 @@ body,
 .jzd-text--sm { font-size: 12px; color: var(--jz-ink-500); }
 .jzd-text--lg { font-size: 18px; font-weight: 600; color: var(--jz-ink-900); }
 
-.jzd-kpi { background: var(--jz-surface-raised); border: 1px solid var(--jz-hairline); border-radius: 12px; padding: 14px 16px; min-width: 120px; flex: 1; }
+.jzd-kpi { position: relative; background: var(--jz-surface-raised); border: 1px solid var(--jz-hairline); border-radius: 12px; padding: 14px 16px; min-width: 120px; flex: 1; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04); }
+.jzd-kpi-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .jzd-kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--jz-ink-400); }
-.jzd-kpi-value { font-size: 26px; font-weight: 700; color: var(--jz-ink-900); margin-top: 4px; letter-spacing: -0.02em; }
-.jzd-kpi-delta { font-size: 12px; color: var(--jz-ink-500); margin-top: 2px; }
+/* Trend chip — a small hue-tinted square, coloured by delta direction. */
+.jzd-kpi-chip { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; flex: none;
+  background: color-mix(in srgb, var(--jz-positive) 16%, transparent); color: var(--jz-positive); }
+.jzd-kpi-chip.is-down { background: color-mix(in srgb, var(--jz-negative) 16%, transparent); color: var(--jz-negative); }
+.jzd-kpi-value { font-size: 26px; font-weight: 700; color: var(--jz-ink-900); margin-top: 6px; letter-spacing: -0.02em; }
+.jzd-kpi-delta { font-size: 12px; font-weight: 600; margin-top: 3px; display: inline-flex; align-items: center; gap: 3px; color: var(--jz-ink-500); }
+.jzd-kpi-delta.is-up { color: var(--jz-positive); }
+.jzd-kpi-delta.is-down { color: var(--jz-negative); }
+.jzd-kpi-delta.is-up::before { content: "▲"; font-size: 8px; line-height: 1; }
+.jzd-kpi-delta.is-down::before { content: "▼"; font-size: 8px; line-height: 1; }
 
-.jzd-chartcard { background: var(--jz-surface-raised); border: 1px solid var(--jz-hairline); border-radius: 12px; padding: 16px; flex: 1; min-width: 0; }
+.jzd-chartcard { background: var(--jz-surface-raised); border: 1px solid var(--jz-hairline); border-radius: 12px; padding: 16px; flex: 1; min-width: 0; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04); }
 /* width:100% shrinks a dense chart to fit its panel; the SVG's own inline
    max-width (derived from its data density in library.tsx) stops a sparse one
    being stretched into slabs. Centered so a small chart sits balanced. */
 .jzd-chart { width: 100%; height: auto; display: block; margin-inline: auto; }
-.jzd-bar { fill: var(--jz-ink-700); }
-.jzd-line { stroke: var(--jz-ink-800); stroke-width: 2; }
-.jzd-dot { fill: var(--jz-ink-900); }
+/* Charts carry the ONE spot of colour on the board (the --jz-viz-* family);
+   the inline gradient fill on bars/areas overrides these token fallbacks. */
+.jzd-bar { fill: var(--jz-viz-1); }
+.jzd-line { stroke: var(--jz-viz-1); stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round; }
+.jzd-dot { fill: var(--jz-viz-1); }
+.jzd-dot--end { stroke: var(--jz-surface-raised); stroke-width: 2; }
+.jzd-grid { stroke: var(--jz-hairline); stroke-width: 1; }
 .jzd-axis { fill: var(--jz-ink-400); font-size: 10px; }
 
 /* Rich-answer blocks (Markdown / Image / Tabs) — research dossiers share the
