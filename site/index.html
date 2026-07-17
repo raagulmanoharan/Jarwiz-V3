@@ -391,23 +391,57 @@
       /* Fade the very top so the divider line crowding the top border dissolves. */
       .b-table { -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 30px); mask-image: linear-gradient(180deg, transparent 0, #000 30px); }
 
-      /* A live dashboard card, built as real HTML (portrait — fills the tall slot). */
-      .b-dash { background: #0b0b0e; padding: 14px; }
-      .minidash { display: flex; flex-direction: column; gap: 12px; width: 100%; height: 100%; }
+      /* A live dashboard card, built as real HTML (portrait — fills the tall slot).
+         Colour lives INSIDE this card only (the agent-hue family): a blue/violet
+         two-series bar chart, green positive deltas, a blue donut — so the
+         dashboard reads as rich, generated UI while the page chrome stays mono. */
+      .b-dash { background: #0b0b0e; padding: 14px;
+        --c1: #3b82f6;   /* revenue — blue (researcher family) */
+        --c2: #8b5cf6;   /* target  — violet */
+        --cup: #34d399;  /* positive delta — green (writer family) */
+      }
+      .minidash { display: flex; flex-direction: column; gap: 10px; width: 100%; height: 100%; }
       .md-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: none; }
-      .md-kpi { border: 1px solid var(--hairline); border-radius: 10px; padding: 9px 11px; background: rgba(255,255,255,0.02); display: flex; flex-direction: column; }
+      .md-kpi { position: relative; border: 1px solid var(--hairline); border-radius: 10px; padding: 9px 10px;
+        background: rgba(255,255,255,0.02); display: flex; flex-direction: column; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); }
+      .md-kpi .mk-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
       .md-kpi span { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); font-weight: 600; }
-      .md-kpi b { font-size: 16px; font-weight: 800; letter-spacing: -0.02em; margin-top: 2px; display: flex; align-items: baseline; gap: 5px; }
-      .md-kpi b em { font-size: 9.5px; font-weight: 600; font-style: normal; color: var(--ink-3); }
-      /* Sparkline in each KPI tile. */
-      .md-kpi .spark { width: 100%; height: 18px; margin-top: 7px; display: block; }
-      .md-kpi .spark .a { fill: rgba(255,255,255,0.10); }
-      .md-kpi .spark .l { fill: none; stroke: var(--ink); stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
-      .md-panel { border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 12px; background: rgba(255,255,255,0.02); flex: 1; display: flex; flex-direction: column; min-height: 0; }
-      .md-ct { font-size: 10px; color: var(--ink-3); font-weight: 600; margin-bottom: 8px; flex: none; }
-      .md-bars { display: flex; align-items: flex-end; gap: 8px; flex: 1; min-height: 0; }
-      .md-bars span { flex: 1; background: linear-gradient(180deg, var(--ink-2), var(--ink-3)); border-radius: 3px 3px 0 0; }
-      .md-line { width: 100%; flex: 1; min-height: 0; color: var(--ink); display: block; }
+      .md-kpi .mk-ic { width: 17px; height: 17px; border-radius: 5px; flex: none; display: grid; place-items: center;
+        background: color-mix(in srgb, var(--c1) 20%, transparent); color: var(--c1); }
+      .md-kpi .mk-ic svg { width: 10px; height: 10px; }
+      .md-kpi b { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; margin-top: 5px; display: flex; align-items: baseline; gap: 5px; }
+      .md-kpi b em { font-size: 9.5px; font-weight: 700; font-style: normal; color: var(--ink-3); display: inline-flex; align-items: center; gap: 2px; }
+      .md-kpi b em.up { color: var(--cup); }
+      .md-kpi b em.up::before { content: "▲"; font-size: 7px; line-height: 1; }
+      /* Coloured sparkline in each KPI tile. */
+      .md-kpi .spark { width: 100%; height: 16px; margin-top: 6px; display: block; }
+      .md-kpi .spark .a { fill: color-mix(in srgb, var(--c1) 16%, transparent); }
+      .md-kpi .spark .l { fill: none; stroke: var(--c1); stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+      .md-panel { position: relative; border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 12px;
+        background: rgba(255,255,255,0.02); flex: 1; display: flex; flex-direction: column; min-height: 0; box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); }
+      .md-ct { font-size: 10px; color: var(--ink-3); font-weight: 600; margin-bottom: 8px; flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      /* Chart legend (two series). */
+      .md-legend { display: flex; gap: 9px; }
+      .md-legend i { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 600; color: var(--ink-3); font-style: normal; text-transform: none; letter-spacing: 0; }
+      .md-legend i::before { content: ""; width: 7px; height: 7px; border-radius: 2px; background: var(--lc); }
+      /* Grouped two-series bars, over faint gridlines. */
+      .md-bars { display: flex; align-items: flex-end; gap: 6px; flex: 1; min-height: 0;
+        background: repeating-linear-gradient(to top, transparent 0, transparent calc(25% - 1px), var(--hairline) calc(25% - 1px), var(--hairline) 25%);
+        background-position: bottom; }
+      .md-grp { flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 100%; }
+      .md-grp span { width: 6px; border-radius: 2px 2px 0 0; }
+      .md-grp .s1 { background: linear-gradient(180deg, var(--c1), color-mix(in srgb, var(--c1) 45%, transparent)); }
+      .md-grp .s2 { background: linear-gradient(180deg, var(--c2), color-mix(in srgb, var(--c2) 45%, transparent)); }
+      /* Bottom row: a donut + the trend line, side by side (like the ref). */
+      .md-row { display: grid; grid-template-columns: 0.8fr 1fr; gap: 10px; flex: 1; min-height: 0; }
+      .md-donut { align-items: center; flex-direction: row; gap: 10px; }
+      .md-donut svg { width: 52px; height: 52px; flex: none; }
+      .md-donut .dn-track { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 4; }
+      .md-donut .dn-seg { fill: none; stroke-width: 4; stroke-linecap: butt; }
+      .md-donut .dn-c { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+      .md-donut .dn-v { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); }
+      .md-donut .dn-l { font-size: 9px; color: var(--ink-3); line-height: 1.3; }
+      .md-line { width: 100%; flex: 1; min-height: 0; display: block; }
 
       /* Live prototype iframe fills its card. */
       .b-proto { background: #0b0b0e; }
@@ -731,27 +765,54 @@
             <div class="bcard b-dash metallic" data-desc="Turn your spreadsheets and raw numbers into a living dashboard that tells you what they mean." data-utt="Turn my Q2 sales into a dashboard">
               <div class="minidash">
                 <div class="md-kpis">
-                  <div class="md-kpi"><span>Total revenue</span><b>$890.2k <em>+18%</em></b>
+                  <div class="md-kpi">
+                    <div class="mk-top"><span>Total revenue</span><span class="mk-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M9 7h8v8"/></svg></span></div>
+                    <b>$890.2k <em class="up">18%</em></b>
                     <svg class="spark" viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true"><path class="a" d="M0,17 L20,14 L40,15 L60,9 L80,7 L100,3 L100,22 L0,22 Z"/><polyline class="l" points="0,17 20,14 40,15 60,9 80,7 100,3"/></svg></div>
-                  <div class="md-kpi"><span>Orders</span><b>3,629 <em>+9%</em></b>
+                  <div class="md-kpi">
+                    <div class="mk-top"><span>Orders</span><span class="mk-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6h15l-1.5 9h-12z"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M6 6 5 3H3"/></svg></span></div>
+                    <b>3,629 <em class="up">9%</em></b>
                     <svg class="spark" viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true"><path class="a" d="M0,13 L20,9 L40,12 L60,6 L80,10 L100,4 L100,22 L0,22 Z"/><polyline class="l" points="0,13 20,9 40,12 60,6 80,10 100,4"/></svg></div>
-                  <div class="md-kpi"><span>New customers</span><b>609 <em>+14%</em></b>
+                  <div class="md-kpi">
+                    <div class="mk-top"><span>New customers</span><span class="mk-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M19 8v6M22 11h-6"/></svg></span></div>
+                    <b>609 <em class="up">14%</em></b>
                     <svg class="spark" viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true"><path class="a" d="M0,16 L25,13 L50,11 L75,8 L100,5 L100,22 L0,22 Z"/><polyline class="l" points="0,16 25,13 50,11 75,8 100,5"/></svg></div>
-                  <div class="md-kpi"><span>Avg order</span><b>$245 <em>+3%</em></b>
+                  <div class="md-kpi">
+                    <div class="mk-top"><span>Avg order</span><span class="mk-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12 12 20 4 12 12 4z"/><circle cx="9" cy="9" r="1.3"/></svg></span></div>
+                    <b>$245 <em class="up">3%</em></b>
                     <svg class="spark" viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true"><path class="a" d="M0,12 L20,13 L40,10 L60,12 L80,9 L100,8 L100,22 L0,22 Z"/><polyline class="l" points="0,12 20,13 40,10 60,12 80,9 100,8"/></svg></div>
                 </div>
                 <div class="md-panel">
-                  <div class="md-ct">Revenue by month</div>
-                  <div class="md-bars"><span style="height:38%"></span><span style="height:52%"></span><span style="height:46%"></span><span style="height:64%"></span><span style="height:58%"></span><span style="height:76%"></span><span style="height:70%"></span><span style="height:88%"></span><span style="height:82%"></span><span style="height:100%"></span><span style="height:94%"></span><span style="height:90%"></span></div>
+                  <div class="md-ct"><span>Revenue vs target</span><span class="md-legend"><i style="--lc: var(--c1)">Revenue</i><i style="--lc: var(--c2)">Target</i></span></div>
+                  <div class="md-bars">
+                    <div class="md-grp"><span class="s1" style="height:42%"></span><span class="s2" style="height:34%"></span></div>
+                    <div class="md-grp"><span class="s1" style="height:55%"></span><span class="s2" style="height:40%"></span></div>
+                    <div class="md-grp"><span class="s1" style="height:48%"></span><span class="s2" style="height:44%"></span></div>
+                    <div class="md-grp"><span class="s1" style="height:66%"></span><span class="s2" style="height:50%"></span></div>
+                    <div class="md-grp"><span class="s1" style="height:60%"></span><span class="s2" style="height:52%"></span></div>
+                    <div class="md-grp"><span class="s1" style="height:78%"></span><span class="s2" style="height:58%"></span></div>
+                    <div class="md-grp"><span class="s1" style="height:88%"></span><span class="s2" style="height:64%"></span></div>
+                    <div class="md-grp"><span class="s1" style="height:100%"></span><span class="s2" style="height:72%"></span></div>
+                  </div>
                 </div>
-                <div class="md-panel">
-                  <div class="md-ct">Monthly trend</div>
-                  <svg class="md-line" viewBox="0 0 120 40" preserveAspectRatio="none" aria-hidden="true">
-                    <defs><linearGradient id="mdArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(255,255,255,0.30)"/><stop offset="1" stop-color="rgba(255,255,255,0)"/></linearGradient></defs>
-                    <path d="M0,33 L13,30 L26,31 L40,24 L53,26 L66,19 L80,21 L93,13 L106,11 L120,6 L120,40 L0,40 Z" fill="url(#mdArea)"/>
-                    <polyline points="0,33 13,30 26,31 40,24 53,26 66,19 80,21 93,13 106,11 120,6" fill="none" stroke="#f5f5f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
-                    <circle cx="120" cy="6" r="3" fill="#f5f5f7" vector-effect="non-scaling-stroke"/>
-                  </svg>
+                <div class="md-row">
+                  <div class="md-panel md-donut">
+                    <svg viewBox="0 0 36 36" aria-hidden="true">
+                      <circle class="dn-track" cx="18" cy="18" r="15.915"/>
+                      <circle class="dn-seg" cx="18" cy="18" r="15.915" stroke="var(--c1)" stroke-dasharray="62 38" stroke-dashoffset="0" transform="rotate(-90 18 18)"/>
+                      <circle class="dn-seg" cx="18" cy="18" r="15.915" stroke="var(--c2)" stroke-dasharray="24 76" stroke-dashoffset="-62" transform="rotate(-90 18 18)"/>
+                    </svg>
+                    <div class="dn-c"><span class="dn-v">62%</span><span class="dn-l">Direct</span><span class="dn-l">Referral 24%</span></div>
+                  </div>
+                  <div class="md-panel">
+                    <div class="md-ct"><span>Trend</span></div>
+                    <svg class="md-line" viewBox="0 0 120 40" preserveAspectRatio="none" aria-hidden="true">
+                      <defs><linearGradient id="mdArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b82f6" stop-opacity="0.34"/><stop offset="1" stop-color="#3b82f6" stop-opacity="0"/></linearGradient></defs>
+                      <path d="M0,33 L13,30 L26,31 L40,24 L53,26 L66,19 L80,21 L93,13 L106,11 L120,6 L120,40 L0,40 Z" fill="url(#mdArea)"/>
+                      <polyline points="0,33 13,30 26,31 40,24 53,26 66,19 80,21 93,13 106,11 120,6" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+                      <circle cx="120" cy="6" r="3" fill="#3b82f6" vector-effect="non-scaling-stroke"/>
+                    </svg>
+                  </div>
                 </div>
               </div>
             </div>
