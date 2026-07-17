@@ -112,12 +112,14 @@ const Kpi = defineComponent({
 // them into slabs (owner call, 2026-07-10). One geometry, one grid, no drift.
 const CHART_W = 300;                 // logical viewBox width (scales to the card)
 const CHART_H = 176;                 // logical viewBox height
-const PAD_X = 24;                    // left/right plot inset
-const PAD_TOP = 14;                  // headroom above the tallest bar/peak
-const PAD_BOT = 32;                  // room for the axis labels
+// Small internal insets — the card's own 16px padding is the real padding; the
+// chart should sit tight inside it, not add a second wide margin of its own.
+const PAD_X = 10;                    // left/right plot inset
+const PAD_TOP = 12;                  // headroom above the tallest bar/peak
+const PAD_BOT = 28;                  // room for the axis labels
 const BASE_Y = CHART_H - PAD_BOT;    // shared baseline (y of every axis)
 const PLOT_H = BASE_Y - PAD_TOP;     // usable vertical range
-const MAX_BW = 38;                   // bar-width cap — no slabs for sparse data
+const MAX_BW = 52;                   // bar-width cap — chunky bars, but no slabs
 const GRID = [0.25, 0.5, 0.75, 1];   // gridline fractions of the plot height
 const gridY = (f: number) => BASE_Y - f * PLOT_H;
 
