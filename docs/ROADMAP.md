@@ -320,7 +320,41 @@ interruptible + single-undo), prototype both, let the awe test decide.
 - **Discoverability** → first-run hint already teaches one shortcut (⌘K);
   add a contextual "Tab to continue" ghost affordance inside an editing card.
 
-### 9.8 Definition of done (M4)
+### 9.8 Execution model to prototype — the advisor tool `proposed`
+
+Autopilot is the one Jarwiz workload shaped like what the Anthropic **advisor
+tool** ([docs](https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool),
+beta `advisor-tool-2026-03-01`) is built for: long-horizon, multi-step, where
+an excellent _plan_ up front (what cards, what layout, connected how) pays off
+across many mechanical fill steps. The tool lets a cheaper **executor** model
+pause mid-run to consult a stronger **advisor** model on the full transcript,
+so you get near-advisor quality while most tokens generate at executor rates.
+
+The prototype worth running when we build the agentic phases (A2/A3, the
+multi-field plan fills): **Sonnet 5 executor + Opus 4.8 (or Fable 5) advisor**,
+A/B'd against today's plain Opus 4.8 run, measured on plan quality and cost.
+That's a real cost story with a clean comparison. Three caveats to design
+around, all evaluated and none blocking:
+
+- **It's not for the one-shot agents.** Summarizer/Writer/Brainstormer are
+  short single-shot generations — the doc's own weak-fit zone ("nothing to
+  plan"). Don't retrofit it there; it earns its place only in the multi-step
+  Autopilot flow. And the win requires _moving the executor down to Sonnet_ —
+  with Opus already the executor everywhere, the tool has no cost lever to pull.
+- **The advisor sub-inference does not stream** — the executor's stream pauses
+  (only ~30s ping keepalives) while the advisor thinks, then the advice lands in
+  one event. Against our live-caret soul that's a visible mid-write freeze;
+  surface it honestly as a "thinking through the approach…" status, the same
+  pattern we already use for `web_fetch`, and fold it into the §9.7 "latency
+  dulls the magic" thinking-pulse mitigation.
+- **Plumbing:** it's beta-only (`client.beta.messages.*` + header), while the
+  runtime uses the stable `client.messages.stream`. Migrating the core loop is
+  part of the cost of adopting it — worth it only if the A/B shows the lift.
+
+Verdict: an _Autopilot-era_ tool, not a today tool. Logged here so the idea
+rides in with A2/A3 rather than getting lost.
+
+### 9.9 Definition of done (M4)
 
 Beyond §8: yield-on-type is instantaneous and never drops a keystroke; every
 fill is a single undo; the agent's "what I see" is inspectable before it types;
