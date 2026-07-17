@@ -6571,11 +6571,12 @@ body,
 .jzd-kpi-delta.is-up::before { content: "▲"; font-size: 8px; line-height: 1; }
 .jzd-kpi-delta.is-down::before { content: "▼"; font-size: 8px; line-height: 1; }
 
-.jzd-chartcard { background: var(--jz-surface-raised); border: 1px solid var(--jz-hairline); border-radius: 12px; padding: 16px; flex: 1; min-width: 0; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04); }
-/* width:100% shrinks a dense chart to fit its panel; the SVG's own inline
-   max-width (derived from its data density in library.tsx) stops a sparse one
-   being stretched into slabs. Centered so a small chart sits balanced. */
-.jzd-chart { width: 100%; height: auto; display: block; margin-inline: auto; }
+.jzd-chartcard { display: flex; flex-direction: column; background: var(--jz-surface-raised); border: 1px solid var(--jz-hairline); border-radius: 12px; padding: 16px; flex: 1; min-width: 0; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04); }
+/* Every chart shares one logical viewBox (library.tsx), so charts fill their
+   card and render at the same size — they line up across a row. margin-top:auto
+   bottom-anchors the plot, so a title that wraps to two lines can't shove one
+   chart out of alignment with its neighbours. */
+.jzd-chart { width: 100%; height: auto; display: block; margin-top: auto; }
 /* Charts carry the ONE spot of colour on the board (the --jz-viz-* family);
    the inline gradient fill on bars/areas overrides these token fallbacks. */
 .jzd-bar { fill: var(--jz-viz-1); }

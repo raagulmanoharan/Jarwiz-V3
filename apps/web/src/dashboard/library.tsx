@@ -103,42 +103,56 @@ const Kpi = defineComponent({
   }) as never,
 });
 
-// ─── Charts (inline monochrome SVG, offline) ─────────────────────────────────
-// A chart's natural width comes from its DATA (a fixed slot per bar/point),
-// and the inline max-width caps rendering at that natural size — so CSS's
-// width:100% can shrink a dense chart to fit the card but never stretch a
-// sparse one into slabs (owner call, 2026-07-10: two bars must not fill the
-// card). No per-chart knobs; density is the control.
-const CHART_H = 190;
-const CHART_PAD = 28;
+// ─── Charts (inline SVG, offline) ────────────────────────────────────────────
+// EVERY chart shares ONE logical viewBox and plot frame — same padding, the
+// same baseline, the same four gridlines — so charts of different data density
+// render at the SAME size and line up cleanly when placed side by side in a
+// row. The chart fills its card's width (charts align); it's the BAR WIDTH that
+// is capped, so a sparse 2-bar chart spreads its bars out instead of stretching
+// them into slabs (owner call, 2026-07-10). One geometry, one grid, no drift.
+const CHART_W = 300;                 // logical viewBox width (scales to the card)
+const CHART_H = 176;                 // logical viewBox height
+const PAD_X = 24;                    // left/right plot inset
+const PAD_TOP = 14;                  // headroom above the tallest bar/peak
+const PAD_BOT = 32;                  // room for the axis labels
+const BASE_Y = CHART_H - PAD_BOT;    // shared baseline (y of every axis)
+const PLOT_H = BASE_Y - PAD_TOP;     // usable vertical range
+const MAX_BW = 38;                   // bar-width cap — no slabs for sparse data
+const GRID = [0.25, 0.5, 0.75, 1];   // gridline fractions of the plot height
+const gridY = (f: number) => BASE_Y - f * PLOT_H;
+
+function Gridlines() {
+  return (
+    <>
+      {GRID.map((f, i) => (
+        <line key={`g${i}`} x1={PAD_X} y1={gridY(f)} x2={CHART_W - PAD_X} y2={gridY(f)} className="jzd-grid" />
+      ))}
+    </>
+  );
+}
 
 function BarSvg({ labels, values }: { labels: string[]; values: number[] }) {
   const gid = React.useId();
   const n = Math.max(1, values.length);
-  const SLOT = 84, BW = 48;
-  const W = CHART_PAD * 2 + n * SLOT, H = CHART_H, PAD = CHART_PAD;
   const max = Math.max(1, ...values.map(Math.abs));
-  // y for a fraction (0=baseline, 1=top) of the plot area — used by gridlines.
-  const gy = (f: number) => H - PAD - f * (H - PAD * 2);
+  const slot = (CHART_W - PAD_X * 2) / n;
+  const bw = Math.min(slot * 0.62, MAX_BW);
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="jzd-chart" style={{ maxWidth: W }} preserveAspectRatio="xMidYMid meet">
+    <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} className="jzd-chart" preserveAspectRatio="xMidYMid meet">
       <defs>
         <linearGradient id={`bar-${gid}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" style={{ stopColor: 'var(--jz-viz-1)', stopOpacity: 1 }} />
           <stop offset="1" style={{ stopColor: 'var(--jz-viz-1)', stopOpacity: 0.42 }} />
         </linearGradient>
       </defs>
-      {/* faint gridlines give the chart a measured, dashboard feel */}
-      {[0.25, 0.5, 0.75, 1].map((f, i) => (
-        <line key={`g${i}`} x1={PAD} y1={gy(f)} x2={W - PAD} y2={gy(f)} className="jzd-grid" />
-      ))}
+      <Gridlines />
       {values.map((v, i) => {
-        const h = (Math.abs(v) / max) * (H - PAD * 2);
-        const x = PAD + i * SLOT + (SLOT - BW) / 2;
+        const h = (Math.abs(v) / max) * PLOT_H;
+        const x = PAD_X + i * slot + (slot - bw) / 2;
         return (
           <g key={i}>
-            <rect x={x} y={H - PAD - h} width={BW} height={h} rx={3} className="jzd-bar" fill={`url(#bar-${gid})`} />
-            <text x={x + BW / 2} y={H - PAD + 14} textAnchor="middle" className="jzd-axis">{labels[i] ?? ''}</text>
+            <rect x={x} y={BASE_Y - h} width={bw} height={h} rx={3} className="jzd-bar" fill={`url(#bar-${gid})`} />
+            <text x={x + bw / 2} y={BASE_Y + 16} textAnchor="middle" className="jzd-axis">{labels[i] ?? ''}</text>
           </g>
         );
       })}
@@ -147,43 +161,40 @@ function BarSvg({ labels, values }: { labels: string[]; values: number[] }) {
 }
 
 function LineSvg({ labels, values }: { labels: string[]; values: number[] }) {
-  const n = Math.max(2, values.length);
-  const W = CHART_PAD * 2 + (n - 1) * 72, H = CHART_H, PAD = CHART_PAD;
+  const gid = React.useId();
+  const vals = values.length ? values : [0];
   // Frame to the data's own range (not a forced zero baseline) so a trend that
   // rides a high floor — e.g. 274k → 324k — still uses the vertical space and
   // reads as movement. A little headroom keeps the peaks off the edges.
-  const lo = Math.min(...values), hi = Math.max(...values);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
   const pad = (hi - lo) * 0.12 || Math.abs(hi) * 0.12 || 1;
   const min = lo - pad, max = hi + pad;
   const span = max - min || 1;
-  const pts = values.map((v, i) => {
-    const x = PAD + i * ((W - PAD * 2) / Math.max(1, values.length - 1));
-    const y = H - PAD - ((v - min) / span) * (H - PAD * 2);
+  const stepX = (CHART_W - PAD_X * 2) / Math.max(1, vals.length - 1);
+  const pts = vals.map((v, i) => {
+    const x = PAD_X + i * stepX;
+    const y = BASE_Y - ((v - min) / span) * PLOT_H;
     return [x, y] as const;
   });
-  const gid = React.useId();
   const d = pts.map((p, i) => `${i ? 'L' : 'M'} ${p[0]} ${p[1]}`).join(' ');
-  // Area under the line, closed to the baseline, for a soft tinted fill.
-  const area = `M ${pts[0]![0]} ${H - PAD} ${d} L ${pts[pts.length - 1]![0]} ${H - PAD} Z`;
+  // Area under the line, closed to the shared baseline, for a soft tinted fill.
+  const area = `M ${pts[0]![0]} ${BASE_Y} ${d} L ${pts[pts.length - 1]![0]} ${BASE_Y} Z`;
   const last = pts.length - 1;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="jzd-chart" style={{ maxWidth: W }} preserveAspectRatio="xMidYMid meet">
+    <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} className="jzd-chart" preserveAspectRatio="xMidYMid meet">
       <defs>
         <linearGradient id={`ln-${gid}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" style={{ stopColor: 'var(--jz-viz-1)', stopOpacity: 0.26 }} />
           <stop offset="1" style={{ stopColor: 'var(--jz-viz-1)', stopOpacity: 0 }} />
         </linearGradient>
       </defs>
-      {[0.25, 0.5, 0.75, 1].map((f, i) => {
-        const y = PAD + f * (H - PAD * 2);
-        return <line key={`g${i}`} x1={PAD} y1={y} x2={W - PAD} y2={y} className="jzd-grid" />;
-      })}
+      <Gridlines />
       <path d={area} fill={`url(#ln-${gid})`} stroke="none" />
       <path d={d} className="jzd-line" fill="none" />
       {pts.map((p, i) => (
         <circle key={i} cx={p[0]} cy={p[1]} r={i === last ? 3.5 : 2.5} className={`jzd-dot${i === last ? ' jzd-dot--end' : ''}`} />
       ))}
-      {labels.map((l, i) => pts[i] ? <text key={i} x={pts[i]![0]} y={H - PAD + 14} textAnchor="middle" className="jzd-axis">{l}</text> : null)}
+      {labels.map((l, i) => pts[i] ? <text key={i} x={pts[i]![0]} y={BASE_Y + 16} textAnchor="middle" className="jzd-axis">{l}</text> : null)}
     </svg>
   );
 }
@@ -194,7 +205,7 @@ function chartMakeCard(kind: 'BarChart' | 'LineChart', title: string, labels: st
   return (editor, at) => {
     if (values.length === 0) return null;
     const spec = `root = ${kind}(${JSON.stringify(title)}, ${JSON.stringify(labels)}, ${JSON.stringify(values)})`;
-    const w = Math.min(820, Math.max(380, CHART_PAD * 2 + labels.length * 84 + 64));
+    const w = Math.min(720, Math.max(380, 160 + labels.length * 60));
     const h = 300;
     const id = createShapeId();
     editor.createShape({
