@@ -22,6 +22,7 @@ import { classifyRefineIntent, resolveMentionTarget, INLINE_EDITABLE, REFINE_SHA
 import { useAnalyze } from '../agents/useAnalyze';
 import { gatherBoardCards } from '../agents/boardText';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
+import { clearAgentError, getAgentError, subscribeAgentError } from '../agents/agentError';
 import { isAutopilotRunning, subscribeAutopilot } from '../agents/autopilotStore';
 import { cardSeedKey, ensureCardSeeds, ensureSeedPrompts, getSeedPrompts, subscribeSeed } from './seedPrompts';
 import { getPromptFill, subscribePromptFill } from './promptFill';
@@ -253,6 +254,11 @@ export function PromptBar() {
   // (static playground), or a keyless server answering with the scripted mock
   // (one tap from adding their own key and going live).
   const backend = useSyncExternalStore(subscribeBackend, getBackendSnapshot, getBackendSnapshot);
+  // Every agent failure — an ask, a refine, an analyze, a debrief — surfaces
+  // HERE, in one dismissible banner above the composer, never as a pill floating
+  // at whatever canvas spot the work occupied (agentError.ts). One error at a
+  // time, last-wins; Retry re-runs the exact action when the caller offers it.
+  const agentError = useSyncExternalStore(subscribeAgentError, getAgentError, getAgentError);
   const chromeVisible = !isEmbed() && !isUseCases();
   const playground = backend.availability === 'down' && chromeVisible;
   const demoMode = backend.mode === 'demo' && chromeVisible;
@@ -816,6 +822,19 @@ export function PromptBar() {
         <div className="jz-promptbar-chips">
           <button className="jz-pb-chip" title="Find contradictions between cards" onClick={() => runTool('tensions')}>⚖ Scan for tensions</button>
           <button className="jz-pb-chip" title="Name the due-diligence gaps on this board" onClick={() => runTool('gaps')}><JarwizSpark size={11} className="jz-spark-inline" /> What am I missing?</button>
+        </div>
+      ) : null}
+
+      {/* Agent errors land here — the single home, right where the person is
+          about to type. Dismissible; Retry re-runs the failed action. */}
+      {agentError ? (
+        <div className="jz-pb-error" role="alert">
+          <span className="jz-pb-error-dot" aria-hidden />
+          <span className="jz-pb-error-msg">{agentError.message}</span>
+          {agentError.onRetry ? (
+            <button className="jz-pb-error-retry" onClick={agentError.onRetry}>Retry</button>
+          ) : null}
+          <button className="jz-pb-error-x" aria-label="Dismiss" onClick={() => clearAgentError()}>✕</button>
         </div>
       ) : null}
 

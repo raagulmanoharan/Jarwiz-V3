@@ -45,7 +45,7 @@ import { clearDraft, getDraft, setDraft, updateDraft } from './draft';
 import { clearRegen, setRegen } from './regen';
 import { clearClarify, setClarify } from './clarify';
 import { logEvent } from '../log/eventLog';
-import { clearAgentTask, setAgentTask } from '../agents/agentTask';
+import { clearAgentError, setAgentError } from '../agents/agentError';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from '../agents/presence';
 import { getShapeTitle } from '../shapes/shapeTitle';
 import { getAgent } from '@jarwiz/shared';
@@ -373,23 +373,17 @@ export function useAsk() {
       let runFailed = false;
       const taskId = `ask_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
-      // Errors must never be silent. A streaming draft shows them on its own
-      // controls; a run with no draft — failed before `card.create`, or an
-      // in-place regen (regen never creates a draft) — surfaces through the
-      // agent-task layer, which renders an error pill with Retry.
+      // Errors must never be silent — and they have ONE home: the banner above
+      // the composer (agentError.ts), never a popup at a random canvas spot. A
+      // failed draft is thrown away (a failure leaves nothing keepable) so the
+      // person isn't left hunting for a Discard button on a card off to the
+      // side; the reason and its Retry wait right where they'll type next.
       const surfaceError = (message: string) => {
-        if (getDraft()) {
-          updateDraft({ status: 'error', error: message });
-          return;
-        }
-        setAgentTask({
-          id: taskId,
-          anchorId: cardId,
-          status: 'error',
-          label: targetId ? 'Regenerate' : 'Ask',
-          error: message,
+        if (getDraft()) discardDraft(editor);
+        setAgentError({
+          message,
           onRetry: () => {
-            clearAgentTask(taskId);
+            clearAgentError();
             void ask(trimmed, sourceIds, opts);
           },
         });

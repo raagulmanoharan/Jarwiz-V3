@@ -4648,6 +4648,93 @@ body,
   transform: translateY(-1px);
 }
 
+/* Agent-error banner — the ONE home for a failed AI action, docked above the
+ * composer (agentError.ts). Danger-tinted sibling of the playground pill: same
+ * raised surface and shadow so it reads as chrome, a warm hairline + dot so it
+ * reads as "something went wrong", never an alarm. Retry is the primary; ✕
+ * dismisses. Rises in place — no motion when reduced-motion is asked for. */
+.jz-pb-error {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jz-space-3);
+  max-width: min(640px, calc(100vw - 32px));
+  padding: 6px 6px 6px 14px;
+  border: 1px solid color-mix(in srgb, var(--jz-danger) 45%, var(--jz-hairline-strong));
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e2);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-700);
+  animation: jz-pb-error-in var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+@keyframes jz-pb-error-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jz-pb-error { animation: none; }
+}
+
+.jz-pb-error-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--jz-danger);
+}
+
+.jz-pb-error-msg {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jz-pb-error-retry {
+  flex: none;
+  padding: 4px 12px;
+  border: none;
+  border-radius: var(--jz-radius-pill);
+  cursor: pointer;
+  background: var(--jz-accent);
+  color: var(--jz-accent-ink);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  font-weight: 600;
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-pb-error-retry:hover {
+  transform: translateY(-1px);
+}
+
+.jz-pb-error-x {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  background: transparent;
+  color: var(--jz-ink-500);
+  font-size: 11px;
+  line-height: 1;
+  transition: color var(--jz-dur-fast) var(--jz-ease-out), background var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-pb-error-x:hover {
+  color: var(--jz-ink-900);
+  background: color-mix(in srgb, var(--jz-ink-500) 12%, transparent);
+}
+
 /* The brand spark inline with button/label text — sit it on the baseline. */
 .jz-spark-inline {
   vertical-align: -1px;

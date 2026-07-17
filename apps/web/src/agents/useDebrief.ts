@@ -21,9 +21,11 @@ import { DOC_CARD_SIZE, type DocCardShape } from '../shapes';
 import { setShapeTitle } from '../shapes/shapeTitle';
 import { readSSE } from './sse';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from './presence';
-import { getDraft, setDraft, updateDraft, clearDraft } from '../ask/draft';
-import { claimActiveRun, releaseActiveRun, PROMPT_META_KEY, PROV_META_KEY } from '../ask/useAsk';
+import { getDraft, setDraft, updateDraft } from '../ask/draft';
+import { claimActiveRun, releaseActiveRun, discardDraft, PROMPT_META_KEY, PROV_META_KEY } from '../ask/useAsk';
 import { logEvent } from '../log/eventLog';
+import { clearAgentError, setAgentError } from './agentError';
+import { agentErrorMessage } from '../lib/backend';
 
 const PRESENCE = getAgent('writer');
 const CARD_W = 440;
@@ -188,12 +190,13 @@ export function useDebrief() {
         if ((err as Error).name === 'AbortError') {
           // "Stop & discard" already deleted the cards via discardDraft.
           setPhase('idle');
-        } else if (getDraft()) {
-          updateDraft({ status: 'error', error: (err as Error).message, statusText: undefined });
-          setPhase('error');
         } else {
-          // Failed before any card existed — nothing on the board to gate.
-          clearDraft();
+          // Failure surfaces in the one banner above the composer, never on a
+          // card off in the cluster. Throw away the half-built draft (a failed
+          // debrief leaves nothing keepable) so the reason waits where the
+          // person will type next, with a Retry.
+          if (getDraft()) discardDraft(editor);
+          setAgentError({ message: agentErrorMessage((err as Error).message), onRetry: () => { clearAgentError(); void run(intent, sourceIds); } });
           setPhase('error');
         }
       } finally {
