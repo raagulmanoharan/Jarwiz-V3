@@ -2572,26 +2572,24 @@ body,
 }
 
 /* While Autopilot fills it, the card wears a faint agent-colored ring. */
-/* Streaming cue: a card being written wears a soft glow in the accent colour
-   (monochrome by design — a gentle dark halo in light theme, a white glow in
-   dark). The 1px hairline border stays; this only adds the halo around it. One
-   look for every card type, so a streaming doc and a filling table match.
-   (Replaced the old emerald ring — off-system for a monochrome palette —
-   owner call 2026-07-17.) */
-/* Scoped under .jarwiz-app so the halo wins over each card's own base
-   box-shadow (and the selection ring) regardless of source order — several
-   card bases set box-shadow later in this file. */
-.jarwiz-app .jz-card-streaming,
-.jarwiz-app .jz-table-filling {
+/* Streaming cue: the card being written RIGHT NOW (only that one — pending
+   placeholders keep just their border) gets a restrained accent glow. A crisp
+   1px accent edge defines it (so it reads as a border, not a fuzz) plus a
+   small, low-opacity halo. Monochrome by design — a faint dark edge in light
+   theme, a faint white one in dark. Scoped under .jarwiz-app so it wins over
+   each card's own base box-shadow and the selection ring regardless of source
+   order. (Replaced the old emerald ring — off-system for a monochrome palette
+   — owner call 2026-07-17.) */
+.jarwiz-app .jz-card-streaming {
   box-shadow:
     var(--jz-e2),
-    0 0 16px 2px color-mix(in srgb, var(--jz-accent) 18%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--jz-accent) 14%, transparent),
+    0 0 10px 0 color-mix(in srgb, var(--jz-accent) 8%, transparent);
   transition: box-shadow var(--jz-dur-base) var(--jz-ease-out);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .jarwiz-app .jz-card-streaming,
-  .jarwiz-app .jz-table-filling {
+  .jarwiz-app .jz-card-streaming {
     transition: none;
   }
 }

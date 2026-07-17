@@ -135,7 +135,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
     : null;
   // Generating (compose fan-out) fills the same role as streaming here — the
   // cell-by-cell caret cue and the pre-columns placeholder both key off it.
-  const { isGenerating: isFilling } = useStreamState(shape.id);
+  const { isGenerating: isFilling, isFocused } = useStreamState(shape.id);
   const autopilot = useAutopilot();
   const expanded = useSyncExternalStore(subscribeExpand, () => isExpanded(shape.id), () => false);
   // Grow to fit all rows; clamp past the threshold once settled (collapsible).
@@ -337,7 +337,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
   // the slot's card.create fills the header.
   if (isFilling && columns.length === 0) {
     return (
-      <div className="jz-table jz-table-filling">
+      <div className={`jz-table${isFocused ? ' jz-card-streaming' : ''}`}>
         <div className="jz-table-empty-stream">
           <StreamingPlaceholder label="Building this table…" />
         </div>
@@ -362,7 +362,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
       </button>
     ) : null}
     <div
-      className={`jz-table${isFilling ? ' jz-table-filling' : ''}${collapsed ? ' jz-card-collapsed' : ''}${chrome ? ' jz-table--chrome' : ''}${ringSelected ? ' jz-card-selected' : ''}`}
+      className={`jz-table${isFocused ? ' jz-card-streaming' : ''}${collapsed ? ' jz-card-collapsed' : ''}${chrome ? ' jz-table--chrome' : ''}${ringSelected ? ' jz-card-selected' : ''}`}
     >
       {/* Measured wrapper: the frame is height:100% (its scrollHeight always
           equals the CURRENT shape height — the fit-height ratchet), so the

@@ -12,7 +12,13 @@
  *    so pre-placed cards in a grid never bump their neighbours mid-stream.
  *
  * A card is "generating" (shows caret + "writing…" placeholder) if it's in
- * EITHER set; it only page-shapes if it's in the streaming set. See
+ * EITHER set; it only page-shapes if it's in the streaming set.
+ *
+ * A third, separate signal — FOCUS — marks the ONE card being written right
+ * now (in a sequential fan-out, the slot currently filling). Only the focused
+ * card wears the streaming glow; the pending placeholders sit quietly with just
+ * their border. Single-card paths (Ask/Analyze/Autopilot) glow off `streaming`
+ * directly, since their streaming card is always the focused one. See
  * useStreamState for the combined read.
  */
 import type { TLShapeId } from 'tldraw';
@@ -20,6 +26,7 @@ import { createExternalStore } from '../lib/externalStore';
 
 const streamingStore = createExternalStore<ReadonlySet<TLShapeId>>(new Set());
 const generatingStore = createExternalStore<ReadonlySet<TLShapeId>>(new Set());
+const focusStore = createExternalStore<ReadonlySet<TLShapeId>>(new Set());
 
 const add = (store: typeof streamingStore, id: TLShapeId) =>
   store.update((s) => (s.has(id) ? s : new Set(s).add(id)));
@@ -48,7 +55,18 @@ export function stopGenerating(id: TLShapeId): void {
   remove(generatingStore, id);
 }
 
+/** Mark the card being written RIGHT NOW — the one that wears the glow. Used by
+ *  the fan-out flows to move the glow from slot to slot as each fills. */
+export function startFocus(id: TLShapeId): void {
+  add(focusStore, id);
+}
+export function stopFocus(id: TLShapeId): void {
+  remove(focusStore, id);
+}
+
 export const subscribeStreaming = streamingStore.subscribe;
 export const getStreamingSnapshot = streamingStore.get;
 export const subscribeGenerating = generatingStore.subscribe;
 export const getGeneratingSnapshot = generatingStore.get;
+export const subscribeFocus = focusStore.subscribe;
+export const getFocusSnapshot = focusStore.get;

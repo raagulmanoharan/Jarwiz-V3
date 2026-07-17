@@ -20,7 +20,7 @@ import { getAgent } from '@jarwiz/shared';
 import { DOC_CARD_SIZE, type DocCardShape } from '../shapes';
 import { setShapeTitle } from '../shapes/shapeTitle';
 import { readSSE } from './sse';
-import { startGenerating, stopGenerating } from './streaming';
+import { startFocus, startGenerating, stopFocus, stopGenerating } from './streaming';
 import { makeCardFollower } from './followCamera';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from './presence';
 import { getDraft, setDraft, updateDraft } from '../ask/draft';
@@ -142,9 +142,10 @@ export function useDebrief() {
             if (getDraft()) updateDraft({ statusText: ev.message });
             break;
           case 'card.create': {
-            // Card is already placed from the plan — just move the avatar to it
-            // and keep it in view as it starts to fill.
+            // Card is already placed from the plan — this slot is now the one
+            // being written (takes the glow); move the avatar and follow it.
             const id = slots.get(slotIdx) ?? (precreate(slotIdx), slots.get(slotIdx)!);
+            startFocus(id);
             const b = editor.getShapePageBounds(id);
             if (b) setPresenceCursor(PRESENCE.id, b.maxX - 14, b.maxY - 16);
             follower.follow(id);
@@ -165,7 +166,7 @@ export function useDebrief() {
           }
           case 'card.done': {
             const cardId = slots.get(slotIdx);
-            if (cardId) stopGenerating(cardId);
+            if (cardId) { stopFocus(cardId); stopGenerating(cardId); }
             break;
           }
           case 'card.title':
@@ -207,7 +208,7 @@ export function useDebrief() {
           }
         });
         if (created.length === 0) throw new Error('The debrief produced no cards.');
-        for (const id of created) stopGenerating(id); // all settled — carets off
+        for (const id of created) { stopFocus(id); stopGenerating(id); } // all settled
         frameCluster();
         updateDraft({ status: 'done', statusText: undefined });
         logEvent(editor, { kind: 'artefact', label: 'Meeting debrief', detail: `${created.length} cards`, shapeIds: created });
@@ -226,9 +227,9 @@ export function useDebrief() {
           setPhase('error');
         }
       } finally {
-        // Abort/error can skip card.done — clear any lingering carets and detach
-        // the follow listeners.
-        for (const id of created) stopGenerating(id);
+        // Abort/error can skip card.done — clear any lingering stream flags and
+        // detach the follow listeners.
+        for (const id of created) { stopFocus(id); stopGenerating(id); }
         follower.dispose();
         releaseActiveRun(ac);
         abortRef.current = null;

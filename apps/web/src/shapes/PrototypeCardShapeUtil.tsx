@@ -113,8 +113,11 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
   // Generating (compose fan-out) counts the same as streaming here: an empty,
   // being-built prototype shows the "Generating the UI…" state, never the idle
   // prompt composer.
-  const { isGenerating } = useStreamState(shape.id);
+  const { isGenerating, isFocused } = useStreamState(shape.id);
   const isStreaming = isGenerating || running;
+  // Only the card being written right now wears the glow (a `running` in-card
+  // generate counts); pending fan-out placeholders stay quiet.
+  const glow = isFocused || running;
   // The one shared selected state (the CSS ring) — the sole thing that thickens
   // a card's edge, identical across every card type.
   const isSelected = useValue('prototype-selected', () => editor.getSelectedShapeIds().includes(shape.id), [editor]);
@@ -155,7 +158,7 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
   // spinner; otherwise (idle/error/empty) → the small prompt composer.
   if (hasDoc) {
     return (
-      <div className={`jz-prototype${interactive ? ' jz-prototype--interactive' : ''}${sel}${isStreaming ? ' jz-card-streaming' : ''}`}>
+      <div className={`jz-prototype${interactive ? ' jz-prototype--interactive' : ''}${sel}${glow ? ' jz-card-streaming' : ''}`}>
         <iframe
           key={refreshNonce}
           className="jz-prototype-frame"
@@ -171,7 +174,7 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
 
   if (isStreaming) {
     return (
-      <div className={`jz-prototype jz-prototype--composer${sel} jz-card-streaming`}>
+      <div className={`jz-prototype jz-prototype--composer${sel}${glow ? ' jz-card-streaming' : ''}`}>
         <div className="jz-prototype-loading">
           <Loader2 size={16} className="jz-machine-spin" />
           <span>Generating the UI…</span>

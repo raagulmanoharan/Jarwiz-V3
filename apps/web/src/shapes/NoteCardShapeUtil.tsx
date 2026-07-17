@@ -102,13 +102,13 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
   const isEditing = useIsEditing(shape.id);
   const isSelected = useCardSelected(shape.id);
   const { text, color } = shape.props;
-  const { isGenerating } = useStreamState(shape.id);
+  const { isGenerating, isFocused } = useStreamState(shape.id);
   const autopilot = useAutopilot();
   const [paused, resetPause] = useTypingPause(isEditing ? text : '', 1800);
   const showNudge = isEditing && paused && !isGenerating;
 
   return (
-    <div className={`jz-note${isSelected ? ' jz-card-selected' : ''}${isGenerating ? ' jz-card-streaming' : ''}`} style={{ background: color || NOTE_PAPER }}>
+    <div className={`jz-note${isSelected ? ' jz-card-selected' : ''}${isFocused ? ' jz-card-streaming' : ''}`} style={{ background: color || NOTE_PAPER }}>
       {isEditing ? (
         <>
         <textarea

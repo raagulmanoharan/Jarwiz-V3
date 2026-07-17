@@ -138,7 +138,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
   // `isStreaming` = page-shaping stream (drives width-grow); `isGenerating` also
   // covers compose/debrief cards a layout owns — both show the caret + the
   // "writing…" placeholder, only the former reflows width.
-  const { isStreaming, isGenerating } = useStreamState(shape.id);
+  const { isStreaming, isGenerating, isFocused } = useStreamState(shape.id);
   const autopilot = useAutopilot();
   const expanded = useSyncExternalStore(subscribeExpand, () => isExpanded(shape.id), () => false);
   const [paused, resetPause] = useTypingPause(isEditing ? `${title}|${text}` : '', 1800);
@@ -298,7 +298,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
 
   return (
     <div
-      className={`jz-doc jz-doc-auto${collapsed ? ' jz-card-collapsed' : ''}${isSelected ? ' jz-card-selected' : ''}${isGenerating ? ' jz-card-streaming' : ''}`}
+      className={`jz-doc jz-doc-auto${collapsed ? ' jz-card-collapsed' : ''}${isSelected ? ' jz-card-selected' : ''}${isFocused ? ' jz-card-streaming' : ''}`}
       ref={fitRef}
     >
       <div className="jz-doc-content">

@@ -18,7 +18,7 @@ import { DOC_CARD_SIZE, TABLE_CARD_SIZE, PROTOTYPE_CARD_SIZE, type DocCardShape,
 import { setShapeTitle } from '../shapes/shapeTitle';
 import { readSSE } from './sse';
 import { gatherBoardCards } from './boardText';
-import { startGenerating, stopGenerating } from './streaming';
+import { startFocus, startGenerating, stopFocus, stopGenerating } from './streaming';
 import { makeCardFollower } from './followCamera';
 
 export type ComposePhase = 'idle' | 'planning' | 'building' | 'done' | 'error';
@@ -133,9 +133,11 @@ export function useCompose() {
       const slot = slots.get(slotIdx);
       switch (ev.type) {
         case 'card.create': {
-          // The card was placed up front from the plan — fill in what only the
+          // The card was placed up front from the plan — this slot is now the
+          // one being written, so it takes the glow. Fill in what only the
           // slot's own create carries (a table's header), then follow it.
           if (slot?.cardId) {
+            startFocus(slot.cardId);
             if (ev.shape === 'table' && slot.kind === 'table') {
               fillTableHeader(slotIdx, slot.cardId, ev);
               relayout();
@@ -147,6 +149,7 @@ export function useCompose() {
           precreate(slotIdx, ev.shape);
           const placed = slots.get(slotIdx);
           if (placed?.cardId) {
+            startFocus(placed.cardId);
             fillTableHeader(slotIdx, placed.cardId, ev);
             relayout();
             if (!framed) { framed = true; frame(editor, created); }
@@ -186,6 +189,7 @@ export function useCompose() {
         }
         case 'card.done': {
           if (!slot?.cardId) break;
+          stopFocus(slot.cardId); // glow off — this slot is finished
           stopGenerating(slot.cardId); // caret + placeholder off; card is settled
           // A slot that produced no content (a rare generation miss) shouldn't
           // leave an empty husk on the board — drop it.
@@ -236,6 +240,7 @@ export function useCompose() {
       for (const id of [...created]) {
         const s = editor.getShape(id);
         if (!s || isEmptyCard(s)) {
+          stopFocus(id);
           stopGenerating(id);
           if (s) editor.deleteShapes([id]);
           const i = created.indexOf(id);
@@ -257,9 +262,9 @@ export function useCompose() {
     } catch (err) {
       if ((err as Error).name !== 'AbortError') setPhase('error');
     } finally {
-      // Clear any lingering generating flags (abort/error can skip card.done)
-      // and detach the follow listeners.
-      for (const id of created) stopGenerating(id);
+      // Clear any lingering stream flags (abort/error can skip card.done) and
+      // detach the follow listeners.
+      for (const id of created) { stopFocus(id); stopGenerating(id); }
       follower.dispose();
       if (abortRef.current === ac) abortRef.current = null;
     }

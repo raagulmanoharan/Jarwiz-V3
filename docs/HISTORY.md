@@ -1311,15 +1311,21 @@ streaming card should at least say the response is streaming in."
   or wheel) — and never touches the camera again for that run. Directly answers
   the "unless I'm editing" ask (and the trackpad-pan complaint from the same
   session — the follow must never fight the hand).
-- **Retired the emerald ring for a monochrome glow.** Pre-creating tables up
-  front surfaced an old off-system treatment: a filling table wore a 2px emerald
-  ring (`#059669`, added 2026-07-08 inside an unrelated commit, never noted). The
-  palette is deliberately monochrome (`--jz-accent` = near-black / white), so
-  green never belonged. Replaced it with one shared `jz-card-streaming` glow — a
-  soft accent-coloured halo (dark in light theme, white in dark) around any
-  card being written, docs and tables alike. Scoped under `.jarwiz-app` so it
-  wins over each card's own base shadow and the selection ring. Owner call — "no
-  green rings; when it's streaming it's just a glow around the card."
+- **Retired the emerald ring for a monochrome, focus-only glow.** Pre-creating
+  tables up front surfaced an old off-system treatment: a filling table wore a
+  2px emerald ring (`#059669`, added 2026-07-08 inside an unrelated commit, never
+  noted). The palette is deliberately monochrome (`--jz-accent` = near-black /
+  white), so green never belonged. Replaced it with one shared `jz-card-streaming`
+  glow — a restrained accent halo (a crisp 1px edge + a faint low-opacity bloom,
+  dark in light theme / white in dark), scoped under `.jarwiz-app` so it wins
+  over each card's base shadow and the selection ring. A third stream signal,
+  FOCUS, drives it: only the card being written RIGHT NOW glows (single-card
+  paths via the streaming set; the fan-out slot currently filling via a focus
+  set that moves slot to slot). Pending placeholders sit quietly with just their
+  border. Verified in preview — a streaming Ask card shows exactly one glow that
+  clears on done; a five-card fan-out shows zero glow while its cards wait. Owner
+  calls — "no green rings; just a subtle glow, on the card in focus; the
+  placeholders come in with just the border."
 - **Verified.** Typecheck + build green. Drove the real Board fan-out in the
   preview: a five-card plan landed all at once as titled placeholders ("Writing
   this in…" / "Building this table…"), each with the neutral glow, no green —
