@@ -1349,3 +1349,10 @@ streaming card should at least say the response is streaming in."
   (the keyless `claude` sidecar is non-streaming, so each card returns
   fully-formed after its call) — with a real API key's token streaming, the
   cards visibly fill together. Capped concurrency = owner pick over all-at-once.
+- **Board-scan pills stand down while cards stream in.** The "Scan for tensions"
+  / "What am I missing?" dock pills floated over the composer during a fan-out —
+  their gate only checked `draftPending`, but a compose fan-out raises no draft.
+  Extended the gate (and the per-card starters / seed-wait shimmer) to a shared
+  `generating = composing || isAsking || annotating`, so every dock pill hides
+  the moment a generation starts and returns once it settles. Verified: 0 pills
+  through a five-card fan-out, back to 2 when it finished. Owner ask.
