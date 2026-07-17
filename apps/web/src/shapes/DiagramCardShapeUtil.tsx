@@ -120,7 +120,7 @@ function DiagramCardBody({ shape }: { shape: DiagramCardShape }) {
   useFitHeight(shape.id, fitRef, [svg, code, isStreaming, failed], { streaming: isStreaming });
 
   return (
-    <div className={`jz-diagram${isSelected ? ' jz-card-selected' : ''}`} ref={fitRef}>
+    <div className={`jz-diagram${isSelected ? ' jz-card-selected' : ''}${isStreaming ? ' jz-card-streaming' : ''}`} ref={fitRef}>
       {/* No in-card header: a diagram carries no title chrome (owner call) — the
           shape IS the diagram. `title` stays in props for grounding/search. */}
       <div className="jz-diagram-body">

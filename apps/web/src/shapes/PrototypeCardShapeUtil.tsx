@@ -155,7 +155,7 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
   // spinner; otherwise (idle/error/empty) → the small prompt composer.
   if (hasDoc) {
     return (
-      <div className={`jz-prototype${interactive ? ' jz-prototype--interactive' : ''}${sel}`}>
+      <div className={`jz-prototype${interactive ? ' jz-prototype--interactive' : ''}${sel}${isStreaming ? ' jz-card-streaming' : ''}`}>
         <iframe
           key={refreshNonce}
           className="jz-prototype-frame"
@@ -171,7 +171,7 @@ function PrototypeCardBody({ shape }: { shape: PrototypeCardShape }) {
 
   if (isStreaming) {
     return (
-      <div className={`jz-prototype jz-prototype--composer${sel}`}>
+      <div className={`jz-prototype jz-prototype--composer${sel} jz-card-streaming`}>
         <div className="jz-prototype-loading">
           <Loader2 size={16} className="jz-machine-spin" />
           <span>Generating the UI…</span>

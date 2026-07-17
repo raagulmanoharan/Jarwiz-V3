@@ -1311,9 +1311,19 @@ streaming card should at least say the response is streaming in."
   or wheel) — and never touches the camera again for that run. Directly answers
   the "unless I'm editing" ask (and the trackpad-pan complaint from the same
   session — the follow must never fight the hand).
+- **Retired the emerald ring for a monochrome glow.** Pre-creating tables up
+  front surfaced an old off-system treatment: a filling table wore a 2px emerald
+  ring (`#059669`, added 2026-07-08 inside an unrelated commit, never noted). The
+  palette is deliberately monochrome (`--jz-accent` = near-black / white), so
+  green never belonged. Replaced it with one shared `jz-card-streaming` glow — a
+  soft accent-coloured halo (dark in light theme, white in dark) around any
+  card being written, docs and tables alike. Scoped under `.jarwiz-app` so it
+  wins over each card's own base shadow and the selection ring. Owner call — "no
+  green rings; when it's streaming it's just a glow around the card."
 - **Verified.** Typecheck + build green. Drove the real Board fan-out in the
   preview: a five-card plan landed all at once as titled placeholders ("Writing
-  this in…" / "Building this table…") — screenshot on the PR. Sandbox model
+  this in…" / "Building this table…"), each with the neutral glow, no green —
+  screenshot on the PR. Sandbox model
   latency meant the cards were still filling at capture time; the Autopilot
   screenshot separately confirms delta-streaming into a card (compose reuses the
   identical fill path). Sequential fill + camera-follow are the manual check for

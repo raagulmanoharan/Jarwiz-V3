@@ -108,7 +108,7 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
   const showNudge = isEditing && paused && !isGenerating;
 
   return (
-    <div className={`jz-note${isSelected ? ' jz-card-selected' : ''}`} style={{ background: color || NOTE_PAPER }}>
+    <div className={`jz-note${isSelected ? ' jz-card-selected' : ''}${isGenerating ? ' jz-card-streaming' : ''}`} style={{ background: color || NOTE_PAPER }}>
       {isEditing ? (
         <>
         <textarea
