@@ -538,6 +538,38 @@ export type ComposeEvent =
   | { type: 'done' }
   | { type: 'error'; message: string };
 
+/* ─── Export (board → shareable artifact) ─────────────────────────────────────
+ * Turn the whole board into something you can hand off outside Jarwiz. Two
+ * flavours, one endpoint (POST /api/export, SSE):
+ *  - 'slideshow' — a slick, self-contained HTML presentation in Jarwiz's brand
+ *    language: the board synthesised into a narrative deck, enriched with
+ *    diagrams, tables, and inline-SVG charts (and light web research when it
+ *    genuinely adds context). Opens/downloads as one .html file.
+ *  - 'markdown'  — a comprehensive, LLM-ready capture of the session: every
+ *    card organised into a clean brief another model can pick up and run with.
+ * Both fall back to a deterministic, faithful build with no API key, so the
+ * feature is always demoable and never fails hard.
+ */
+
+export type ExportMode = 'slideshow' | 'markdown';
+
+export interface ExportRequest {
+  mode: ExportMode;
+  /** The whole board, summarised like an analyze/compose scan. */
+  board: AnalyzeCard[];
+  /** The board's name — the deck title / markdown H1. */
+  title?: string;
+}
+
+/** SSE for an export run: honest status while it works, the artifact streamed
+ *  as text deltas, then a final `done` naming the produced format (so the
+ *  client knows whether it's rendering HTML or markdown). */
+export type ExportEvent =
+  | { type: 'status'; message: string }
+  | { type: 'delta'; textDelta: string }
+  | { type: 'done'; format: 'html' | 'markdown' }
+  | { type: 'error'; message: string };
+
 /* ─── Revise (Big Rocks 3.3 — conversational depth) ──────────────────────────
  * Argue with an answer card: a follow-up instruction revises the doc IN PLACE
  * (not a new card), keeping the dialogue on the one artifact.

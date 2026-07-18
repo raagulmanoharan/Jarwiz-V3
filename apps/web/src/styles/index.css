@@ -1198,6 +1198,188 @@ body,
   100% { transform: scale(1) rotate(0);        opacity: 1; }
 }
 
+/* ─── Export — header menu + modal ──────────────────────────────────────────
+ * "Export ▾" pill (styled like the zoom dropdown) opens a two-item menu; the
+ * chosen mode streams a run into the full-screen ExportModal. */
+.jz-export-wrap {
+  position: relative;
+  pointer-events: auto;
+}
+.jz-export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px 0 12px;
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-surface-raised);
+  color: var(--jz-ink-900);
+  font-family: var(--jz-font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--jz-e1);
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out), background var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-export-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--jz-ink-900) 4%, var(--jz-surface-raised));
+}
+.jz-export-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.jz-export-btn-label {
+  letter-spacing: 0;
+}
+.jz-export-caret {
+  flex: 0 0 auto;
+  color: var(--jz-ink-500);
+  transition: transform var(--jz-dur-fast) var(--jz-ease-out), color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-export-btn:hover:not(:disabled) .jz-export-caret { color: var(--jz-ink-700); }
+.jz-export-btn--open .jz-export-caret {
+  transform: rotate(180deg);
+  color: var(--jz-ink-900);
+}
+.jz-export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 360px;
+  padding: 6px;
+  border-radius: var(--jz-radius-md);
+  background: var(--jz-surface-raised);
+  box-shadow: var(--jz-e4);
+  border: 1px solid var(--jz-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 320;
+}
+.jz-export-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px;
+  border: none;
+  border-radius: var(--jz-radius-sm);
+  background: transparent;
+  color: var(--jz-ink-900);
+  text-align: left;
+  font-family: var(--jz-font-ui);
+}
+.jz-export-item-icon {
+  align-self: flex-start;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--jz-radius-sm);
+  background: color-mix(in srgb, var(--jz-ink-900) 8%, transparent);
+  color: var(--jz-ink-900);
+}
+.jz-export-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.jz-export-item-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jz-export-item-sub {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--jz-ink-500);
+}
+
+/* Inline row states (no separate modal). The row is a static container; the
+ * trailing icon button is the only control. */
+.jz-export-item-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.jz-export-item-action {
+  flex: 0 0 auto;
+  margin-left: auto;
+  /* A bare icon, level with the title. */
+  align-self: flex-start;
+}
+/* Progress bar — sits BELOW the description while generating, so the row grows
+ * to fit it (the card visibly expands). */
+.jz-export-item-progress-wrap {
+  display: block;
+  margin-top: 8px;
+}
+.jz-export-item-progress {
+  display: block;
+  width: 100%;
+  height: 4px;
+  border-radius: var(--jz-radius-pill);
+  background: color-mix(in srgb, var(--jz-ink-900) 9%, transparent);
+  overflow: hidden;
+}
+.jz-export-item-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--jz-accent);
+  transition: width 0.35s var(--jz-ease-out);
+}
+.jz-export-item-status {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--jz-ink-500);
+}
+.jz-export-item-err {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--jz-danger);
+}
+/* Bare icon control (no box): + to kick off, download icon when ready. */
+.jz-icon-btn {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--jz-ink-700);
+  cursor: pointer;
+  transition: background var(--jz-dur-fast) var(--jz-ease-out),
+    color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-icon-btn:hover {
+  background: color-mix(in srgb, var(--jz-ink-900) 7%, transparent);
+  color: var(--jz-ink-900);
+}
+/* Ready → the download icon is the accent-coloured cue (still bare). */
+.jz-icon-btn--go {
+  color: var(--jz-accent);
+}
+.jz-icon-btn--go:hover {
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  color: var(--jz-accent);
+}
+/* Ready dot on the button when the menu is closed. */
+.jz-export-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--jz-accent);
+  margin: 0 1px;
+}
+
 /* ─── Card chrome (shared by all custom shapes) ─────────────────────────── */
 
 .jz-card {

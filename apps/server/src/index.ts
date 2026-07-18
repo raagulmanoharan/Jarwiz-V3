@@ -36,6 +36,7 @@ import { parseSheetGrid } from './sheets.js';
 import { discoverResources } from './discover.js';
 import { reviewBoard } from './notice.js';
 import { streamCompose } from './compose.js';
+import { streamExport } from './export.js';
 import { annotateBoard } from './annotate.js';
 import { getMachine } from './machines.js';
 import { streamMachineBoard } from './machineBoard.js';
@@ -43,7 +44,7 @@ import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset, sniffMime } from '
 import { cachedImageUrl } from './imageCache.js';
 import { locateStops, type ProposedStop } from './geo.js';
 import { classifyMentionTarget, classifyRefineIntent, generateWidgetHtml, proposeSeedPrompts, streamAsk, suggestShape } from './ask.js';
-import type { AnalyzeCard, AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ReviseRequest } from '@jarwiz/shared';
+import type { AnalyzeCard, AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ExportEvent, ExportMode, ExportRequest, ReviseRequest } from '@jarwiz/shared';
 import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
 import { generateDiagram } from './diagram.js';
@@ -808,6 +809,48 @@ app.post('/api/compose', async (c) => {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Compose failed';
       await stream.writeSSE({ data: JSON.stringify({ type: 'error', message }) });
+    }
+  });
+});
+
+/** Export — the whole board → a shareable artifact (a slick HTML slideshow, or
+ *  a comprehensive LLM-ready markdown handoff). Streamed like compose. */
+app.post('/api/export', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected JSON: { mode, board[] }' }, 400);
+  }
+  const raw = body as { mode?: unknown; board?: unknown; title?: unknown };
+  const MODES: ExportMode[] = ['slideshow', 'markdown'];
+  if (!MODES.includes(raw.mode as ExportMode)) {
+    return c.json({ error: 'mode must be one of: slideshow, markdown' }, 400);
+  }
+  const board = Array.isArray(raw.board)
+    ? raw.board.slice(0, 40).map((card) => ({
+        kind: typeof (card as AnalyzeCard)?.kind === 'string' ? (card as AnalyzeCard).kind : 'note',
+        title: typeof (card as AnalyzeCard)?.title === 'string' ? (card as AnalyzeCard).title!.slice(0, 200) : undefined,
+        text: typeof (card as AnalyzeCard)?.text === 'string' ? (card as AnalyzeCard).text.slice(0, 4000) : '',
+        assetId: typeof (card as AnalyzeCard)?.assetId === 'string' ? (card as AnalyzeCard).assetId : undefined,
+      }))
+    : [];
+  const request: ExportRequest = {
+    mode: raw.mode as ExportMode,
+    board,
+    title: typeof raw.title === 'string' ? raw.title.slice(0, 200) : undefined,
+  };
+
+  return streamSSE(c, async (stream) => {
+    const send = (event: ExportEvent) => stream.writeSSE({ data: JSON.stringify(event) });
+    const signal = c.req.raw.signal;
+    try {
+      for await (const event of streamExport(request, signal)) {
+        await send(event);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Export failed';
+      await send({ type: 'error', message });
     }
   });
 });
