@@ -6,7 +6,7 @@
  * too). So a run is NOT tied to the editing component or to a single "active"
  * slot: each card gets its own AbortController, and runs proceed in parallel.
  * The streaming caret rendered inside the card is the presence signal for an
- * active fill (plus the shared Writer cursor in AgentCursorLayer).
+ * active fill.
  *
  * State lives here (module scope), so a fill keeps streaming even if tldraw
  * unmounts the card's component (off-screen) or the user leaves edit mode.
