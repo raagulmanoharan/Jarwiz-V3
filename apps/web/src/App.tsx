@@ -43,7 +43,6 @@ import { SyncLayer } from './ask/SyncLayer';
 import { SelectionAsk } from './ask/SelectionAsk';
 import { Timeline } from './log/Timeline';
 import { registerIngestion } from './ingest/registerIngestion';
-import { AgentCursorLayer } from './agents/AgentCursorLayer';
 import { AgentTaskLayer } from './agents/AgentTaskLayer';
 import { cardShapeUtils } from './shapes';
 import { getRestoreError, isRestoring, subscribeRestore } from './boards/backup';
@@ -83,7 +82,6 @@ function JarwizOverlay() {
       <Safe label="AmbientOnboarding"><AmbientOnboarding /></Safe>
       <Safe label="PromptBar"><PromptBar /></Safe>
       <Safe label="PersonaModal"><PersonaModal /></Safe>
-      <Safe label="AgentCursorLayer"><AgentCursorLayer /></Safe>
       <Safe label="HelpLayer"><HelpLayer /></Safe>
 
       {/* Behavioural overlays — the ask/refine loop on cards. (Provenance
