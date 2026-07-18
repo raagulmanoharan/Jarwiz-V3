@@ -1248,7 +1248,11 @@ export async function suggestShape(prompt: string, signal: AbortSignal): Promise
 }
 
 export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGenerator<AskEvent> {
+  // eslint-disable-next-line no-console
+  const dbg = (...a: unknown[]) => console.error('[jz-debug] streamAsk:', ...a);
+  dbg('ENTER prompt=', JSON.stringify(req.prompt).slice(0, 60), '| shape=', req.shape, '| skipClarify=', req.skipClarify, '| hasKey=', hasModelKey(), '| sidecar=', sidecarAvailable());
   if (!hasModelKey() && !sidecarAvailable()) {
+    dbg('→ demo mode');
     yield* streamDemoAsk(req, signal);
     return;
   }
@@ -1286,7 +1290,9 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   const deep =
     !req.noResearch &&
     (req.deep || (looksLikeResearch(req.prompt) && (routedShape === 'doc' || routedShape === 'list')));
+  dbg('gates: deep=', deep, '| routedShape=', routedShape, '| contextLen=', context.length);
   if (deep) {
+    dbg('→ DEEP research path (streamRichResearch)');
     yield { type: 'status', message: 'researching across the web…' };
     const user = `Research request:\n${req.prompt}\n\n${context || '(No canvas sources — research the request itself.)'}`;
     // Rich generative-UI dossier (prose + tables + charts + images + tabs) —
@@ -1301,7 +1307,9 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   // (with tappable options) instead of guessing. Skipped once the user answers.
   if (!req.skipClarify) {
     yield { type: 'status', message: 'making sure I understand…' };
+    dbg('→ calling maybeClarify (non-streaming generate)…');
     const clarify = await maybeClarify(req, signal);
+    dbg('maybeClarify returned:', clarify ? 'CLARIFY question' : 'null (proceed)');
     if (signal.aborted) return;
     if (clarify) {
       yield { type: 'clarify', question: clarify.question, options: clarify.options };
@@ -1314,6 +1322,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   // the format; don't second-guess it. (Routed once, above the deep gate.)
   const shape = routedShape;
   const user = `Question:\n${req.prompt}\n\n${context}`;
+  dbg('→ dispatching shape:', shape);
 
   if (shape === 'affinity') {
     yield* streamAffinity(user, signal, images);
