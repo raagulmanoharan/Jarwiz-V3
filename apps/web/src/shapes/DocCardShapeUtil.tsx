@@ -18,6 +18,8 @@ import {
 import { StreamingPlaceholder } from '../ui/StreamingPlaceholder';
 import { useStreamState } from './useStreamState';
 import { DocMarkdown } from '../ui/DocMarkdown';
+import { RichDocEditor } from '../ui/RichDocEditor';
+import { docHasSpecialSyntax } from '../ui/docBridge';
 import { openCardFocus } from '../ui/focusCard';
 import { setPdfPage } from '../pdf/pdfView';
 import { toggleInline } from '../ask/textFormat';
@@ -186,9 +188,49 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
   });
   const collapsed = overflowing && !expanded && !isStreaming;
 
+  // Typing auto-populates the primitive title from the first line — until the
+  // user (or the server) names the card explicitly. Shared by both editors.
+  const applyText = (value: string) => {
+    if (titleIsAuto(shape)) {
+      editor.updateShape<DocCardShape>({
+        id: shape.id,
+        type: 'doc-card',
+        props: { text: value, title: deriveTitle(value) },
+        meta: { ...shape.meta, jzTitleAuto: true },
+      });
+    } else {
+      editor.updateShape<DocCardShape>({ id: shape.id, type: 'doc-card', props: { text: value } });
+    }
+  };
+  // Grow (never shrink) the card to hold the editor's content while editing.
+  const growToFit = (needed: number) => {
+    const cur = editor.getShape(shape.id);
+    if (!cur) return;
+    const curH = (cur.props as DocCardProps).h;
+    if (needed > curH + 1) {
+      editor.updateShape<DocCardShape>({ id: shape.id, type: 'doc-card', props: { h: needed } });
+    }
+  };
+
   if (isEditing) {
-    // Pure text — no internal title/header. The card's name is the primitive
-    // title tag (ui/CardTitleTag), rendered outside the frame on selection.
+    // Formatted, in-place editing — you edit the doc as it LOOKS, not as raw
+    // markdown. Docs that use dialect-only syntax the rich editor can't yet
+    // represent (```map / ```widget / [p.N] citations) fall back to the
+    // raw-text editor, so that content is never rewritten on save.
+    if (!docHasSpecialSyntax(text)) {
+      return (
+        <div className="jz-doc jz-doc-editing">
+          <RichDocEditor
+            initialMarkdown={text}
+            onChange={applyText}
+            onExit={() => editor.setEditingShape(null)}
+            onHeight={growToFit}
+          />
+        </div>
+      );
+    }
+    // Fallback: pure text — no internal title/header. The card's name is the
+    // primitive title tag (ui/CardTitleTag), rendered outside the frame.
     return (
       <div className="jz-doc jz-doc-editing">
         <textarea
@@ -211,21 +253,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
               }
             }
           }}
-          onChange={(e) => {
-            const value = e.currentTarget.value;
-            // Typing auto-populates the primitive title from the first line —
-            // until the user (or the server) names the card explicitly.
-            if (titleIsAuto(shape)) {
-              editor.updateShape<DocCardShape>({
-                id: shape.id,
-                type: 'doc-card',
-                props: { text: value, title: deriveTitle(value) },
-                meta: { ...shape.meta, jzTitleAuto: true },
-              });
-            } else {
-              editor.updateShape<DocCardShape>({ id: shape.id, type: 'doc-card', props: { text: value } });
-            }
-          }}
+          onChange={(e) => applyText(e.currentTarget.value)}
           onPointerDown={stopEventPropagation}
           onPointerMove={stopEventPropagation}
           onPointerUp={stopEventPropagation}

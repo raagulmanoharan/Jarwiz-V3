@@ -52,6 +52,7 @@ import type { MapStop } from '@jarwiz/shared';
 import { googleMapsRouteUrl, googleMapsUrl } from '../shapes/mapView';
 import { ASKABLE, hasAskableContent } from './askable';
 import { formatControlledTextarea, insertBlock, insertTableBlock, toggleInline, toggleLinePrefix, type FormatResult } from './textFormat';
+import { runRichFormat } from '../ui/richDocRegistry';
 import { uploadAsset } from '../lib/uploadAsset';
 import { openCardFocus } from '../ui/focusCard';
 import { canFocusCard } from '../ui/CardFocusOverlay';
@@ -100,8 +101,16 @@ const TABLE_FORMAT_KEYS = new Set(['bold', 'italic', 'underline', 'strike']);
  *  (formatControlledTextarea), so each surface's write path (auto-title,
  *  cell link-enrichment) stays intact. Outside edit mode the first press
  *  enters it, so the bar is always safe to click. */
-export function applyCardFormat(editor: Editor, id: TLShapeId, run: (text: string, s: number, e: number) => FormatResult): void {
+export function applyCardFormat(
+  editor: Editor,
+  id: TLShapeId,
+  run: (text: string, s: number, e: number) => FormatResult,
+  richKey?: string,
+): void {
   if (editor.getEditingShapeId() === id) {
+    // Formatted doc editor active → dispatch the same intent as a TipTap
+    // command; only falls through to the textarea path on dialect docs.
+    if (richKey && runRichFormat(richKey)) return;
     const active = document.activeElement;
     if (active instanceof HTMLTextAreaElement && (active.classList.contains('jz-doc-textarea') || active.classList.contains('jz-table-input'))) {
       formatControlledTextarea(active, run);
@@ -136,7 +145,10 @@ export function CardActionBar() {
     try {
       const { url } = await uploadAsset(file, 'image');
       const alt = file.name.replace(/\.[a-z0-9]+$/i, '');
-      applyCardFormat(editor, cardId, (t, s, e) => insertBlock(t, s, e, `![${alt}](${url})`, alt));
+      // Rich editor active → insert via a TipTap image node; else the textarea.
+      if (!runRichFormat('image', { src: url, alt })) {
+        applyCardFormat(editor, cardId, (t, s, e) => insertBlock(t, s, e, `![${alt}](${url})`, alt));
+      }
     } catch {
       /* upload failed — leave the card untouched */
     }
@@ -516,7 +528,7 @@ export function CardActionBar() {
               // preventDefault keeps focus (and the selection) in the card's
               // textarea — a normal click would blur it before we can format.
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => applyCardFormat(editor, id, f.run)}
+              onClick={() => applyCardFormat(editor, id, f.run, f.key)}
             >
               {f.icon}
             </button>
@@ -529,7 +541,7 @@ export function CardActionBar() {
                 title="Insert table"
                 aria-label="Insert table"
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => applyCardFormat(editor, id, insertTableBlock)}
+                onClick={() => applyCardFormat(editor, id, insertTableBlock, 'table')}
               >
                 <Table2 {...FMT_ICON} />
               </button>

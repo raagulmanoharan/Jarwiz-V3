@@ -3553,6 +3553,123 @@ body,
 .jz-doc-textarea::placeholder {
   color: var(--jz-ink-400);
 }
+
+/* ─── Formatted (WYSIWYG) doc editing ───────────────────────────────────────
+ * The TipTap/ProseMirror editor shown on double-click. Styled to match read
+ * mode (the .jz-md-* rules below) so editing looks identical to viewing — you
+ * never see raw markdown. Only the doc dialect the editor supports reaches
+ * here (see docBridge); map/widget/citation docs use the textarea above. */
+.jz-doc-rich {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--jz-space-5);
+  box-sizing: border-box;
+}
+.jz-doc-rich .ProseMirror {
+  position: relative;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  outline: none;
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-body-size);
+  line-height: var(--jz-text-body-lh);
+  color: var(--jz-ink-700);
+}
+.jz-doc-rich .ProseMirror > * + * {
+  margin-top: var(--jz-space-2);
+}
+.jz-doc-rich .ProseMirror :is(h1, h2, h3) {
+  margin: var(--jz-space-2) 0 0;
+  color: var(--jz-ink-900);
+  font-weight: 650;
+  font-size: var(--jz-text-body-size);
+  line-height: var(--jz-text-body-lh);
+}
+.jz-doc-rich .ProseMirror p {
+  margin: 0;
+}
+.jz-doc-rich .ProseMirror ul,
+.jz-doc-rich .ProseMirror ol {
+  margin: 0;
+  padding-left: var(--jz-space-6);
+}
+.jz-doc-rich .ProseMirror ul { list-style: disc; }
+.jz-doc-rich .ProseMirror ol { list-style: decimal; }
+.jz-doc-rich .ProseMirror li { margin-bottom: var(--jz-space-2); }
+.jz-doc-rich .ProseMirror li::marker { color: var(--jz-ink-400); }
+.jz-doc-rich .ProseMirror li > p { margin: 0; }
+/* Task list — checkbox + label, list markers off (mirrors .jz-md-tasklist). */
+.jz-doc-rich .ProseMirror ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0;
+}
+.jz-doc-rich .ProseMirror ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--jz-space-3);
+}
+.jz-doc-rich .ProseMirror ul[data-type='taskList'] li > label {
+  flex: none;
+  margin-top: 3px;
+}
+.jz-doc-rich .ProseMirror ul[data-type='taskList'] input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--jz-accent);
+  cursor: pointer;
+}
+.jz-doc-rich .ProseMirror :is(strong, b) { font-weight: 600; color: var(--jz-ink-900); }
+.jz-doc-rich .ProseMirror em { font-style: italic; }
+.jz-doc-rich .ProseMirror a {
+  color: var(--jz-ink-700);
+  text-decoration: underline;
+  text-decoration-color: var(--jz-ink-400);
+  text-underline-offset: 2px;
+}
+.jz-doc-rich .ProseMirror hr {
+  border: none;
+  border-top: 1px solid var(--jz-hairline);
+  margin: var(--jz-space-4) 0;
+}
+.jz-doc-rich .ProseMirror img {
+  display: block;
+  width: 100%;
+  border-radius: var(--jz-radius-sm);
+  margin: var(--jz-space-2) 0;
+}
+/* Tables — match .jz-md-table; ProseMirror wraps them in .tableWrapper. */
+.jz-doc-rich .ProseMirror table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  table-layout: fixed;
+  margin: var(--jz-space-2) 0;
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-sm);
+  overflow: hidden;
+}
+.jz-doc-rich .ProseMirror :is(th, td) {
+  border-right: 1px solid var(--jz-hairline);
+  border-bottom: 1px solid var(--jz-hairline);
+  padding: var(--jz-space-2) var(--jz-space-3);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+.jz-doc-rich .ProseMirror :is(th, td):last-child { border-right: none; }
+.jz-doc-rich .ProseMirror tr:last-child td { border-bottom: none; }
+.jz-doc-rich .ProseMirror th { font-weight: 650; color: var(--jz-ink-900); }
+/* The cell being edited — a soft accent ring, no jarring native selection. */
+.jz-doc-rich .ProseMirror .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  pointer-events: none;
+}
+.jz-doc-rich .ProseMirror :is(th, td) { position: relative; }
 /* Markdown rendering within doc cards.
  * gap: 0 because blank lines in source are rendered as explicit empty rows so
  * read mode matches the textarea visually — no phantom gaps, no missing ones.
