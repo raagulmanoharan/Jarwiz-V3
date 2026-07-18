@@ -62,6 +62,15 @@
   --jz-danger-inverse: #fb923c;
   --jz-focus: var(--jz-ink-700);
 
+  /* ─── Data-viz ────────────────────────────────────────────────────────────
+   * The ONLY place colour is used — inside generated dashboard/chart cards, so
+   * numbers read as meaning (series, up/down). Chrome stays monochrome. Light
+   * theme values; the dark block re-tunes them for legibility on a dark ground. */
+  --jz-viz-1: #2563eb;   /* primary series — blue */
+  --jz-viz-2: #7c3aed;   /* secondary series — violet */
+  --jz-positive: #059669; /* up delta — green */
+  --jz-negative: #dc2626; /* down delta — red */
+
   /* Accent — monochrome. The Jarwiz identity mark (✦ spark), primary actions,
    * and streaming affordances all draw from it. Light theme: near-black accent
    * with white ink on top. */
@@ -160,6 +169,12 @@
   --jz-danger: #f97316;
   --jz-danger-inverse: #c2410c;
   --jz-focus: var(--jz-ink-700);
+
+  /* Data-viz, re-tuned brighter for a dark ground (see light block for intent). */
+  --jz-viz-1: #3b82f6;   /* primary series — blue */
+  --jz-viz-2: #8b5cf6;   /* secondary series — violet */
+  --jz-positive: #10b981; /* up delta — green */
+  --jz-negative: #f87171; /* down delta — red */
 
   --jz-accent: #ffffff;
   --jz-accent-ink: #0a0a0a;
