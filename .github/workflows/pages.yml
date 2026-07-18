@@ -58,10 +58,18 @@ jobs:
           VITE_API_BASE: ${{ vars.JARWIZ_API_BASE }}
 
       - name: Assemble Pages artifact (landing + app)
+        env:
+          # Same server origin the app uses; the landing page's "Request access"
+          # bar POSTs to <base>/api/beta/signup. Empty = mail-app fallback.
+          JARWIZ_API_BASE: ${{ vars.JARWIZ_API_BASE }}
         run: |
           rm -rf _site
           mkdir -p _site
           cp -r site/. _site/
+          # Point the landing page's beta signup at the agent server (if set).
+          if [ -n "$JARWIZ_API_BASE" ]; then
+            sed -i "s|const BETA_API_BASE = '';|const BETA_API_BASE = '${JARWIZ_API_BASE}';|" _site/index.html
+          fi
           mkdir -p _site/app
           cp -r apps/web/dist/. _site/app/
           touch _site/.nojekyll

@@ -65,6 +65,14 @@ import {
   recordPilotAction,
   validatePilotCode,
 } from './pilot.js';
+import {
+  canSendEmail,
+  isValidEmail,
+  normalizeEmail,
+  rateLimited,
+  recordSignup,
+  sendConfirmationEmail,
+} from './beta.js';
 
 // Load apps/server/.env when present (no-op otherwise).
 try {
@@ -117,6 +125,45 @@ app.use('/api/*', async (c, next) => {
 });
 
 app.get('/api/health', (c) => c.json({ ok: true }));
+
+/**
+ * Beta access signup — the landing page's "Request access" bar POSTs here.
+ * Captures the email (deduped, best-effort persisted) and sends the visitor a
+ * confirmation when an email provider is configured (see beta.ts). The response
+ * tells the client whether an inbox is actually coming so it can word its
+ * success line honestly:
+ *   { ok: true, confirmationSent: boolean }
+ * Never returns the stored list; a public endpoint, rate-limited per IP.
+ */
+app.post('/api/beta/signup', async (c) => {
+  // Behind Render/most proxies the real caller is the first X-Forwarded-For hop.
+  const ip = (c.req.header('x-forwarded-for') ?? '').split(',')[0]!.trim() || 'unknown';
+  if (rateLimited(ip)) {
+    return c.json({ error: 'Too many requests — please try again in a minute.' }, 429);
+  }
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Expected a JSON body: { "email": string }' }, 400);
+  }
+  const rawEmail = (body as { email?: unknown })?.email;
+  if (typeof rawEmail !== 'string') {
+    return c.json({ error: 'Expected a JSON body: { "email": string }' }, 400);
+  }
+  const email = normalizeEmail(rawEmail);
+  if (!isValidEmail(email)) {
+    return c.json({ error: 'Enter a valid email address.' }, 400);
+  }
+  const rawSource = (body as { source?: unknown })?.source;
+  const source = typeof rawSource === 'string' ? rawSource.slice(0, 40) : undefined;
+
+  await recordSignup(email, { source });
+  // Sending is env-gated; with no provider the visitor is still on the list.
+  const confirmationSent = canSendEmail() ? await sendConfirmationEmail(email, c.req.raw.signal) : false;
+  return c.json({ ok: true, confirmationSent });
+});
 
 /**
  * Asset blob storage. The client first asks for an upload URL (presign), then
