@@ -706,31 +706,11 @@ export function PromptBar() {
     setModeSource(null);
   };
   const runTool = (mode: AnalyzeMode) => { void analyze(mode); };
-  // While the sole card is being EDITED, a pill is an offer for Jarwiz to
-  // take over THIS card — clicking runs the ask straight into it (in-place),
-  // no prompt-bar detour. Doc cards only: the in-place table regen path
-  // corrupts the grid (appends cells mid-row, then stalls — found in the
-  // 2026-07-05 pill dogfood); until that's fixed, table/diagram pills keep
-  // the safe new-card path.
-  const editingSole = useValue(
-    'promptbar-editing-sole',
-    () => {
-      const editing = editor.getEditingShapeId();
-      if (!editing) return null;
-      return editor.getShape(editing)?.type === 'doc-card' ? editing : null;
-    },
-    [editor],
-  );
+  // A pill is always an editable offer, never a fire-and-forget: clicking one
+  // drops its full prompt into the composer and focuses it, so you can tweak
+  // and hit Enter. One consistent behaviour for every card and every state —
+  // including a card that's being edited (the old in-place hand-off is gone).
   const useStarter = (q: string) => {
-    if (editingSole) {
-      // Hand off in READ mode: edit mode shows raw markdown and its height
-      // only ratchets up (the "long empty card" bug) — read mode renders the
-      // stream and fit-height can shrink the card to the final content.
-      editor.setEditingShape(null);
-      editor.select(editingSole);
-      void ask(q, [editingSole], { targetId: editingSole, skipClarify: true });
-      return;
-    }
     inputRef.current?.setText(q);
     requestAnimationFrame(() => inputRef.current?.focus());
   };
