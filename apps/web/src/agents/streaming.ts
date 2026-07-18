@@ -2,9 +2,9 @@
  * Which cards currently have a live stream, split into two signals:
  *
  *  - STREAMING — a card being written the "page-shaping" way (single-card Ask,
- *    Analyze, Autopilot). Drives the caret + the empty-card placeholder AND the
+ *    Analyze). Drives the caret + the empty-card placeholder AND the
  *    fit-height width-grow (a long answer widens into a page shape). Doc/note/
- *    table/diagram shapes subscribe; useAsk/analyze/autopilot flip ids here.
+ *    table/diagram shapes subscribe; useAsk/analyze flip ids here.
  *
  *  - GENERATING — a card that's been PLACED and is awaiting/receiving generated
  *    content, but whose width is fixed by a layout engine (compose fan-out,
@@ -17,7 +17,7 @@
  * A third, separate signal — FOCUS — marks the ONE card being written right
  * now (in a sequential fan-out, the slot currently filling). Only the focused
  * card wears the streaming glow; the pending placeholders sit quietly with just
- * their border. Single-card paths (Ask/Analyze/Autopilot) glow off `streaming`
+ * their border. Single-card paths (Ask/Analyze) glow off `streaming`
  * directly, since their streaming card is always the focused one. See
  * useStreamState for the combined read.
  */

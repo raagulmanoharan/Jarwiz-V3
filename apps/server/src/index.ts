@@ -5,7 +5,6 @@
  *   GET  /api/capabilities       → { live } (real key vs scripted demo)
  *   POST /api/link/preview       → LinkPreview (server-side fetch, SSRF-guarded)
  *   POST /api/agents/:id/run     → SSE stream of typed AgentEvents
- *   POST /api/autopilot          → SSE stream of AutopilotEvents (Tab-to-continue)
  *
  * Keys: the server's own ANTHROPIC_API_KEY (env, local dev) or a visitor's
  * BYOK key sent per-request as `x-anthropic-key` (hosted trial — see model.ts).
@@ -24,11 +23,7 @@ import { streamSSE } from 'hono/streaming';
 import { isAgentId } from '@jarwiz/shared';
 import type {
   AgentEvent,
-  AutopilotEvent,
-  AutopilotRequest,
   CommentReplyRequest,
-  TableAutopilotEvent,
-  TableAutopilotRequest,
 } from '@jarwiz/shared';
 import { buildLinkPreview, fetchYouTubeText, SsrfError } from './linkPreview.js';
 import { generateTldr, type TldrInput, type TldrKind } from './tldr.js';
@@ -47,7 +42,6 @@ import { locateStops, type ProposedStop } from './geo.js';
 import { classifyMentionTarget, classifyRefineIntent, generateWidgetHtml, proposeSeedPrompts, streamAsk, suggestShape } from './ask.js';
 import type { AnalyzeCard, AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ExportEvent, ExportMode, ExportRequest, ReviseRequest } from '@jarwiz/shared';
 import { streamAgentRun } from './agentRun.js';
-import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
 import { generateDiagram } from './diagram.js';
 import { generateClusters } from './cluster.js';
 import { streamAnalysis } from './analyze.js';
@@ -421,87 +415,6 @@ app.post('/api/agents/:agentId/run', async (c) => {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Agent run failed';
-      await send({ type: 'error', message });
-    }
-  });
-});
-
-app.post('/api/autopilot', async (c) => {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: 'Expected a JSON body: { kind, text, title? }' }, 400);
-  }
-
-  const raw = body as Partial<AutopilotRequest>;
-  if ((raw.kind !== 'doc' && raw.kind !== 'note') || typeof raw.text !== 'string') {
-    return c.json({ error: 'Expected { kind: "doc" | "note", text: string, title?: string }' }, 400);
-  }
-  const request: AutopilotRequest = {
-    kind: raw.kind,
-    text: raw.text.slice(0, 8000),
-    title: typeof raw.title === 'string' ? raw.title.slice(0, 200) : undefined,
-    // Nearby-board grounding — sanitized like everything else: capped card
-    // count, capped text, relation whitelisted (autopilot.ts feeds it straight
-    // into the prompt).
-    boardContext: Array.isArray(raw.boardContext)
-      ? raw.boardContext.slice(0, 30).map((card) => ({
-          kind: typeof card?.kind === 'string' ? card.kind.slice(0, 40) : 'card',
-          title: typeof card?.title === 'string' ? card.title.slice(0, 200) : undefined,
-          text: typeof card?.text === 'string' ? card.text.slice(0, 500) : '',
-          relation:
-            card?.relation === 'connected' || card?.relation === 'selected' || card?.relation === 'nearby'
-              ? card.relation
-              : 'board',
-        }))
-      : undefined,
-  };
-
-  return streamSSE(c, async (stream) => {
-    const send = (event: AutopilotEvent) => stream.writeSSE({ data: JSON.stringify(event) });
-    const signal = c.req.raw.signal;
-    try {
-      for await (const event of streamAutopilot(request, signal)) {
-        await send(event);
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Autopilot failed';
-      await send({ type: 'error', message });
-    }
-  });
-});
-
-app.post('/api/autopilot/table', async (c) => {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: 'Expected a JSON body: { columns, rows }' }, 400);
-  }
-
-  const raw = body as Partial<TableAutopilotRequest>;
-  const okColumns = Array.isArray(raw.columns) && raw.columns.every((c) => typeof c === 'string');
-  const okRows =
-    Array.isArray(raw.rows) &&
-    raw.rows.every((r) => Array.isArray(r) && r.every((c) => typeof c === 'string'));
-  if (!okColumns || !okRows) {
-    return c.json({ error: 'Expected { columns: string[], rows: string[][] }' }, 400);
-  }
-  const request: TableAutopilotRequest = {
-    columns: raw.columns!.slice(0, 8),
-    rows: raw.rows!.slice(0, 24).map((r) => r.slice(0, 8)),
-  };
-
-  return streamSSE(c, async (stream) => {
-    const send = (event: TableAutopilotEvent) => stream.writeSSE({ data: JSON.stringify(event) });
-    const signal = c.req.raw.signal;
-    try {
-      for await (const event of streamTableAutopilot(request, signal)) {
-        await send(event);
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Table autopilot failed';
       await send({ type: 'error', message });
     }
   });

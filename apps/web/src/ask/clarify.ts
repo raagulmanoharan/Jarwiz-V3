@@ -16,8 +16,8 @@ export interface Clarify {
   sourceIds: TLShapeId[];
   targetId: TLShapeId | null;
   /**
-   * When set, the answering action calls this instead of re-running Ask.
-   * Used by Autopilot cold-start to handle the answer differently.
+   * When set, the answering action calls this instead of re-running Ask —
+   * for callers that want to intercept the answer rather than re-issue the Ask.
    */
   onAnswer?: (answer: string) => void;
 }

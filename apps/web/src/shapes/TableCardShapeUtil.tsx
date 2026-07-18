@@ -1,4 +1,4 @@
-import { useRef, useState, useSyncExternalStore } from 'react';
+import { useRef, useSyncExternalStore } from 'react';
 import {
   HTMLContainer,
   Rectangle2d,
@@ -15,16 +15,13 @@ import {
 } from 'tldraw';
 import { useStreamState } from './useStreamState';
 import { StreamingPlaceholder } from '../ui/StreamingPlaceholder';
-import { fillTable } from '../agents/autopilotStore';
 import { formatControlledTextarea, shortcutMarker, toggleInline } from '../ask/textFormat';
 import { uploadAsset } from '../lib/uploadAsset';
-import { useAutopilot } from '../agents/useAutopilot';
 import { useFitHeight } from './useFitHeight';
 import { isExpanded, subscribeExpand } from './cardExpand';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
 import { renderRichCell } from './tableRich';
-import { JarwizSpark } from '../ui/JarwizSpark';
 
 export type ColumnType = 'text' | 'link' | 'photo';
 
@@ -47,7 +44,7 @@ declare module '@tldraw/tlschema' {
 export type TableCardShape = TLShape<'table-card'>;
 
 export const TABLE_CARD_SIZE = { w: 560, h: 220 };
-/** Header band height — kept in sync with the avatar cell-hop math (autopilotStore). */
+/** Header band height. */
 export const TABLE_HEADER_H = 44;
 /** Each column keeps at least this much width; adding columns widens the card. */
 const MIN_COL_W = 150;
@@ -136,7 +133,6 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
   // Generating (compose fan-out) fills the same role as streaming here — the
   // cell-by-cell caret cue and the pre-columns placeholder both key off it.
   const { isGenerating: isFilling, isFocused } = useStreamState(shape.id);
-  const autopilot = useAutopilot();
   const expanded = useSyncExternalStore(subscribeExpand, () => isExpanded(shape.id), () => false);
   // Grow to fit all rows; clamp past the threshold once settled (collapsible).
   const fitRef = useRef<HTMLDivElement | null>(null);
@@ -283,8 +279,6 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
     });
   };
 
-  const hasEmptyCells = rows.some((r) => r.some((c) => !c.trim()));
-
   const cellKeys = (e: React.KeyboardEvent, row?: number) => {
     // ⌘/Ctrl B·I·U — same operations as the format bar, on this cell.
     const marker = shortcutMarker(e);
@@ -312,24 +306,14 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
       removeRow(row);
       return;
     }
-    autopilot.onKeyDown(shape.id, e);
   };
   const isEmpty = rows.every((r) => r.every((c) => !c.trim())) && columns.every((c) => !c.trim());
 
   // Edit chrome shows on selection too, not just in edit mode.
   const chrome = isEditing || isSelected;
-  // The column just added via "+" — its header offers "✦ Fill" (click hands
-  // the column to Jarwiz) until it's used, dismissed by typing elsewhere, or
-  // the column gains content.
-  const [freshCol, setFreshCol] = useState<number | null>(null);
   const addColumnAndEdit = () => {
     addColumn();
-    setFreshCol(columns.length); // index of the column being added
     if (!isEditing) editor.setEditingShape(shape.id);
-  };
-  const runFill = () => {
-    setFreshCol(null);
-    void fillTable(editor, shape.id);
   };
 
   // A compose/debrief table placed from the plan before its columns have
@@ -385,15 +369,6 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
                 onPointerMove={stopEventPropagation}
                 onPointerUp={stopEventPropagation}
               />
-              {freshCol === col && hasEmptyCells && !isFilling ? (
-                <button
-                  className="jz-fillnudge"
-                  title="Let Jarwiz fill this column from the other cells"
-                  style={{ pointerEvents: 'all' }}
-                  onPointerDown={stopEventPropagation}
-                  onClick={runFill}
-                ><JarwizSpark size={10} className="jz-spark-inline" /> Fill</button>
-              ) : null}
               {columns.length > 1 ? (
                 <button
                   className="jz-table-del jz-table-del-col"

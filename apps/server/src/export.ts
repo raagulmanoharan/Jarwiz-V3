@@ -354,7 +354,7 @@ export async function* streamExport(
   // Run the generation in the background so we can drip honest heartbeats while
   // the model works (a single long create() emits nothing on its own). A holder
   // object keeps TS from narrowing these to their initial values inside the
-  // closure (same trick as autopilot's `waker`).
+  // closure (a mutable-holder so the async callbacks can assign into it).
   const out: { artifact: string | null; error: Error | null } = { artifact: null, error: null };
   const finish = (raw: string): string => {
     // Slideshow → extract the model's slide sections (the client wraps them in

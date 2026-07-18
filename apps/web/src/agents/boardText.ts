@@ -1,8 +1,8 @@
 /**
  * Gather the board's text-bearing shapes as compact cards for the AI — rich
  * cards AND native primitives (geo/text/note/connector labels/frame names). Used
- * by the analysis agents (tensions / gaps / critique). Mirrors the autopilot
- * context extractor, but returns the wire-shape the analyze endpoint wants.
+ * by the analysis agents (tensions / gaps / critique). Returns the board-context
+ * wire-shape the analyze endpoint wants.
  */
 
 import { renderPlaintextFromRichText, type Editor, type TLRichText, type TLShapeId } from 'tldraw';

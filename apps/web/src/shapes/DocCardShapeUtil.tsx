@@ -15,12 +15,8 @@ import {
   type TLShape,
   type TLShapeId,
 } from 'tldraw';
-import { JarwizSpark } from '../ui/JarwizSpark';
 import { StreamingPlaceholder } from '../ui/StreamingPlaceholder';
 import { useStreamState } from './useStreamState';
-import { useAutopilot } from '../agents/useAutopilot';
-import { useTypingPause } from '../agents/useTypingPause';
-import { abortAutopilot, continueProse, isAutopilotReady, isAutopilotRunning, subscribeAutopilot } from '../agents/autopilotStore';
 import { DocMarkdown } from '../ui/DocMarkdown';
 import { openCardFocus } from '../ui/focusCard';
 import { setPdfPage } from '../pdf/pdfView';
@@ -139,22 +135,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
   // covers compose/debrief cards a layout owns — both show the caret + the
   // "writing…" placeholder, only the former reflows width.
   const { isStreaming, isGenerating, isFocused } = useStreamState(shape.id);
-  const autopilot = useAutopilot();
   const expanded = useSyncExternalStore(subscribeExpand, () => isExpanded(shape.id), () => false);
-  const [paused, resetPause] = useTypingPause(isEditing ? `${title}|${text}` : '', 1800);
-
-  // Only nudge once the agent has real signal to continue from — a finished
-  // thought, a structural unit, a title, or surrounding board context.
-  // Recomputed on text/title/selection changes (see useValue tick).
-  const ready = useValue('autopilot-ready', () => isAutopilotReady(editor, shape.id), [editor, shape.id, text, title]);
-  const showNudge = isEditing && paused && !isStreaming && ready;
-
-  // Is autopilot actively writing into this card right now?
-  const autopilotActive = useSyncExternalStore(
-    subscribeAutopilot,
-    () => isAutopilotRunning(shape.id),
-    () => false,
-  );
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -209,7 +190,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
     // Pure text — no internal title/header. The card's name is the primitive
     // title tag (ui/CardTitleTag), rendered outside the frame on selection.
     return (
-      <div className={`jz-doc jz-doc-editing${autopilotActive ? ' jz-doc-autopilot' : ''}`}>
+      <div className="jz-doc jz-doc-editing">
         <textarea
           ref={textareaRef}
           value={text}
@@ -229,8 +210,6 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
                 return;
               }
             }
-            if (e.key === 'Tab') resetPause();
-            autopilot.onKeyDown(shape.id, e);
           }}
           onChange={(e) => {
             const value = e.currentTarget.value;
@@ -251,40 +230,6 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
           onPointerMove={stopEventPropagation}
           onPointerUp={stopEventPropagation}
         />
-        {autopilotActive && (
-          // Read-only mirror laid on top of the textarea — the browser places the
-          // Sparkle right after the last character, so it's pixel-perfect with no
-          // measurement math. Whitespace-pre-wrap matches textarea wrapping.
-          <div className="jz-autopilot-mirror" aria-hidden>
-            {text}
-            <span className="jz-autopilot-cursor">
-              <JarwizSpark size={11} />
-            </span>
-          </div>
-        )}
-        {autopilotActive ? (
-          <button
-            className="jz-autopilot-nudge jz-autopilot-nudge--takeover"
-            aria-live="polite"
-            style={{ pointerEvents: 'all' }}
-            onPointerDown={stopEventPropagation}
-            onClick={() => abortAutopilot(shape.id)}
-          >
-            <JarwizSpark size={12} style={{ color: 'white' }} />
-            Writing — click (or type) to take over
-          </button>
-        ) : showNudge ? (
-          // The same "✦ Fill" pill the table's fresh column wears — one look
-          // for "let Jarwiz take it from here" everywhere. Appears after an
-          // idle pause; click hands the pen to Jarwiz.
-          <button
-            className="jz-fillnudge jz-fillnudge--float"
-            title="Let Jarwiz continue from what's here"
-            style={{ pointerEvents: 'all' }}
-            onPointerDown={stopEventPropagation}
-            onClick={() => void continueProse(editor, shape.id)}
-          ><JarwizSpark size={10} className="jz-spark-inline" /> Fill</button>
-        ) : null}
       </div>
     );
   }
