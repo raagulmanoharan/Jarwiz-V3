@@ -12,6 +12,12 @@ body,
      document (any scrollable surface owns its own overflow). This also keeps a
      stray scrollbar out of the embedded marketing iframes. */
   overflow: hidden;
+  /* Trap trackpad overscroll at the document edge. Without this, a two-finger
+     pan's horizontal momentum spills into the browser's native swipe-to-go-
+     back/forward gesture — the board pan "sticks" and the page navigates away.
+     `none` also suppresses the rubber-band bounce. Canvas panning stays with
+     tldraw. */
+  overscroll-behavior: none;
   font-family: var(--jz-font-ui);
   color: var(--jz-ink-900);
   -webkit-font-smoothing: antialiased;
