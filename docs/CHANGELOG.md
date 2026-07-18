@@ -43,9 +43,46 @@ stays one-line-per-feature. This changelog papers over Era 1 retroactively.
 
 ## Release log (chronological, newest first)
 
+### Jul 18, 2026
+| PR | Tags | What shipped |
+|---|---|---|
+| #80 | `agents` · `canvas` | Make streaming visible: card placeholders, a named wait, a camera that follows |
+| #78 | `canvas` | Fix trackpad pan hijacked by the browser back/forward gesture |
+| #73 | `canvas` | Export the board: slick slideshow + LLM-ready markdown |
+| #63 | `docs` | Feature-tagged CHANGELOG ledger + git/merge discipline in CLAUDE.md |
+
+### Jul 17, 2026
+| PR | Tags | What shipped |
+|---|---|---|
+| #77 | `agents` | Agent errors get one home: a banner above the composer |
+| #66 | `canvas` | Presence: give Jarwiz a home dock so it rests after quiet spells |
+
+### Jul 16, 2026
+| PR | Tags | What shipped |
+|---|---|---|
+| #75 | `onboarding` · `cards` | Use-case boards: six workspaces built from the new card vocabulary |
+
+### Jul 14, 2026
+| PR | Tags | What shipped |
+|---|---|---|
+| #69 | `agents` · `canvas` | Scout: always-present discovery button with a confidence-gated fill meter |
+| #70 | `cards` | Doc card keeps a fixed height instead of collapsing to its content |
+| #71 | `cards` · `agents` | On-card TL;DR for dropped link / video / PDF / sheet cards |
+
+### Jul 13, 2026
+| PR | Tags | What shipped |
+|---|---|---|
+| #65 | `onboarding` | Playground: collapse three "AI is off" notices into one |
+| #67 | `cards` · `agents` | Inline @mention composer with source attribution |
+| #68 | `landing` · `deploy` | Site: private-beta front door — request access + invite code |
+
 ### Jul 12, 2026
 | PR | Tags | What shipped |
 |---|---|---|
+| #60 | `deploy` | Closed pilot: invite links, the owner's key, a metered budget |
+| #62 | `onboarding` | Onboarding: drop the composer's shape-preview pill, keep the typing |
+| #54 | `cards` · `agents` | Map card + inline widgets: maps in doc answers, the trip view, model-authored interactives |
+| #61 | `onboarding` | Use-case selection: six choices, and the pick summons a contextual room |
 | #34 | `deploy` | Hosted trial: full product on GitHub Pages, bring-your-own-key agents |
 | #59 | `canvas` | Board-wide search: rail icon opens a centred spotlight over a darkened board |
 | #58 | `agents` | Meeting-debrief recipe: transcript in, a connected cluster out |
@@ -121,14 +158,14 @@ stays one-line-per-feature. This changelog papers over Era 1 retroactively.
 ## By feature area (cross-index)
 
 - **foundation** — #1, #16, #24, #26, #5 (CI)
-- **canvas** — #9, #39, #40, #47, #48, #56, #59
-- **cards** — #2, #6, #7, #33, #35, #41, #43, #44, #45, #51, #52, #53
-- **agents** — #2, #35, #44, #53, #57, #58
-- **onboarding** — #29, #30, #31, #37, #38, #42, #49, #55
-- **landing** — #10, #11, #12, #17, #18, #19, #21, #22, #23, #25, #26, #27, #28
+- **canvas** — #9, #39, #40, #47, #48, #56, #59, #66, #69, #73, #78, #80
+- **cards** — #2, #6, #7, #33, #35, #41, #43, #44, #45, #51, #52, #53, #54, #67, #70, #71, #75
+- **agents** — #2, #35, #44, #53, #57, #58, #54, #67, #69, #71, #77, #80
+- **onboarding** — #29, #30, #31, #37, #38, #42, #49, #55, #61, #62, #65, #75
+- **landing** — #10, #11, #12, #17, #18, #19, #21, #22, #23, #25, #26, #27, #28, #68
 - **embeds** — #13, #14, #15, #20
-- **deploy** — #5, #34
-- **docs** — #32, #50
+- **deploy** — #5, #34, #60, #68
+- **docs** — #32, #50, #63
 
 ---
 
@@ -145,7 +182,13 @@ Kept here so the ideas aren't lost and nobody re-spikes them by accident.
 
 ## In flight (open drafts)
 
+_Snapshot as of 2026-07-18. Move each to the release log as it merges._
+
 | PR | Tags | State |
 |---|---|---|
-| #54 | `cards` · `agents` | Map card (P0 + P1). Draft — **conflicts with `main`** (`ask.ts`, `HISTORY.md`) pending a sync. |
-| #36 | `docs` | 100-case stress harness + report. Draft — verdict predates ~55 commits; re-run before trusting the "100/100" claim. |
+| #79 | `docs` | Roadmap note: the advisor tool as an Autopilot-era execution model. Docs-only. |
+| #76 | `cards` · `docs` | Thesys study + richer product dashboard card (viz tokens, KPI/chart polish). |
+| #74 | `deploy` · `landing` | Capture beta signups + send a confirmation email (Resend, env-gated). |
+| #72 | `docs` | Persona study: Airbnb-laundry market study + Jarwiz eval. Eval harness + docs. |
+| #64 | `agents` · `docs` | Prompt-assembly cleanup + response-quality A/B harness (real sidecar). |
+| #36 | `docs` | 100-case stress harness + report. Verdict now predates ~70 commits; re-run before trusting the "100/100" claim. |
