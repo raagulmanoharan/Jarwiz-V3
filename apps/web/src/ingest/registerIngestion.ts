@@ -9,7 +9,6 @@
  */
 
 import { createShapeId, type Editor, type TLShapeId, type VecLike } from 'tldraw';
-import { noteIngestion } from '../agents/jarwizLife';
 import { startTldr } from './tldr';
 import { domainOf } from '../lib/url';
 import { uploadAsset } from '../lib/uploadAsset';
@@ -149,7 +148,6 @@ function placeLink(editor: Editor, url: string, center: VecLike): void {
   });
   editor.select(id);
   logEvent(editor, { kind: 'artefact', label: `Added ${domainOf(url)}`, detail: 'Link', shapeIds: [id] });
-  noteIngestion(id, 'link'); // the entity flies over and reads while the preview loads
 
   void fetch('/api/link/preview', {
     method: 'POST',
@@ -251,7 +249,6 @@ async function placeImage(editor: Editor, file: File, center: VecLike): Promise<
   });
   editor.select(id);
   logEvent(editor, { kind: 'artefact', label: `Added ${file.name}`, detail: 'Image', shapeIds: [id] });
-  noteIngestion(id, 'image');
   return id;
 }
 
@@ -268,7 +265,6 @@ function placePdf(editor: Editor, file: File, center: VecLike): TLShapeId {
     y: center.y - h / 2,
     props: { w, h, src: '', assetId: '', name: file.name, pages: 0, status: 'uploading' },
   });
-  noteIngestion(id, 'pdf'); // the entity reads for as long as the upload runs
 
   void uploadAsset(file, 'pdf')
     .then(({ assetId, url }) => {

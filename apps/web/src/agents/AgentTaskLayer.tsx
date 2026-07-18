@@ -1,8 +1,7 @@
 /**
  * Renders the controls for in-flight agent tasks, anchored at the work: a
- * Cancel chip while it runs. The avatar (AgentCursorLayer) shows the agent
- * itself + status; this is just the running control, so an AI action is always
- * cancellable. Failures don't render here — they surface in the agent-error
+ * Cancel chip while it runs. This is just the running control, so an AI action
+ * is always cancellable. Failures don't render here — they surface in the agent-error
  * banner above the composer (agentError.ts), the single home for errors.
  */
 
