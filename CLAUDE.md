@@ -54,6 +54,36 @@ also typechecks as part of `build`.
   present and future, hides the opacity dial automatically**; just name a new
   card type `*-card` (owner call — applies to all new cards, 2026-07-07).
 
+## Git & merge discipline
+
+`docs/WORKFLOW.md` is the full playbook; these are the non-negotiables that keep
+`main`'s history readable (the early history wasn't — see `docs/CHANGELOG.md` for
+why). Follow them every time:
+
+1. **One feature → one branch → one PR.** Split unrelated work even when asked
+   for two things at once. Never stack a second feature onto a branch under
+   review.
+2. **Squash-merge only. Never a merge-commit.** Every feature must land as a
+   single commit on `main` titled `<summary> (#NN)`. Merge-commits drag WIP onto
+   `main` and are what made Era 1 of the history a tangle. If a merge would
+   create a merge-commit, stop and squash instead.
+3. **PR title = the changelog line.** Write it as the one sentence future-you
+   wants to read in `git log`: plain-language outcome, not mechanics. It becomes
+   the squash commit and the `docs/CHANGELOG.md` row verbatim.
+4. **Tag the feature surface.** Every PR touches one of the tags in
+   `docs/CHANGELOG.md` (`foundation`/`canvas`/`cards`/`agents`/`onboarding`/
+   `landing`/`embeds`/`deploy`/`docs`). Know which before opening the PR; it's
+   how the ledger stays sortable.
+5. **On merge, update the ledger.** Add one row to `docs/CHANGELOG.md`'s release
+   log (and a cross-index line if it's a new area) as part of merging — same
+   ritual as the `docs/HISTORY.md` note. The changelog is the durable
+   feature→PR map; don't let it drift.
+6. **Keep branches fresh.** Sync with `main` before opening a PR and before
+   merging; resolve conflicts on the feature branch, never on `main`.
+7. **Green before merge.** `npm run typecheck` + `npm run build` pass; never
+   `--no-verify`. Commit messages end with the session URL; no model id in any
+   committed artifact.
+
 ## Adding an agent (server)
 
 The runtime (`apps/server/src/agents/runtime.ts`) is a manual Anthropic

@@ -35,6 +35,9 @@ what we decided, and the order it happened in. Start here.
 - **[HISTORY.md](./HISTORY.md)** — the conversation / session history: what was
   asked, what shipped, milestone by milestone. The narrative companion to the
   decision log.
+- **[CHANGELOG.md](./CHANGELOG.md)** — the merge ledger: every merged PR tagged
+  to the feature surface it touched, newest first. The streamlined, sortable
+  lens over `main`'s history (and where explored-but-parked ideas are kept).
 
 ## Research & testing
 
