@@ -1,9 +1,10 @@
 /**
  * The Ask pipeline, client side. The answer streams straight onto the canvas as
  * a live "draft" card in its source's lane — doc text grows, a table builds
- * column header then fills cell by cell — while the camera gently follows. The
- * draft's Keep / Discard controls (DraftControls) let the user confirm or throw
- * it away. The same path serves a typed question and a predefined seed pill.
+ * column header then fills cell by cell — while the camera gently follows. When
+ * the run settles, the draft is kept automatically (DraftAutoKeep) and the card
+ * just stays — delete it to throw one away. The same path serves a typed
+ * question and a predefined seed pill.
  *
  * One run at a time: a single module-level record tracks the live Ask/regen and
  * its AbortController, so Cancel always targets the run that's actually
@@ -55,9 +56,9 @@ import { getAgent } from '@jarwiz/shared';
 const PRESENCE = getAgent('writer');
 
 /** The single AI run currently in flight — an Ask or an in-place regen — so a
- *  floating control (RegenControls / DraftControls) can truly cancel the model
- *  call from afar. Exactly one run may be live at a time (`ask` refuses to
- *  start another), so this abort can never hit the wrong run. */
+ *  floating control (RegenControls) can truly cancel the model call from afar.
+ *  Exactly one run may be live at a time (`ask` refuses to start another), so
+ *  this abort can never hit the wrong run. */
 interface ActiveRun {
   controller: AbortController;
   kind: 'ask' | 'regen';
@@ -71,8 +72,8 @@ export function cancelActiveAsk(): void {
 
 /** Let an external multi-card run (the debrief recipe) occupy the same
  *  one-run-at-a-time slot as an Ask — so `ask` refuses while it streams, the
- *  auto-sync engine queues behind it, and DraftControls' "Stop & discard"
- *  genuinely aborts it. Returns false when a run is already live. */
+ *  auto-sync engine queues behind it, and a cancel (RegenControls) genuinely
+ *  aborts it. Returns false when a run is already live. */
 export function claimActiveRun(controller: AbortController): boolean {
   if (activeRun || getDraft()) return false;
   activeRun = { controller, kind: 'ask' };
@@ -762,7 +763,8 @@ export function useAsk() {
         await readSSE<AskEvent>(res.body, apply);
         if (cardId) stopStreaming(cardId);
         // Don't let stream-end mark the draft done if a server `error` event
-        // already flagged it — that would hide the failure from DraftControls.
+        // already flagged it — auto-keep would otherwise commit a failed card
+        // instead of leaving the failure to the composer's error banner.
         if (!runFailed) updateDraft({ status: 'done' });
       } catch (err) {
         if (cardId) stopStreaming(cardId);
