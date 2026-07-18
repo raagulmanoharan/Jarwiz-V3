@@ -84,29 +84,27 @@ why). Follow them every time:
    `--no-verify`. Commit messages end with the session URL; no model id in any
    committed artifact.
 
-## Adding an agent (server)
+## The live agent path (server)
 
-The runtime (`apps/server/src/agents/runtime.ts`) is a manual Anthropic
-tool-use loop. An agent is almost entirely a **system prompt + `buildUserTurn`**;
-the runtime owns the canvas tools (`begin_card`/`finish_card`/`create_note`/
-`create_link_card`/`create_table`/`connect_cards`) and emits all board events.
-To add one (see `summarizer.ts`, `writer.ts` as templates):
+The composer reaches the model through **`POST /api/ask`** (`apps/server/src/ask.ts`,
+`streamAsk`) — an Anthropic loop that picks the answer's shape and streams a
+single card back over SSE. It emits the **`AskEvent`** protocol
+(`packages/shared/src/protocol.ts`); the web client applies each event to the
+tldraw store in `useAsk.ts`'s `apply()` switch. Per-shape streamers live in
+`ask.ts` (`streamDoc`, the table path, `streamDiagram`, `streamPrototype`,
+`streamDashboard`, `streamMap`, `streamAffinity`). Sibling routes reuse the same
+model constant (`AGENT_MODEL` from `agents/runtime.ts`) and their own event
+types: `/api/autopilot`, `/api/compose`, `/api/analyze`, `/api/diagram`, etc.
 
-1. Create `apps/server/src/agents/<id>.ts` exporting an `AgentDefinition`
-   (`meta: getAgent('<id>')`, frozen `systemPrompt`, optional `serverTools`,
-   `buildUserTurn(request)`). Keep the system prompt static (prompt caching).
-2. Register it in `apps/server/src/agentRun.ts` (`AGENT_DEFINITIONS`).
-3. Add a branch in `apps/server/src/agents/mock.ts` (`runMockLoop` switch) so
-   the agent is demoable with **no API key** — mock drives the same `emit()`
-   event shapes as the real loop.
+`AskEvent` variants: `status`, `clarify`, `card.create`, `card.title`,
+`card.delta`, `table.cell`, `map.pin`, `affinity.cluster`, `affinity.note`,
+`sources.used`, `card.done`, `done`, `error`.
 
-Note: the specialist agents (`researcher`/`summarizer`/`brainstormer`) are
-currently server-side only — the web UI presents a single **Jarwiz** identity
-and reaches the model through Ask/Analyze/Autopilot/Chat. A deliberate summon
-UI is a roadmap item (docs/ROADMAP.md).
-
-`AgentEvent` variants: `status`, `cursor`, `card.create`, `card.delta`,
-`card.done`, `edge.create`, `done`, `error`.
+The web UI presents a single **Jarwiz** identity (see `packages/shared/src/agents.ts`);
+the specialist registry (researcher/summarizer/brainstormer/writer) survives only
+as identity metadata (name/color/tagline). The older tool-use `runAgentLoop` +
+`/api/agents/:id/run` + `AgentEvent` runtime was never wired to the UI and was
+removed (2026-07-18) — don't resurrect it; extend the Ask path instead.
 
 ## Presence & streaming (web)
 
