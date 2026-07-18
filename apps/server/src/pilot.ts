@@ -107,8 +107,6 @@ export async function recordPilotAction(code: string): Promise<void> {
 const METERED_PATHS = [
   '/api/ask',
   '/api/analyze',
-  '/api/autopilot',
-  '/api/autopilot/table',
   '/api/cluster',
   '/api/annotate',
   '/api/compose',

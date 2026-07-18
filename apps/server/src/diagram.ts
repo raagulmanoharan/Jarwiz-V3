@@ -6,7 +6,7 @@
  * connectors the user can then drag, restyle, and extend. Unlike the diagram
  * CARD (which renders fixed Mermaid), this produces real, editable primitives.
  *
- * Routes like table autopilot: real Anthropic (key present) → CLI sidecar (dev,
+ * Routes like the other agents: real Anthropic (key present) → CLI sidecar (dev,
  * no key) → a scripted mock, all returning the same DiagramSpec shape.
  */
 

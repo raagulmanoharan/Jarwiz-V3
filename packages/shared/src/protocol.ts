@@ -108,48 +108,6 @@ export type AgentEvent =
   /** The run failed — surfaced honestly on the board, never silently. */
   | { type: 'error'; message: string };
 
-/* ─── Autopilot (Tab-to-continue) ───────────────────────────────────────── */
-
-/**
- * POST /api/autopilot request — ask an agent to continue the prose in a card
- * the user is editing, in place, from where their caret stopped. The agent
- * never rewrites existing text; it only appends a bounded continuation.
- * See docs/ROADMAP.md §9 (M4 — Autopilot, phase A0).
- */
-export interface AutopilotRequest {
-  /** Which card kind is being continued — shapes the voice/format. */
-  kind: 'doc' | 'note';
-  /** The document title, when present, for context. */
-  title?: string;
-  /** The existing card text up to the caret — the agent continues from here. */
-  text: string;
-  /**
-   * Nearby board content for grounding — connected cards first, then selected,
-   * nearby, and board-wide. Capped and truncated before sending. When text is
-   * empty (cold start), the agent writes an opener grounded in this context.
-   */
-  boardContext?: AutopilotBoardCard[];
-}
-
-/** One board card serialised compactly for Autopilot context. */
-export interface AutopilotBoardCard {
-  kind: string;
-  title?: string;
-  text: string;
-  /** How the card was reached — used for relevance ordering. */
-  relation: 'connected' | 'selected' | 'nearby' | 'board';
-}
-
-/**
- * One event in an autopilot SSE stream. Framing: `data: {json}\n\n`. Always
- * terminates with `done` or `error`. Deltas are appended at the caret live,
- * with the agent's streaming caret showing, multiplayer-style.
- */
-export type AutopilotEvent =
-  | { type: 'delta'; textDelta: string }
-  | { type: 'done' }
-  | { type: 'error'; message: string };
-
 /* ─── Content-aware suggestions (proactive pills) ───────────────────────── */
 
 /** A proposed agent action, tailored to a dropped artifact's actual content. */
@@ -190,25 +148,6 @@ export interface ClusterSuggestRequest {
   theme?: string;
 }
 
-/**
- * POST /api/autopilot/table request — fill the empty cells of a table the user
- * is building (A1). The agent reads the column headers and any rows the user
- * filled, completes the rest, and the cells stream in one at a time so the
- * Writer avatar can hop across the grid.
- */
-export interface TableAutopilotRequest {
-  /** Column headers — define what each cell should contain. */
-  columns: string[];
-  /** Current rows (row-major); empty strings are the cells to fill. */
-  rows: string[][];
-}
-
-export type TableAutopilotEvent =
-  /** Fill one cell. Emitted in visiting order so the avatar hops cell to cell. */
-  | { type: 'cell'; row: number; col: number; text: string }
-  | { type: 'done' }
-  | { type: 'error'; message: string };
-
 /* ─── Comments & agent voice ────────────────────────────────────────────── */
 
 /** One message in a card's comment thread — from you or from an agent. */
@@ -224,7 +163,7 @@ export interface CommentMessage {
  * POST /api/comment request — ask an agent to reply, in conversation, to a
  * card's comment thread. Agents are participants: they answer in the thread
  * like a teammate (a short message), they don't dump a card. Streams its reply
- * as `AutopilotEvent` text deltas.
+ * as text deltas.
  */
 export interface CommentReplyRequest {
   agentId: AgentId;

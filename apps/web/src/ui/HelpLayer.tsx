@@ -33,7 +33,6 @@ const SHORTCUTS: Array<{ keys: string[]; label: string }> = [
   { keys: ['R'], label: 'Rectangle' },
   { keys: ['A'], label: 'Arrow' },
   { keys: ['F'], label: 'Frame' },
-  { keys: ['Tab'], label: 'Continue writing (in a doc)' },
   { keys: ['Esc'], label: 'Stop a running generation' },
   { keys: [MOD, 'Z'], label: 'Undo' },
 ];

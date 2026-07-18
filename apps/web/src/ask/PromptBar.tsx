@@ -23,7 +23,6 @@ import { useAnalyze } from '../agents/useAnalyze';
 import { gatherBoardCards } from '../agents/boardText';
 import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
 import { clearAgentError, getAgentError, subscribeAgentError } from '../agents/agentError';
-import { isAutopilotRunning, subscribeAutopilot } from '../agents/autopilotStore';
 import { cardSeedKey, ensureCardSeeds, ensureSeedPrompts, getSeedPrompts, subscribeSeed } from './seedPrompts';
 import { getPromptFill, subscribePromptFill } from './promptFill';
 import { getDraft, subscribeDraft } from './draft';
@@ -510,16 +509,11 @@ export function PromptBar() {
     const title = getShapeTitle(s).trim();
     return { id: s.id, type: s.type, seedKey: cardSeedKey(s.id, text, title), pdf: false as const, text, title };
   }, [editor]);
-  // While Jarwiz holds the pen on the selected card (a streaming ask/regen or
-  // an autopilot fill), the pills hide — firing another instruction mid-write
-  // would contradict the one in flight (owner call, 2026-07-05).
+  // While Jarwiz holds the pen on the selected card (a streaming ask/regen),
+  // the pills hide — firing another instruction mid-write would contradict the
+  // one in flight (owner call, 2026-07-05).
   const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
-  const soleWriting = useSyncExternalStore(
-    subscribeAutopilot,
-    () => (sole && !sole.pdf ? isAutopilotRunning(sole.id) : false),
-    () => false,
-  );
-  const soleBusy = Boolean(sole && !sole.pdf && (streamingSet.has(sole.id) || soleWriting));
+  const soleBusy = Boolean(sole && !sole.pdf && streamingSet.has(sole.id));
   useEffect(() => {
     if (!sole) return;
     if (sole.pdf) {

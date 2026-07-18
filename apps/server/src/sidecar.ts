@@ -5,8 +5,8 @@
  * read or forwarded. The server shells out to it as a sidecar process for a
  * single text completion.
  *
- * Used when ANTHROPIC_API_KEY is unset but the CLI is present: Autopilot,
- * table-fill, comment replies, and the text-producing agents (Summarizer,
+ * Used when ANTHROPIC_API_KEY is unset but the CLI is present:
+ * comment replies and the text-producing agents (Summarizer,
  * Writer, Brainstormer) become genuinely real instead of scripted.
  */
 

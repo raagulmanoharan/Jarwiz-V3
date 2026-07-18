@@ -1,8 +1,9 @@
 /**
  * Shared text streamer — yields a markdown generation token-by-token as SSE-able
- * events, so the slow "batch" agents (analyze, revise) feel as alive as Autopilot.
+ * events, so the slow "batch" agents (analyze, revise) feel as alive as a live stream.
  * Routes API (real Anthropic stream) → CLI sidecar (chunk the full reply) →
- * scripted mock (chunk). Mirrors the push→pull bridge in autopilot.ts.
+ * scripted mock (chunk). A push→pull bridge adapts the callback stream to an
+ * async iterator.
  */
 
 import Anthropic from '@anthropic-ai/sdk';

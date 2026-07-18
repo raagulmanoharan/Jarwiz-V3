@@ -11,13 +11,9 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
-import { continueProse } from '../agents/autopilotStore';
-import { useAutopilot } from '../agents/useAutopilot';
-import { useTypingPause } from '../agents/useTypingPause';
 import { NOTE_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
 import { useStreamState } from './useStreamState';
-import { JarwizSpark } from '../ui/JarwizSpark';
 import { StreamingPlaceholder } from '../ui/StreamingPlaceholder';
 
 export interface NoteCardProps {
@@ -103,23 +99,15 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
   const isSelected = useCardSelected(shape.id);
   const { text, color } = shape.props;
   const { isGenerating, isFocused } = useStreamState(shape.id);
-  const autopilot = useAutopilot();
-  const [paused, resetPause] = useTypingPause(isEditing ? text : '', 1800);
-  const showNudge = isEditing && paused && !isGenerating;
 
   return (
     <div className={`jz-note${isSelected ? ' jz-card-selected' : ''}${isFocused ? ' jz-card-streaming' : ''}`} style={{ background: color || NOTE_PAPER }}>
       {isEditing ? (
-        <>
         <textarea
           autoFocus
           value={text}
-          placeholder="Write something… (Tab to continue)"
+          placeholder="Write something…"
           style={{ pointerEvents: 'all' }}
-          onKeyDown={(e) => {
-            if (e.key === 'Tab') resetPause();
-            autopilot.onKeyDown(shape.id, e);
-          }}
           onFocus={(e) => {
             const length = e.currentTarget.value.length;
             e.currentTarget.setSelectionRange(length, length);
@@ -136,16 +124,6 @@ function NoteCardBody({ shape }: { shape: NoteCardShape }) {
           onPointerMove={stopEventPropagation}
           onPointerUp={stopEventPropagation}
         />
-        {showNudge && (
-          <button
-            className="jz-fillnudge jz-fillnudge--float"
-            title="Let Jarwiz continue from what's here"
-            style={{ pointerEvents: 'all' }}
-            onPointerDown={stopEventPropagation}
-            onClick={() => void continueProse(editor, shape.id)}
-          ><JarwizSpark size={10} className="jz-spark-inline" /> Fill</button>
-        )}
-        </>
       ) : (
         <div className={`jz-note-text${text ? '' : ' jz-note-placeholder'}`}>
           {text ? text : isGenerating ? <StreamingPlaceholder /> : 'Double-click to write'}

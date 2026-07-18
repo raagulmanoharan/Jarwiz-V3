@@ -1,7 +1,7 @@
 /**
  * Read an SSE response body, invoking `onEvent` per `data:` frame. Shared by the
  * streamed agent actions (analyze, revise, …) so they all parse the wire the
- * same way Autopilot/Ask do.
+ * same way Ask does.
  */
 export async function readSSE<T>(body: ReadableStream<Uint8Array>, onEvent: (e: T) => void): Promise<void> {
   const reader = body.getReader();

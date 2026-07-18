@@ -1,8 +1,8 @@
 /**
  * Rich table cells — what makes the table multipurpose (a tour itinerary with
  * links and photos, a vendor matrix with sources), not just a comparison grid.
- * Cells STAY plain strings (schema, backup, search, and autopilot all keep
- * seeing text); the static renderer understands a minimal inline markdown:
+ * Cells STAY plain strings (schema, backup, and search all keep seeing text);
+ * the static renderer understands a minimal inline markdown:
  *
  *   ![alt](src)      → thumbnail image (https / data:image / /api/assets only)
  *   [label](url)     → link chip (https only)
