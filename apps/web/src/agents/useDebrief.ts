@@ -20,6 +20,8 @@ import { getAgent } from '@jarwiz/shared';
 import { DOC_CARD_SIZE, type DocCardShape } from '../shapes';
 import { setShapeTitle } from '../shapes/shapeTitle';
 import { readSSE } from './sse';
+import { startFocus, startGenerating, stopFocus, stopGenerating } from './streaming';
+import { makeCardFollower } from './followCamera';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from './presence';
 import { getDraft, setDraft, updateDraft } from '../ask/draft';
 import { claimActiveRun, releaseActiveRun, discardDraft, PROMPT_META_KEY, PROV_META_KEY } from '../ask/useAsk';
@@ -78,6 +80,9 @@ export function useDebrief() {
       const slots = new Map<number, TLShapeId>();
       const created: TLShapeId[] = [];
       let framed = false;
+      // Keeps the building cluster in view as the three fill (in parallel);
+      // yields the instant the user pans/zooms/edits (followCamera.ts).
+      const follower = makeCardFollower(editor);
 
       const frameCluster = () => {
         const boxes = [transcript.id, ...created]
@@ -88,6 +93,48 @@ export function useDebrief() {
         editor.zoomToBounds(u, { animation: { duration: 320 }, inset: 130, targetZoom: 1 });
       };
 
+      // Place one card of the cluster as a titled empty placeholder (marked
+      // GENERATING so it shows the "writing…" cue + caret without width-grow).
+      const precreate = (slotIdx: number) => {
+        if (slots.has(slotIdx)) return;
+        const id = createShapeId();
+        created.push(id);
+        const title = titles.get(slotIdx) ?? '';
+        editor.createShape<DocCardShape>({
+          id,
+          type: 'doc-card',
+          x: originX + slotIdx * (CARD_W + GAP),
+          y: originY,
+          props: { w: CARD_W, h: DOC_CARD_SIZE.h, title, text: '', sourcePdfId: '' },
+          // The recipe KNOWS its lineage — every card is built from the
+          // transcript. Recorded up front so hairlines, auto-sync, and the
+          // Regenerate gate all see it immediately.
+          meta: { [PROV_META_KEY]: [transcript.id], [PROMPT_META_KEY]: intent || 'Meeting debrief' },
+        });
+        slots.set(slotIdx, id);
+        const shape = editor.getShape(id);
+        if (shape && title) setShapeTitle(editor, shape, title);
+        startGenerating(id);
+        // ONE draft for the whole cluster: the first card anchors it, the rest
+        // join its group — Keep/Discard decides the artifact whole.
+        const d = getDraft();
+        if (!d) {
+          setDraft({
+            id,
+            groupIds: [],
+            status: 'streaming',
+            prompt: intent || 'Meeting debrief',
+            logLabel: 'Meeting debrief',
+            sourceIds: [transcript.id],
+            shape: 'list',
+            pdfSourceId: null,
+            statusText: 'reading the transcript…',
+          });
+        } else {
+          updateDraft({ groupIds: created.filter((x) => x !== d.id) });
+        }
+      };
+
       const applySlot = (slotIdx: number, ev: Extract<ComposeEvent, { type: 'slot' }>['event']) => {
         switch (ev.type) {
           case 'status':
@@ -95,47 +142,13 @@ export function useDebrief() {
             if (getDraft()) updateDraft({ statusText: ev.message });
             break;
           case 'card.create': {
-            const id = createShapeId();
-            created.push(id);
-            editor.createShape<DocCardShape>({
-              id,
-              type: 'doc-card',
-              x: originX + slotIdx * (CARD_W + GAP),
-              y: originY,
-              props: { w: CARD_W, h: DOC_CARD_SIZE.h, title: titles.get(slotIdx) ?? '', text: '', sourcePdfId: '' },
-              // The recipe KNOWS its lineage — every card is built from the
-              // transcript. Recorded up front so hairlines, auto-sync, and the
-              // Regenerate gate all see it immediately.
-              meta: { [PROV_META_KEY]: [transcript.id], [PROMPT_META_KEY]: intent || 'Meeting debrief' },
-            });
-            slots.set(slotIdx, id);
-            const shape = editor.getShape(id);
-            const title = titles.get(slotIdx);
-            if (shape && title) setShapeTitle(editor, shape, title);
+            // Card is already placed from the plan — this slot is now the one
+            // being written (takes the glow); move the avatar and follow it.
+            const id = slots.get(slotIdx) ?? (precreate(slotIdx), slots.get(slotIdx)!);
+            startFocus(id);
             const b = editor.getShapePageBounds(id);
             if (b) setPresenceCursor(PRESENCE.id, b.maxX - 14, b.maxY - 16);
-            // ONE draft for the whole cluster: the first card anchors it, the
-            // rest join its group — Keep/Discard decides the artifact whole.
-            const d = getDraft();
-            if (!d) {
-              setDraft({
-                id,
-                groupIds: [],
-                status: 'streaming',
-                prompt: intent || 'Meeting debrief',
-                logLabel: 'Meeting debrief',
-                sourceIds: [transcript.id],
-                shape: 'list',
-                pdfSourceId: null,
-                statusText: 'reading the transcript…',
-              });
-            } else {
-              updateDraft({ groupIds: created.filter((x) => x !== d.id) });
-            }
-            if (!framed) {
-              framed = true;
-              frameCluster();
-            }
+            follower.follow(created);
             break;
           }
           case 'card.delta': {
@@ -148,6 +161,12 @@ export function useDebrief() {
               type: s.type,
               props: { text: (s.props as { text: string }).text + ev.textDelta },
             } as Parameters<typeof editor.updateShape>[0]);
+            follower.follow(created);
+            break;
+          }
+          case 'card.done': {
+            const cardId = slots.get(slotIdx);
+            if (cardId) { stopFocus(cardId); stopGenerating(cardId); }
             break;
           }
           case 'card.title':
@@ -175,6 +194,13 @@ export function useDebrief() {
         await readSSE<ComposeEvent>(res.body, (e) => {
           if (e.type === 'plan') {
             for (const c of e.cards) titles.set(c.slot, c.title);
+            // Place all three cards at once as titled placeholders — the whole
+            // shape of the debrief is visible immediately, then each fills in turn.
+            for (const c of [...e.cards].sort((a, b) => a.slot - b.slot)) precreate(c.slot);
+            if (!framed) {
+              framed = true;
+              frameCluster();
+            }
           } else if (e.type === 'slot') {
             applySlot(e.slot, e.event);
           } else if (e.type === 'error') {
@@ -182,6 +208,7 @@ export function useDebrief() {
           }
         });
         if (created.length === 0) throw new Error('The debrief produced no cards.');
+        for (const id of created) { stopFocus(id); stopGenerating(id); } // all settled
         frameCluster();
         updateDraft({ status: 'done', statusText: undefined });
         logEvent(editor, { kind: 'artefact', label: 'Meeting debrief', detail: `${created.length} cards`, shapeIds: created });
@@ -200,6 +227,10 @@ export function useDebrief() {
           setPhase('error');
         }
       } finally {
+        // Abort/error can skip card.done — clear any lingering stream flags and
+        // detach the follow listeners.
+        for (const id of created) { stopFocus(id); stopGenerating(id); }
+        follower.dispose();
         releaseActiveRun(ac);
         abortRef.current = null;
         endPresence(PRESENCE.id);

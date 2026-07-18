@@ -6,7 +6,7 @@
  * we fall back to showing it as code rather than failing silently.
  */
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   HTMLContainer,
   Rectangle2d,
@@ -18,7 +18,8 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
-import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
+import { useStreamState } from './useStreamState';
+import { StreamingPlaceholder } from '../ui/StreamingPlaceholder';
 import { renderMermaid, stripFences } from '../lib/mermaid';
 import { useFitHeight } from './useFitHeight';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
@@ -84,8 +85,7 @@ export class DiagramCardShapeUtil extends ShapeUtil<DiagramCardShape> {
 function DiagramCardBody({ shape }: { shape: DiagramCardShape }) {
   const { code } = shape.props;
   const isSelected = useCardSelected(shape.id);
-  const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
-  const isStreaming = streamingSet.has(shape.id);
+  const { isStreaming } = useStreamState(shape.id);
 
   const [svg, setSvg] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -120,17 +120,22 @@ function DiagramCardBody({ shape }: { shape: DiagramCardShape }) {
   useFitHeight(shape.id, fitRef, [svg, code, isStreaming, failed], { streaming: isStreaming });
 
   return (
-    <div className={`jz-diagram${isSelected ? ' jz-card-selected' : ''}`} ref={fitRef}>
+    <div className={`jz-diagram${isSelected ? ' jz-card-selected' : ''}${isStreaming ? ' jz-card-streaming' : ''}`} ref={fitRef}>
       {/* No in-card header: a diagram carries no title chrome (owner call) — the
           shape IS the diagram. `title` stays in props for grounding/search. */}
       <div className="jz-diagram-body">
         {svg && !isStreaming ? (
           <div className="jz-diagram-svg" dangerouslySetInnerHTML={{ __html: svg }} />
         ) : isStreaming ? (
-          <pre className="jz-diagram-code">
-            {stripFences(code)}
-            <span className="jz-stream-caret" aria-hidden />
-          </pre>
+          code.trim() ? (
+            <pre className="jz-diagram-code">
+              {stripFences(code)}
+              <span className="jz-stream-caret" aria-hidden />
+            </pre>
+          ) : (
+            // Source hasn't started arriving yet — name the wait.
+            <StreamingPlaceholder label="Drawing this in…" />
+          )
         ) : failed ? (
           <pre className="jz-diagram-code jz-diagram-code-raw">{stripFences(code)}</pre>
         ) : (

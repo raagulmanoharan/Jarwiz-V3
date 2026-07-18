@@ -16,7 +16,8 @@ import {
   type TLShapeId,
 } from 'tldraw';
 import { JarwizSpark } from '../ui/JarwizSpark';
-import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
+import { StreamingPlaceholder } from '../ui/StreamingPlaceholder';
+import { useStreamState } from './useStreamState';
 import { useAutopilot } from '../agents/useAutopilot';
 import { useTypingPause } from '../agents/useTypingPause';
 import { abortAutopilot, continueProse, isAutopilotReady, isAutopilotRunning, subscribeAutopilot } from '../agents/autopilotStore';
@@ -134,8 +135,10 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
   const isEditing = useIsEditing(shape.id);
   const isSelected = useValue('doc-selected', () => editor.getSelectedShapeIds().includes(shape.id), [editor]);
   const { text, title } = shape.props;
-  const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
-  const isStreaming = streamingSet.has(shape.id);
+  // `isStreaming` = page-shaping stream (drives width-grow); `isGenerating` also
+  // covers compose/debrief cards a layout owns — both show the caret + the
+  // "writing…" placeholder, only the former reflows width.
+  const { isStreaming, isGenerating, isFocused } = useStreamState(shape.id);
   const autopilot = useAutopilot();
   const expanded = useSyncExternalStore(subscribeExpand, () => isExpanded(shape.id), () => false);
   const [paused, resetPause] = useTypingPause(isEditing ? `${title}|${text}` : '', 1800);
@@ -295,7 +298,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
 
   return (
     <div
-      className={`jz-doc jz-doc-auto${collapsed ? ' jz-card-collapsed' : ''}${isSelected ? ' jz-card-selected' : ''}`}
+      className={`jz-doc jz-doc-auto${collapsed ? ' jz-card-collapsed' : ''}${isSelected ? ' jz-card-selected' : ''}${isFocused ? ' jz-card-streaming' : ''}`}
       ref={fitRef}
     >
       <div className="jz-doc-content">
@@ -312,11 +315,14 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
             }}
             // Truncation would desynchronize checkbox ordinals against the
             // full text — a preview is read-only until opened in focus mode.
-            onToggleTask={isStreaming || truncated ? undefined : (ordinal, checked) => toggleTask(editor, shape, ordinal, checked)}
+            onToggleTask={isGenerating || truncated ? undefined : (ordinal, checked) => toggleTask(editor, shape, ordinal, checked)}
             // A ```map block's "expand map" wires its promoted card back here.
             sourceId={shape.id}
           />
-        ) : isStreaming ? null : (
+        ) : isGenerating ? (
+          // Empty + being written → name the wait instead of a bare caret.
+          <StreamingPlaceholder />
+        ) : (
           <span className="jz-doc-placeholder-text">Write something…</span>
         )}
         {truncated && (
@@ -330,10 +336,10 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
             View more · {more} more lines
           </button>
         )}
-        {/* The caret IS the pre-text state: a writer's cursor waiting on the
-            empty card, then riding the real paragraphs as they arrive — no
-            fake skeleton blobs pretending to be content. */}
-        {isStreaming && <span className="jz-stream-caret" aria-hidden />}
+        {/* Once real text is flowing, the caret rides the last paragraph. While
+            still empty the StreamingPlaceholder above carries its own cue, so the
+            bare caret only shows alongside actual content. */}
+        {isGenerating && text ? <span className="jz-stream-caret" aria-hidden /> : null}
       </div>
     </div>
   );

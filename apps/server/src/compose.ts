@@ -21,6 +21,11 @@ const MIN_CARDS = 4;
 const MAX_CARDS = 6;
 const PLAN_TOKENS = 1200;
 const SIDECAR_TIMEOUT_MS = 90_000;
+/** How many cards a fan-out generates AT ONCE. Parallel enough that the board
+ *  comes alive together (and finishes in ~the slowest card's time, not the sum),
+ *  capped so a big set doesn't fire six concurrent model streams and trip rate
+ *  limits. Cards beyond the cap start as earlier ones finish. */
+const FANOUT_CONCURRENCY = 3;
 
 const SHAPES: AskShape[] = ['doc', 'list', 'table', 'prototype'];
 
@@ -136,6 +141,71 @@ const DEBRIEF_PLAN: Array<ComposePlanCard & { prompt: string }> = [
   },
 ];
 
+interface SlotJob {
+  slot: number;
+  askReq: Parameters<typeof streamAsk>[0];
+}
+
+/**
+ * Run each slot's Ask through streamAsk with at most `concurrency` in flight,
+ * merging their events — already slot-tagged, so the client routes each to its
+ * own card regardless of interleaving — into one stream as they arrive. A card
+ * that fails is skipped; one bad card never sinks the set. As a card finishes,
+ * the next queued one starts, so the cap holds across the whole run.
+ */
+async function* streamSlots(
+  jobs: SlotJob[],
+  signal: AbortSignal,
+  concurrency: number,
+): AsyncGenerator<ComposeEvent> {
+  const queue: ComposeEvent[] = [];
+  let wake: (() => void) | null = null;
+  const signalReady = () => {
+    const w = wake;
+    wake = null;
+    w?.();
+  };
+  let running = 0;
+  let nextIdx = 0;
+  let completed = 0;
+
+  const runOne = async (job: SlotJob) => {
+    try {
+      for await (const ev of streamAsk(job.askReq, signal)) {
+        if (ev.type === 'done' || ev.type === 'clarify') continue; // one final done; never clarify here
+        queue.push({ type: 'slot', slot: job.slot, event: ev });
+        signalReady();
+      }
+    } catch {
+      // A single card failing shouldn't abort the whole build — skip it.
+    } finally {
+      running--;
+      completed++;
+      startMore();
+      signalReady();
+    }
+  };
+
+  function startMore() {
+    while (running < concurrency && nextIdx < jobs.length && !signal.aborted) {
+      running++;
+      void runOne(jobs[nextIdx++]!);
+    }
+  }
+
+  startMore();
+  while (completed < jobs.length || queue.length > 0) {
+    if (signal.aborted) return;
+    if (queue.length === 0) {
+      await new Promise<void>((resolve) => {
+        wake = resolve;
+      });
+      continue;
+    }
+    yield queue.shift()!;
+  }
+}
+
 async function* streamDebrief(req: ComposeRequest, signal: AbortSignal): AsyncGenerator<ComposeEvent> {
   const text = req.transcript?.text?.trim();
   if (!text) {
@@ -159,18 +229,11 @@ async function* streamDebrief(req: ComposeRequest, signal: AbortSignal): AsyncGe
     intentText && !generic
       ? ` Secondary framing from the user (produce ONLY this card's content regardless): "${intentText.slice(0, 300)}".`
       : '';
-  for (const p of DEBRIEF_PLAN) {
-    if (signal.aborted) return;
-    const askReq = { prompt: p.prompt + steer, sources: source, shape: p.type, skipClarify: true, noResearch: true };
-    try {
-      for await (const ev of streamAsk(askReq, signal)) {
-        if (ev.type === 'done' || ev.type === 'clarify') continue;
-        yield { type: 'slot', slot: p.slot, event: ev };
-      }
-    } catch {
-      continue; // one slot failing shouldn't sink the debrief
-    }
-  }
+  const jobs: SlotJob[] = DEBRIEF_PLAN.map((p) => ({
+    slot: p.slot,
+    askReq: { prompt: p.prompt + steer, sources: source, shape: p.type, skipClarify: true, noResearch: true },
+  }));
+  yield* streamSlots(jobs, signal, FANOUT_CONCURRENCY);
   yield { type: 'done' };
 }
 
@@ -198,20 +261,13 @@ export async function* streamCompose(req: ComposeRequest, signal: AbortSignal): 
   const summary = boardSummary(board);
   const source = summary ? [{ kind: 'doc' as const, title: 'The board so far', text: summary }] : [];
 
-  for (const p of plan) {
-    if (signal.aborted) return;
-    // Each card runs through the same Ask engine as a typed question — but on
-    // the normal budget (noResearch) so a 6-card build stays snappy.
-    const askReq = { prompt: p.prompt, sources: source, shape: p.type, skipClarify: true, noResearch: true };
-    try {
-      for await (const ev of streamAsk(askReq, signal)) {
-        if (ev.type === 'done' || ev.type === 'clarify') continue; // one final done; never clarify here
-        yield { type: 'slot', slot: p.slot, event: ev };
-      }
-    } catch {
-      // A single card failing shouldn't abort the whole build — skip it.
-      continue;
-    }
-  }
+  // Each card runs through the same Ask engine as a typed question — but on the
+  // normal budget (noResearch) so a build stays snappy. Generated a few at once
+  // (FANOUT_CONCURRENCY) so the board fills in parallel, not one card at a time.
+  const jobs: SlotJob[] = plan.map((p) => ({
+    slot: p.slot,
+    askReq: { prompt: p.prompt, sources: source, shape: p.type, skipClarify: true, noResearch: true },
+  }));
+  yield* streamSlots(jobs, signal, FANOUT_CONCURRENCY);
   yield { type: 'done' };
 }

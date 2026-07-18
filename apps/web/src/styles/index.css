@@ -2440,6 +2440,60 @@ body,
   }
 }
 
+/* "Writing this in…" — the pre-text state of a card Jarwiz is generating. Shows
+   only while the card is still empty; once real text streams in the card renders
+   its content and the caret takes over. The sparkle pulses so it reads as live
+   work, not a static empty state. */
+.jz-stream-writing {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jz-space-2);
+  color: var(--jz-ink-400);
+  font-size: var(--jz-text-body-sm-size);
+  line-height: var(--jz-text-body-sm-lh);
+  pointer-events: none;
+  user-select: none;
+}
+.jz-stream-writing-spark {
+  display: inline-flex;
+  color: var(--jz-accent, var(--jz-ink-500));
+  animation: jz-stream-pulse 1.4s var(--jz-ease-glide) infinite;
+}
+.jz-stream-writing-label {
+  opacity: 0.85;
+}
+
+@keyframes jz-stream-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jz-stream-writing-spark {
+    animation: none;
+    opacity: 0.9;
+  }
+}
+
+/* A pre-placed compose/debrief table whose columns haven't streamed yet — the
+   writing cue sits centred in the frame until the header arrives. */
+.jz-table-empty-stream {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 72px;
+  padding: var(--jz-space-5);
+}
+
 /* Note card — a text card that happens to be a coloured block: same radius,
  * hairline, and shadow as .jz-doc so every primitive reads as one family
  * (owner call 2026-07-05 — no skeuomorphic dog-ear or paper stack). */
@@ -2518,10 +2572,26 @@ body,
 }
 
 /* While Autopilot fills it, the card wears a faint agent-colored ring. */
-.jz-table-filling {
+/* Streaming cue: the card being written RIGHT NOW (only that one — pending
+   placeholders keep just their border) gets a restrained accent glow. A crisp
+   1px accent edge defines it (so it reads as a border, not a fuzz) plus a
+   small, low-opacity halo. Monochrome by design — a faint dark edge in light
+   theme, a faint white one in dark. Scoped under .jarwiz-app so it wins over
+   each card's own base box-shadow and the selection ring regardless of source
+   order. (Replaced the old emerald ring — off-system for a monochrome palette
+   — owner call 2026-07-17.) */
+.jarwiz-app .jz-card-streaming {
   box-shadow:
     var(--jz-e2),
-    0 0 0 2px color-mix(in srgb, #059669 55%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--jz-accent) 14%, transparent),
+    0 0 10px 0 color-mix(in srgb, var(--jz-accent) 8%, transparent);
+  transition: box-shadow var(--jz-dur-base) var(--jz-ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jarwiz-app .jz-card-streaming {
+    transition: none;
+  }
 }
 
 .jz-table-head {

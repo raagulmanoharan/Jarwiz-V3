@@ -1276,3 +1276,83 @@ content and activates when full.
   GitHub/Anthropic) — recognizably canonical, model reached them via its own
   web tooling. Constants in boardConfidence.ts are a tuned first pass; the
   semantic (LLM) cohesion read is the noted upgrade path.
+
+## 2026-07-17 — You can see it thinking: placeholders, a named wait, a camera that follows
+
+**Intent:** Raagul, dogfooding: "when a response is streaming I don't know
+what's getting streamed or if anything's happening in the back end. If several
+cards are coming, show placeholders for all of them; if they fill one after
+another, the camera should follow each — unless I'm editing something; and every
+streaming card should at least say the response is streaming in."
+
+- **A second stream signal.** The single-card Ask path already dropped an empty
+  card and followed it; the gap was the multi-card flows (Board fan-out,
+  meeting-debrief) and the bare-caret empty state. Split the streaming store in
+  two: `streaming` (page-shaping — caret + placeholder + width-grow, for
+  single-card Ask/Analyze/Autopilot) and a new `generating` (caret + placeholder
+  ONLY). Compose/debrief cards a layout owns use `generating`, so they show the
+  live cue without the width-grow that would jostle a fixed grid. A
+  `useStreamState` hook reads both; card bodies show the caret/placeholder on
+  either, page-shape on the former.
+- **"Writing this in…".** An empty streaming card used to show only a blinking
+  caret. New `StreamingPlaceholder` names the wait — a pulsing spark + label
+  ("Writing this in…", "Building this table…", "Drawing this in…"), reduced-motion
+  guarded. Wired into doc / note / table / diagram / prototype cards.
+- **All placeholders up front.** Both fan-out flows already receive a `plan`
+  event listing every card; they were materialising each card lazily as its slot
+  streamed, so cards popped in one at a time. Now the plan pre-creates every card
+  as a titled empty placeholder immediately — the whole shape of what's coming is
+  visible at once — and the slots fill the pre-placed cards (tables show
+  "Building this table…" until their columns arrive).
+- **A camera that follows, then yields.** New `followCamera.ts`: as each card
+  starts writing, gently keep it in view (pan at the current zoom; zoom in only
+  if it'd be a speck; ride a tall card's bottom edge). It **yields the instant
+  the user takes over** — editing a card, or panning/zooming the board (pointer
+  or wheel) — and never touches the camera again for that run. Directly answers
+  the "unless I'm editing" ask (and the trackpad-pan complaint from the same
+  session — the follow must never fight the hand).
+- **Retired the emerald ring for a monochrome, focus-only glow.** Pre-creating
+  tables up front surfaced an old off-system treatment: a filling table wore a
+  2px emerald ring (`#059669`, added 2026-07-08 inside an unrelated commit, never
+  noted). The palette is deliberately monochrome (`--jz-accent` = near-black /
+  white), so green never belonged. Replaced it with one shared `jz-card-streaming`
+  glow — a restrained accent halo (a crisp 1px edge + a faint low-opacity bloom,
+  dark in light theme / white in dark), scoped under `.jarwiz-app` so it wins
+  over each card's base shadow and the selection ring. A third stream signal,
+  FOCUS, drives it: only the card being written RIGHT NOW glows (single-card
+  paths via the streaming set; the fan-out slot currently filling via a focus
+  set that moves slot to slot). Pending placeholders sit quietly with just their
+  border. Verified in preview — a streaming Ask card shows exactly one glow that
+  clears on done; a five-card fan-out shows zero glow while its cards wait. Owner
+  calls — "no green rings; just a subtle glow, on the card in focus; the
+  placeholders come in with just the border."
+- **Verified.** Typecheck + build green. Drove the real Board fan-out in the
+  preview: a five-card plan landed all at once as titled placeholders ("Writing
+  this in…" / "Building this table…"), each with the neutral glow, no green —
+  screenshot on the PR. Sandbox model
+  latency meant the cards were still filling at capture time; the Autopilot
+  screenshot separately confirms delta-streaming into a card (compose reuses the
+  identical fill path). Sequential fill + camera-follow are the manual check for
+  Raagul on his machine.
+- **Fan-outs now stream a few cards AT ONCE.** Raagul: "is it possible to stream
+  multiple cards at once?" It was — the wire protocol already tags every event
+  with its card's slot and the client fills each slot independently, so the only
+  thing making a fan-out one-at-a-time was a sequential `for` loop on the server.
+  Replaced it (compose AND the debrief recipe) with a shared `streamSlots` merge
+  that runs up to `FANOUT_CONCURRENCY` (3) card generations at once — capped so a
+  big set doesn't fire six concurrent model streams and trip rate limits — and
+  refills as each finishes. Client side: the focus set already handles multiple
+  cards glowing at once, and the camera follower now keeps the whole building
+  SET in view (union bounds) rather than chasing one card. Verified via server
+  logs: three slots start together (`running=3`), the 4th/5th start as earlier
+  ones complete. The parallel *streaming* isn't visually obvious in this sandbox
+  (the keyless `claude` sidecar is non-streaming, so each card returns
+  fully-formed after its call) — with a real API key's token streaming, the
+  cards visibly fill together. Capped concurrency = owner pick over all-at-once.
+- **Board-scan pills stand down while cards stream in.** The "Scan for tensions"
+  / "What am I missing?" dock pills floated over the composer during a fan-out —
+  their gate only checked `draftPending`, but a compose fan-out raises no draft.
+  Extended the gate (and the per-card starters / seed-wait shimmer) to a shared
+  `generating = composing || isAsking || annotating`, so every dock pill hides
+  the moment a generation starts and returns once it settles. Verified: 0 pills
+  through a five-card fan-out, back to 2 when it finished. Owner ask.

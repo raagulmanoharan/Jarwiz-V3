@@ -13,7 +13,8 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
-import { getStreamingSnapshot, subscribeStreaming } from '../agents/streaming';
+import { useStreamState } from './useStreamState';
+import { StreamingPlaceholder } from '../ui/StreamingPlaceholder';
 import { fillTable } from '../agents/autopilotStore';
 import { formatControlledTextarea, shortcutMarker, toggleInline } from '../ask/textFormat';
 import { uploadAsset } from '../lib/uploadAsset';
@@ -132,8 +133,9 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
   const flashCell = Array.isArray((shape.meta as Record<string, unknown>).jzFlashCell)
     ? ((shape.meta as Record<string, unknown>).jzFlashCell as number[])
     : null;
-  const streamingSet = useSyncExternalStore(subscribeStreaming, getStreamingSnapshot, getStreamingSnapshot);
-  const isFilling = streamingSet.has(shape.id);
+  // Generating (compose fan-out) fills the same role as streaming here — the
+  // cell-by-cell caret cue and the pre-columns placeholder both key off it.
+  const { isGenerating: isFilling, isFocused } = useStreamState(shape.id);
   const autopilot = useAutopilot();
   const expanded = useSyncExternalStore(subscribeExpand, () => isExpanded(shape.id), () => false);
   // Grow to fit all rows; clamp past the threshold once settled (collapsible).
@@ -330,6 +332,19 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
     void fillTable(editor, shape.id);
   };
 
+  // A compose/debrief table placed from the plan before its columns have
+  // streamed in — show the "writing…" cue instead of an empty grid husk until
+  // the slot's card.create fills the header.
+  if (isFilling && columns.length === 0) {
+    return (
+      <div className={`jz-table${isFocused ? ' jz-card-streaming' : ''}`}>
+        <div className="jz-table-empty-stream">
+          <StreamingPlaceholder label="Building this table…" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
     {/* The column "+" hovers OUTSIDE the frame beside the header band — a
@@ -347,7 +362,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
       </button>
     ) : null}
     <div
-      className={`jz-table${isFilling ? ' jz-table-filling' : ''}${collapsed ? ' jz-card-collapsed' : ''}${chrome ? ' jz-table--chrome' : ''}${ringSelected ? ' jz-card-selected' : ''}`}
+      className={`jz-table${isFocused ? ' jz-card-streaming' : ''}${collapsed ? ' jz-card-collapsed' : ''}${chrome ? ' jz-table--chrome' : ''}${ringSelected ? ' jz-card-selected' : ''}`}
     >
       {/* Measured wrapper: the frame is height:100% (its scrollHeight always
           equals the CURRENT shape height — the fit-height ratchet), so the

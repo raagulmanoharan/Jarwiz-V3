@@ -1,24 +1,72 @@
 /**
- * Which cards currently have a live streaming caret. Doc/note/table shapes
- * subscribe; useAsk/autopilot flip ids on card create/done.
+ * Which cards currently have a live stream, split into two signals:
+ *
+ *  - STREAMING — a card being written the "page-shaping" way (single-card Ask,
+ *    Analyze, Autopilot). Drives the caret + the empty-card placeholder AND the
+ *    fit-height width-grow (a long answer widens into a page shape). Doc/note/
+ *    table/diagram shapes subscribe; useAsk/analyze/autopilot flip ids here.
+ *
+ *  - GENERATING — a card that's been PLACED and is awaiting/receiving generated
+ *    content, but whose width is fixed by a layout engine (compose fan-out,
+ *    debrief recipe). Drives the caret + placeholder ONLY — never the width-grow,
+ *    so pre-placed cards in a grid never bump their neighbours mid-stream.
+ *
+ * A card is "generating" (shows caret + "writing…" placeholder) if it's in
+ * EITHER set; it only page-shapes if it's in the streaming set.
+ *
+ * A third, separate signal — FOCUS — marks the ONE card being written right
+ * now (in a sequential fan-out, the slot currently filling). Only the focused
+ * card wears the streaming glow; the pending placeholders sit quietly with just
+ * their border. Single-card paths (Ask/Analyze/Autopilot) glow off `streaming`
+ * directly, since their streaming card is always the focused one. See
+ * useStreamState for the combined read.
  */
 import type { TLShapeId } from 'tldraw';
 import { createExternalStore } from '../lib/externalStore';
 
-const store = createExternalStore<ReadonlySet<TLShapeId>>(new Set());
+const streamingStore = createExternalStore<ReadonlySet<TLShapeId>>(new Set());
+const generatingStore = createExternalStore<ReadonlySet<TLShapeId>>(new Set());
+const focusStore = createExternalStore<ReadonlySet<TLShapeId>>(new Set());
 
-export function startStreaming(id: TLShapeId): void {
-  store.update((s) => new Set(s).add(id));
-}
-
-export function stopStreaming(id: TLShapeId): void {
+const add = (store: typeof streamingStore, id: TLShapeId) =>
+  store.update((s) => (s.has(id) ? s : new Set(s).add(id)));
+const remove = (store: typeof streamingStore, id: TLShapeId) =>
   store.update((s) => {
     if (!s.has(id)) return s;
     const next = new Set(s);
     next.delete(id);
     return next;
   });
+
+/** Page-shaping stream (caret + placeholder + width-grow). */
+export function startStreaming(id: TLShapeId): void {
+  add(streamingStore, id);
+}
+export function stopStreaming(id: TLShapeId): void {
+  remove(streamingStore, id);
 }
 
-export const subscribeStreaming = store.subscribe;
-export const getStreamingSnapshot = store.get;
+/** Fixed-width stream (caret + placeholder only, no width-grow) — for cards a
+ *  layout engine owns (compose / debrief). */
+export function startGenerating(id: TLShapeId): void {
+  add(generatingStore, id);
+}
+export function stopGenerating(id: TLShapeId): void {
+  remove(generatingStore, id);
+}
+
+/** Mark the card being written RIGHT NOW — the one that wears the glow. Used by
+ *  the fan-out flows to move the glow from slot to slot as each fills. */
+export function startFocus(id: TLShapeId): void {
+  add(focusStore, id);
+}
+export function stopFocus(id: TLShapeId): void {
+  remove(focusStore, id);
+}
+
+export const subscribeStreaming = streamingStore.subscribe;
+export const getStreamingSnapshot = streamingStore.get;
+export const subscribeGenerating = generatingStore.subscribe;
+export const getGeneratingSnapshot = generatingStore.get;
+export const subscribeFocus = focusStore.subscribe;
+export const getFocusSnapshot = focusStore.get;

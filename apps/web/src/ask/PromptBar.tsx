@@ -750,11 +750,15 @@ export function PromptBar() {
   // Two contentful cards already qualify — a brief plus one generated artifact
   // is exactly when "what am I missing" earns its place (dogfood 2026-07-05;
   // the old ≥3 hid it right after the first table landed).
-  // While a draft is on the board (streaming, or waiting on Keep/Discard),
-  // every dock pill stands down: the pills describe the PREVIOUS card, and
-  // they'd float over the fresh artefact and its controls (G4.2).
+  // Every dock pill stands down while anything is generating — a draft
+  // streaming or waiting on Keep/Discard (draftPending), but ALSO a board
+  // fan-out / debrief (composing), a plain ask (isAsking), or an affinity run
+  // (annotating), none of which raise a draft. The pills describe the PREVIOUS
+  // state and would float over the cards streaming in and their controls
+  // (G4.2; owner ask 2026-07-17 — hide the pills while cards stream in).
   const draftPending = useSyncExternalStore(subscribeDraft, () => Boolean(getDraft()), () => false);
-  const showChips = !runningMode && !draftPending && groundIds.length === 0 && meaningfulCount >= 2;
+  const generating = composing || isAsking || annotating;
+  const showChips = !runningMode && !draftPending && !generating && groundIds.length === 0 && meaningfulCount >= 2;
   // Pills are ALWAYS contextual — generated from the card's own content.
   // Nothing scripted: until the tailored pills arrive (or if the card is
   // empty) we show nothing. Predictable operations live on the card's
@@ -763,12 +767,12 @@ export function PromptBar() {
     groundIds.length === 1 && (seeds?.length ?? 0) > 0
       ? seeds!.map((s) => ({ label: s.label, prompt: s.prompt }))
       : [];
-  const showStarters = !runningMode && !isAsking && !soleBusy && !draftPending && !plainText.trim() && starters.length > 0;
+  const showStarters = !runningMode && !generating && !soleBusy && !draftPending && !plainText.trim() && starters.length > 0;
   // The 5-20s quiet gap while tailored pills are being generated (cache still
   // undefined = fetch in flight): show shimmering placeholder pills so the
   // wait reads as "thinking", not "nothing here" (feel pass, ROADMAP §10 #4).
   const showSeedWait =
-    !runningMode && !isAsking && !soleBusy && !draftPending && !plainText.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
+    !runningMode && !generating && !soleBusy && !draftPending && !plainText.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
 
   return (
     <div className={`jz-promptbar-dock${introMode ? ' jz-promptbar-dock--intro' : ''}`} onPointerDown={stopEventPropagation}>
