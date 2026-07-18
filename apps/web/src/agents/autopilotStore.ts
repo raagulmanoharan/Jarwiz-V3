@@ -21,6 +21,7 @@ import { getAgent, type AutopilotBoardCard, type AutopilotEvent, type TableAutop
 import { startStreaming, stopStreaming } from './streaming';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from './presence';
 import { setClarify } from '../ask/clarify';
+import { readSSE } from './sse';
 
 export const AUTOPILOT_AGENT = getAgent('writer');
 
@@ -55,29 +56,6 @@ function cardCorner(editor: Editor, cardId: TLShapeId): { x: number; y: number }
   return b ? { x: b.maxX + 16, y: b.minY + 22 } : null;
 }
 
-/** Read SSE frames from a fetch Response body, calling `onEvent` per `data:` line. */
-async function readSSE<T>(body: ReadableStream<Uint8Array>, onEvent: (e: T) => void): Promise<void> {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  const handle = (line: string) => {
-    if (!line.startsWith('data: ')) return;
-    try {
-      onEvent(JSON.parse(line.slice(6)) as T);
-    } catch {
-      /* malformed frame */
-    }
-  };
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() ?? '';
-    for (const line of lines) handle(line);
-  }
-  handle(buffer);
-}
 
 /* ─── Board context gathering ───────────────────────────────────────────── */
 

@@ -116,7 +116,6 @@ const METERED_PATHS = [
   '/api/diagram',
   '/api/discover',
   '/api/image',
-  '/api/agents/',
 ] as const;
 
 export function isMeteredPath(path: string): boolean {

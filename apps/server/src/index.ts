@@ -4,7 +4,7 @@
  *   GET  /api/health             → { ok: true }
  *   GET  /api/capabilities       → { live } (real key vs scripted demo)
  *   POST /api/link/preview       → LinkPreview (server-side fetch, SSRF-guarded)
- *   POST /api/agents/:id/run     → SSE stream of typed AgentEvents
+ *   POST /api/ask                → SSE stream of typed AskEvents (composer → card)
  *   POST /api/autopilot          → SSE stream of AutopilotEvents (Tab-to-continue)
  *
  * Keys: the server's own ANTHROPIC_API_KEY (env, local dev) or a visitor's
@@ -20,9 +20,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { streamSSE } from 'hono/streaming';
-import { isAgentId } from '@jarwiz/shared';
 import type {
-  AgentEvent,
   AutopilotEvent,
   AutopilotRequest,
   CommentReplyRequest,
@@ -45,7 +43,6 @@ import { cachedImageUrl } from './imageCache.js';
 import { locateStops, type ProposedStop } from './geo.js';
 import { classifyMentionTarget, classifyRefineIntent, generateWidgetHtml, proposeSeedPrompts, streamAsk, suggestShape } from './ask.js';
 import type { AnalyzeCard, AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ExportEvent, ExportMode, ExportRequest, ReviseRequest } from '@jarwiz/shared';
-import { streamAgentRun } from './agentRun.js';
 import { streamAutopilot, streamTableAutopilot } from './autopilot.js';
 import { generateDiagram } from './diagram.js';
 import { generateClusters } from './cluster.js';
@@ -54,7 +51,6 @@ import { sidecarAvailable } from './sidecar.js';
 import { proposeClusterSuggestions, proposeSuggestions } from './suggest.js';
 import type { ClusterSuggestRequest, SuggestRequest } from '@jarwiz/shared';
 import { handleSyncSocket } from './sync.js';
-import { parseRunRequest, RunRequestError } from './agents/request.js';
 import { hasModelKey, requestPilot, runWithRequestContext, sanitizeRequestKey } from './model.js';
 import {
   isMeteredPath,
@@ -381,45 +377,6 @@ app.post('/api/tldr', async (c) => {
     const message = error instanceof Error ? error.message : 'TL;DR failed';
     return c.json({ tldr: '', error: message });
   }
-});
-
-app.post('/api/agents/:agentId/run', async (c) => {
-  const agentId = c.req.param('agentId');
-  if (!isAgentId(agentId)) {
-    return c.json(
-      { error: `Unknown agent "${agentId}". Expected one of: researcher, summarizer, brainstormer, writer.` },
-      404,
-    );
-  }
-
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: 'Expected a JSON body: { source, placement, selection? }' }, 400);
-  }
-
-  let request;
-  try {
-    request = parseRunRequest(body);
-  } catch (error) {
-    const message = error instanceof RunRequestError ? error.message : 'Invalid request';
-    return c.json({ error: message }, 400);
-  }
-
-  // streamSSE frames every event as `data: {json}\n\n`.
-  return streamSSE(c, async (stream) => {
-    const send = (event: AgentEvent) => stream.writeSSE({ data: JSON.stringify(event) });
-    const signal = c.req.raw.signal;
-    try {
-      for await (const event of streamAgentRun(agentId, request, signal)) {
-        await send(event);
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Agent run failed';
-      await send({ type: 'error', message });
-    }
-  });
 });
 
 app.post('/api/autopilot', async (c) => {

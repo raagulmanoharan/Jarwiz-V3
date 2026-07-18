@@ -858,7 +858,11 @@ async function* generateStream(
     // Server tools may pause a long turn (stop_reason "pause_turn") and client
     // tools stop it outright (stop_reason "tool_use"); both resume by replaying
     // the assistant content (plus tool results) until the model finishes.
+    // eslint-disable-next-line no-console
+    const dbg = (...a: unknown[]) => console.error('[jz-debug]', ...a);
+    dbg('generateStream: hasKey', true, '| tools', allTools.length, '| sysLen', system.length, '| maxTokens', maxTokens, '| maxTurns', maxTurns);
     for (let turn = 0; turn <= maxTurns; turn++) {
+      dbg('turn', turn, '→ opening client.messages.stream');
       const stream = client.messages.stream(
         {
           model: AGENT_MODEL,
@@ -869,7 +873,9 @@ async function* generateStream(
         },
         { signal },
       );
+      let firstEvent = true;
       for await (const event of stream) {
+        if (firstEvent) { dbg('turn', turn, '← first event:', event.type); firstEvent = false; }
         if (signal.aborted) return;
         if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
           yield { type: 'text', text: event.delta.text };
@@ -877,6 +883,7 @@ async function* generateStream(
           event.type === 'content_block_start' &&
           event.content_block.type === 'server_tool_use'
         ) {
+          dbg('turn', turn, 'server_tool_use:', event.content_block.name);
           yield {
             type: 'status',
             message:
@@ -884,12 +891,15 @@ async function* generateStream(
           };
         }
       }
+      dbg('turn', turn, 'content stream ended → awaiting finalMessage');
       const final = await stream.finalMessage();
+      dbg('turn', turn, 'finalMessage stop_reason:', final.stop_reason, '| blocks:', final.content.map((b) => b.type).join(','));
       if (final.stop_reason === 'tool_use' && opts.clientTools) {
         const calls = final.content.filter(
           (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
         );
         if (calls.length > 0) {
+          dbg('turn', turn, 'running', calls.length, 'client tool(s):', calls.map((c) => c.name).join(','), JSON.stringify(calls.map((c) => c.input)).slice(0, 120));
           yield { type: 'status', message: opts.clientTools.status };
           const results = await Promise.all(
             calls.map(async (c) => ({
@@ -898,6 +908,7 @@ async function* generateStream(
               content: await opts.clientTools!.run(c.name, c.input),
             })),
           );
+          dbg('turn', turn, 'client tool(s) returned → continuing loop');
           messages.push({ role: 'assistant', content: final.content });
           messages.push({ role: 'user', content: results });
           continue;
@@ -1237,7 +1248,11 @@ export async function suggestShape(prompt: string, signal: AbortSignal): Promise
 }
 
 export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGenerator<AskEvent> {
+  // eslint-disable-next-line no-console
+  const dbg = (...a: unknown[]) => console.error('[jz-debug] streamAsk:', ...a);
+  dbg('ENTER prompt=', JSON.stringify(req.prompt).slice(0, 60), '| shape=', req.shape, '| skipClarify=', req.skipClarify, '| hasKey=', hasModelKey(), '| sidecar=', sidecarAvailable());
   if (!hasModelKey() && !sidecarAvailable()) {
+    dbg('→ demo mode');
     yield* streamDemoAsk(req, signal);
     return;
   }
@@ -1275,7 +1290,9 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   const deep =
     !req.noResearch &&
     (req.deep || (looksLikeResearch(req.prompt) && (routedShape === 'doc' || routedShape === 'list')));
+  dbg('gates: deep=', deep, '| routedShape=', routedShape, '| contextLen=', context.length);
   if (deep) {
+    dbg('→ DEEP research path (streamRichResearch)');
     yield { type: 'status', message: 'researching across the web…' };
     const user = `Research request:\n${req.prompt}\n\n${context || '(No canvas sources — research the request itself.)'}`;
     // Rich generative-UI dossier (prose + tables + charts + images + tabs) —
@@ -1290,7 +1307,9 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   // (with tappable options) instead of guessing. Skipped once the user answers.
   if (!req.skipClarify) {
     yield { type: 'status', message: 'making sure I understand…' };
+    dbg('→ calling maybeClarify (non-streaming generate)…');
     const clarify = await maybeClarify(req, signal);
+    dbg('maybeClarify returned:', clarify ? 'CLARIFY question' : 'null (proceed)');
     if (signal.aborted) return;
     if (clarify) {
       yield { type: 'clarify', question: clarify.question, options: clarify.options };
@@ -1303,6 +1322,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   // the format; don't second-guess it. (Routed once, above the deep gate.)
   const shape = routedShape;
   const user = `Question:\n${req.prompt}\n\n${context}`;
+  dbg('→ dispatching shape:', shape);
 
   if (shape === 'affinity') {
     yield* streamAffinity(user, signal, images);

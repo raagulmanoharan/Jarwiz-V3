@@ -674,7 +674,7 @@ export function PromptBar() {
     // mode selected the answer is always a DOC (the composer's first-class
     // default); Board / Stickies / any other shape require picking the "/" mode
     // (owner call 2026-07-07). Whether a typed instruction EDITS a selected card
-    // in place vs makes a new card is inferred from intent (see routeSelectedAsk).
+    // in place vs makes a new card is inferred from intent (see routeGroundedAsk).
     if (mode === 'board') {
       void compose(prompt);
     } else if (mode === 'debrief') {

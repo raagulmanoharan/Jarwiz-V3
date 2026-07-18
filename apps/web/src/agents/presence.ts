@@ -7,7 +7,7 @@
  * prop-drilling through the canvas.
  *
  * Presence is honest: `status` mirrors what the agent is actually doing, and
- * `cursor` is whatever the latest `cursor` AgentEvent pointed at (page space).
+ * `cursor` is wherever the Ask/Autopilot flow last parked it (page space).
  */
 
 import type { AgentId } from '@jarwiz/shared';
