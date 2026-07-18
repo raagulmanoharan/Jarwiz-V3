@@ -46,6 +46,7 @@ stays one-line-per-feature. This changelog papers over Era 1 retroactively.
 ### Jul 18, 2026
 | PR | Tags | What shipped |
 |---|---|---|
+| #86 | `foundation` | Load the server .env when the repo path contains spaces |
 | #84 | `agents` | Auto-keep streamed answers instead of a Keep/Discard bar |
 | #83 | `canvas` | Remove the roaming Jarwiz cursor from the canvas |
 | #80 | `agents` · `canvas` | Make streaming visible: card placeholders, a named wait, a camera that follows |

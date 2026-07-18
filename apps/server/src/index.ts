@@ -14,6 +14,7 @@
 
 import { randomUUID } from 'node:crypto';
 import type { Server as HttpServer } from 'node:http';
+import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
 import { Hono } from 'hono';
@@ -74,9 +75,12 @@ import {
   sendConfirmationEmail,
 } from './beta.js';
 
-// Load apps/server/.env when present (no-op otherwise).
+// Load apps/server/.env when present (no-op otherwise). Resolve the path via
+// fileURLToPath, not URL.pathname: pathname percent-encodes spaces and other
+// special characters (e.g. a repo cloned under "…/Cursor Experiments/…"), which
+// loadEnvFile then can't open — silently dropping the .env and its API key.
 try {
-  process.loadEnvFile(new URL('../.env', import.meta.url).pathname);
+  process.loadEnvFile(fileURLToPath(new URL('../.env', import.meta.url)));
 } catch {
   /* .env is optional */
 }
