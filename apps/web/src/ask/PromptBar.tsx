@@ -16,8 +16,6 @@ import { suggestShape } from './suggestShape';
 import { ASKABLE, hasAskableContent } from './askable';
 import { getShapeTitle } from '../shapes/shapeTitle';
 import { useAsk } from './useAsk';
-import { useCompose } from '../agents/useCompose';
-import { useAnnotate } from '../agents/useAnnotate';
 import { classifyRefineIntent, resolveMentionTarget, INLINE_EDITABLE, REFINE_SHAPE } from './refineIntent';
 import { useAnalyze } from '../agents/useAnalyze';
 import { gatherBoardCards } from '../agents/boardText';
@@ -200,9 +198,7 @@ const MODES: Array<{ shape: ModeShape; label: string; hint: string }> = [
 export function PromptBar() {
   const editor = useEditor();
   const { ask, isAsking } = useAsk();
-  const { run: compose, phase: composePhase } = useCompose();
   const { run: debrief, phase: debriefPhase } = useDebrief();
-  const { run: annotate, phase: annotatePhase } = useAnnotate();
   const { analyze, runningMode } = useAnalyze();
   // The composer is a mention-aware contenteditable (MentionInput). Its model:
   //  - plainText: prose only (mentions excluded) — the "/" command, the shape
@@ -608,8 +604,7 @@ export function PromptBar() {
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
-  const composing = composePhase === 'planning' || composePhase === 'building' || debriefPhase === 'building';
-  const annotating = annotatePhase === 'thinking';
+  const composing = debriefPhase === 'building';
   // A grounded ask with no explicit mode. The TARGET is read from the PROMPT:
   //  - one card → does the instruction EDIT it in place or make a NEW card?
   //  - many @mentioned cards → which one (if any) does the prompt ask to update,
@@ -644,7 +639,7 @@ export function PromptBar() {
     // mention rendered as the card it names, so "@Pricing" reads as a reference.
     const q = plainText.trim();
     const prompt = promptText.trim() || q;
-    if (!q || isAsking || composing || annotating) return;
+    if (!q || isAsking || composing) return;
     if (attachUploading) return; // wait for attachments to finish uploading
     // Onboarding: the first ask sends the composer gliding down into its dock.
     if (introMode) leaveIntro();
@@ -664,20 +659,17 @@ export function PromptBar() {
     const grounds = [...(groundIds as TLShapeId[]), ...attIds];
     // SHAPE is explicit only — no implicit routing from the prompt text. With no
     // mode selected the answer is always a DOC (the composer's first-class
-    // default); Board / Stickies / any other shape require picking the "/" mode
-    // (owner call 2026-07-07). Whether a typed instruction EDITS a selected card
-    // in place vs makes a new card is inferred from intent (see routeSelectedAsk).
-    if (mode === 'board') {
-      void compose(prompt);
-    } else if (mode === 'debrief') {
+    // default). Whether a typed instruction EDITS a selected card in place vs
+    // makes a new card is inferred from intent (see routeSelectedAsk). Debrief
+    // is the one non-shape recipe still reachable — it auto-pins when a
+    // transcript is attached.
+    if (mode === 'debrief') {
       // The debrief recipe reads the transcript among the grounds (the
       // materialized attachment or a selected text card). Without one it
       // degrades to a plain doc ask — never a dead send.
       void debrief(prompt, grounds).then((ran) => {
         if (!ran) void ask(prompt, grounds, { forceShape: 'doc' });
       });
-    } else if (mode === 'affinity') {
-      void annotate(prompt);
     } else if (!mode && attIds.length === 0 && groundIds.length >= 1) {
       // Grounded, no mode, nothing freshly attached → the prompt decides the
       // target: edit one referenced card in place (with the rest as sources),
@@ -723,13 +715,13 @@ export function PromptBar() {
   // is exactly when "what am I missing" earns its place (dogfood 2026-07-05;
   // the old ≥3 hid it right after the first table landed).
   // Every dock pill stands down while anything is generating — a draft
-  // streaming or waiting on Keep/Discard (draftPending), but ALSO a board
-  // fan-out / debrief (composing), a plain ask (isAsking), or an affinity run
-  // (annotating), none of which raise a draft. The pills describe the PREVIOUS
-  // state and would float over the cards streaming in and their controls
-  // (G4.2; owner ask 2026-07-17 — hide the pills while cards stream in).
+  // streaming or waiting on Keep/Discard (draftPending), but ALSO a debrief
+  // (composing) or a plain ask (isAsking), neither of which raises a draft. The
+  // pills describe the PREVIOUS state and would float over the cards streaming
+  // in and their controls (G4.2; owner ask 2026-07-17 — hide the pills while
+  // cards stream in).
   const draftPending = useSyncExternalStore(subscribeDraft, () => Boolean(getDraft()), () => false);
-  const generating = composing || isAsking || annotating;
+  const generating = composing || isAsking;
   const showChips = !runningMode && !draftPending && !generating && groundIds.length === 0 && meaningfulCount >= 2;
   // Pills are ALWAYS contextual — generated from the card's own content.
   // Nothing scripted: until the tailored pills arrive (or if the card is
@@ -964,15 +956,13 @@ export function PromptBar() {
             // Carrying a busy label ("Planning…", "Scanning…"), the round
             // 30px button becomes a pill — the text no longer spills out of
             // the circle (G4.5).
-            className={`jz-promptbar-send${composing || annotating || busyLabel ? ' jz-promptbar-send--busy' : ''}`}
-            disabled={!plainText.trim() || attachUploading || isAsking || composing || annotating}
+            className={`jz-promptbar-send${composing || busyLabel ? ' jz-promptbar-send--busy' : ''}`}
+            disabled={!plainText.trim() || attachUploading || isAsking || composing}
             onClick={submit}
             title={attachUploading ? 'Attaching…' : 'Send (Enter)'}
           >
             {composing ? (
-              <span className="jz-promptbar-busy-inline">{debriefPhase === 'building' ? 'Debriefing…' : composePhase === 'planning' ? 'Planning…' : 'Building…'}</span>
-            ) : annotating ? (
-              <span className="jz-promptbar-busy-inline">Noting…</span>
+              <span className="jz-promptbar-busy-inline">Debriefing…</span>
             ) : busyLabel ? (
               <span className="jz-promptbar-busy-inline">{busyLabel}</span>
             ) : (

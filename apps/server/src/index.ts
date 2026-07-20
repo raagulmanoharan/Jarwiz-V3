@@ -33,7 +33,6 @@ import { discoverResources } from './discover.js';
 import { reviewBoard } from './notice.js';
 import { streamCompose } from './compose.js';
 import { streamExport } from './export.js';
-import { annotateBoard } from './annotate.js';
 import { getMachine } from './machines.js';
 import { streamMachineBoard } from './machineBoard.js';
 import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset, sniffMime } from './assets.js';
@@ -700,37 +699,6 @@ app.post('/api/notice', async (c) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Review failed';
     return c.json({ comments: [], error: message }, 502);
-  }
-});
-
-/** Annotate — Stickies mode: Jarwiz drops a sticky note next to each relevant card. */
-app.post('/api/annotate', async (c) => {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: 'Expected JSON: { prompt, cards[] }' }, 400);
-  }
-  const raw = body as { prompt?: unknown; cards?: unknown };
-  const prompt = typeof raw.prompt === 'string' ? raw.prompt.slice(0, 500) : '';
-  const cards = Array.isArray(raw.cards)
-    ? raw.cards
-        .filter((card) => typeof (card as { id?: unknown })?.id === 'string')
-        .slice(0, 24)
-        .map((card) => ({
-          id: String((card as { id: string }).id),
-          kind: typeof (card as AnalyzeCard)?.kind === 'string' ? (card as AnalyzeCard).kind : 'note',
-          title: typeof (card as AnalyzeCard)?.title === 'string' ? (card as AnalyzeCard).title!.slice(0, 200) : undefined,
-          text: typeof (card as AnalyzeCard)?.text === 'string' ? (card as AnalyzeCard).text.slice(0, 2000) : '',
-          assetId: typeof (card as AnalyzeCard)?.assetId === 'string' ? (card as AnalyzeCard).assetId : undefined,
-        }))
-    : [];
-  try {
-    const notes = await annotateBoard({ prompt, cards }, c.req.raw.signal);
-    return c.json({ notes });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Annotate failed';
-    return c.json({ notes: [], error: message }, 502);
   }
 });
 
