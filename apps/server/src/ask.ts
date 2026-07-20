@@ -1190,42 +1190,35 @@ export async function classifyMentionTarget(
  *  shape stays explicit). Model-inferred, not keyword-matched. Biased to DOC
  *  (→ no chip, the default) unless a non-doc shape clearly fits — a wrong chip
  *  is more annoying than none. */
-const SHAPE_SUGGEST_SYSTEM = `A user is typing a request into a canvas app that answers as ONE of these card shapes. Pick the single best fit for their (possibly partial) prompt:
+const SHAPE_SUGGEST_SYSTEM = `A user is typing a request into a canvas app that answers as ONE of these four card shapes. Pick the single best fit for their (possibly partial) prompt:
 
-- DOC — written prose: an essay, blog post, summary, explanation, email, memo, brief. This is the DEFAULT; choose it whenever nothing else clearly fits.
-- LIST — a bullet list or checklist: steps, "top N", tips, an agenda, an itinerary, to-dos.
-- TABLE — a comparison or grid: "compare X and Y", pros and cons, a matrix, pricing, feature breakdown, rows × columns.
-- DIAGRAM — boxes and arrows: a flowchart, process flow, architecture, sequence, org chart, mind map, "how X works".
+- DOC — the rich DEFAULT. Written prose AND anything that lives inside a document: an essay, summary, explanation, email, memo, brief, a bullet LIST or checklist, a TABLE / comparison / grid, a set of PLACES or a trip itinerary (a doc can embed a live map), a "top N", pros and cons. Choose DOC whenever the answer is text, or text with a table / list / map / image in it — which is most requests.
 - PROTOTYPE — a live, rendered, interactive UI: an app, screen, form, widget, game, landing page, signup, timer, calculator.
 - DASHBOARD — turning DATA into an interactive view of KPIs, charts and a table: "dashboard of…", "visualise the… data/metrics/sales/revenue", analytics/KPIs/scorecard.
-- MAP — real PLACES to visit, on a map: a trip/day-trip/route with stops, an itinerary tied to geography, "places/cafés/temples near X", "where should I go…".
-- BOARD — a whole SET of cards laid out together for a broad, multi-part goal: "plan my launch", "organise everything for my trip", a workspace, everything you need end-to-end.
+- FLOW — a flowchart or graph of boxes and arrows: a process flow, architecture, sequence, org chart, mind map, "how X works" as a diagram.
 
 Examples:
 "write a blog post about remote work" → DOC
 "summarize the meeting notes" → DOC
-"explain how transformers work" → DOC
-"compare the top 3 CRMs" → TABLE
-"pros and cons of remote work" → TABLE
-"checklist for launch day" → LIST
-"top 5 productivity tips" → LIST
-"flowchart of the onboarding process" → DIAGRAM
-"architecture of our payments system" → DIAGRAM
+"compare the top 3 CRMs" → DOC
+"pros and cons of remote work" → DOC
+"checklist for launch day" → DOC
+"plan a day trip from Bengaluru with a trek and a waterfall" → DOC
+"good temples near Mysore" → DOC
 "build a pomodoro timer" → PROTOTYPE
 "a signup form with validation" → PROTOTYPE
 "landing page for a coffee app" → PROTOTYPE
 "dashboard of Q2 sales" → DASHBOARD
 "visualise revenue by region" → DASHBOARD
 "kpis for our SaaS metrics" → DASHBOARD
-"plan a day trip from Bengaluru with a trek and a waterfall" → MAP
-"good temples near Mysore" → MAP
-"route for our Coorg road trip" → MAP
-"plan my product launch" → BOARD
-"organise everything for my Goa trip" → BOARD
+"flowchart of the onboarding process" → FLOW
+"architecture of our payments system" → FLOW
 
-Reply with EXACTLY one word: DOC, LIST, TABLE, DIAGRAM, PROTOTYPE, DASHBOARD, MAP, or BOARD.`;
+Reply with EXACTLY one word: DOC, PROTOTYPE, DASHBOARD, or FLOW.`;
 
-const SUGGESTABLE = new Set(['doc', 'list', 'table', 'diagram', 'prototype', 'dashboard', 'map', 'board']);
+// FLOW maps to the diagram shape under the hood. table/list/map are no longer
+// suggestable — those answers are rich docs now (owner call 2026-07-20).
+const SUGGESTABLE = new Set(['doc', 'prototype', 'dashboard', 'flow', 'diagram']);
 
 export async function suggestShape(prompt: string, signal: AbortSignal): Promise<string | null> {
   const p = prompt.trim();
@@ -1240,7 +1233,8 @@ export async function suggestShape(prompt: string, signal: AbortSignal): Promise
   // no chip). Anything unrecognised → null (don't pin a wrong guess).
   const word = (raw.trim().toLowerCase().match(/[a-z]+/)?.[0]) ?? '';
   if (!SUGGESTABLE.has(word) || word === 'doc') return null;
-  return word;
+  // "flow" is the label; the shape under the hood is still 'diagram'.
+  return word === 'flow' ? 'diagram' : word;
 }
 
 export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGenerator<AskEvent> {
