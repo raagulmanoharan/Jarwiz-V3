@@ -7248,6 +7248,14 @@ body,
 .jz-map-canvas {
   position: absolute;
   inset: 0;
+  /* MapLibre adds its own .maplibregl-map (position: relative) to this SAME
+     node, and its runtime-injected stylesheet loads after ours — so it wins the
+     cascade, our inset:0 stops sizing the box, and the container collapses to
+     0 height. A zero-height map can't project its markers, so the pins silently
+     pile at the origin and vanish. Pin the size explicitly so the container
+     always fills its frame no matter which `position` wins. */
+  width: 100%;
+  height: 100%;
 }
 
 /* The numbered stop pin — accent dot, card-colored ring, spring entrance. */
