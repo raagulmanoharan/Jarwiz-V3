@@ -54,6 +54,7 @@ import { EmbedUseCases } from './ui/EmbedUseCases';
 import { CardTitleTag } from './ui/CardTitleTag';
 import { DocFocusOverlay } from './ui/DocFocusOverlay';
 import { CardFocusOverlay } from './ui/CardFocusOverlay';
+import { EditToFocus } from './ui/EditToFocus';
 import { EmptyState } from './ui/EmptyState';
 import { CardPhysics } from './ui/CardPhysics';
 import { Topbar } from './ui/Topbar';
@@ -88,6 +89,7 @@ function JarwizOverlay() {
       {/* Behavioural overlays — the ask/refine loop on cards. (Provenance
           lineage renders in the OnTheCanvas slot below, behind the shapes.) */}
       <Safe label="EmptyState"><EmptyState /></Safe>
+      <Safe label="EditToFocus"><EditToFocus /></Safe>
       <Safe label="CardPhysics"><CardPhysics /></Safe>
       <Safe label="CardTitleTag"><CardTitleTag /></Safe>
       <Safe label="CardActionBar"><CardActionBar /></Safe>

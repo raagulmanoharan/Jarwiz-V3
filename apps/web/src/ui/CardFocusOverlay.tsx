@@ -1,10 +1,12 @@
 /**
- * Card focus mode — any non-text card opened full-screen over a darkened board
- * (the doc card gets its own rich editor, DocFocusOverlay; this is the READ
- * presentation for everything else). A dashboard fills the screen, an image
- * becomes a lightbox, a PDF/prototype gets room to breathe, a table/sheet is
- * legible edge to edge. Read-only by design — the canvas card stays the source
- * of truth. Opened from the refine bar's ⤢ Expand; Esc or the backdrop closes.
+ * Card focus mode — a card opened full-screen over a darkened board (the doc
+ * card gets its own rich editor, DocFocusOverlay; this overlay handles every
+ * other card). Since cards no longer edit inline (owner call 2026-07-20),
+ * double-clicking opens this: the note and table are EDITABLE here (edit-in-
+ * place, same as the canvas used to be, with room to work); dashboards, images,
+ * PDFs, diagrams, maps, videos and links are read/interactive presentations
+ * (there's nothing to text-edit). Opened by double-click or the refine bar's ⤢
+ * Expand; Esc or the backdrop closes.
  */
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
@@ -17,11 +19,14 @@ import { googleMapsRouteUrl, googleMapsUrl, MapViewport } from '../shapes/mapVie
 import { dashboardLibrary } from '../dashboard/library';
 import { renderMermaid } from '../lib/mermaid';
 import { apiUrl } from '../lib/api';
+import { TableCellEditable } from '../shapes/TableCellEditable';
 import { closeCardFocus, getCardFocus, subscribeCardFocus } from './focusCard';
 
 /** Card types that open in this presentation overlay (doc-card is handled by
- *  the rich editor overlay instead; stickies are annotations, not artifacts). */
+ *  the rich editor overlay instead). Note + table edit in place here; the rest
+ *  are read/interactive. */
 const FOCUSABLE = new Set([
+  'note-card',
   'dashboard-card',
   'table-card',
   'sheet-card',
@@ -96,6 +101,8 @@ export function CardFocusOverlay() {
 
 function FocusBody({ shape }: { shape: TLShape }) {
   switch (shape.type) {
+    case 'note-card':
+      return <NoteFocus shape={shape} />;
     case 'dashboard-card':
       return <DashboardFocus shape={shape} />;
     case 'prototype-card':
@@ -257,12 +264,94 @@ function DiagramFocus({ shape }: { shape: TLShape }) {
   );
 }
 
+/** The note (sticky) edited full-screen — a plain textarea bound to the shape,
+ *  the roomy replacement for the old on-canvas inline edit. */
+function NoteFocus({ shape }: { shape: TLShape }) {
+  const editor = useEditor();
+  const { text, color } = shape.props as { text: string; color?: string };
+  return (
+    <div className="jz-notefocus" style={color ? { background: color } : undefined}>
+      <textarea
+        className="jz-notefocus-input"
+        autoFocus
+        defaultValue={text}
+        placeholder="Write something…"
+        onChange={(e) => editor.updateShape({ id: shape.id, type: 'note-card', props: { text: e.currentTarget.value } })}
+      />
+    </div>
+  );
+}
+
+/** The table edited full-screen — cells and headers are edit-in-place
+ *  (TableCellEditable, the same formatted-markdown cell the canvas used). Cell
+ *  content edits here; row/column structure is managed from the canvas card. */
 function TableFocus({ shape }: { shape: TLShape }) {
+  const editor = useEditor();
   const { columns, rows } = shape.props as { columns: string[]; rows: string[][] };
+  const cols = columns ?? [];
+  const body = rows ?? [];
+
+  const setHeader = (col: number, v: string) => {
+    const next = cols.map((c, i) => (i === col ? v : c));
+    editor.updateShape({ id: shape.id, type: 'table-card', props: { columns: next } });
+  };
+  const setCell = (row: number, col: number, v: string) => {
+    const next = body.map((r, ri) => (ri === row ? r.map((c, ci) => (ci === col ? v : c)) : r));
+    editor.updateShape({ id: shape.id, type: 'table-card', props: { rows: next } });
+  };
+
   return (
     <div className="jz-cardfocus-scroll">
-      <FocusTable columns={columns ?? []} rows={rows ?? []} />
+      <FocusEditableTable columns={cols} rows={body} onHeader={setHeader} onCell={setCell} />
     </div>
+  );
+}
+
+function FocusEditableTable({
+  columns,
+  rows,
+  onHeader,
+  onCell,
+}: {
+  columns: string[];
+  rows: string[][];
+  onHeader: (col: number, v: string) => void;
+  onCell: (row: number, col: number, v: string) => void;
+}) {
+  return (
+    <table className="jz-cardfocus-table jz-cardfocus-table--edit">
+      {columns.length ? (
+        <thead>
+          <tr>
+            {columns.map((c, i) => (
+              <th key={i}>
+                <TableCellEditable
+                  className="jz-cardfocus-cell-edit"
+                  value={c}
+                  placeholder={`Column ${i + 1}`}
+                  onChange={(v) => onHeader(i, v)}
+                />
+              </th>
+            ))}
+          </tr>
+        </thead>
+      ) : null}
+      <tbody>
+        {rows.map((r, ri) => (
+          <tr key={ri}>
+            {(Array.isArray(r) ? r : [r]).map((c, ci) => (
+              <td key={ci}>
+                <TableCellEditable
+                  className="jz-cardfocus-cell-edit"
+                  value={String(c ?? '')}
+                  onChange={(v) => onCell(ri, ci, v)}
+                />
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 

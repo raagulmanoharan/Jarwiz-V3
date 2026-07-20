@@ -5888,6 +5888,43 @@ body,
 .jz-cardfocus-table th:last-child, .jz-cardfocus-table td:last-child { border-right: none; }
 .jz-cardfocus-table th { color: var(--jz-ink-500); font-weight: 600; position: sticky; top: 0; background: var(--jz-card-surface); }
 
+/* Editable table in focus — cells wrap (edit needs room) and each hosts a
+   contentEditable that fills the cell. */
+.jz-cardfocus-table--edit th, .jz-cardfocus-table--edit td { white-space: normal; padding: 0; vertical-align: top; }
+.jz-cardfocus-cell-edit {
+  padding: 9px 14px;
+  min-height: 1.4em;
+  outline: none;
+  cursor: text;
+  color: inherit;
+}
+.jz-cardfocus-cell-edit:empty::before { content: attr(data-placeholder); color: var(--jz-ink-400); }
+.jz-cardfocus-cell-edit:focus { box-shadow: inset 0 0 0 2px var(--jz-accent); border-radius: 4px; }
+
+/* Note (sticky) edited full-screen — the paper fills the stage; the textarea is
+   the whole surface, comfortably sized. */
+.jz-notefocus {
+  width: 100%;
+  height: 100%;
+  background: var(--jz-note-paper, #fef9c3);
+  border-radius: var(--jz-radius-3, 12px);
+  box-sizing: border-box;
+  padding: var(--jz-space-5);
+}
+.jz-notefocus-input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: var(--jz-ink-900);
+  font-family: inherit;
+  font-size: 18px;
+  line-height: 1.6;
+}
+.jz-notefocus-input::placeholder { color: var(--jz-ink-400); }
+
 /* Link preview — a big, calm card. */
 .jz-cardfocus-link { max-width: 640px; display: flex; flex-direction: column; gap: 16px; }
 .jz-cardfocus-link-img { width: 100%; border-radius: 12px; border: 1px solid var(--jz-hairline); }
