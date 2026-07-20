@@ -35,9 +35,11 @@ interface RichDocEditorProps {
   onExit?: () => void;
   /** Content height in px, so the card can grow to fit (grow-only). */
   onHeight?: (px: number) => void;
+  /** Extra class on the root — e.g. `jz-doc-rich--focus` for the full-page editor. */
+  className?: string;
 }
 
-export function RichDocEditor({ initialMarkdown, onChange, onExit, onHeight }: RichDocEditorProps) {
+export function RichDocEditor({ initialMarkdown, onChange, onExit, onHeight, className }: RichDocEditorProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const editor = useEditor({
     extensions: [
@@ -80,7 +82,7 @@ export function RichDocEditor({ initialMarkdown, onChange, onExit, onHeight }: R
   return (
     <div
       ref={rootRef}
-      className="jz-doc-rich"
+      className={className ? `jz-doc-rich ${className}` : 'jz-doc-rich'}
       style={{ pointerEvents: 'all' }}
       onPointerDown={stopEventPropagation}
       onPointerMove={stopEventPropagation}

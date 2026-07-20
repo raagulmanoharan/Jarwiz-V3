@@ -46,6 +46,7 @@ stays one-line-per-feature. This changelog papers over Era 1 retroactively.
 ### Jul 18, 2026
 | PR | Tags | What shipped |
 |---|---|---|
+| #91 | `cards` | Rich editing in focus mode; stop the doc card resizing on edit |
 | #90 | `cards` | Fix doc-card edit spacing and height to match read mode |
 | #89 | `cards` | Keep the card title on a grab cursor until you rename it |
 | #88 | `cards` | Edit doc cards formatted, in place — no more raw markdown on double-click |

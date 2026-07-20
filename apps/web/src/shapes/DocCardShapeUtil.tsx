@@ -202,15 +202,17 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
       editor.updateShape<DocCardShape>({ id: shape.id, type: 'doc-card', props: { text: value } });
     }
   };
-  // Fit the card to the editor's content height while editing — grow AND
-  // shrink, so a formatted doc reads at the same height it does in read mode
-  // (no dead space under short content, matching read's auto-fit).
+  // Entering edit must NOT resize the card — it keeps its read-mode height, so
+  // double-clicking never makes it jump/expand (owner ask 2026-07-20). We only
+  // GROW it, and only once the content actually exceeds the current height (i.e.
+  // as you type past the bottom); we never shrink on entry. The read and edit
+  // renderers lay content out to ~the same height, so there's no dead space.
   const fitHeight = (needed: number) => {
     const cur = editor.getShape(shape.id);
     if (!cur) return;
     const curH = (cur.props as DocCardProps).h;
     const next = Math.max(80, Math.round(needed));
-    if (Math.abs(next - curH) > 1) {
+    if (next > curH + 1) {
       editor.updateShape<DocCardShape>({ id: shape.id, type: 'doc-card', props: { h: next } });
     }
   };

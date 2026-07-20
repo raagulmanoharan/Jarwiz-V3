@@ -13,6 +13,9 @@ import { toggleInline, toggleLinePrefix, shortcutMarker, type FormatResult } fro
 import { deriveTitle, getShapeTitle, setShapeTitle, titleIsAuto } from '../shapes/shapeTitle';
 import type { DocCardShape } from '../shapes';
 import { closeCardFocus, getCardFocus, subscribeCardFocus } from './focusCard';
+import { RichDocEditor } from './RichDocEditor';
+import { docHasSpecialSyntax } from './docBridge';
+import { runRichFormat } from './richDocRegistry';
 
 const ICON = { size: 15, strokeWidth: 2 };
 
@@ -118,7 +121,9 @@ export function DocFocusOverlay() {
                 title={f.label}
                 aria-label={f.label}
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => applyFormat(f.run)}
+                // Rich editor active → dispatch as a TipTap command; the
+                // textarea path (applyFormat) only runs for dialect docs.
+                onClick={() => { if (!runRichFormat(f.key)) applyFormat(f.run); }}
               >
                 {f.icon}
               </button>
@@ -128,24 +133,36 @@ export function DocFocusOverlay() {
             </button>
           </div>
         </div>
-        <textarea
-          ref={taRef}
-          className="jz-focus-textarea"
-          value={text}
-          placeholder="Write something…"
-          autoFocus
-          onChange={(e) => setText(e.currentTarget.value)}
-          onKeyDown={(e) => {
-            const marker = shortcutMarker(e);
-            if (marker) {
-              e.preventDefault();
-              applyFormat((t, s, en) => toggleInline(t, s, en, marker));
-              return;
-            }
-            if (e.key === 'Escape') closeCardFocus();
-            e.stopPropagation();
-          }}
-        />
+        {docHasSpecialSyntax(text) ? (
+          // Dialect docs (map/widget/citations) keep the raw-text editor.
+          <textarea
+            ref={taRef}
+            className="jz-focus-textarea"
+            value={text}
+            placeholder="Write something…"
+            autoFocus
+            onChange={(e) => setText(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              const marker = shortcutMarker(e);
+              if (marker) {
+                e.preventDefault();
+                applyFormat((t, s, en) => toggleInline(t, s, en, marker));
+                return;
+              }
+              if (e.key === 'Escape') closeCardFocus();
+              e.stopPropagation();
+            }}
+          />
+        ) : (
+          // Formatted, full-page editing — same editor as the card, focus-sized.
+          <RichDocEditor
+            key={focusId}
+            initialMarkdown={text}
+            onChange={setText}
+            onExit={closeCardFocus}
+            className="jz-doc-rich--focus"
+          />
+        )}
       </div>
     </div>
   );
