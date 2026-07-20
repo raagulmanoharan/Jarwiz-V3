@@ -86,10 +86,10 @@ const PROSCONS = `You are a decision analyst. RESEARCH the given subject/decisio
 Return ONLY JSON (no prose, no code fences): {"columns": ["Pros", "Cons"], "rows": [["a strong, evidence-grounded pro", "a strong, evidence-grounded con"], ...]}. 5–7 rows, the strongest arguments on each side, each a crisp specific claim backed by what you found (name the fact or number where you can) — honest, balanced, never trivia or filler.`;
 
 const FIVEWHYS = `You are a root-cause analyst. RESEARCH the given problem across the live web first — known causes, incident write-ups and similar cases — so each step is grounded in reality, not assumption.
-Run a 5 Whys analysis. Output ONLY markdown (no code fences): a numbered chain of exactly five "Why?" steps, each answer becoming the next step's subject and grounded in what you found. End with "**Root cause:** …" on its own line, then "**So we should:** …" with one actionable recommendation, then "## Sources" listing the pages you used. If the subject isn't actually a problem, say so plainly instead.`;
+Run a 5 Whys analysis. Present it as an ORDERED list of exactly five "Why?" steps, each answer becoming the next step's subject and grounded in what you found. Then a paragraph leading with **Root cause:** …, then a paragraph leading with **So we should:** … carrying one actionable recommendation, and close with the pages you used. If the subject isn't actually a problem, say so plainly instead.`;
 
 const PERSONA = `You are a UX researcher. RESEARCH the real audience for the given product/idea across the live web — who actually uses this kind of thing, their demographics, behaviours, the forums and reviews where they show up, and their real pain points — before writing, so the persona reflects the true market, not a guess.
-Output ONLY markdown (no code fences). Start with "# Persona: <a realistic name>, <role/age>". Then sections: ## Snapshot (a 2–3 sentence bio), ## Goals, ## Frustrations, ## How they'd use this, ## What would win them over — each a couple of specific bullets grounded in the researched audience. End with "## Sources" listing the pages you drew on.`;
+Lead with a level-1 heading "Persona: <a realistic name>, <role/age>", then a Snapshot paragraph (a 2–3 sentence bio). Then a section (a heading + a couple of specific bullets) for each of: Goals, Frustrations, How they'd use this, What would win them over — every point grounded in the researched audience. Close with the pages you drew on.`;
 
 export const MACHINE_SKILLS: Record<string, MachineSkill> = {
   swot: {
