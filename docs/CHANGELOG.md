@@ -43,6 +43,12 @@ stays one-line-per-feature. This changelog papers over Era 1 retroactively.
 
 ## Release log (chronological, newest first)
 
+### Jul 20, 2026
+| PR | Tags | What shipped |
+|---|---|---|
+| #120 | `agents` | Remove the dead citation/sources-marker machinery from the ask loop — the SOURCES_USED marker + directive, the CITE and link-cite directives, their parse/stream-filter helpers, streamDoc's always-zero `trackSources` plumbing, and gatherContext's unused `citable` (the `sources.used` event stays; the table path still emits it) |
+| #119 | `agents` · `cards` | Thinking Machines and deep research answer as rich block cards — one BLOCK_FORMAT grammar across ask/machine/research, a uniform block-card vertical rhythm, the map hand-off moved inside the frame, and a fix for map pins vanishing app-wide (MapLibre collapsed the map container to 0 height) |
+
 ### Jul 18, 2026
 | PR | Tags | What shipped |
 |---|---|---|
