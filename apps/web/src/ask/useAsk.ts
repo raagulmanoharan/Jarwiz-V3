@@ -366,6 +366,10 @@ export function useAsk() {
       const { signal } = ac;
 
       let cardId: TLShapeId | null = null;
+      // A doc card dropped the instant you press enter (see the pre-place block
+      // below). Non-null means a skeleton is already streaming on the board, and
+      // card.create should ADOPT it rather than spawn a second card.
+      let placeholderId: TLShapeId | null = null;
       let cols: string[] = [];
       let rows: string[][] = [];
       // Affinity diagrams aren't one card — they're a board of sticky notes laid
@@ -462,7 +466,17 @@ export function useAsk() {
           }
           case 'clarify': {
             // Ambiguous request — surface the question instead of guessing. The
-            // run ends here; ClarifyLayer re-asks with the answer folded in.
+            // run ends here; ClarifyLayer re-asks with the answer folded in. Any
+            // placeholder we pre-placed on enter must go — there's no answer to
+            // stream into it yet.
+            if (placeholderId) {
+              stopStreaming(placeholderId);
+              if (getDraft()?.id === placeholderId) clearDraft();
+              editor.deleteShape(placeholderId);
+              placeholderId = null;
+              cardId = null;
+              createdIds = [];
+            }
             setClarify({
               question: event.question,
               options: event.options,
@@ -530,6 +544,24 @@ export function useAsk() {
               setRegen({ id: targetId, status: 'streaming' });
               follow();
               break;
+            }
+            // A placeholder doc card is already on the board, streaming (a plain
+            // doc ask pre-placed it on enter). Adopt it — no second card, no
+            // re-frame; the deltas are already flowing into it.
+            if (placeholderId) {
+              if (event.shape === 'doc' || event.shape === 'list') {
+                cardId = placeholderId;
+                createdIds = [placeholderId];
+                break;
+              }
+              // Defensive only — the server routed to a non-doc shape we didn't
+              // anticipate. Retire the placeholder and build the real artefact.
+              stopStreaming(placeholderId);
+              if (getDraft()?.id === placeholderId) clearDraft();
+              editor.deleteShape(placeholderId);
+              placeholderId = null;
+              cardId = null;
+              createdIds = [];
             }
             if (event.shape === 'affinity') {
               const at = placeInLane(editor, sourceIds, AFFINITY_NOTE_W * 3 + AFFINITY_CLUSTER_GAP * 2, 360);
@@ -775,6 +807,36 @@ export function useAsk() {
         }
       };
 
+      // Show the answer card the INSTANT you press enter. pickShape (server
+      // ask.ts) always routes a new, non-"/"-mode ask to a doc, so a doc card at
+      // the spot it'll land IS the real card — card.create adopts it (above),
+      // never swaps it. This turns the first-token wait (5–20s) from a dead
+      // pause into a visible "your answer is forming here" (owner ask
+      // 2026-07-20). Explicit "/" table/diagram/map/etc. modes, machine runs,
+      // and in-place refines are unchanged — they still land at card.create.
+      const willBeDoc =
+        !targetId && !opts?.machineId &&
+        (!opts?.forceShape || opts.forceShape === 'doc' || opts.forceShape === 'list');
+      if (willBeDoc) {
+        const at = placeInLane(editor, sourceIds, DOC_CARD_SIZE.w, DOC_CARD_SIZE.h);
+        const id = createShapeId();
+        editor.createShape<DocCardShape>({
+          id,
+          type: 'doc-card',
+          x: at.x,
+          y: at.y,
+          props: { w: DOC_CARD_SIZE.w, h: DOC_CARD_SIZE.h, title: '', text: '', sourcePdfId: pdfSourceId ?? '' },
+        });
+        recordSources(editor, id, contributingIds, trimmed);
+        startStreaming(id); // flips the card into its "writing…" placeholder state
+        setDraft({ id, status: 'streaming', prompt: trimmed, logLabel: opts?.logLabel, sourceIds, shape: 'doc', pdfSourceId, statusText: lastStatus ?? undefined });
+        frame([id]);
+        if (contributingIds.length > 0) editor.setSelectedShapes([id]);
+        cardId = id;
+        createdIds = [id];
+        placeholderId = id;
+      }
+
       try {
         const res = await fetch('/api/ask', {
           method: 'POST',
@@ -799,6 +861,16 @@ export function useAsk() {
           // On the hosted playground the raw failure is a meaningless 404 —
           // tell the person what's actually going on instead.
           surfaceError(agentErrorMessage(err.message));
+        } else if (placeholderId && cardId === placeholderId) {
+          // Aborted during the first-token wait, before any content reached the
+          // pre-placed card — don't leave an empty skeleton behind. (A partial
+          // card that already took content is kept, as before, for Keep/Discard.)
+          const s = editor.getShape(placeholderId);
+          const empty = !s || !(((s.props as { text?: string }).text ?? '').trim());
+          if (empty) {
+            if (getDraft()?.id === placeholderId) clearDraft();
+            editor.deleteShape(placeholderId);
+          }
         }
       } finally {
         if (inPlaceMark) {
