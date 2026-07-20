@@ -832,6 +832,24 @@ export function useAsk() {
         }
       };
 
+      // Ambient board context for an UNGROUNDED ask: the titles of the cards
+      // already on the canvas, so the server can resolve what the prompt refers
+      // to ("his films", "these") without a source attached. Titles only, and
+      // gathered BEFORE we pre-place the answer below so the fresh skeleton
+      // isn't in its own index (owner call 2026-07-20).
+      const boardIndex =
+        sources.length === 0
+          ? Array.from(
+              new Set(
+                editor
+                  .getCurrentPageShapes()
+                  .filter((s) => s.type.endsWith('-card'))
+                  .map((s) => getShapeTitle(s).trim())
+                  .filter(Boolean),
+              ),
+            ).slice(0, 60)
+          : undefined;
+
       // Show the answer card the INSTANT you press enter, at the spot it'll
       // land, already in its "building…" state — so the wait (a doc's first
       // token, or a table's one long blocking generate) reads as "your answer is
@@ -885,7 +903,7 @@ export function useAsk() {
         const res = await fetch('/api/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: trimmed, sources, currentShape, skipClarify: opts?.skipClarify, shape: opts?.forceShape, deep: opts?.deep, machineId: opts?.machineId }),
+          body: JSON.stringify({ prompt: trimmed, sources, currentShape, skipClarify: opts?.skipClarify, shape: opts?.forceShape, deep: opts?.deep, machineId: opts?.machineId, boardIndex }),
           signal,
         });
         if (!res.ok || !res.body) {

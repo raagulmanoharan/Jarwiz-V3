@@ -391,9 +391,16 @@ async function maybeClarify(
   if (!looksAmbiguous(req.prompt, req.sources)) return null;
   const srcDesc =
     req.sources.map((s, i) => `${i + 1}. ${s.kind}${s.title ? ` "${s.title}"` : ''}`).join('\n') || '(none)';
+  // With no source attached, the canvas card titles often resolve what a bare
+  // reference means — don't ask "who is he?" when a "Nolan's films" card is
+  // sitting right there.
+  const boardDesc =
+    req.sources.length === 0 && req.boardIndex && req.boardIndex.length > 0
+      ? `\n\nCards on the user's canvas (titles):\n${req.boardIndex.slice(0, 40).map((t, i) => `${i + 1}. ${t}`).join('\n')}`
+      : '';
   let raw: string;
   try {
-    raw = await generate(TRIAGE_SYSTEM, `Request: "${req.prompt}"\n\nSelected sources:\n${srcDesc}`, signal);
+    raw = await generate(TRIAGE_SYSTEM, `Request: "${req.prompt}"\n\nSelected sources:\n${srcDesc}${boardDesc}`, signal);
   } catch {
     return null; // never block the ask on triage
   }
@@ -1259,6 +1266,20 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   const { context, citable, images, linkRefs, framePaths, imageData } = await gatherContext(req);
   if (signal.aborted) return;
 
+  // Ambient board awareness: with NO source attached, hand the model the TITLES
+  // of the cards on the canvas so it can resolve what the prompt leans on — "his
+  // films", "these", a bare pronoun — from what's visibly on the board, then
+  // answer from its own knowledge. Titles only (capped) so it stays cheap; it's
+  // not the cards' contents (owner call 2026-07-20).
+  const boardHint =
+    req.sources.length === 0 && req.boardIndex && req.boardIndex.length > 0
+      ? `On the user's canvas right now (card titles only — their full content is NOT attached):\n${req.boardIndex
+          .slice(0, 60)
+          .map((t, i) => `${i + 1}. ${t}`)
+          .join('\n')}\n\nThe request may refer to one of these — a pronoun ("his", "their", "it"), "these", or "all his …". Use the titles to work out what's meant and answer from your own knowledge when the reference is clear. Only ask the user to select a specific card if you genuinely need its contents.`
+      : '';
+  const askContext = [context, boardHint].filter(Boolean).join('\n\n');
+
   // Thinking Machine skill: the machine's own system prompt + research budget
   // replace the router entirely. `prompt` is the subject typed into the block.
   const machine = getMachine(req.machineId);
@@ -1277,7 +1298,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
     (req.deep || (looksLikeResearch(req.prompt) && (routedShape === 'doc' || routedShape === 'list')));
   if (deep) {
     yield { type: 'status', message: 'researching across the web…' };
-    const user = `Research request:\n${req.prompt}\n\n${context || '(No canvas sources — research the request itself.)'}`;
+    const user = `Research request:\n${req.prompt}\n\n${askContext || '(No canvas sources — research the request itself.)'}`;
     // Rich generative-UI dossier (prose + tables + charts + images + tabs) —
     // both live paths (API and CLI sidecar) drive the same model, and the
     // keyless demo mode already exited above, so every real research pass
@@ -1302,7 +1323,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   // An explicit "/" mode pick beats the prompt-based router — the user chose
   // the format; don't second-guess it. (Routed once, above the deep gate.)
   const shape = routedShape;
-  const user = `Question:\n${req.prompt}\n\n${context}`;
+  const user = `Question:\n${req.prompt}\n\n${askContext}`;
 
   if (shape === 'affinity') {
     yield* streamAffinity(user, signal, images);
