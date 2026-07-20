@@ -23,7 +23,7 @@ import {
   type TLShapeId,
   type TLShapePartial,
 } from 'tldraw';
-import type { AskEvent, AskShape, AskSource } from '@jarwiz/shared';
+import type { AskEvent, AskShape, AskSource, RichBlock } from '@jarwiz/shared';
 import {
   DIAGRAM_CARD_SIZE,
   DOC_CARD_SIZE,
@@ -693,6 +693,22 @@ export function useAsk() {
             if (cardId && editor.getShape(cardId)?.type === 'doc-card') {
               editor.updateShape<DocCardShape>({ id: cardId, type: 'doc-card', props: { title: event.title } });
             }
+            break;
+          }
+          case 'block.add': {
+            // Structured rich card — append the hydrated block to the doc card's
+            // meta.jzBlocks (the doc card renders blocks when present). Streaming
+            // one block at a time, the card fills as the model composes it.
+            if (!cardId) break;
+            const s = editor.getShape(cardId);
+            if (!s) break;
+            const prev = (s.meta?.jzBlocks as unknown as RichBlock[] | undefined) ?? [];
+            editor.updateShape(({
+              id: cardId,
+              type: s.type,
+              meta: { ...s.meta, jzBlocks: [...prev, event.block] },
+            } as unknown) as Parameters<typeof editor.updateShape>[0]);
+            follow();
             break;
           }
           case 'card.delta': {
