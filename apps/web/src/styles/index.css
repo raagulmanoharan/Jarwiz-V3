@@ -3932,7 +3932,7 @@ body,
    block's intrinsic margin, then let one owl selector own the gap — a uniform
    beat between blocks, with a wider break above section headings. The first
    block has no predecessor, so it stays flush to the card's top. */
-.jz-richblocks > * { margin: 0; }
+.jz-markdown.jz-richblocks > * { margin: 0; }
 .jz-markdown.jz-richblocks > * + * { margin-top: var(--jz-space-4); }
 .jz-markdown.jz-richblocks > * + .jz-md-h1,
 .jz-markdown.jz-richblocks > * + .jz-md-h2,
