@@ -202,17 +202,16 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
       editor.updateShape<DocCardShape>({ id: shape.id, type: 'doc-card', props: { text: value } });
     }
   };
-  // Entering edit must NOT resize the card — it keeps its read-mode height, so
-  // double-clicking never makes it jump/expand (owner ask 2026-07-20). We only
-  // GROW it, and only once the content actually exceeds the current height (i.e.
-  // as you type past the bottom); we never shrink on entry. The read and edit
-  // renderers lay content out to ~the same height, so there's no dead space.
+  // Keep the shape's bounds honest to the editor's content height. The card
+  // itself hugs its content (jz-doc-auto, above), so this only syncs the shape
+  // box for a clean selection outline — it doesn't move the visible card, so
+  // there's no jump/expand on entering edit (owner ask 2026-07-20).
   const fitHeight = (needed: number) => {
     const cur = editor.getShape(shape.id);
     if (!cur) return;
     const curH = (cur.props as DocCardProps).h;
     const next = Math.max(80, Math.round(needed));
-    if (next > curH + 1) {
+    if (Math.abs(next - curH) > 1) {
       editor.updateShape<DocCardShape>({ id: shape.id, type: 'doc-card', props: { h: next } });
     }
   };
@@ -224,7 +223,9 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
     // raw-text editor, so that content is never rewritten on save.
     if (!docHasSpecialSyntax(text)) {
       return (
-        <div className="jz-doc jz-doc-editing">
+        // jz-doc-auto: hug the content in edit too (like read mode), so the
+        // card never fills a taller shape and shows dead space / "expands".
+        <div className="jz-doc jz-doc-editing jz-doc-auto">
           <RichDocEditor
             initialMarkdown={text}
             onChange={applyText}
