@@ -33,7 +33,6 @@ import {
   MapPin,
   Maximize2,
   Navigation,
-  Network,
   PenLine,
   RefreshCw,
   RotateCcw,
@@ -57,7 +56,6 @@ import { openCardFocus } from '../ui/focusCard';
 import { canFocusCard } from '../ui/CardFocusOverlay';
 import { PROFILE_PROMPT } from './profilePrompt';
 import { PROMPT_META_KEY, PROV_META_KEY, useAsk } from './useAsk';
-import { useDiagram } from '../agents/useDiagram';
 import { useDashboard } from '../agents/useDashboard';
 import { gridIsDashboardable } from '../lib/dashboardable';
 import { refreshPrototype } from '../agents/prototypeRefresh';
@@ -151,7 +149,6 @@ export function applyCardFormat(
 export function CardActionBar() {
   const editor = useEditor();
   const { ask } = useAsk();
-  const { diagram } = useDiagram();
   const { tidy } = useTidy();
   const { cluster } = useCluster();
   const { buildDashboard } = useDashboard();
@@ -274,8 +271,10 @@ export function CardActionBar() {
       { label: 'Make it shorter', icon: <ChevronsDownUp {...ACT_ICON} />, run: () => ask('Make this shorter and tighter, keeping the key points.', [id], { targetId: id, skipClarify: true }) },
       { label: 'Go deeper', icon: <Layers {...ACT_ICON} />, run: () => ask('Go deeper — add detail, nuance, and specifics.', [id], { targetId: id, skipClarify: true }) },
     );
-    if (sel.type !== 'table-card') transforms.push({ label: 'As a table', icon: <Table2 {...ACT_ICON} />, run: () => ask('Reformat this as a comparison table.', [id], { skipClarify: true, forceShape: 'table' }) });
-    if (sel.type !== 'diagram-card') transforms.push({ label: 'As a diagram', icon: <Network {...ACT_ICON} />, run: () => ask('Turn this into a diagram.', [id], { skipClarify: true, forceShape: 'diagram' }) });
+    // Tables live INSIDE the rich doc now (card-type consolidation) — "As a
+    // table" reformats into a doc whose markdown carries the table, no separate
+    // table shape.
+    transforms.push({ label: 'As a table', icon: <Table2 {...ACT_ICON} />, run: () => ask('Reformat this as a comparison table.', [id], { skipClarify: true }) });
     if (generated) transforms.push({ label: 'Regenerate', icon: <RefreshCw {...ACT_ICON} />, run: () => ask('Regenerate this, same intent, fresh take.', [id], { targetId: id }) });
   }
   // A link card with extracted page text refines like a document — the page
@@ -420,12 +419,14 @@ export function CardActionBar() {
   }
   if (canCluster(editor, ids)) transforms.push({ label: 'Cluster & summarise', icon: <Boxes {...ACT_ICON} />, run: () => cluster() });
   if (canTidy(editor, ids)) transforms.push({ label: 'Tidy layout', icon: <LayoutGrid {...ACT_ICON} />, run: () => tidy(ids) });
-  // A flowchart is a text-structure move — offer it where there's structure to
-  // draw (prose, tables, docs), not on a raw image or video (owner audit,
+  // Flow is a text-structure move — offer it where there's structure to draw
+  // (prose, docs, notes, pages), not on a raw image or video (owner audit,
   // 2026-07-05). Multi-select keeps it — combining cards into a flow is valid.
-  const FLOWCHARTABLE = new Set(['doc-card', 'table-card', 'note-card', 'link-card', 'pdf-card', 'sheet-card', 'diagram-card']);
+  // ONE flow path now (card-type consolidation): it makes the Flow card, the
+  // same shape the "/" Flow mode produces — no separate native-diagram drawing.
+  const FLOWCHARTABLE = new Set(['doc-card', 'note-card', 'link-card', 'pdf-card', 'sheet-card', 'diagram-card']);
   const flowchartable = sel.multi ? contentful.length > 0 : contentful.length > 0 && FLOWCHARTABLE.has(sel.type);
-  if (flowchartable) transforms.push({ label: 'Make a flowchart', icon: <Workflow {...ACT_ICON} />, run: () => diagram('Turn this into a flowchart.', ids) });
+  if (flowchartable) transforms.push({ label: 'Make a flow', icon: <Workflow {...ACT_ICON} />, run: () => ask('Turn this into a flowchart.', ids, { skipClarify: true, forceShape: 'diagram' }) });
 
   const runTransform = (t: Transform) => { setMenu(null); t.run(); };
 
