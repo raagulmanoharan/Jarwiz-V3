@@ -46,6 +46,7 @@ stays one-line-per-feature. This changelog papers over Era 1 retroactively.
 ### Jul 18, 2026
 | PR | Tags | What shipped |
 |---|---|---|
+| #115 | `canvas` · `agents` | Compose & Debrief stop fighting their own camera hand-off — their final reframe now respects the follower's yield (camera consolidation, part a) |
 | #114 | `agents` · `cards` | Doc answers stream as hydrated structured blocks — the model emits NDJSON blocks, the server geocodes maps / finds images / previews links, the card fills block by block (rich-card rebuild, phase B) |
 | #113 | `cards` | Structured rich-card blocks — a typed block protocol + renderer (heading/paragraph/list/checklist/table/image/map/link/divider); doc card renders blocks or falls back to markdown (rich-card rebuild, phase A) |
 | #112 | `agents` | Use images for visual answers — inline and as a leading image column in tables — instead of skipping them (find_image runs in API mode) |

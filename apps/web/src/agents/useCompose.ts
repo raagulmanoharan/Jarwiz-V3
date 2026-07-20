@@ -152,7 +152,7 @@ export function useCompose() {
             startFocus(placed.cardId);
             fillTableHeader(slotIdx, placed.cardId, ev);
             relayout();
-            if (!framed) { framed = true; frame(editor, created); }
+            if (!framed && !follower.yielded()) { framed = true; frame(editor, created); }
             follower.follow(created);
           }
           break;
@@ -228,7 +228,7 @@ export function useCompose() {
           // slot streams. In slot order so the flow layout reads left to right.
           for (const c of [...e.cards].sort((a, b) => a.slot - b.slot)) precreate(c.slot, c.type);
           relayout();
-          if (!framed && created.length) { framed = true; frame(editor, created); }
+          if (!framed && created.length && !follower.yielded()) { framed = true; frame(editor, created); }
         } else if (e.type === 'slot') {
           applySlot(e.slot, e.event);
         } else if (e.type === 'error') {
@@ -253,11 +253,11 @@ export function useCompose() {
       relayout();
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       relayout();
-      if (created.length) frame(editor, created);
+      if (created.length && !follower.yielded()) frame(editor, created);
       // Content heights keep settling for a beat after the last delta; re-tidy a
       // couple more times so the final board never has an overlap.
       window.setTimeout(relayout, 350);
-      window.setTimeout(() => { relayout(); if (created.length) frame(editor, created); }, 900);
+      window.setTimeout(() => { relayout(); if (created.length && !follower.yielded()) frame(editor, created); }, 900);
       setPhase((p) => (p === 'error' ? 'error' : 'done'));
     } catch (err) {
       if ((err as Error).name !== 'AbortError') setPhase('error');
