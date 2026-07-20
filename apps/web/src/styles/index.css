@@ -7467,7 +7467,9 @@ body,
 .jz-map-block-cta {
   position: absolute;
   right: var(--jz-space-3);
-  bottom: var(--jz-space-3);
+  /* Top-right: the map's OpenStreetMap/OpenFreeMap attribution owns the bottom
+     edge and must stay legible, so keep the hand-off clear of it. */
+  top: var(--jz-space-3);
   z-index: 2;
   display: inline-flex;
   align-items: center;
