@@ -15,9 +15,11 @@ import {
   type TLShape,
   type TLShapeId,
 } from 'tldraw';
+import type { RichBlock } from '@jarwiz/shared';
 import { StreamingPlaceholder } from '../ui/StreamingPlaceholder';
 import { useStreamState } from './useStreamState';
 import { DocMarkdown } from '../ui/DocMarkdown';
+import { RichBlocks } from '../ui/RichBlocks';
 import { RichDocEditor } from '../ui/RichDocEditor';
 import { docHasSpecialSyntax } from '../ui/docBridge';
 import { CardSources } from '../ui/CardSources';
@@ -275,6 +277,9 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
   const isSourceDoc = shape.meta?.jzSourceDoc === true;
   const { preview, more } = isSourceDoc ? previewSlice(text) : { preview: text, more: 0 };
   const truncated = isSourceDoc && more > 0;
+  // Structured blocks (the new content model) ride in meta so there's no shape
+  // migration; when present they render instead of the markdown text.
+  const blocks = Array.isArray(shape.meta?.jzBlocks) ? (shape.meta!.jzBlocks as unknown as RichBlock[]) : null;
 
   return (
     <div
@@ -283,7 +288,22 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
     >
       <div className="jz-doc-content">
         <CardSources shapeId={shape.id} />
-        {text ? (
+        {blocks && blocks.length > 0 ? (
+          // Structured rich card — the model built typed blocks via construction
+          // tools (owner call 2026-07-20). Carried in meta.jzBlocks so no shape
+          // migration; falls back to markdown text when absent.
+          <RichBlocks
+            blocks={blocks}
+            onCite={(page) => {
+              const pdfId = shape.props.sourcePdfId as TLShapeId;
+              if (!pdfId || !editor.getShape(pdfId)) return;
+              setPdfPage(pdfId, page);
+              editor.select(pdfId);
+              const bounds = editor.getShapePageBounds(pdfId);
+              if (bounds) editor.zoomToBounds(bounds, { animation: { duration: 220 }, inset: 80, targetZoom: 1 });
+            }}
+          />
+        ) : text ? (
           <DocMarkdown
             content={truncated ? preview : text}
             onCite={(page) => {

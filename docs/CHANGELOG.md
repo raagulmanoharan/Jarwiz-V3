@@ -46,6 +46,7 @@ stays one-line-per-feature. This changelog papers over Era 1 retroactively.
 ### Jul 18, 2026
 | PR | Tags | What shipped |
 |---|---|---|
+| #113 | `cards` | Structured rich-card blocks — a typed block protocol + renderer (heading/paragraph/list/checklist/table/image/map/link/divider); doc card renders blocks or falls back to markdown (rich-card rebuild, phase A) |
 | #112 | `agents` | Use images for visual answers — inline and as a leading image column in tables — instead of skipping them (find_image runs in API mode) |
 | #111 | `agents` | The rich doc auto-builds the right constructs — table, checklist, list, map, image — from the response shape without being asked; drop the keyword checklist gate (consolidation, phase 3.5) |
 | #110 | `cards` · `canvas` | Merge the two diagram paths into one "Make a flow" (the Flow card); route "As a table" to a rich doc; delete the redundant native useDiagram (consolidation, phase 3) |

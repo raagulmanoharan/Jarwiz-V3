@@ -262,7 +262,7 @@ export function DocMarkdown({ content, onCite, onToggleTask, sourceId }: DocMark
   return <div className="jz-markdown">{elements}</div>;
 }
 
-function renderInline(text: string, onCite?: (page: number) => void): React.ReactNode {
+export function renderInline(text: string, onCite?: (page: number) => void): React.ReactNode {
   const parts: React.ReactNode[] = [];
   let pos = 0;
 

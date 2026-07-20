@@ -3910,6 +3910,46 @@ body,
   color: var(--jz-ink-400);
 }
 
+/* Ordered list — mirrors .jz-md-ul with numeric markers. */
+.jz-md-ol {
+  margin: 0;
+  padding-left: var(--jz-space-6);
+  list-style: decimal;
+  font-size: var(--jz-text-body-size);
+  line-height: var(--jz-text-body-lh);
+  color: var(--jz-ink-700);
+}
+.jz-md-ol li { margin-bottom: var(--jz-space-2); }
+.jz-md-ol li::marker { color: var(--jz-ink-400); }
+
+/* ── Structured rich-card blocks (RichBlocks) ──────────────────────────────
+   Most block types reuse the .jz-md-* markdown styles; these are the extras a
+   typed block adds: a captioned image figure and a link-preview card. */
+.jz-block-image { margin: 0; }
+.jz-block-image .jz-md-img { margin: 0; }
+.jz-block-image-cap {
+  margin-top: var(--jz-space-2);
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-500);
+}
+.jz-block-link {
+  display: flex;
+  gap: var(--jz-space-3);
+  align-items: stretch;
+  text-decoration: none;
+  border: 1px solid var(--jz-hairline);
+  border-radius: var(--jz-radius-2, 10px);
+  overflow: hidden;
+  background: var(--jz-card-surface);
+  color: inherit;
+}
+.jz-block-link:hover { border-color: color-mix(in srgb, var(--jz-accent) 45%, var(--jz-hairline)); }
+.jz-block-link-img { width: 96px; object-fit: cover; flex: none; }
+.jz-block-link-body { display: flex; flex-direction: column; gap: 2px; padding: var(--jz-space-3); min-width: 0; }
+.jz-block-link-site { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--jz-ink-500); }
+.jz-block-link-title { font-weight: 600; color: var(--jz-ink-900); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jz-block-link-desc { font-size: var(--jz-text-caption-size); color: var(--jz-ink-600); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
 .jz-markdown strong {
   font-weight: 600;
   color: var(--jz-ink-900);
