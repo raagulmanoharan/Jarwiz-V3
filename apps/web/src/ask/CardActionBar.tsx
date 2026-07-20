@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { stopEventPropagation, useEditor, useValue, type Editor, type TLShape, type TLShapeId } from 'tldraw';
+import { stopEventPropagation, useEditor, useValue, type Editor, type TLShapeId } from 'tldraw';
 import {
   AlertTriangle,
   BarChart3,
@@ -18,7 +18,6 @@ import {
   Clock,
   Columns3,
   Combine,
-  CornerUpLeft,
   Copy,
   Eye,
   Film,
@@ -57,8 +56,7 @@ import { uploadAsset } from '../lib/uploadAsset';
 import { openCardFocus } from '../ui/focusCard';
 import { canFocusCard } from '../ui/CardFocusOverlay';
 import { PROFILE_PROMPT } from './profilePrompt';
-import { PROMPT_META_KEY, PROV_META_KEY, sourceLabel, useAsk } from './useAsk';
-import { bringIntoView } from '../ui/bringIntoView';
+import { PROMPT_META_KEY, PROV_META_KEY, useAsk } from './useAsk';
 import { useDiagram } from '../agents/useDiagram';
 import { useDashboard } from '../agents/useDashboard';
 import { gridIsDashboardable } from '../lib/dashboardable';
@@ -95,6 +93,12 @@ const FORMATS: Array<{ key: string; label: string; icon: React.ReactNode; run: (
 
 /** Line-shape formats (bullets/checklist) apply to prose, not table cells. */
 const TABLE_FORMAT_KEYS = new Set(['bold', 'italic', 'underline', 'strike']);
+
+/** Owner call 2026-07-20: keep the card bar minimal — expand · Actions · ⋯, with
+ *  the text format controls only in edit mode. The Summary button, source
+ *  chips, and the sticky-tint picker are off the bar for now; flip this to bring
+ *  them back (or move them into the Actions / ⋯ menus). */
+const SHOW_BAR_EXTRAS = false;
 
 /** Format-bar key → execCommand for a contentEditable table cell. */
 const EXEC: Record<string, string> = {
@@ -236,35 +240,18 @@ export function CardActionBar() {
   // on the board. Each becomes a clickable Source chip — the visible, reliable
   // form of provenance (the hairline is drawn on selection; this is the way to
   // JUMP to where an answer came from). Works for every card type uniformly.
-  const sources = useValue<Array<{ id: TLShapeId; label: string }>>(
-    'cardbar-sources',
-    () => {
-      const selIds = editor.getSelectedShapeIds();
-      if (selIds.length !== 1) return [];
-      const s = editor.getShape(selIds[0]!);
-      const srcIds = (s?.meta?.[PROV_META_KEY] as string[] | undefined) ?? [];
-      return srcIds
-        .map((sid) => editor.getShape(sid as TLShapeId))
-        .filter((x): x is TLShape => Boolean(x))
-        .map((x) => ({ id: x.id, label: sourceLabel(x) }));
-    },
-    [editor],
-  );
-  // Take me to a source: select it (so it's highlighted and its own lineage
-  // shows) and pan/zoom it into view at a readable size — the same navigation
-  // the search and rail use, so a jump always lands framed.
-  const goToSource = (sid: TLShapeId) => {
-    editor.select(sid);
-    bringIntoView(editor, sid);
-  };
-  const goToAllSources = (sids: TLShapeId[]) => {
-    editor.setSelectedShapes(sids);
-    editor.zoomToSelection();
-  };
+  // Which shape is being edited (reactive) — drives whether the format controls
+  // show. Read as a hook here, before the early return below. (A card's sources
+  // now live in the card itself as pills — see ui/CardSources.)
+  const editingId = useValue('cardbar-editing', () => editor.getEditingShapeId(), [editor]);
 
   if (!sel) return null;
   const id = sel.id as TLShapeId;
   const ids = sel.ids as TLShapeId[];
+  // The bar stays minimal on a plain selection (expand · Actions · ⋯); the text
+  // format controls only appear once you're actually editing (owner call
+  // 2026-07-20). editingId is read reactively above so entering edit re-renders.
+  const isEditing = editingId === id;
   // Content gate: an empty card has nothing to shorten, deepen, discuss, or
   // summarise — offering those reads as broken. Same predicate the prompt
   // bar's starter chips use.
@@ -500,33 +487,7 @@ export function CardActionBar() {
           if (target) void onPickImage(file, target);
         }}
       />
-      {sources.length > 0 ? (
-        <div className="jz-cardbar-sources" role="group" aria-label="Sources">
-          <span className="jz-cardbar-sources-lead" aria-hidden>From</span>
-          {sources.slice(0, 3).map((s) => (
-            <button
-              key={s.id}
-              className="jz-cardbar-source"
-              title={`Go to source: ${s.label}`}
-              onClick={() => goToSource(s.id)}
-            >
-              <CornerUpLeft size={11} strokeWidth={2.2} aria-hidden />
-              <span className="jz-cardbar-source-label">{s.label}</span>
-            </button>
-          ))}
-          {sources.length > 3 ? (
-            <button
-              className="jz-cardbar-source jz-cardbar-source--more"
-              title="Frame all sources"
-              onClick={() => goToAllSources(sources.map((s) => s.id))}
-            >
-              +{sources.length - 3}
-            </button>
-          ) : null}
-          <span className="jz-cardbar-sources-sep" aria-hidden />
-        </div>
-      ) : null}
-      {profileable ? (
+      {SHOW_BAR_EXTRAS && profileable ? (
         <button
           className="jz-cardbar-btn"
           title="A one-glance summary: what this is, who wrote it, red flags, where to start"
@@ -535,7 +496,7 @@ export function CardActionBar() {
           <JarwizSpark size={13} aria-hidden /> Summary
         </button>
       ) : null}
-      {formattable ? (
+      {formattable && isEditing ? (
         <div className="jz-cardbar-fmt" role="group" aria-label="Text formatting">
           {visibleFormats.map((f) => (
             <button
@@ -575,19 +536,11 @@ export function CardActionBar() {
               >
                 <ImageIcon {...FMT_ICON} />
               </button>
-              <button
-                className="jz-cardbar-iconbtn"
-                title="Edit full screen"
-                aria-label="Edit full screen"
-                onClick={() => openCardFocus(id)}
-              >
-                <Maximize2 {...FMT_ICON} />
-              </button>
             </>
           ) : null}
         </div>
       ) : null}
-      {sticky ? (
+      {SHOW_BAR_EXTRAS && sticky ? (
         <div className="jz-cardbar-group">
           <button
             className={`jz-cardbar-btn${menu === 'tint' ? ' jz-cardbar-btn--open' : ''}`}
@@ -634,7 +587,7 @@ export function CardActionBar() {
           ) : null}
         </div>
       ) : null}
-      {focusable && sel.type !== 'doc-card' ? (
+      {focusable ? (
         <button
           className="jz-cardbar-btn jz-cardbar-btn--icon"
           aria-label="Expand full screen"

@@ -3716,6 +3716,48 @@ body,
 .jz-doc-rich--focus .ProseMirror > * + :is(h1, h2, h3) {
   margin-top: 1.4em;
 }
+/* Provenance pills — a card's "From …" sources shown as its first row (moved
+ * off the action bar). Each pill jumps to the source it names. */
+.jz-card-sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--jz-space-2);
+  margin-bottom: var(--jz-space-3);
+}
+.jz-card-sources-lead {
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  color: var(--jz-ink-400);
+}
+.jz-card-source-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 200px;
+  padding: 2px 8px 2px 6px;
+  border-radius: var(--jz-radius-pill);
+  border: 1px solid var(--jz-hairline-strong);
+  background: var(--jz-surface-raised);
+  color: var(--jz-ink-600);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-text-caption-size);
+  line-height: 1.3;
+  cursor: pointer;
+  transition:
+    color var(--jz-dur-fast) var(--jz-ease-out),
+    border-color var(--jz-dur-fast) var(--jz-ease-out);
+}
+.jz-card-source-pill:hover {
+  color: var(--jz-ink-900);
+  border-color: var(--jz-ink-400);
+}
+.jz-card-source-pill-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Markdown rendering within doc cards.
  * gap: 0 because blank lines in source are rendered as explicit empty rows so
  * read mode matches the textarea visually — no phantom gaps, no missing ones.

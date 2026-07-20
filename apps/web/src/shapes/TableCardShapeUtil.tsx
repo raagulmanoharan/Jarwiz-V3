@@ -16,6 +16,7 @@ import {
 import { useStreamState } from './useStreamState';
 import { StreamingPlaceholder } from '../ui/StreamingPlaceholder';
 import { TableCellEditable } from './TableCellEditable';
+import { CardSources } from '../ui/CardSources';
 import { uploadAsset } from '../lib/uploadAsset';
 import { useFitHeight } from './useFitHeight';
 import { isExpanded, subscribeExpand } from './cardExpand';
@@ -354,6 +355,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
           hook measures this auto-height child instead, which reports true
           content height and lets the card shrink to fit as well as grow. */}
       <div className="jz-table-fit" ref={fitRef}>
+      {!isEditing ? <CardSources shapeId={shape.id} /> : null}
       <div className="jz-table-head" style={{ gridTemplateColumns: gridCols }}>
         {columns.map((label, col) =>
           isEditing ? (
