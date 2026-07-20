@@ -27,6 +27,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useEditor, type Box, type Editor, type TLShapeId, type TLShapePartial } from 'tldraw';
+import { frameBounds as frameInView } from '../ui/bringIntoView';
 
 /** Gutters between packed cards (page px). Matches the board's calm rhythm. */
 export const TIDY_GAP_X = 40;
@@ -227,8 +228,10 @@ export function useTidyBoard() {
       if (opts?.select) editor.select(...ids);
 
       const finish = () => {
+        // Frame the tidied board, but hold a legibility floor so a big board
+        // doesn't zoom out to a speck (owner call 2026-07-20).
         if (frameBounds) {
-          editor.zoomToBounds(frameBounds, { animation: { duration }, inset: 80, targetZoom: 1 });
+          frameInView(editor, frameBounds, { minZoom: 0.5, margin: 64, animation: { duration } });
         }
       };
 

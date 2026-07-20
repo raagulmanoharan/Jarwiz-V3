@@ -11,6 +11,7 @@
 import { useCallback } from 'react';
 import { getArrowBindings, useEditor, type Editor, type TLArrowShape, type TLShapeId, type TLShapePartial } from 'tldraw';
 import { computeRows, GAP_X, GAP_Y } from './flowLayout';
+import { frameBounds } from '../ui/bringIntoView';
 
 /** Shapes worth repositioning — nodes, not the connectors between them. */
 const NODE_TYPES = new Set([
@@ -95,7 +96,9 @@ export function useTidy() {
 
       editor.select(...nodeIds);
       const b = editor.getSelectionPageBounds();
-      if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 80, targetZoom: 1 });
+      // Frame the tidied flow, but don't zoom out to a speck for a big diagram —
+      // hold a legibility floor and keep it centred (owner call 2026-07-20).
+      if (b) frameBounds(editor, b, { minZoom: 0.5, margin: 64, animation: { duration: 300 } });
     },
     [editor],
   );

@@ -16,6 +16,7 @@ import {
   createShapeId,
   renderPlaintextFromRichText,
   useEditor,
+  type Box,
   type Editor,
   type TLRichText,
   type TLShape,
@@ -48,6 +49,7 @@ import { clearClarify, setClarify } from './clarify';
 import { logEvent } from '../log/eventLog';
 import { clearAgentError, setAgentError } from '../agents/agentError';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from '../agents/presence';
+import { frameBounds } from '../ui/bringIntoView';
 import { getShapeTitle } from '../shapes/shapeTitle';
 import { getAgent } from '@jarwiz/shared';
 
@@ -847,28 +849,33 @@ export function discardDraft(editor: Editor): void {
 
 const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
-/** Combined bounds of the response shape(s) and the source(s) they came from. */
-function pairBounds(editor: Editor, responseIds: TLShapeId[], sourceIds: TLShapeId[]) {
-  const boxes = [...responseIds, ...sourceIds]
+/** Union of a set of shapes' page bounds (null if none resolve). */
+function boundsOf(editor: Editor, ids: TLShapeId[]): Box | null {
+  const boxes = ids
     .map((id) => editor.getShapePageBounds(id))
     .filter((b): b is NonNullable<ReturnType<typeof editor.getShapePageBounds>> => Boolean(b));
   if (boxes.length === 0) return null;
   return boxes.reduce((acc, b) => acc.union(b), boxes[0]!.clone());
 }
 
-/** Frame the source + response together, centred (used when the draft appears). */
-function frameCard(editor: Editor, responseIds: TLShapeId[], sourceIds: TLShapeId[]): void {
-  const u = pairBounds(editor, responseIds, sourceIds);
-  if (u) editor.zoomToBounds(u, { animation: { duration: 420, easing: easeOutCubic }, inset: 130, targetZoom: 1 });
+/** Frame the fresh ANSWER and keep it in view — never the source+answer pair,
+ *  which zoomed the new card out to make room for its source (owner call
+ *  2026-07-20 — "keep the new card in view"). `frameBounds` keeps the user's
+ *  zoom when the card already fits, zooms in a small card up to readable, and
+ *  zooms out only enough to fit the card itself. `sourceIds` is unused now, kept
+ *  for a stable signature across the ask flow. */
+function frameCard(editor: Editor, responseIds: TLShapeId[], _sourceIds: TLShapeId[]): void {
+  const answer = boundsOf(editor, responseIds);
+  if (answer) frameBounds(editor, answer, { margin: 96, animation: { duration: 420, easing: easeOutCubic } });
 }
 
-/** Keep the source + response centred as the response grows — re-frame only
- *  when the pair has outgrown the viewport, so it doesn't jitter when it fits. */
-function followCard(editor: Editor, responseIds: TLShapeId[], sourceIds: TLShapeId[]): void {
-  const u = pairBounds(editor, responseIds, sourceIds);
-  if (!u) return;
-  if (editor.getViewportPageBounds().contains(u)) return;
-  editor.zoomToBounds(u, { animation: { duration: 280, easing: easeOutCubic }, inset: 130, targetZoom: 1 });
+/** Keep the answer in view as it grows — re-frame only once it has actually
+ *  scrolled out of view, so a settled view doesn't jitter as tokens land. */
+function followCard(editor: Editor, responseIds: TLShapeId[], _sourceIds: TLShapeId[]): void {
+  const answer = boundsOf(editor, responseIds);
+  if (!answer) return;
+  if (editor.getViewportPageBounds().contains(answer)) return;
+  frameBounds(editor, answer, { margin: 96, animation: { duration: 280, easing: easeOutCubic } });
 }
 
 /* ── affinity layout ───────────────────────────────────────────────────────
