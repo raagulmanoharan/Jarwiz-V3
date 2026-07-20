@@ -366,10 +366,13 @@ export function useAsk() {
       const { signal } = ac;
 
       let cardId: TLShapeId | null = null;
-      // A doc card dropped the instant you press enter (see the pre-place block
+      // A card dropped the instant you press enter (see the pre-place block
       // below). Non-null means a skeleton is already streaming on the board, and
       // card.create should ADOPT it rather than spawn a second card.
+      // placeholderShape is what we pre-placed, so card.create can tell an adopt
+      // (same shape) from a swap (the server routed elsewhere).
       let placeholderId: TLShapeId | null = null;
+      let placeholderShape: AskShape | null = null;
       let cols: string[] = [];
       let rows: string[][] = [];
       // Affinity diagrams aren't one card — they're a board of sticky notes laid
@@ -545,21 +548,43 @@ export function useAsk() {
               follow();
               break;
             }
-            // A placeholder doc card is already on the board, streaming (a plain
-            // doc ask pre-placed it on enter). Adopt it — no second card, no
-            // re-frame; the deltas are already flowing into it.
+            // A placeholder card is already on the board, streaming (we
+            // pre-placed it on enter). If it's the shape the server is now
+            // building, ADOPT it — apply this event's payload to the existing
+            // card instead of spawning a second one; no re-frame, deltas/pins/
+            // cells already flow into it.
             if (placeholderId) {
-              if (event.shape === 'doc' || event.shape === 'list') {
+              const docish = (s: string) => s === 'doc' || s === 'list';
+              const adopt =
+                placeholderShape === event.shape ||
+                (placeholderShape !== null && docish(placeholderShape) && docish(event.shape));
+              if (adopt) {
                 cardId = placeholderId;
                 createdIds = [placeholderId];
+                if (event.shape === 'table') {
+                  cols = (event.columns ?? []).slice(0, 6);
+                  rows = Array.from({ length: event.rowCount ?? 0 }, () => cols.map(() => ''));
+                  const tableW = Math.min(940, Math.max(TABLE_CARD_SIZE.w, cols.length * 190));
+                  editor.updateShape<TableCardShape>({ id: placeholderId, type: 'table-card', props: { w: tableW, columns: cols, rows } });
+                } else if (event.shape === 'map') {
+                  editor.updateShape<MapCardShape>({
+                    id: placeholderId,
+                    type: 'map-card',
+                    props: { title: event.title ?? trimmed.slice(0, 70), intro: event.intro ?? '', ordered: event.ordered ?? true },
+                  });
+                }
+                // doc/list/diagram/prototype/dashboard: nothing to apply — they
+                // stream into the empty placeholder as-is.
                 break;
               }
-              // Defensive only — the server routed to a non-doc shape we didn't
-              // anticipate. Retire the placeholder and build the real artefact.
+              // The server routed to a DIFFERENT shape than we pre-placed (e.g. a
+              // table whose JSON failed degrades to a doc). Retire the skeleton
+              // and build the real artefact below.
               stopStreaming(placeholderId);
               if (getDraft()?.id === placeholderId) clearDraft();
               editor.deleteShape(placeholderId);
               placeholderId = null;
+              placeholderShape = null;
               cardId = null;
               createdIds = [];
             }
@@ -807,34 +832,53 @@ export function useAsk() {
         }
       };
 
-      // Show the answer card the INSTANT you press enter. pickShape (server
-      // ask.ts) always routes a new, non-"/"-mode ask to a doc, so a doc card at
-      // the spot it'll land IS the real card — card.create adopts it (above),
-      // never swaps it. This turns the first-token wait (5–20s) from a dead
-      // pause into a visible "your answer is forming here" (owner ask
-      // 2026-07-20). Explicit "/" table/diagram/map/etc. modes, machine runs,
-      // and in-place refines are unchanged — they still land at card.create.
-      const willBeDoc =
-        !targetId && !opts?.machineId &&
-        (!opts?.forceShape || opts.forceShape === 'doc' || opts.forceShape === 'list');
-      if (willBeDoc) {
-        const at = placeInLane(editor, sourceIds, DOC_CARD_SIZE.w, DOC_CARD_SIZE.h);
+      // Show the answer card the INSTANT you press enter, at the spot it'll
+      // land, already in its "building…" state — so the wait (a doc's first
+      // token, or a table's one long blocking generate) reads as "your answer is
+      // forming here" instead of a dead pause where nothing seems to happen
+      // (owner asks 2026-07-20). The shape is known up front: a plain ask is a
+      // doc (server pickShape), and a "/" mode passes forceShape. card.create
+      // adopts this exact card. Multi-card modes (affinity/board/debrief), machine
+      // runs and in-place refines don't pre-place — they land at card.create.
+      const preShape: AskShape | null =
+        targetId || opts?.machineId
+          ? null
+          : !opts?.forceShape
+            ? 'doc'
+            : opts.forceShape === 'affinity'
+              ? null
+              : opts.forceShape;
+      if (preShape) {
         const id = createShapeId();
-        editor.createShape<DocCardShape>({
-          id,
-          type: 'doc-card',
-          x: at.x,
-          y: at.y,
-          props: { w: DOC_CARD_SIZE.w, h: DOC_CARD_SIZE.h, title: '', text: '', sourcePdfId: pdfSourceId ?? '' },
-        });
+        if (preShape === 'table') {
+          const at = placeInLane(editor, sourceIds, TABLE_CARD_SIZE.w, TABLE_CARD_SIZE.h);
+          editor.createShape<TableCardShape>({ id, type: 'table-card', x: at.x, y: at.y, props: { w: TABLE_CARD_SIZE.w, h: TABLE_CARD_SIZE.h, columns: [], rows: [] } });
+        } else if (preShape === 'diagram') {
+          const at = placeInLane(editor, sourceIds, DIAGRAM_CARD_SIZE.w, DIAGRAM_CARD_SIZE.h);
+          editor.createShape<DiagramCardShape>({ id, type: 'diagram-card', x: at.x, y: at.y, props: { w: DIAGRAM_CARD_SIZE.w, h: DIAGRAM_CARD_SIZE.h, code: '', title: trimmed.slice(0, 70) } });
+        } else if (preShape === 'prototype') {
+          const at = placeInLane(editor, sourceIds, PROTOTYPE_CARD_SIZE.w, PROTOTYPE_CARD_SIZE.h);
+          editor.createShape<PrototypeCardShape>({ id, type: 'prototype-card', x: at.x, y: at.y, props: { w: PROTOTYPE_CARD_SIZE.w, h: PROTOTYPE_CARD_SIZE.h, html: '', title: trimmed.slice(0, 70) } });
+        } else if (preShape === 'dashboard') {
+          const at = placeInLane(editor, sourceIds, DASHBOARD_CARD_SIZE.w, DASHBOARD_CARD_SIZE.h);
+          editor.createShape<DashboardCardShape>({ id, type: 'dashboard-card', x: at.x, y: at.y, props: { w: DASHBOARD_CARD_SIZE.w, h: DASHBOARD_CARD_SIZE.h, spec: '', title: trimmed.slice(0, 70), status: 'running' } });
+        } else if (preShape === 'map') {
+          const at = placeInLane(editor, sourceIds, MAP_CARD_SIZE.w, MAP_CARD_SIZE.h);
+          editor.createShape<MapCardShape>({ id, type: 'map-card', x: at.x, y: at.y, props: { w: MAP_CARD_SIZE.w, h: MAP_CARD_SIZE.h, title: trimmed.slice(0, 70), intro: '', stops: [], ordered: true, status: 'running' } });
+        } else {
+          // doc / list — both render in the doc card.
+          const at = placeInLane(editor, sourceIds, DOC_CARD_SIZE.w, DOC_CARD_SIZE.h);
+          editor.createShape<DocCardShape>({ id, type: 'doc-card', x: at.x, y: at.y, props: { w: DOC_CARD_SIZE.w, h: DOC_CARD_SIZE.h, title: '', text: '', sourcePdfId: pdfSourceId ?? '' } });
+        }
         recordSources(editor, id, contributingIds, trimmed);
-        startStreaming(id); // flips the card into its "writing…" placeholder state
-        setDraft({ id, status: 'streaming', prompt: trimmed, logLabel: opts?.logLabel, sourceIds, shape: 'doc', pdfSourceId, statusText: lastStatus ?? undefined });
+        startStreaming(id); // flips the card into its "building…" placeholder state
+        setDraft({ id, status: 'streaming', prompt: trimmed, logLabel: opts?.logLabel, sourceIds, shape: preShape, pdfSourceId, statusText: lastStatus ?? undefined });
         frame([id]);
         if (contributingIds.length > 0) editor.setSelectedShapes([id]);
         cardId = id;
         createdIds = [id];
         placeholderId = id;
+        placeholderShape = preShape;
       }
 
       try {
@@ -862,11 +906,19 @@ export function useAsk() {
           // tell the person what's actually going on instead.
           surfaceError(agentErrorMessage(err.message));
         } else if (placeholderId && cardId === placeholderId) {
-          // Aborted during the first-token wait, before any content reached the
-          // pre-placed card — don't leave an empty skeleton behind. (A partial
-          // card that already took content is kept, as before, for Keep/Discard.)
+          // Aborted during the wait, before any content reached the pre-placed
+          // card — don't leave an empty skeleton behind. (A partial card that
+          // already took content is kept, as before, for Keep/Discard.)
           const s = editor.getShape(placeholderId);
-          const empty = !s || !(((s.props as { text?: string }).text ?? '').trim());
+          const p = (s?.props ?? {}) as { text?: string; columns?: unknown[]; code?: string; html?: string; spec?: string; stops?: unknown[] };
+          const empty =
+            !s ||
+            (s.type === 'table-card' ? !p.columns?.length
+              : s.type === 'diagram-card' ? !(p.code ?? '').trim()
+              : s.type === 'prototype-card' ? !(p.html ?? '').trim()
+              : s.type === 'dashboard-card' ? !(p.spec ?? '').trim()
+              : s.type === 'map-card' ? !p.stops?.length
+              : !(p.text ?? '').trim());
           if (empty) {
             if (getDraft()?.id === placeholderId) clearDraft();
             editor.deleteShape(placeholderId);
