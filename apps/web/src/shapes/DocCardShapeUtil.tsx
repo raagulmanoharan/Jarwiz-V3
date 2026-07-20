@@ -202,13 +202,16 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
       editor.updateShape<DocCardShape>({ id: shape.id, type: 'doc-card', props: { text: value } });
     }
   };
-  // Grow (never shrink) the card to hold the editor's content while editing.
-  const growToFit = (needed: number) => {
+  // Fit the card to the editor's content height while editing — grow AND
+  // shrink, so a formatted doc reads at the same height it does in read mode
+  // (no dead space under short content, matching read's auto-fit).
+  const fitHeight = (needed: number) => {
     const cur = editor.getShape(shape.id);
     if (!cur) return;
     const curH = (cur.props as DocCardProps).h;
-    if (needed > curH + 1) {
-      editor.updateShape<DocCardShape>({ id: shape.id, type: 'doc-card', props: { h: needed } });
+    const next = Math.max(80, Math.round(needed));
+    if (Math.abs(next - curH) > 1) {
+      editor.updateShape<DocCardShape>({ id: shape.id, type: 'doc-card', props: { h: next } });
     }
   };
 
@@ -224,7 +227,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
             initialMarkdown={text}
             onChange={applyText}
             onExit={() => editor.setEditingShape(null)}
-            onHeight={growToFit}
+            onHeight={fitHeight}
           />
         </div>
       );

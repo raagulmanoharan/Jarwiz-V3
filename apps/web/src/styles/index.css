@@ -3563,10 +3563,10 @@ body,
  * mode (the .jz-md-* rules below) so editing looks identical to viewing — you
  * never see raw markdown. Only the doc dialect the editor supports reaches
  * here (see docBridge); map/widget/citation docs use the textarea above. */
+/* Content-height (NOT flex-fill), so the card can fit itself to the editor's
+ * real content — the same rule read mode follows (.jz-doc-auto). Filling the
+ * shape would leave dead space under short content. */
 .jz-doc-rich {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
   padding: var(--jz-space-5);
   box-sizing: border-box;
 }
@@ -3580,22 +3580,30 @@ body,
   line-height: var(--jz-text-body-lh);
   color: var(--jz-ink-700);
 }
+/* Match read mode's rhythm: blocks are separated by a half-line breath (read
+ * mode renders blank source lines as a .jz-md-blank of the same height), and
+ * headings get extra air above — so double-clicking to edit doesn't reflow. */
+/* Reset direct-child margins FIRST, then add the rhythm — element-level resets
+ * (p{}, h*{}) would otherwise out-specify the sibling rules and zero the gaps. */
+.jz-doc-rich .ProseMirror > * {
+  margin: 0;
+}
 .jz-doc-rich .ProseMirror > * + * {
-  margin-top: var(--jz-space-2);
+  margin-top: calc(var(--jz-text-body-lh) / 2);
+}
+.jz-doc-rich .ProseMirror > * + :is(h1, h2, h3) {
+  /* Read mode's gap above a heading is the blank-line spacer (½ line) PLUS the
+   * heading's own space-3 top margin — match that sum so nothing shifts. */
+  margin-top: calc(var(--jz-text-body-lh) / 2 + var(--jz-space-3));
 }
 .jz-doc-rich .ProseMirror :is(h1, h2, h3) {
-  margin: var(--jz-space-2) 0 0;
   color: var(--jz-ink-900);
   font-weight: 650;
   font-size: var(--jz-text-body-size);
   line-height: var(--jz-text-body-lh);
 }
-.jz-doc-rich .ProseMirror p {
-  margin: 0;
-}
 .jz-doc-rich .ProseMirror ul,
 .jz-doc-rich .ProseMirror ol {
-  margin: 0;
   padding-left: var(--jz-space-6);
 }
 .jz-doc-rich .ProseMirror ul { list-style: disc; }
