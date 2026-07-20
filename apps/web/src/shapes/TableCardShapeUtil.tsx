@@ -15,7 +15,7 @@ import {
 } from 'tldraw';
 import { useStreamState } from './useStreamState';
 import { StreamingPlaceholder } from '../ui/StreamingPlaceholder';
-import { formatControlledTextarea, shortcutMarker, toggleInline } from '../ask/textFormat';
+import { TableCellEditable } from './TableCellEditable';
 import { uploadAsset } from '../lib/uploadAsset';
 import { useFitHeight } from './useFitHeight';
 import { isExpanded, subscribeExpand } from './cardExpand';
@@ -279,14 +279,9 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
     });
   };
 
-  const cellKeys = (e: React.KeyboardEvent, row?: number) => {
-    // ⌘/Ctrl B·I·U — same operations as the format bar, on this cell.
-    const marker = shortcutMarker(e);
-    if (marker && e.currentTarget instanceof HTMLTextAreaElement) {
-      e.preventDefault();
-      formatControlledTextarea(e.currentTarget, (t, s, en) => toggleInline(t, s, en, marker));
-      return;
-    }
+  const cellKeys = (e: React.KeyboardEvent, row: number | undefined, text: string) => {
+    // ⌘/Ctrl B·I·U are applied natively by the contentEditable cell; nothing to
+    // intercept (onInput re-serializes the result — see TableCellEditable).
     // Shift+Enter inserts a row below the current one (below the header →
     // a first row). Rows need no chrome: this is the whole row model.
     if (e.key === 'Enter' && e.shiftKey) {
@@ -294,12 +289,18 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
       insertRow(row === undefined ? 0 : row + 1);
       return;
     }
+    // Plain Enter never splits a cell into a new line/block — cells are single
+    // paragraphs (a stray <div> would break the markdown round-trip).
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      return;
+    }
     // Backspace on a fully empty row removes the row (Notion-list style).
     if (
       e.key === 'Backspace' &&
       row !== undefined &&
       rows.length > 1 &&
-      (e.currentTarget as HTMLTextAreaElement).value === '' &&
+      text.trim() === '' &&
       rows[row]!.every((c) => !c.trim())
     ) {
       e.preventDefault();
@@ -357,17 +358,12 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
         {columns.map((label, col) =>
           isEditing ? (
             <div key={col} className="jz-table-headcell jz-table-headcell-edit">
-              <textarea
-                className="jz-table-input"
+              <TableCellEditable
+                className="jz-table-headcell-static jz-table-cell-editable"
                 value={label}
-                rows={1}
                 placeholder={`Column ${col + 1}`}
-                style={{ pointerEvents: 'all' }}
-                onChange={(e) => setHeader(col, e.currentTarget.value)}
-                onKeyDown={cellKeys}
-                onPointerDown={stopEventPropagation}
-                onPointerMove={stopEventPropagation}
-                onPointerUp={stopEventPropagation}
+                onChange={(v) => setHeader(col, v)}
+                onKeyDown={(e, text) => cellKeys(e, undefined, text)}
               />
               {columns.length > 1 ? (
                 <button
@@ -396,18 +392,13 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
           <div key={row} className="jz-table-row" style={{ gridTemplateColumns: gridCols }}>
             {cells.map((cell, col) =>
               isEditing ? (
-                <textarea
+                <TableCellEditable
                   key={col}
-                  className="jz-table-cell jz-table-input"
+                  className="jz-table-cell jz-table-cell-static jz-table-cell-editable"
                   value={cell}
-                  rows={1}
-                  style={{ pointerEvents: 'all' }}
-                  onChange={(e) => setCell(row, col, e.currentTarget.value)}
-                  onBlur={(e) => enrichLinkCell(row, col, e.currentTarget.value)}
-                  onKeyDown={(e) => cellKeys(e, row)}
-                  onPointerDown={stopEventPropagation}
-                  onPointerMove={stopEventPropagation}
-                  onPointerUp={stopEventPropagation}
+                  onChange={(v) => setCell(row, col, v)}
+                  onBlur={(v) => enrichLinkCell(row, col, v)}
+                  onKeyDown={(e, text) => cellKeys(e, row, text)}
                 />
               ) : (
                 <div
