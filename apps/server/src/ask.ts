@@ -449,7 +449,6 @@ async function gatherContext(
   req: AskRequest,
 ): Promise<{
   context: string;
-  citable: boolean;
   images: ImageInput[];
   linkRefs: Array<{ title: string; url: string }>;
   framePaths: string[];
@@ -463,7 +462,6 @@ async function gatherContext(
   /** Image-card base64 (no file on disk) — the sidecar writes+Reads these so
    *  a dropped image is visible in dev too, not just on the API path. */
   const imageData: ImageInput[] = [];
-  let citable = false;
   let i = 0;
   for (const s of req.sources) {
     i += 1;
@@ -514,7 +512,6 @@ async function gatherContext(
       // Page-tagged text lets the model cite pages as [p.N].
       const pages = await extractAssetPages(s.assetId, 3_500);
       if (pages.length > 0 && pages.some((p) => p)) {
-        citable = true;
         const tagged = pages
           .map((p, idx) => (p ? `[p.${idx + 1}] ${p}` : ''))
           .filter(Boolean)
@@ -534,98 +531,7 @@ async function gatherContext(
     if (s.text?.trim()) parts.push(`${head}\n"""\n${s.text.trim().slice(0, PER_SOURCE_CHARS)}\n"""`);
     else parts.push(head);
   }
-  return { context: parts.join('\n\n'), citable, images, linkRefs, framePaths, imageData };
-}
-
-const CITE_DIRECTIVE =
-  '\n\nThe source text is tagged with [p.N] page markers. When a statement draws on a specific page, cite it inline as [p.N] (use the marker from the text). Cite the page where the fact actually appears; do not invent page numbers.';
-
-/* ─── Honest provenance: which sources were ACTUALLY used ────────────────────
- * Attaching context is not the same as the answer drawing on it — a user can
- * attach a transcript and ask an unrelated question (owner call, 2026-07-11).
- * The model declares which numbered sources it drew on via one trailing
- * machine-read line; the server strips it from the stream and re-emits it as
- * a `sources.used` event so the client links only real lineage. */
-
-const SOURCES_USED_MARKER = 'SOURCES_USED:';
-
-const SOURCES_USED_DIRECTIVE =
-  `\n\nProvenance (machine-read): after the answer's final line, add ONE last line of exactly the form "${SOURCES_USED_MARKER} 1, 3" — the numbers of the numbered Sources above whose content you actually drew on. Count a source only if the answer genuinely uses its content; a source you read but ignored, and anything found on the live web, does not count. If you drew on none of them, write "${SOURCES_USED_MARKER} none". This line is removed before display — never mention it in the answer itself.`;
-
-/** Parse the indices out of a captured marker line ("SOURCES_USED: 1, 3"). */
-function parseUsedSources(line: string, sourceCount: number): number[] {
-  const body = line.slice(SOURCES_USED_MARKER.length);
-  const seen = new Set<number>();
-  for (const m of body.matchAll(/\d+/g)) {
-    const n = Number(m[0]);
-    if (n >= 1 && n <= sourceCount) seen.add(n);
-  }
-  return [...seen].sort((a, b) => a - b);
-}
-
-/** Streaming filter that withholds the trailing SOURCES_USED line from the
- *  emitted text. Prose streams through untouched — only a line that is (so
- *  far) a prefix of the marker is held back, and it flushes the moment it
- *  diverges, so the hold is invisible at word-delta granularity. */
-function createMarkerFilter() {
-  let cur = ''; // the current line so far
-  let held = true; // whole current line withheld (still a marker candidate)
-  let markerLine: string | null = null;
-  const isCandidate = (s: string) =>
-    s.length <= SOURCES_USED_MARKER.length ? SOURCES_USED_MARKER.startsWith(s) : s.startsWith(SOURCES_USED_MARKER);
-  return {
-    process(delta: string): string {
-      let out = '';
-      for (const ch of delta) {
-        if (ch === '\n') {
-          if (held) {
-            if (cur.startsWith(SOURCES_USED_MARKER)) markerLine = cur; // swallow line + newline
-            else out += cur + '\n';
-          } else out += '\n';
-          cur = '';
-          held = true;
-          continue;
-        }
-        cur += ch;
-        if (held) {
-          if (!isCandidate(cur)) {
-            out += cur; // diverged from the marker — flush and stream normally
-            held = false;
-          }
-        } else out += ch;
-      }
-      return out;
-    },
-    /** End of stream: capture a final (newline-less) marker, flush anything else. */
-    flush(): string {
-      if (held && cur.startsWith(SOURCES_USED_MARKER)) {
-        markerLine = cur;
-        cur = '';
-        return '';
-      }
-      const rest = held ? cur : '';
-      cur = '';
-      return rest;
-    },
-    marker: () => markerLine,
-  };
-}
-
-/** Web-page sources get link citations — the parallel of [p.N] for PDFs.
- *  With ONE source, inline cites are pure repetition (the same URL after
- *  every line) — a single closing Source line covers the whole answer.
- *  Inline cites earn their place only when there are pages to tell apart. */
-function linkCiteDirective(refs: Array<{ title: string; url: string }>): string {
-  const list = refs.map((r) => `- ${r.title}: ${r.url}`).join('\n');
-  const inline =
-    refs.length > 1
-      ? 'Statements drawing on a specific page cite it inline as a markdown link — ([source](URL)) with that page\'s real URL. '
-      : 'Do NOT add inline citations after each statement — with a single source they are noise. ';
-  return (
-    `\n\nSome sources are web pages:\n${list}\n` +
-    inline +
-    'End the answer with a reference line per page used: "Source: [Title](URL)". Never invent URLs.'
-  );
+  return { context: parts.join('\n\n'), images, linkRefs, framePaths, imageData };
 }
 
 /** Build the user message content — a plain string, or text + image blocks when
@@ -1393,7 +1299,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
             ? `reading ${req.sources.length} sources…`
             : 'reading the source…',
   };
-  const { context, citable, images, linkRefs, framePaths, imageData } = await gatherContext(req);
+  const { context, images, linkRefs, framePaths, imageData } = await gatherContext(req);
   if (signal.aborted) return;
 
   // Ambient board awareness: with NO source attached, hand the model the TITLES
@@ -1808,10 +1714,6 @@ async function* streamDoc(
   signal: AbortSignal,
   images: ImageInput[] = [],
   opts: GenOpts = {},
-  /** How many numbered sources rode with the prompt — >0 means the system
-   *  prompt carried SOURCES_USED_DIRECTIVE and the trailing marker line must
-   *  be stripped from the stream and re-emitted as a `sources.used` event. */
-  trackSources = 0,
 ): AsyncGenerator<AskEvent> {
   yield { type: 'card.create', shape };
   // Buffer only until the first line resolves (a "# Title" goes to the card's
@@ -1821,10 +1723,8 @@ async function* streamDoc(
   let buf = '';
   let titleResolved = false;
   let bodyStarted = false;
-  const markerFilter = trackSources > 0 ? createMarkerFilter() : null;
   function* bodyDelta(raw: string): Generator<AskEvent> {
-    const text = markerFilter ? markerFilter.process(raw) : raw;
-    const t = bodyStarted ? text : text.replace(/^\n+/, '');
+    const t = bodyStarted ? raw : raw.replace(/^\n+/, '');
     if (!t) return;
     bodyStarted = true;
     yield { type: 'card.delta', textDelta: t };
@@ -1872,12 +1772,6 @@ async function* streamDoc(
   if (!titleResolved && buf) {
     if (buf.startsWith('# ')) yield { type: 'card.title', title: buf.replace(/^#\s+/, '').slice(0, 80) };
     else yield* bodyDelta(buf);
-  }
-  if (markerFilter) {
-    const tail = markerFilter.flush();
-    if (tail && bodyStarted) yield { type: 'card.delta', textDelta: tail };
-    const marker = markerFilter.marker();
-    if (marker) yield { type: 'sources.used', indices: parseUsedSources(marker, trackSources) };
   }
   yield { type: 'card.done' };
   yield { type: 'done' };
