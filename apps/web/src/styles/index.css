@@ -3925,6 +3925,19 @@ body,
 /* ── Structured rich-card blocks (RichBlocks) ──────────────────────────────
    Most block types reuse the .jz-md-* markdown styles; these are the extras a
    typed block adds: a captioned image figure and a link-preview card. */
+
+/* Vertical rhythm. The markdown path leans on blank-line spacer elements for
+   paragraph breathing room; the typed-block path emits blocks back to back with
+   none, so paragraphs/tables/images/links would butt together. Reset each
+   block's intrinsic margin, then let one owl selector own the gap — a uniform
+   beat between blocks, with a wider break above section headings. The first
+   block has no predecessor, so it stays flush to the card's top. */
+.jz-richblocks > * { margin: 0; }
+.jz-markdown.jz-richblocks > * + * { margin-top: var(--jz-space-4); }
+.jz-markdown.jz-richblocks > * + .jz-md-h1,
+.jz-markdown.jz-richblocks > * + .jz-md-h2,
+.jz-markdown.jz-richblocks > * + .jz-md-h3 { margin-top: var(--jz-space-6); }
+
 .jz-block-image { margin: 0; }
 .jz-block-image .jz-md-img { margin: 0; }
 .jz-block-image-cap {
