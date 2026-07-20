@@ -46,6 +46,7 @@ stays one-line-per-feature. This changelog papers over Era 1 retroactively.
 ### Jul 18, 2026
 | PR | Tags | What shipped |
 |---|---|---|
+| #109 | `agents` | The rich doc carries a proper table for comparisons (not a token sketch); resolve the fenced-code conflict so only map/widget blocks are allowed (consolidation, phase 2) |
 | #108 | `agents` · `cards` | Consolidate answer shapes to four — Doc · Prototype · Dashboard · Flow; table/list/map answers become rich docs (card-type consolidation, phase 1) |
 | #107 | `agents` | Unselected asks actually use the board (forward the card-title index that #105 dropped) and lean on web search for verifiable facts instead of guessing from memory |
 | #106 | `onboarding` | Mode pill is non-dismissible and toggles the shape menu; Doc is a menu item; roomier padding |
