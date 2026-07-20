@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { renderPlaintextFromRichText, stopEventPropagation, useEditor, useValue, type Editor, type TLRichText, type TLShape, type TLShapeId } from 'tldraw';
-import { Slash, ArrowUp, FileText, Link2, ClipboardList, Paperclip } from 'lucide-react';
+import { ArrowUp, FileText, Link2, ClipboardList, Paperclip } from 'lucide-react';
 import { JarwizSpark } from '../ui/JarwizSpark';
 import type { AnalyzeMode, AskShape } from '@jarwiz/shared';
 import { type ModeShape } from './modeShape';
@@ -935,43 +935,37 @@ export function PromptBar() {
             {/* The / button IS the mode selector; once a shape is picked the
                 chip takes its place (dismiss to hand the choice back to the
                 model). Same menu as typing "/" in the input. */}
-            {mode ? (
-              // ONE chip, one behaviour, whatever pinned it (a pick or the
-              // suggester): the body opens the "/" menu to change the shape,
-              // the ✕ clears back to a doc (owner call, 2026-07-11). The
-              // natural gesture on a wrong guess — tapping it — lands in the
-              // picker instead of doing nothing.
-              <span
-                key={`${mode}-${modeSource}`}
-                role="button"
-                tabIndex={0}
-                className={`jz-pb-ground jz-pb-mode jz-pb-mode--tappable${modeSource === 'auto' ? ' jz-pb-mode--auto' : ''}`}
-                title="Answer shape — click to change, ✕ for a doc"
-                onClick={() => setModeMenu(true)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setModeMenu(true); } }}
-              >
-                {modeSource === 'auto' ? <JarwizSpark className="jz-pb-mode-spark" size={11} aria-hidden /> : null}
-                {MODES.find((m) => m.shape === mode)?.label ?? mode}
-                <button
-                  className="jz-pb-ground-x"
-                  aria-label="Clear answer shape (write a doc)"
-                  onClick={(e) => { e.stopPropagation(); setMode(null); setModeSource('user'); }}
-                >✕</button>
-              </span>
-            ) : introMode ? (
+            {introMode ? (
               // Onboarding: no shape control and no preview pill — the composer's
               // self-typing example carries the intent on its own, so the footer
               // stays clean until the board opens (owner call, 2026-07-12).
               null
             ) : (
-              <button
-                className={`jz-promptbar-icon-btn${modeMenu ? ' jz-promptbar-icon-btn--active' : ''}`}
-                title="Answer shape (/)"
-                aria-label="Choose the answer's shape"
-                onClick={() => setModeMenu((v) => !v)}
+              // ONE chip, always visible, one behaviour, whatever set it (a pick,
+              // the live suggester, or the DOC default): the body opens the "/"
+              // menu to change the shape. When the answer will be a doc the chip
+              // reads "Doc" — the default is now shown, not hidden (owner call,
+              // 2026-07-20). A non-doc pin gets a ✕ to fall back to a doc; the
+              // spark marks a choice the suggester made from your prompt.
+              <span
+                key={`${mode ?? 'doc'}-${modeSource}`}
+                role="button"
+                tabIndex={0}
+                className={`jz-pb-ground jz-pb-mode jz-pb-mode--tappable${modeSource === 'auto' ? ' jz-pb-mode--auto' : ''}`}
+                title="Answer shape — click to change"
+                onClick={() => setModeMenu(true)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setModeMenu(true); } }}
               >
-                <Slash size={16} strokeWidth={1.8} />
-              </button>
+                {modeSource === 'auto' ? <JarwizSpark className="jz-pb-mode-spark" size={11} aria-hidden /> : null}
+                {mode ? (MODES.find((m) => m.shape === mode)?.label ?? mode) : 'Doc'}
+                {mode ? (
+                  <button
+                    className="jz-pb-ground-x"
+                    aria-label="Clear answer shape (write a doc)"
+                    onClick={(e) => { e.stopPropagation(); setMode(null); setModeSource('user'); }}
+                  >✕</button>
+                ) : null}
+              </span>
             )}
           </div>
           <button
