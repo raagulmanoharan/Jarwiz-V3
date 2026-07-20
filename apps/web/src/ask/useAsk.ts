@@ -31,10 +31,8 @@ import {
   PROTOTYPE_CARD_SIZE,
   DASHBOARD_CARD_SIZE,
   MAP_CARD_SIZE,
-  affinityColor,
   type DiagramCardShape,
   type DocCardShape,
-  type NoteCardShape,
   type TableCardShape,
   type PrototypeCardShape,
   type DashboardCardShape,
@@ -375,12 +373,8 @@ export function useAsk() {
       let placeholderShape: AskShape | null = null;
       let cols: string[] = [];
       let rows: string[][] = [];
-      // Affinity diagrams aren't one card — they're a board of sticky notes laid
-      // out in labelled columns. `createdIds` is every shape made (for framing),
-      // `affinity` holds the per-cluster layout cursors.
+      // Every shape made this run (for framing).
       let createdIds: TLShapeId[] = [];
-      let affinity: { laneX: number; laneY: number; cols: Map<number, { x: number; ynext: number }> } | null =
-        null;
       let lastFollow = 0;
       // The latest server stage ("drafting the answer…"). Stage events fire
       // BEFORE card.create, but the draft chip only exists after — carry the
@@ -411,7 +405,7 @@ export function useAsk() {
         });
       };
 
-      const framed = () => (affinity ? createdIds : cardId ? [cardId] : []);
+      const framed = () => (cardId ? [cardId] : []);
 
       // Bring the fresh answer into view — unless the person has taken the
       // camera (see cameraYielded) or is editing a card, in which case leave
@@ -429,29 +423,6 @@ export function useAsk() {
         if (now - lastFollow < 280) return;
         lastFollow = now;
         followCard(editor, ids, sourceIds);
-      };
-
-      // Register an affinity sticky: the first one becomes the draft anchor (and
-      // gets the provenance edges); the rest join its group.
-      const registerAffinity = (id: TLShapeId) => {
-        createdIds.push(id);
-        const d = getDraft();
-        if (!d) {
-          recordSources(editor, id, contributingIds, trimmed);
-          setDraft({
-            id,
-            groupIds: [],
-            status: 'streaming',
-            prompt: trimmed,
-            sourceIds,
-            shape: 'affinity',
-            pdfSourceId,
-            statusText: lastStatus ?? undefined,
-          });
-          frame([id]);
-        } else {
-          updateDraft({ groupIds: createdIds.filter((x) => x !== d.id) });
-        }
       };
 
       const apply = (event: AskEvent) => {
@@ -587,12 +558,6 @@ export function useAsk() {
               placeholderShape = null;
               cardId = null;
               createdIds = [];
-            }
-            if (event.shape === 'affinity') {
-              const at = placeInLane(editor, sourceIds, AFFINITY_NOTE_W * 3 + AFFINITY_CLUSTER_GAP * 2, 360);
-              affinity = { laneX: at.x, laneY: at.y, cols: new Map() };
-              createdIds = [];
-              break;
             }
             const id = createShapeId();
             cardId = id;
@@ -769,39 +734,6 @@ export function useAsk() {
             follow();
             break;
           }
-          case 'affinity.cluster': {
-            if (!affinity) break;
-            const colX = affinity.laneX + event.index * (AFFINITY_NOTE_W + AFFINITY_CLUSTER_GAP);
-            const id = createShapeId();
-            editor.createShape<NoteCardShape>({
-              id,
-              type: 'note-card',
-              x: colX,
-              y: affinity.laneY,
-              props: { w: AFFINITY_NOTE_W, h: AFFINITY_LABEL_H, text: event.label, color: affinityColor(event.index) },
-            });
-            affinity.cols.set(event.index, { x: colX, ynext: affinity.laneY + AFFINITY_LABEL_H + AFFINITY_GAP });
-            registerAffinity(id);
-            follow();
-            break;
-          }
-          case 'affinity.note': {
-            if (!affinity) break;
-            const col = affinity.cols.get(event.cluster);
-            if (!col) break;
-            const id = createShapeId();
-            editor.createShape<NoteCardShape>({
-              id,
-              type: 'note-card',
-              x: col.x,
-              y: col.ynext,
-              props: { w: AFFINITY_NOTE_W, h: AFFINITY_NOTE_H, text: event.text, color: affinityColor(event.cluster) },
-            });
-            col.ynext += AFFINITY_NOTE_H + AFFINITY_GAP;
-            registerAffinity(id);
-            follow();
-            break;
-          }
           case 'sources.used': {
             // The model's own declaration of which numbered sources it drew
             // on. Attached ≠ used (owner call, 2026-07-11): overwrite the
@@ -839,7 +771,6 @@ export function useAsk() {
             break;
           case 'done':
             updateDraft({ status: 'done' });
-            if (affinity && createdIds.length > 0) frame(createdIds);
             break;
           case 'error':
             runFailed = true;
@@ -872,16 +803,10 @@ export function useAsk() {
       // forming here" instead of a dead pause where nothing seems to happen
       // (owner asks 2026-07-20). The shape is known up front: a plain ask is a
       // doc (server pickShape), and a "/" mode passes forceShape. card.create
-      // adopts this exact card. Multi-card modes (affinity/board/debrief), machine
-      // runs and in-place refines don't pre-place — they land at card.create.
+      // adopts this exact card. Machine runs (multi-card) and in-place refines
+      // don't pre-place — they land at card.create.
       const preShape: AskShape | null =
-        targetId || opts?.machineId
-          ? null
-          : !opts?.forceShape
-            ? 'doc'
-            : opts.forceShape === 'affinity'
-              ? null
-              : opts.forceShape;
+        targetId || opts?.machineId ? null : !opts?.forceShape ? 'doc' : opts.forceShape;
       if (preShape) {
         const id = createShapeId();
         if (preShape === 'table') {
@@ -994,7 +919,6 @@ export function useAsk() {
 const ARTEFACT_LABEL: Record<string, string> = {
   table: 'Table',
   diagram: 'Diagram',
-  affinity: 'Sticky notes',
   list: 'List',
   doc: 'Text',
   map: 'Map',
@@ -1061,15 +985,6 @@ function followCard(editor: Editor, responseIds: TLShapeId[], _sourceIds: TLShap
   if (editor.getViewportPageBounds().contains(answer)) return;
   frameBounds(editor, answer, { margin: 96, animation: { duration: 280, easing: easeOutCubic } });
 }
-
-/* ── affinity layout ───────────────────────────────────────────────────────
- * Sticky notes laid out in labelled columns — a heading sticky per cluster,
- * its notes stacked beneath it. */
-const AFFINITY_NOTE_W = 200;
-const AFFINITY_LABEL_H = 40;
-const AFFINITY_NOTE_H = 96;
-const AFFINITY_GAP = 12;
-const AFFINITY_CLUSTER_GAP = 28;
 
 /* ── layout ──────────────────────────────────────────────────────────────── */
 
