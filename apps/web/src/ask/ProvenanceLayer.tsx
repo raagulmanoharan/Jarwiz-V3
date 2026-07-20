@@ -21,20 +21,10 @@ interface Link {
   sy: number;
 }
 
-/** Midpoint of the edge of `a` that faces `b`, in page space. */
-function facingAnchor(
-  a: { x: number; y: number; w: number; h: number },
-  toward: { x: number; y: number },
-): { x: number; y: number } {
-  const cx = a.x + a.w / 2;
-  const cy = a.y + a.h / 2;
-  const dx = toward.x - cx;
-  const dy = toward.y - cy;
-  if (Math.abs(dx) >= Math.abs(dy)) {
-    return { x: dx >= 0 ? a.x + a.w : a.x, y: cy };
-  }
-  return { x: cx, y: dy >= 0 ? a.y + a.h : a.y };
-}
+/** Left-edge midpoint of a card, in page space. */
+const leftMiddle = (b: { x: number; y: number; h: number }) => ({ x: b.x, y: b.y + b.h / 2 });
+/** Right-edge midpoint of a card, in page space. */
+const rightMiddle = (b: { x: number; y: number; w: number; h: number }) => ({ x: b.x + b.w, y: b.y + b.h / 2 });
 
 export function ProvenanceLayer() {
   const editor = useEditor();
@@ -71,8 +61,12 @@ export function ProvenanceLayer() {
         // Page-space coordinates — the layer renders inside tldraw's camera
         // transform (OnTheCanvas), *behind* the shapes, so cards occlude the
         // lines and only the connecting segments in the gaps show.
-        const a = facingAnchor(fb, { x: tb.x + tb.w / 2, y: tb.y + tb.h / 2 });
-        const b = facingAnchor(tb, { x: fb.x + fb.w / 2, y: fb.y + fb.h / 2 });
+        // Lineage reads left→right: it leaves the source's right-middle and
+        // always enters the answer at its LEFT-middle — a stable socket that
+        // doesn't hop to another edge when a card gets nudged around (owner call
+        // 2026-07-20).
+        const a = rightMiddle(fb); // source end
+        const b = leftMiddle(tb); // answer end — always the left-middle
         // A gentle S-curve: control points pulled along the dominant axis so
         // the line eases out of one card and into the other.
         const horizontal = Math.abs(b.x - a.x) >= Math.abs(b.y - a.y);

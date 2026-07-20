@@ -46,6 +46,7 @@ stays one-line-per-feature. This changelog papers over Era 1 retroactively.
 ### Jul 18, 2026
 | PR | Tags | What shipped |
 |---|---|---|
+| #101 | `canvas` · `agents` | Provenance lineage always enters the answer at its left-middle — a stable socket that doesn't hop edges |
 | #100 | `agents` · `cards` | Drop the answer card the instant you hit enter — a streaming skeleton, not a dead wait |
 | #99 | `canvas` · `agents` | Hand the camera back the moment you pan or zoom mid-generation — no view hijack |
 | #98 | `canvas` · `agents` | Frame a generated answer legibly instead of zooming out to a speck; same floor for Tidy |
