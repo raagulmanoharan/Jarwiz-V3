@@ -858,43 +858,24 @@ function boundsOf(editor: Editor, ids: TLShapeId[]): Box | null {
   return boxes.reduce((acc, b) => acc.union(b), boxes[0]!.clone());
 }
 
-/** Never let a generated answer shrink below this — a readable card beats a
- *  fully-framed pair. When source + answer can't both fit above the floor, we
- *  hold it and keep the ANSWER centred (the source spills off toward its edge). */
-const ANSWER_MIN_ZOOM = 0.6;
-
-/** Frame the source + answer together when they fit comfortably; otherwise keep
- *  the fresh answer centred and legible rather than zooming out to a speck
- *  (owner call 2026-07-20 — "the card looked tiny"). */
-function frameCard(editor: Editor, responseIds: TLShapeId[], sourceIds: TLShapeId[]): void {
+/** Frame the fresh ANSWER and keep it in view — never the source+answer pair,
+ *  which zoomed the new card out to make room for its source (owner call
+ *  2026-07-20 — "keep the new card in view"). `frameBounds` keeps the user's
+ *  zoom when the card already fits, zooms in a small card up to readable, and
+ *  zooms out only enough to fit the card itself. `sourceIds` is unused now, kept
+ *  for a stable signature across the ask flow. */
+function frameCard(editor: Editor, responseIds: TLShapeId[], _sourceIds: TLShapeId[]): void {
   const answer = boundsOf(editor, responseIds);
-  if (!answer) return;
-  const pair = boundsOf(editor, [...responseIds, ...sourceIds]) ?? answer;
-  frameBounds(editor, pair, {
-    minZoom: ANSWER_MIN_ZOOM,
-    focus: answer,
-    margin: 130,
-    animation: { duration: 420, easing: easeOutCubic },
-  });
+  if (answer) frameBounds(editor, answer, { margin: 96, animation: { duration: 420, easing: easeOutCubic } });
 }
 
-/** Keep the answer in view as it grows — re-frame only when it (or the pair, if
- *  it still fits) has scrolled out, so a settled view doesn't jitter. */
-function followCard(editor: Editor, responseIds: TLShapeId[], sourceIds: TLShapeId[]): void {
+/** Keep the answer in view as it grows — re-frame only once it has actually
+ *  scrolled out of view, so a settled view doesn't jitter as tokens land. */
+function followCard(editor: Editor, responseIds: TLShapeId[], _sourceIds: TLShapeId[]): void {
   const answer = boundsOf(editor, responseIds);
   if (!answer) return;
-  const vp = editor.getViewportPageBounds();
-  const pair = boundsOf(editor, [...responseIds, ...sourceIds]) ?? answer;
-  // If the whole pair still fits, only nudge when it has drifted out; otherwise
-  // track the answer alone so it never falls off the edge as it grows.
-  if (vp.contains(pair)) return;
-  if (vp.contains(answer)) return;
-  frameBounds(editor, pair, {
-    minZoom: ANSWER_MIN_ZOOM,
-    focus: answer,
-    margin: 130,
-    animation: { duration: 280, easing: easeOutCubic },
-  });
+  if (editor.getViewportPageBounds().contains(answer)) return;
+  frameBounds(editor, answer, { margin: 96, animation: { duration: 280, easing: easeOutCubic } });
 }
 
 /* ── affinity layout ───────────────────────────────────────────────────────
