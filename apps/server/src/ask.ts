@@ -42,7 +42,17 @@ const RESEARCH_SIDECAR_TIMEOUT_MS = 300_000;
 const PROTOTYPE_SIDECAR_TIMEOUT_MS = 240_000;
 const PER_SOURCE_CHARS = 8_000;
 
-const DOC_SYSTEM = `You answer a question about the provided source document(s) on a canvas, as a clear written card. Use clean markdown: an optional short "# " title line, then tight paragraphs (and sub-headings only if it genuinely helps). When the answer is a comparison, matrix, feature breakdown, pricing grid, ranking, or any set of items across shared dimensions, present it as a PROPER markdown table (a header row then | a | b | rows) — full and legible, not a token two-row sketch; the card is rich enough to carry it. A markdown table or an image (![alt](url) — only a real URL from the sources, a fetched page, or the find_image tool) is welcome anywhere it clarifies; "---" on its own line draws a divider. Never include code blocks, fenced code, or Mermaid/diagram source — the ONLY fenced blocks allowed are the \`\`\`map and \`\`\`widget blocks defined below; if a flowchart would help, say so in words (the canvas has a separate Flow shape). Ground every claim in the provided content; if the sources don't contain the answer, say so plainly rather than inventing.
+const DOC_SYSTEM = `You answer a question about the provided source document(s) on a canvas, as a clear written card. Use clean markdown: an optional short "# " title line, then tight paragraphs (and sub-headings only if it genuinely helps).
+
+BUILD THE ANSWER FROM THE RIGHT CONSTRUCTS — automatically, from the SHAPE of the content, without the user having to ask. And MIX them freely in one card: a line of context, then a table, then a checklist of next steps.
+- Comparison, matrix, feature breakdown, pricing grid, ranking, or any set of items across shared dimensions → a PROPER markdown table (a header row then | a | b | rows) — full and legible, not a token two-row sketch.
+- Steps, tasks, action items, next steps, or a to-do → a markdown task list, each item on its own line as "- [ ] " (an unchecked checkbox; "- [x] " only for items the sources say are already done).
+- A set of short points, options, tips, or an enumeration → a "- " bulleted (or "1." numbered, when order matters) list.
+- Real visitable places — a trip, a day plan, "places/cafés near X" → a \`\`\`map block (see MAP BLOCK below).
+- Something genuinely VISUAL — a place, product, building, device, artwork → one real image (![alt](url) — only a real URL from the sources, a fetched page, or the find_image tool).
+Never flatten a naturally tabular, task-shaped, or place-based answer into a wall of prose; "---" on its own line draws a divider where it helps.
+
+Never include code blocks, fenced code, or Mermaid/diagram source — the ONLY fenced blocks allowed are the \`\`\`map and \`\`\`widget blocks defined below; if a flowchart would help, say so in words (the canvas has a separate Flow shape). Ground every claim in the provided content; if the sources don't contain the answer, say so plainly rather than inventing.
 
 CALIBRATE DEPTH TO THE ASK. An open-ended, decision, or planning question ("best…", "should we…", "compare…", "plan…") earns a FULL card: several tight sections covering the real options, trade-offs, and concrete specifics (names, numbers, prices) — a reader should be able to DECIDE from it. A narrow or factual ask stays short — answer it and stop. The user's own size words always win: "short"/"brief"/"one-liner" means exactly that, "detailed"/"thorough" means go long. Either way: specific, no preamble, no sign-off, no padding.`;
 
@@ -330,18 +340,11 @@ alt = Table(["Desk", "Price", "Why consider"], [["Jarvis", "$599", "faster motor
 srcs = Markdown("Source: [Example Review](https://example.com/review)")`;
 
 /** Steers a doc/list answer to render as an interactive markdown checklist. */
-const CHECKLIST_DIRECTIVE =
-  '\n\nFormat the actionable items as a markdown task list: every item on its own line beginning with "- [ ] " (an unchecked checkbox), one concrete action each. Use "- [x] " only for items the sources say are already done. An optional "# " title line is fine; otherwise no prose, no intro, no sign-off.';
-
 /** A cross-document conflict/clause-diff request (→ the clause-diff table). */
 function looksLikeDiff(prompt: string): boolean {
   return /\b(conflict|contradict|differ|discrepan|clause|reconcile|inconsisten|at odds)\b/i.test(prompt);
 }
 
-/** An "action items / to-dos / next steps" request (→ a checklist inside a card). */
-function wantsChecklist(prompt: string): boolean {
-  return /\b(action items?|actions?|to-?dos?|task list|checklist|next steps|follow[- ]ups?)\b/i.test(prompt);
-}
 
 /** A research-intent ask (→ the deep pass, implicitly). The user shouldn't
  *  need a mode: "find reviews", "what do people say", "research this",
@@ -1420,7 +1423,6 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   const base = shape === 'list' ? LIST_SYSTEM : DOC_SYSTEM;
   let system = citable ? base + CITE_DIRECTIVE : base;
   if (linkRefs.length > 0) system += linkCiteDirective(linkRefs);
-  if (wantsChecklist(req.prompt)) system += CHECKLIST_DIRECTIVE;
   system += WEB_DIRECTIVE;
   // Docs carry their map when the content is places, and a small interactive
   // widget when varying a parameter teaches the concept — the same "when
