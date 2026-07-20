@@ -151,6 +151,10 @@ const components: TLComponents = {
   // every stock context-menu action still renders below it.
   ContextMenu: TidyContextMenu,
   Toolbar: null, // replaced by our right-edge ToolRail
+  // Doc cards edit in their OWN rich editor (a ProseMirror instance); tldraw's
+  // default rich-text toolbar would pop up over it targeting tldraw's text
+  // engine, not ours — dead chrome. Suppress it (our cards own their formatting).
+  RichTextToolbar: null,
   StylePanel: CanvasStylePanel,
   MainMenu: null,
   PageMenu: null,
