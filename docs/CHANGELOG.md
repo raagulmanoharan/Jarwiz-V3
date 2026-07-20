@@ -46,6 +46,7 @@ stays one-line-per-feature. This changelog papers over Era 1 retroactively.
 ### Jul 18, 2026
 | PR | Tags | What shipped |
 |---|---|---|
+| #104 | `agents` · `cards` | Every answer shape drops an instant "building…" card on enter — tables/diagrams/maps no longer wait in silence |
 | #103 | `agents` · `onboarding` | Always show the answer-shape chip, defaulting to "Doc" — the mode selector is visible, not hidden until non-doc |
 | #102 | `cards` · `canvas` | Double-click any card opens it full-screen in focus mode — no more inline on-canvas editing |
 | #101 | `canvas` · `agents` | Provenance lineage always enters the answer at its left-middle — a stable socket that doesn't hop edges |
