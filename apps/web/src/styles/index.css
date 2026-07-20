@@ -2813,6 +2813,19 @@ body,
   word-break: break-word;
 }
 
+/* A cell being edited: same look as the static cell (it reuses the static
+ * classes), just a text caret and a placeholder — so a selected table and an
+ * editing table are identical, never raw markdown. */
+.jz-table-cell-editable {
+  outline: none;
+  cursor: text;
+}
+.jz-table-cell-editable:empty::before {
+  content: attr(data-placeholder);
+  color: var(--jz-ink-400);
+  pointer-events: none;
+}
+
 .jz-table-body {
   display: flex;
   flex-direction: column;

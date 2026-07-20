@@ -96,6 +96,14 @@ const FORMATS: Array<{ key: string; label: string; icon: React.ReactNode; run: (
 /** Line-shape formats (bullets/checklist) apply to prose, not table cells. */
 const TABLE_FORMAT_KEYS = new Set(['bold', 'italic', 'underline', 'strike']);
 
+/** Format-bar key → execCommand for a contentEditable table cell. */
+const EXEC: Record<string, string> = {
+  bold: 'bold',
+  italic: 'italic',
+  underline: 'underline',
+  strike: 'strikeThrough',
+};
+
 /** Apply a format to the card being edited — the doc's textarea, or whichever
  *  table cell holds the focus. Runs through the textarea's own onChange
  *  (formatControlledTextarea), so each surface's write path (auto-title,
@@ -112,7 +120,17 @@ export function applyCardFormat(
     // command; only falls through to the textarea path on dialect docs.
     if (richKey && runRichFormat(richKey)) return;
     const active = document.activeElement;
-    if (active instanceof HTMLTextAreaElement && (active.classList.contains('jz-doc-textarea') || active.classList.contains('jz-table-input'))) {
+    // Formatted table cell (contentEditable) → native execCommand; its onInput
+    // re-serializes the cell markdown.
+    if (active instanceof HTMLElement && active.isContentEditable && active.classList.contains('jz-table-cell-editable') && richKey) {
+      const cmd = EXEC[richKey];
+      if (cmd) {
+        document.execCommand(cmd);
+        active.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      return;
+    }
+    if (active instanceof HTMLTextAreaElement && active.classList.contains('jz-doc-textarea')) {
       formatControlledTextarea(active, run);
       return;
     }
