@@ -348,6 +348,18 @@ export function useAsk() {
       const currentShape: AskShape | undefined = targetType ? REFINABLE[targetType] : undefined;
 
       setIsAsking(true);
+
+      // Camera hand-off: the instant the person pans or zooms the board
+      // themselves (wheel or a canvas gesture), we stop moving the camera for
+      // the rest of this run. The reveal + follow must never fight the hand
+      // that's driving (owner ask 2026-07-20). Listeners attach now, so only
+      // gestures DURING the run count; disposed in the finally block.
+      let cameraYielded = false;
+      const yieldCamera = () => { cameraYielded = true; };
+      const cameraContainer = editor.getContainer();
+      cameraContainer.addEventListener('wheel', yieldCamera, { passive: true });
+      cameraContainer.addEventListener('pointerdown', yieldCamera, { passive: true });
+
       const ac = new AbortController();
       abortRef.current = ac;
       activeRun = { controller: ac, kind: targetId ? 'regen' : 'ask', cardId: targetId ?? undefined };
@@ -394,7 +406,16 @@ export function useAsk() {
 
       const framed = () => (affinity ? createdIds : cardId ? [cardId] : []);
 
+      // Bring the fresh answer into view — unless the person has taken the
+      // camera (see cameraYielded) or is editing a card, in which case leave
+      // their view alone.
+      const frame = (ids: TLShapeId[]) => {
+        if (cameraYielded || editor.getEditingShapeId()) return;
+        frameCard(editor, ids, sourceIds);
+      };
+
       const follow = () => {
+        if (cameraYielded || editor.getEditingShapeId()) return;
         const ids = framed();
         if (ids.length === 0) return;
         const now = Date.now();
@@ -420,7 +441,7 @@ export function useAsk() {
             pdfSourceId,
             statusText: lastStatus ?? undefined,
           });
-          frameCard(editor, [id], sourceIds);
+          frame([id]);
         } else {
           updateDraft({ groupIds: createdIds.filter((x) => x !== d.id) });
         }
@@ -600,7 +621,7 @@ export function useAsk() {
             recordSources(editor, id, contributingIds, trimmed);
             startStreaming(id);
             setDraft({ id, status: 'streaming', prompt: trimmed, logLabel: opts?.logLabel, sourceIds, shape: event.shape, pdfSourceId, statusText: lastStatus ?? undefined });
-            frameCard(editor, [id], sourceIds);
+            frame([id]);
             // Any card built FROM other cards shows its lineage the moment it
             // lands — select it so the provenance hairline to its source(s)
             // is drawn immediately (ProvenanceLayer reveals on selection),
@@ -736,13 +757,16 @@ export function useAsk() {
               // One final settle: mid-stream follows are throttled and their
               // animations interrupt each other, so the finished artifact can
               // end a run partly out of view (G3.2). Same contains() gate as
-              // followCard — a pair already in view doesn't move the camera.
-              followCard(editor, createdIds.length ? createdIds : [cardId], sourceIds);
+              // followCard — a card already in view doesn't move the camera —
+              // and it defers to the camera hand-off like every other follow.
+              if (!cameraYielded && !editor.getEditingShapeId()) {
+                followCard(editor, createdIds.length ? createdIds : [cardId], sourceIds);
+              }
             }
             break;
           case 'done':
             updateDraft({ status: 'done' });
-            if (affinity && createdIds.length > 0) frameCard(editor, createdIds, sourceIds);
+            if (affinity && createdIds.length > 0) frame(createdIds);
             break;
           case 'error':
             runFailed = true;
@@ -790,6 +814,8 @@ export function useAsk() {
         }
         clearRegen();
         endPresence(PRESENCE.id);
+        cameraContainer.removeEventListener('wheel', yieldCamera);
+        cameraContainer.removeEventListener('pointerdown', yieldCamera);
         if (activeRun?.controller === ac) activeRun = null;
         setIsAsking(false);
         // Pilot budgets spend one action per ask — refresh the topbar counter.
