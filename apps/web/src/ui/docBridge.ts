@@ -41,6 +41,19 @@ export function docHasSpecialSyntax(text: string): boolean {
 const TASK_RE = /^- \[([ xX])\]\s+(.*)$/;
 const TABLE_SEP_RE = /^\s*:?-{2,}:?\s*$/;
 
+/** True when a line opens a structural block (heading / rule / table / list) —
+ *  used to stop paragraph gathering at the next block. Mirrors the block order
+ *  in mdToDoc so a line is only gathered into a paragraph when nothing else claims it. */
+function startsBlock(line: string): boolean {
+  const t = line.trim();
+  return (
+    /^#{1,3} /.test(line) || // heading
+    /^[-—–]{2,}$/.test(t) || // hairline rule
+    (t.startsWith('|') && t.length > 1) || // table row
+    line.startsWith('- ') // bullet / task list
+  );
+}
+
 function tableCells(line: string): string[] {
   const cells = line.trim().split('|');
   if (cells[0]?.trim() === '') cells.shift();
@@ -127,9 +140,25 @@ export function mdToDoc(text: string): JSONContent {
       continue;
     }
 
-    // Paragraph — one non-empty line (DocMarkdown is line-oriented).
-    content.push({ type: 'paragraph', content: inlineToNodes(line) });
+    // Paragraph — gather consecutive non-blank plain lines into ONE paragraph
+    // with soft line breaks between them. Blank lines separate paragraphs; only
+    // a blank (or the start of a structural block) ends this one. This keeps
+    // adjacent lines adjacent on round-trip (e.g. "1. a\n2. b" stays tight,
+    // never gains blank lines) while blank-separated prose stays separate.
+    const paraLines: string[] = [line];
     i++;
+    while (i < lines.length) {
+      const l = lines[i] ?? '';
+      if (!l.trim() || startsBlock(l)) break;
+      paraLines.push(l);
+      i++;
+    }
+    const paraContent: JSONContent[] = [];
+    paraLines.forEach((pl, idx) => {
+      if (idx > 0) paraContent.push({ type: 'hardBreak' });
+      paraContent.push(...inlineToNodes(pl));
+    });
+    content.push({ type: 'paragraph', content: paraContent });
   }
 
   if (content.length === 0) content.push({ type: 'paragraph' });
