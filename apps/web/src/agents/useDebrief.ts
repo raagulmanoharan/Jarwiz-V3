@@ -85,6 +85,7 @@ export function useDebrief() {
       const follower = makeCardFollower(editor);
 
       const frameCluster = () => {
+        if (follower.yielded()) return; // the person took the camera — don't fight it
         const boxes = [transcript.id, ...created]
           .map((id) => editor.getShapePageBounds(id))
           .filter((b): b is NonNullable<ReturnType<typeof editor.getShapePageBounds>> => Boolean(b));

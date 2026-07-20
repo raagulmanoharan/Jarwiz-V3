@@ -26,6 +26,11 @@ export interface CardFollower {
   /** Bring the shape(s) into view if they aren't already (throttled; no-op
    *  after yield). Several ids are unioned into one bounds. */
   follow(ids: TLShapeId | TLShapeId[]): void;
+  /** True once the person has taken the camera (a wheel/pointer gesture). A
+   *  run's own one-shot reframes must check this so they don't fight the hand
+   *  that's now driving — the follow() no-op alone isn't enough when a run also
+   *  calls the camera directly. */
+  yielded(): boolean;
   /** Detach the take-over listeners. Call in the run's finally block. */
   dispose(): void;
 }
@@ -80,6 +85,9 @@ export function makeCardFollower(editor: Editor): CardFollower {
         { x: vpScreen.w / 2 / zoom - b.midX, y: vpScreen.h / 2 / zoom - focusY, z: zoom },
         { animation: { duration: THROTTLE_MS } },
       );
+    },
+    yielded() {
+      return yielded;
     },
     dispose() {
       container.removeEventListener('wheel', yieldNow);
