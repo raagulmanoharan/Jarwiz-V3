@@ -265,51 +265,6 @@ export async function generateWidgetHtml(briefRaw: string, signal: AbortSignal):
   return inflight;
 }
 
-/** The deep-research dossier as a RICH generative-UI card (OpenUI Lang), so
- *  it can mix prose, tables, charts, images and tabs — "don't restrict web
- *  answers to text" (owner call, 2026-07-10). Every live research pass (API
- *  and sidecar) answers this way; the keyless demo mode never reaches it.
- *  (This replaced the markdown-dossier RESEARCH_SYSTEM outright — one
- *  research answer shape, not two.) */
-const RICH_RESEARCH_SYSTEM = `You are running a DEEP RESEARCH pass on something the user put on their canvas — any link or card: a venue or rental listing, a product, a company, a repo or tool, an article or paper, a person, an open question. Your job: autonomously find everything a decision-maker would want to know, far beyond what the subject says about itself.
-
-First decide WHAT the subject is, then work the live web hard on the angles that matter for that kind of subject — for example:
-- venue / listing / product → independent reviews across platforms, current prices and availability, recurring complaints, strong alternatives
-- company / service → what it actually does, traction and reputation (news, customer and employee voices), competitors
-- repo / tool / tech → maturity and activity, what users report in issues and discussions, how it compares to alternatives
-- article / paper / claim → who wrote it and their credibility, corroborating AND contradicting sources, what has happened since
-- person → who they are, notable work, recent activity, credibility signals
-- open question / topic → the current state of things, the strongest sources, where informed people disagree
-Fetch the given URL for ground truth when there is one; cross-check what the subject claims about itself against what outsiders say; hunt for red flags (recurring complaints, contradictions, hidden costs, stale/renamed/discontinued).
-
-GET A REAL IMAGE. Before writing the card, obtain one genuine illustration of the subject: call the find_image tool with a short concrete query (e.g. "Hubble Space Telescope"). If find_image is not among your tools, fetch https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrsearch=SUBJECT&gsrlimit=3&prop=imageinfo&iiprop=url%7Cmime&iiurlwidth=960 with your web-fetch tool and use a "thumburl" from the response. An image URL you saw on a page you fetched is equally good. Use returned URLs VERBATIM — never construct, guess, or alter an image URL. If every route comes up empty, ship the card without an image.
-
-Then compose ONE rich answer card in "OpenUI Lang" — a tiny declarative layout grammar a separate renderer draws through a fixed component library; you never write HTML, CSS, JS, or SVG.
-
-${OPENUI_GRAMMAR}
-
-DOSSIER BRIEF
-- Top to bottom inside one root Stack: open with a Markdown block holding a "# " title and a one-paragraph verdict (what this is and whether it holds up). Then the sections that fit THIS subject, mixing components by what each point of content IS:
-  - Markdown blocks with **bold lead-ins** for the findings and analysis (the backbone of the card).
-  - A Table where a grid genuinely clarifies — alternatives side by side, specs, prices.
-  - A BarChart/LineChart ONLY when you gathered real comparable numbers (ratings across platforms, a price history) — never decorative, never invented.
-  - ONE Image of the subject right after the verdict (the hero) — the URL from find_image or a fetched page, with a short attribution caption (e.g. "Hubble in orbit — Wikimedia Commons"). At most one more Image deeper in the card where it genuinely illustrates a section. Skip images only if every route came up empty.
-  - Tabs when several parallel angles each need room (e.g. ["Reviews","Specs","Alternatives"]) — keep the verdict OUTSIDE the tabs so it's always visible.
-  - Kpi tiles for the 2–4 headline figures when the subject has them (price, rating, users) — pass "" for delta unless a real change is known.
-- Every externally sourced claim cites its page inline in Markdown as ([source](URL)); finish with one Markdown block of "Source: [Title](URL)" lines, one per page used.
-- Never invent a URL, an image URL, a number, or a fact. If an angle came up empty, say so in one honest Markdown line. Be specific and compact — a scannable dossier, not an essay. No preamble, no narration of your searching.
-
-EXAMPLE (shape only — a real card derives everything from what you actually found):
-root = Stack([verdict, hero, stats, body, srcs], "column")
-verdict = Markdown("# Acme Standing Desk\\nSolid mid-range pick: praised for stability, dinged for a slow motor ([source](https://example.com/review)).")
-hero = Image("https://upload.wikimedia.org/wikipedia/commons/thumb/…/960px-Standing_desk.jpg", "Acme desk at full height — Wikimedia Commons")
-stats = Grid([k1, k2], 2)
-k1 = Kpi("Street price", "$549", "")
-k2 = Kpi("Avg rating", "4.3/5", "")
-body = Tabs(["Reviews", "Alternatives"], [rev, alt])
-rev = Markdown("**What reviewers agree on** — rock-solid at full height...\\n\\n**Recurring complaint** — the motor...")
-alt = Table(["Desk", "Price", "Why consider"], [["Jarvis", "$599", "faster motor"], ["Uplift V2", "$639", "more options"]])
-srcs = Markdown("Source: [Example Review](https://example.com/review)")`;
 
 /** Steers a doc/list answer to render as an interactive markdown checklist. */
 /** A cross-document conflict/clause-diff request (→ the clause-diff table). */
@@ -1221,7 +1176,12 @@ export async function suggestShape(prompt: string, signal: AbortSignal): Promise
  * made-up URL or an ungeocoded pin. Each finished block streams to the canvas as
  * a `block.add` event. This is what makes rich constructs reliable — the model
  * declares structure, the server fills the data. */
-const BLOCK_DOC_SYSTEM = `You answer a question on a canvas by composing a rich card as a STREAM OF BLOCKS. Output ONE JSON object per line (newline-delimited JSON) and NOTHING else — no prose outside the objects, no markdown code fences, no commentary. Each line is one block. Emit them top to bottom in reading order; the card renders each as it arrives, so lead with what carries the most.
+/** The rich-card block grammar — reusable across every answer that composes a
+ *  block card (the ask doc path, the deep-research dossier, the doc/list Thinking
+ *  Machines). Append it to a persona to say "answer AS blocks"; the persona owns
+ *  the method, this owns the format + construct-choice discipline. Keeping it one
+ *  const means all three paths stay in lockstep (rich-card consolidation). */
+const BLOCK_FORMAT = `Compose your answer as a rich card — a STREAM OF BLOCKS. Output ONE JSON object per line (newline-delimited JSON) and NOTHING else — no prose outside the objects, no markdown code fences, no commentary. Each line is one block. Emit them top to bottom in reading order; the card renders each as it arrives, so lead with what carries the most.
 
 Block types (pick the RIGHT ones from the shape of the content — automatically, without being asked, and MIX them freely):
 {"type":"heading","level":1,"text":"..."}            // level 1–3; an optional short title first
@@ -1240,6 +1200,32 @@ Rules:
 - Use a MAP block when the answer is real places to visit; give each stop a region-qualified query so the geocoder resolves it. 1–8 real stops, never invented.
 - Ground every claim in the provided content or the web; if the sources don't contain the answer, say so in a paragraph rather than inventing. Calibrate depth to the ask — a decision/plan earns a full card, a narrow ask a short one.
 - Output ONLY the JSON lines. No leading/trailing prose.`;
+
+/** The ask doc/list persona: a bare lead-in that hands off to {@link BLOCK_FORMAT}. */
+const BLOCK_DOC_SYSTEM = `You answer a question on a canvas by composing a rich card.\n\n${BLOCK_FORMAT}`;
+
+/** The deep-research persona (the method), answering as a BLOCK card via
+ *  {@link BLOCK_FORMAT}. This replaced the OpenUI dossier (RICH_RESEARCH_SYSTEM)
+ *  so research shares the one rich-card grammar — the image block's server-side
+ *  search now supplies the hero shot, so no find_image tool dance is needed. */
+const RESEARCH_BLOCK_SYSTEM = `You are running a DEEP RESEARCH pass on something the user put on their canvas — any link or card: a venue or rental listing, a product, a company, a repo or tool, an article or paper, a person, an open question. Your job: autonomously find everything a decision-maker would want to know, far beyond what the subject says about itself.
+
+First decide WHAT the subject is, then work the live web hard on the angles that matter for that kind of subject — for example:
+- venue / listing / product → independent reviews across platforms, current prices and availability, recurring complaints, strong alternatives
+- company / service → what it actually does, traction and reputation (news, customer and employee voices), competitors
+- repo / tool / tech → maturity and activity, what users report in issues and discussions, how it compares to alternatives
+- article / paper / claim → who wrote it and their credibility, corroborating AND contradicting sources, what has happened since
+- person → who they are, notable work, recent activity, credibility signals
+- open question / topic → the current state of things, the strongest sources, where informed people disagree
+Fetch the given URL for ground truth when there is one; cross-check what the subject claims about itself against what outsiders say; hunt for red flags (recurring complaints, contradictions, hidden costs, stale/renamed/discontinued).
+
+Shape the dossier as a scannable rich card, not an essay:
+- Open with a level-1 heading (the subject) and a one-paragraph VERDICT — what this is and whether it holds up.
+- Put an image block of the subject right after the verdict (a short concrete query — the server finds the real photo), and at most one more deeper down where it genuinely illustrates a section.
+- Then the findings that fit THIS subject: paragraphs with **bold lead-ins** for the analysis (the backbone), a table where a grid genuinely clarifies (alternatives side by side, specs, prices), a checklist for concrete next steps or things to verify.
+- Cite every externally sourced claim inline as ([label](url)); close with a short list of the pages you used. Never invent a URL, a number, or a fact — if an angle came up empty, say so in one honest line.
+
+${BLOCK_FORMAT}`;
 
 /** Cap runaway structures so one block can't blow up the card. */
 function clampStr(s: unknown, n: number): string {
@@ -1443,11 +1429,17 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   if (deep) {
     yield { type: 'status', message: 'researching across the web…' };
     const user = `Research request:\n${req.prompt}\n\n${askContext || '(No canvas sources — research the request itself.)'}`;
-    // Rich generative-UI dossier (prose + tables + charts + images + tabs) —
-    // both live paths (API and CLI sidecar) drive the same model, and the
-    // keyless demo mode already exited above, so every real research pass
-    // answers rich.
-    yield* streamRichResearch(user, signal, images, framePaths, imageData);
+    // The dossier is a rich BLOCK card now (same construct grammar as every
+    // other answer — prose + tables + checklists + images), not a bespoke
+    // OpenUI dashboard. `deep:true` buys the many-search/read research budget;
+    // the keyless demo mode already exited above, so every real pass answers
+    // rich (rich-card consolidation, 2026-07-20).
+    yield* streamBlocks(RESEARCH_BLOCK_SYSTEM, user, signal, images, {
+      web: true,
+      deep: true,
+      framePaths,
+      imageData,
+    });
     return;
   }
 
@@ -1624,12 +1616,15 @@ async function* runMachineSkill(
       yield { type: 'done' };
       return;
     }
-    // Not clean JSON — degrade to a written answer rather than an empty table.
-    yield* streamDoc('doc', machine.systemPrompt, user, signal, images, opts);
+    // Not clean JSON — degrade to a rich block card rather than an empty table.
+    yield* streamBlocks(machine.systemPrompt + '\n\n' + BLOCK_FORMAT, user, signal, images, opts);
     return;
   }
 
-  yield* streamDoc(machine.output === 'list' ? 'list' : 'doc', machine.systemPrompt, user, signal, images, opts);
+  // The doc/list machines (persona, 5-whys) compose a rich BLOCK card now, not a
+  // markdown doc — their prompts describe the method + structure, BLOCK_FORMAT
+  // owns the output shape (rich-card consolidation, 2026-07-20).
+  yield* streamBlocks(machine.systemPrompt + '\n\n' + BLOCK_FORMAT, user, signal, images, opts);
 }
 
 const MAP_MAX_STOPS = 10;
@@ -1800,44 +1795,6 @@ async function* streamDashboard(
   yield { type: 'card.done' };
   yield { type: 'done' };
 }
-
-/**
- * Stream a RICH research answer — the deep-research pass answering as a
- * generative-UI card instead of a markdown doc, so the dossier can mix prose,
- * tables, charts, images and tabs (same OpenUI spec/renderer as dashboards;
- * the card streams into a dashboard-card shape). Web images the model cites
- * load through the /api/image cache-proxy client-side, so nothing here blocks
- * the stream on image fetches.
- */
-async function* streamRichResearch(
-  user: string,
-  signal: AbortSignal,
-  images: ImageInput[] = [],
-  framePaths: string[] = [],
-  imageData: ImageInput[] = [],
-): AsyncGenerator<AskEvent> {
-  yield { type: 'card.create', shape: 'dashboard' };
-  try {
-    for await (const ev of generateStream(RICH_RESEARCH_SYSTEM, user, signal, images, {
-      web: true,
-      deep: true,
-      prototype: true,
-      framePaths,
-      imageData,
-      clientTools: FIND_IMAGE_CLIENT,
-    })) {
-      if (signal.aborted) return;
-      if (ev.type === 'status') yield { type: 'status', message: ev.message };
-      else yield { type: 'card.delta', textDelta: ev.text };
-    }
-  } catch (error) {
-    yield { type: 'card.done' };
-    throw error;
-  }
-  yield { type: 'card.done' };
-  yield { type: 'done' };
-}
-
 
 /**
  * Create the doc card up front (the shape is known from the prompt), then
