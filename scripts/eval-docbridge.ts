@@ -38,6 +38,19 @@ expectStable('divider between paras', 'Above the line.\n\n---\n\nBelow the line.
 expectStable('multi-paragraph prose', 'First para.\n\nSecond para.\n\nThird para.');
 expectStable('mixed doc', '# Report\n\nIntro **paragraph** with a [link](https://x.com).\n\n## Findings\n\n- point one\n- point two\n\n| Metric | Value |\n| --- | --- |\n| Speed | Fast |');
 
+// ── Complex permutations — nested/mixed formatting in every position ──────────
+expectStable('bold inside heading', '## A **bold** heading and more');
+expectStable('mixed marks in heading', '# *Italic* and `code` in a title');
+expectStable('link inside list item', '- see [the docs](https://example.com/x)');
+expectStable('bold + link in list item', '- **important**: read [this](https://example.com/y)');
+expectStable('task with formatting', '- [ ] finish **the report** by [friday](https://cal.com/f)\n- [x] ~~old task~~ done');
+expectStable('formatted table cells', '| Name | Link |\n| --- | --- |\n| **Ada** | [site](https://ada.dev) |\n| *Bo* | `code` |');
+expectStable('image in a list item', '- ![logo](https://example.com/logo.png) our brand');
+expectStable('multiple links in a line', 'Both [one](https://a.com/1) and [two](https://b.com/2) apply.');
+expectStable('heading then table then list', '## Data\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n- note one\n- note two');
+expectStable('numbered list survives', '1. first\n2. second\n3. third');
+expectStable('everything at once', '# Title\n\nIntro with **bold**, *italic*, __underline__, a [link](https://x.com/z) and `code`.\n\n## Table\n\n| Feature | Status |\n| --- | --- |\n| **Fast** | [done](https://x.com/d) |\n\n## Checklist\n\n- [x] **shipped**\n- [ ] pending *review*');
+
 // Fallback detection — dialect-only docs must NOT go through the rich editor.
 expect('detect map fence', docHasSpecialSyntax('Some text\n```map\n{}\n```'));
 expect('detect widget fence', docHasSpecialSyntax('```widget\n{}\n```'));
