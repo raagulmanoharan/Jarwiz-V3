@@ -46,6 +46,7 @@ stays one-line-per-feature. This changelog papers over Era 1 retroactively.
 ### Jul 18, 2026
 | PR | Tags | What shipped |
 |---|---|---|
+| #107 | `agents` | Unselected asks actually use the board (forward the card-title index that #105 dropped) and lean on web search for verifiable facts instead of guessing from memory |
 | #106 | `onboarding` | Mode pill is non-dismissible and toggles the shape menu; Doc is a menu item; roomier padding |
 | #105 | `agents` | An unselected ask gets ambient board context — card titles so "his films"/"these" resolve without attaching a source |
 | #104 | `agents` · `cards` | Every answer shape drops an instant "building…" card on enter — tables/diagrams/maps no longer wait in silence |

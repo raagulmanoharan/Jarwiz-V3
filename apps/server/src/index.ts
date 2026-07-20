@@ -533,6 +533,15 @@ app.post('/api/ask', async (c) => {
     // Thinking Machine skill id — runs that machine's server-side skill instead
     // of the router (the `prompt` is the subject typed into the block).
     machineId: typeof raw.machineId === 'string' ? raw.machineId.slice(0, 60) : undefined,
+    // Ambient board context for an unselected ask — the titles of the canvas
+    // cards, so the model can resolve what the prompt refers to ("his films").
+    // Strings only, each capped, list capped.
+    boardIndex: Array.isArray(raw.boardIndex)
+      ? raw.boardIndex
+          .filter((t): t is string => typeof t === 'string' && t.trim() !== '')
+          .map((t) => t.slice(0, 120))
+          .slice(0, 60)
+      : undefined,
   };
 
   return streamSSE(c, async (stream) => {
