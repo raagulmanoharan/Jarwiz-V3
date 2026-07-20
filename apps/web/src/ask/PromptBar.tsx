@@ -182,23 +182,19 @@ function shapeLabel(editor: Editor, shape: TLShape): string {
   return kind[shape.type] ?? 'Card';
 }
 
-/** The "/" mode menu — every shape an answer can take. Stickies appear here
- *  deliberately: the router never chooses them (they're the user's annotation
- *  medium), but an explicit pick is user intent. */
-// Doc is FIRST — it's the default (an always-visible "Doc" pill), and listing it
-// lets you switch back to a doc from the menu now that the pill has no ✕ (owner
-// call 2026-07-20). Picking Doc clears to the implicit default (see pickMode).
+/** The "/" mode menu — the shapes an answer can take. Doc is FIRST (it's the
+ *  default; listing it lets you switch back from the menu now the pill has no ✕)
+ *  and picking Doc clears to the implicit default (see pickMode). */
+// The answer takes ONE of four shapes (owner call 2026-07-20 — card-type
+// consolidation). Doc is the rich default: prose, and tables / lists / maps /
+// images embed INSIDE it, so there's no separate table/map/list card. The other
+// three are the genuinely distinct interactive artefacts. "Flow" is the
+// flowchart / graph (the old Diagram).
 const MODES: Array<{ shape: ModeShape; label: string; hint: string }> = [
-  { shape: 'doc', label: 'Doc', hint: 'written prose — the default' },
-  { shape: 'list', label: 'List', hint: 'bullets or a checklist' },
-  { shape: 'table', label: 'Table', hint: 'rows × columns' },
-  { shape: 'diagram', label: 'Diagram', hint: 'boxes and arrows' },
+  { shape: 'doc', label: 'Doc', hint: 'prose, tables, maps — the rich default' },
   { shape: 'prototype', label: 'Prototype', hint: 'a live UI, rendered' },
   { shape: 'dashboard', label: 'Dashboard', hint: 'KPIs, charts, a table' },
-  { shape: 'map', label: 'Map', hint: 'pins & a route' },
-  { shape: 'affinity', label: 'Stickies', hint: 'notes across your cards' },
-  { shape: 'board', label: 'Board', hint: 'a set of cards' },
-  { shape: 'debrief', label: 'Debrief', hint: 'decisions · actions · risks' },
+  { shape: 'diagram', label: 'Flow', hint: 'a flowchart / graph' },
 ];
 
 export function PromptBar() {

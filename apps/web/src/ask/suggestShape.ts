@@ -7,13 +7,16 @@
  * change it or dismiss it at any time (owner call 2026-07-07). This replaces the
  * earlier regex spike (PR #8) with a real classifier — no keyword rules.
  *
- * Returns a mode name ('list'|'table'|'diagram'|'prototype'|'dashboard'|'board')
- * or null (→ no chip; the default doc). Fails soft to null on any error.
+ * Returns one of the non-doc shapes ('prototype'|'dashboard'|'diagram') or null
+ * (→ no chip; the rich-doc default). Fails soft to null on any error.
  */
 
 import type { ModeShape } from './modeShape';
 
-const VALID: ReadonlySet<string> = new Set(['list', 'table', 'diagram', 'prototype', 'dashboard', 'map', 'board']);
+// Only the three non-doc shapes the composer still offers can be auto-suggested
+// (owner call 2026-07-20 — card-type consolidation). A table/list/map answer is
+// now just a rich doc, so the suggester never pins those; it returns null (doc).
+const VALID: ReadonlySet<string> = new Set(['prototype', 'dashboard', 'diagram']);
 
 export async function suggestShape(prompt: string, signal?: AbortSignal): Promise<ModeShape | null> {
   if (prompt.trim().length < 4) return null;
