@@ -157,7 +157,9 @@ export function RichBlocks({
   );
 }
 
-/** A pre-geocoded map block — viewport + the Open-route / Google-Maps handoff. */
+/** A pre-geocoded map block — viewport with the Google-Maps hand-off floating
+ *  inside the frame (a corner chip), so the map is one self-contained tile with
+ *  no separate link bar underneath. */
 function MapRender({ ordered, stops }: { ordered: boolean; stops: MapStop[] }) {
   if (stops.length === 0) return null;
   const routable = ordered && stops.length > 1;
@@ -165,13 +167,13 @@ function MapRender({ ordered, stops }: { ordered: boolean; stops: MapStop[] }) {
     <div className="jz-map-block">
       <div className="jz-map-block-frame">
         <MapViewport stops={stops} ordered={ordered} interactive={false} />
-      </div>
-      <div className="jz-map-block-bar" style={{ pointerEvents: 'all' }} onPointerDown={(e) => e.stopPropagation()}>
         <a
-          className="jz-map-block-link"
+          className="jz-map-block-cta"
           href={routable ? googleMapsRouteUrl(stops) : googleMapsUrl(stops[0]!)}
           target="_blank"
           rel="noopener noreferrer"
+          style={{ pointerEvents: 'all' }}
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
         >
           ➤ {routable ? 'Open route' : 'Open in Google Maps'}

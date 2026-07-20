@@ -7453,6 +7453,33 @@ body,
   color: var(--jz-ink-900);
 }
 
+/* The Google-Maps hand-off as a chip floating INSIDE the map (bottom-right),
+   so the map block is one self-contained tile — no separate link bar below.
+   A card-surface pill keeps it legible over any basemap. */
+.jz-map-block-cta {
+  position: absolute;
+  right: var(--jz-space-3);
+  bottom: var(--jz-space-3);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: var(--jz-radius-pill);
+  background: var(--jz-card-surface);
+  border: 1px solid var(--jz-hairline-strong);
+  box-shadow: 0 1px 4px rgba(var(--jz-shadow-rgb), 0.24);
+  font: 600 11.5px/1 var(--jz-font-ui);
+  color: var(--jz-ink-700);
+  text-decoration: none;
+  transition: color var(--jz-dur-fast) var(--jz-ease-out), border-color var(--jz-dur-fast) var(--jz-ease-out);
+}
+
+.jz-map-block-cta:hover {
+  color: var(--jz-ink-900);
+  border-color: var(--jz-ink-500);
+}
+
 /* ─── Trip view (map card in focus mode — map left, itinerary rail right) ── */
 
 .jz-mapfocus {
