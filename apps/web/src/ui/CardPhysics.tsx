@@ -19,10 +19,13 @@ const isCard = (type: string) => type.endsWith('-card');
  *  ones being dragged) fixed. Resolves in page space, then applies the delta to
  *  each shape's own x/y so it works for framed children too. Idempotent once
  *  nothing overlaps, so re-entrant store events converge to a no-op. */
-function resolveOverlaps(editor: Editor): void {
+function resolveOverlaps(editor: Editor, changed: Set<TLShapeId>): void {
   const cards = editor.getCurrentPageShapes().filter((s) => isCard(s.type));
   if (cards.length < 2) return;
+  // Hold fixed both the selected cards AND whichever card just moved or resized
+  // (e.g. grew a column) — it stays; its neighbours yield.
   const anchors = new Set<TLShapeId>(editor.getSelectedShapeIds());
+  for (const id of changed) anchors.add(id);
 
   const boxes = cards
     .map((c) => {
@@ -77,29 +80,40 @@ export function CardPhysics() {
   useEffect(() => {
     let raf = 0;
     let resolving = false;
+    const changed = new Set<TLShapeId>(); // cards that moved/resized since last resolve
     const kick = () => {
       if (resolving || raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
         resolving = true;
         try {
-          resolveOverlaps(editor);
+          resolveOverlaps(editor, changed);
         } finally {
           resolving = false;
+          changed.clear();
         }
       });
     };
+    type Rec = { id?: string; typeName?: string; type?: string; x?: number; y?: number; props?: { w?: number; h?: number } };
     const unlisten = editor.store.listen(
       (entry) => {
         if (resolving) return;
-        const updated = entry.changes.updated as Record<string, [{ typeName?: string; type?: string; x?: number; y?: number }, { typeName?: string; type?: string; x?: number; y?: number }]>;
+        const updated = entry.changes.updated as Record<string, [Rec, Rec]>;
+        let hit = false;
         for (const key in updated) {
           const [from, to] = updated[key]!;
-          if (to?.typeName === 'shape' && to.type && isCard(to.type) && (from.x !== to.x || from.y !== to.y)) {
-            kick();
-            return;
+          if (
+            to?.typeName === 'shape' &&
+            to.type &&
+            isCard(to.type) &&
+            // moved OR resized (adding a column grows props.w without moving x/y)
+            (from.x !== to.x || from.y !== to.y || from.props?.w !== to.props?.w || from.props?.h !== to.props?.h)
+          ) {
+            changed.add((to.id ?? key) as TLShapeId);
+            hit = true;
           }
         }
+        if (hit) kick();
       },
       { scope: 'document', source: 'user' },
     );
