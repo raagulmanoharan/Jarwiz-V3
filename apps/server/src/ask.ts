@@ -57,8 +57,6 @@ Never include code blocks, fenced code, or Mermaid/diagram source — the ONLY f
 
 CALIBRATE DEPTH TO THE ASK. An open-ended, decision, or planning question ("best…", "should we…", "compare…", "plan…") earns a FULL card: several tight sections covering the real options, trade-offs, and concrete specifics (names, numbers, prices) — a reader should be able to DECIDE from it. A narrow or factual ask stays short — answer it and stop. The user's own size words always win: "short"/"brief"/"one-liner" means exactly that, "detailed"/"thorough" means go long. Either way: specific, no preamble, no sign-off, no padding.`;
 
-const LIST_SYSTEM = `You answer a question about the provided source document(s) as a focused markdown list. Optionally one "# " title line, then "- " bullets (or "1." steps if the question implies order). Each item tight and specific, grounded in the content. If the sources don't support an item, omit it. No preamble. Calibrate length to the ask: a broad brainstorm or plan earns a fuller list, a narrow ask a few sharp items — and the user's own size words ("top 3", "short", "exhaustive") always win.`;
-
 const TABLE_SYSTEM = `You answer a question as a TABLE — a comparison/matrix, a plan, an itinerary, a vendor list: whatever grid fits the ask. Return ONLY a JSON object {"columns": string[], "rows": string[][]} — the first column names the items/dimensions, one row per item, short cells.
 Two modes, chosen by what the ask IS:
 - EXTRACTIVE (summarise/compare/pull facts FROM the provided sources): ground FACTUAL cells (names, dates, prices, quoted specs) in the source content — leave such a cell empty rather than inventing a fact. BUT any column the user explicitly asked for that calls for JUDGEMENT rather than a quoted fact — "risk", "pros/cons", "trade-offs", "fit", "recommendation", "assessment", "watch-outs", "so what" — you MUST fill by REASONING from the source, not leave blank and never write "Not covered in this source" for it. The user named that column because they want your analysis of the material, not a lookup. Reserve "Not covered in this source" (first cell of the column, rest empty) ONLY for a purely factual column that the sources are genuinely silent on.
@@ -166,31 +164,6 @@ const MAP_SYSTEM = `You answer a places request as a MAP — real, specific plac
   - "lat"/"lng": your best-guess coordinates as a FALLBACK for when the geocoder misses — give them when you know the area, omit when unsure. The geocoder's answer wins when it resolves.
 Ground stops in the provided sources when they name places; otherwise draw on what you reliably know (use web search if available to verify current names). No prose outside the JSON, no code fences.`;
 
-/** The inline map block — doc answers carry a map when the content is places,
- *  the same "when warranted" doctrine as find_image (docs/MAPS.md). This is
- *  content-level, not shape routing: the answer is still a doc; the fence is
- *  just markdown until the client renders it. */
-const MAP_BLOCK_DIRECTIVE = `
-
-MAP BLOCK — when (and ONLY when) the substance of the answer is real places the user could visit (a trip or day plan, "places/cafés/temples near X", a location recommendation), include ONE map block early in the card — right after the opening line, before the plan/details:
-\`\`\`map
-{"ordered": true, "stops": [{"name": "Savandurga Trek", "query": "Savandurga Betta, Magadi, Karnataka, India", "day": "Morning", "time": "6:30 AM", "note": "Steep but short — book the slot early.", "lat": 12.92, "lng": 77.29}]}
-\`\`\`
-Rules: 1–8 REAL places only (never invent one); "query" must be region-qualified (place, locality, state, country) so a geocoder's first hit is the right place; "ordered" true only when the stops form a visiting order (an itinerary) — false for options/a single place; "day"/"time" only for itineraries; "note" one tight line or omitted; "lat"/"lng" your best guess as a fallback, omit when unsure. Then write the plan/answer as normal prose or bullets whose numbering follows the stop order. Never use a map block for anything that is not a visitable place; most answers have none.`;
-
-/** The inline widget block — a doc answer carries a SMALL model-authored
- *  interactive when varying a parameter genuinely explains the concept
- *  (docs/MAPS.md's fence architecture, second instance: the fence carries the
- *  BRIEF, hydration generates the widget on the prototype budget via
- *  /api/widget). Content-level like find_image/map — the shape stays a doc. */
-const WIDGET_BLOCK_DIRECTIVE = `
-
-WIDGET BLOCK — when (and ONLY when) the concept being explained genuinely becomes clearer through INTERACTION — varying a parameter, stepping through stages, dragging something, comparing two states, watching a small simulation — include ONE widget block where the concept appears:
-\`\`\`widget
-{"concept": "drag force vs speed for different body shapes", "interaction": "speed slider + sedan/van toggle drive the force curve", "note": "F = 1/2 * rho * Cd * A * v^2; van Cd ~0.38 vs sedan ~0.28"}
-\`\`\`
-"concept" names exactly ONE idea to make interactive; "interaction" describes the form that best teaches it (sliders, a step-through of stages, drag-to-explore, a compare toggle, a run/pause simulation — your call); "note" (optional) pins the real formula/values/sequence so the widget is honest. A separate pass builds the widget from this brief — you only write the brief. At most one per answer; only when interaction genuinely teaches (never decoration, never a chart of static facts); MOST answers have none.`;
-
 /** How the widget itself is authored — the prototype card's rules shrunk to a
  *  single-concept teaching block (~460×320, rendered in a sandboxed iframe
  *  with no network). */
@@ -291,8 +264,6 @@ export async function generateWidgetHtml(briefRaw: string, signal: AbortSignal):
   }
   return inflight;
 }
-
-const AFFINITY_SYSTEM = `You run an affinity-mapping exercise: turn the request and the source(s) into clustered sticky notes. Return ONLY a JSON object {"clusters": [{"label": string, "notes": string[]}]}. Make 3–6 clusters; each has a short 1–4 word "label" (the theme) and 2–6 short "notes" (each one idea, a few words). Group related ideas under the same theme. Ground notes in the provided content when a source is given; otherwise brainstorm sensible ideas for the request. No prose, no code fences.`;
 
 /** The deep-research dossier as a RICH generative-UI card (OpenUI Lang), so
  *  it can mix prose, tables, charts, images and tabs — "don't restrict web
@@ -1498,11 +1469,6 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   const shape = routedShape;
   const user = `Question:\n${req.prompt}\n\n${askContext}`;
 
-  if (shape === 'affinity') {
-    yield* streamAffinity(user, signal, images);
-    return;
-  }
-
   if (shape === 'diagram') {
     yield* streamDiagram(user, signal, images);
     return;
@@ -1872,59 +1838,6 @@ async function* streamRichResearch(
   yield { type: 'done' };
 }
 
-/**
- * Build an affinity diagram: the model returns themed clusters of ideas, and we
- * emit them cluster-by-cluster, note-by-note, so the canvas fills with sticky
- * notes that group themselves in real time.
- */
-async function* streamAffinity(
-  user: string,
-  signal: AbortSignal,
-  images: ImageInput[] = [],
-): AsyncGenerator<AskEvent> {
-  const raw = await generate(AFFINITY_SYSTEM, user, signal, images);
-  if (signal.aborted) return;
-  let clusters: Array<{ label: string; notes: string[] }> = [];
-  try {
-    const json = JSON.parse(raw.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()) as {
-      clusters?: unknown;
-    };
-    if (Array.isArray(json.clusters)) {
-      clusters = json.clusters
-        .map((c) => {
-          const obj = (c ?? {}) as Record<string, unknown>;
-          const label = String(obj.label ?? '').slice(0, 40);
-          const notes = Array.isArray(obj.notes)
-            ? obj.notes.map((n) => String(n ?? '').slice(0, 160)).filter(Boolean)
-            : [];
-          return { label, notes };
-        })
-        .filter((c) => c.label && c.notes.length > 0);
-    }
-  } catch {
-    /* fall through */
-  }
-  // Keep it to a readable board — cap clusters and notes per cluster.
-  clusters = clusters.slice(0, 6).map((c) => ({ label: c.label, notes: c.notes.slice(0, 6) }));
-  if (clusters.length === 0) {
-    // No clean JSON — degrade to a written answer so the ask isn't lost.
-    yield* streamDoc('doc', DOC_SYSTEM, user, signal, images);
-    return;
-  }
-  yield { type: 'card.create', shape: 'affinity' };
-  for (let i = 0; i < clusters.length; i++) {
-    if (signal.aborted) return;
-    yield { type: 'affinity.cluster', index: i, label: clusters[i]!.label };
-    await sleep(60, signal);
-    for (const note of clusters[i]!.notes) {
-      if (signal.aborted) return;
-      yield { type: 'affinity.note', cluster: i, text: note };
-      await sleep(80, signal);
-    }
-  }
-  yield { type: 'card.done' };
-  yield { type: 'done' };
-}
 
 /**
  * Create the doc card up front (the shape is known from the prompt), then
