@@ -20,6 +20,7 @@ import { useStreamState } from './useStreamState';
 import { DocMarkdown } from '../ui/DocMarkdown';
 import { RichDocEditor } from '../ui/RichDocEditor';
 import { docHasSpecialSyntax } from '../ui/docBridge';
+import { CardSources } from '../ui/CardSources';
 import { openCardFocus } from '../ui/focusCard';
 import { setPdfPage } from '../pdf/pdfView';
 import { toggleInline } from '../ask/textFormat';
@@ -281,6 +282,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
       ref={fitRef}
     >
       <div className="jz-doc-content">
+        <CardSources shapeId={shape.id} />
         {text ? (
           <DocMarkdown
             content={truncated ? preview : text}
