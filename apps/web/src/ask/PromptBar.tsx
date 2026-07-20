@@ -185,11 +185,11 @@ function shapeLabel(editor: Editor, shape: TLShape): string {
 /** The "/" mode menu — every shape an answer can take. Stickies appear here
  *  deliberately: the router never chooses them (they're the user's annotation
  *  medium), but an explicit pick is user intent. */
-// Doc/Text is deliberately ABSENT: it's the implicit default — typing with no
-// mode selected always answers as a doc. The selector only lists the shapes you
-// must explicitly opt into to get something OTHER than a doc (owner call
-// 2026-07-07).
+// Doc is FIRST — it's the default (an always-visible "Doc" pill), and listing it
+// lets you switch back to a doc from the menu now that the pill has no ✕ (owner
+// call 2026-07-20). Picking Doc clears to the implicit default (see pickMode).
 const MODES: Array<{ shape: ModeShape; label: string; hint: string }> = [
+  { shape: 'doc', label: 'Doc', hint: 'written prose — the default' },
   { shape: 'list', label: 'List', hint: 'bullets or a checklist' },
   { shape: 'table', label: 'Table', hint: 'rows × columns' },
   { shape: 'diagram', label: 'Diagram', hint: 'boxes and arrows' },
@@ -601,7 +601,9 @@ export function PromptBar() {
   }, [attachments, modeSource]);
 
   const pickMode = (shape: ModeShape) => {
-    setMode(shape);
+    // Doc is the implicit default — picking it clears the pin (mode = null → the
+    // pill reads "Doc") rather than storing 'doc'.
+    setMode(shape === 'doc' ? null : shape);
     setModeSource('user'); // an explicit pick — stop suggesting for this prompt.
     setModeMenu(false);
     setModeIdx(0);
@@ -932,39 +934,33 @@ export function PromptBar() {
             >
               <Paperclip size={15} strokeWidth={1.8} />
             </button>
-            {/* The / button IS the mode selector; once a shape is picked the
-                chip takes its place (dismiss to hand the choice back to the
-                model). Same menu as typing "/" in the input. */}
+            {/* The mode selector IS the pill (no separate "/" button): always
+                visible, non-dismissible, reads "Doc" by default. Clicking it
+                TOGGLES the shape menu open/closed; switch back to a doc by
+                picking Doc in the menu. Same menu as typing "/" in the input. */}
             {introMode ? (
               // Onboarding: no shape control and no preview pill — the composer's
               // self-typing example carries the intent on its own, so the footer
               // stays clean until the board opens (owner call, 2026-07-12).
               null
             ) : (
-              // ONE chip, always visible, one behaviour, whatever set it (a pick,
-              // the live suggester, or the DOC default): the body opens the "/"
-              // menu to change the shape. When the answer will be a doc the chip
-              // reads "Doc" — the default is now shown, not hidden (owner call,
-              // 2026-07-20). A non-doc pin gets a ✕ to fall back to a doc; the
-              // spark marks a choice the suggester made from your prompt.
+              // ONE chip, always visible, whatever set it (a pick, the live
+              // suggester, or the DOC default). Reads "Doc" when the answer will
+              // be a doc; the spark marks a suggester guess (owner call
+              // 2026-07-20).
               <span
                 key={`${mode ?? 'doc'}-${modeSource}`}
                 role="button"
                 tabIndex={0}
+                aria-haspopup="menu"
+                aria-expanded={modeMenu}
                 className={`jz-pb-ground jz-pb-mode jz-pb-mode--tappable${modeSource === 'auto' ? ' jz-pb-mode--auto' : ''}`}
                 title="Answer shape — click to change"
-                onClick={() => setModeMenu(true)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setModeMenu(true); } }}
+                onClick={() => setModeMenu((v) => !v)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setModeMenu((v) => !v); } }}
               >
                 {modeSource === 'auto' ? <JarwizSpark className="jz-pb-mode-spark" size={11} aria-hidden /> : null}
                 {mode ? (MODES.find((m) => m.shape === mode)?.label ?? mode) : 'Doc'}
-                {mode ? (
-                  <button
-                    className="jz-pb-ground-x"
-                    aria-label="Clear answer shape (write a doc)"
-                    onClick={(e) => { e.stopPropagation(); setMode(null); setModeSource('user'); }}
-                  >✕</button>
-                ) : null}
               </span>
             )}
           </div>

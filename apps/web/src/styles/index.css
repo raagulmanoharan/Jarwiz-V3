@@ -5275,6 +5275,10 @@ body,
 /* The pinned answer-shape chip (picked with "/") — accent-tinted so it reads
  * as an instruction to Jarwiz, not another grounding card. */
 .jz-pb-mode {
+  /* No ✕ any more, so the base chip's ✕-reserving right padding is wrong —
+     give it its own roomier, symmetric padding (owner call 2026-07-20). */
+  padding: 4px 12px;
+  gap: 5px;
   background: color-mix(in srgb, var(--jz-accent) 14%, transparent);
   color: color-mix(in srgb, var(--jz-accent) 70%, var(--jz-ink-900));
   font-weight: 600;
