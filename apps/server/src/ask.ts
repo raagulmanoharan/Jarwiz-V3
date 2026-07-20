@@ -9,12 +9,13 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import type { AskEvent, AskRequest, AskShape, AskSource } from '@jarwiz/shared';
+import type { AskEvent, AskRequest, AskShape, AskSource, RichBlock } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
 import { assetPath, extractAssetPages, extractAssetText, getAsset } from './assets.js';
 import { cacheImagesInRows } from './imageCache.js';
-import { FIND_IMAGE_TOOL, runFindImage } from './imageSearch.js';
+import { FIND_IMAGE_TOOL, runFindImage, searchImages } from './imageSearch.js';
 import { locateStops, type ProposedStop } from './geo.js';
+import { buildLinkPreview } from './linkPreview.js';
 import { extractSheetText } from './sheets.js';
 import { getMachine, type MachineSkill } from './machines.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
@@ -1240,6 +1241,181 @@ export async function suggestShape(prompt: string, signal: AbortSignal): Promise
   return word === 'flow' ? 'diagram' : word;
 }
 
+/* ── Structured block answer (rich-card rebuild, 2026-07-20) ─────────────────
+ * The doc answer is composed as a STREAM OF TYPED BLOCKS the model emits as
+ * newline-delimited JSON — one block object per line. Text blocks (heading /
+ * paragraph / list / checklist / table / divider) pass straight through; the
+ * data-bearing blocks are HYDRATED server-side (a map's stops geocoded, an
+ * image's query searched, a link's URL previewed) so the card never carries a
+ * made-up URL or an ungeocoded pin. Each finished block streams to the canvas as
+ * a `block.add` event. This is what makes rich constructs reliable — the model
+ * declares structure, the server fills the data. */
+const BLOCK_DOC_SYSTEM = `You answer a question on a canvas by composing a rich card as a STREAM OF BLOCKS. Output ONE JSON object per line (newline-delimited JSON) and NOTHING else — no prose outside the objects, no markdown code fences, no commentary. Each line is one block. Emit them top to bottom in reading order; the card renders each as it arrives, so lead with what carries the most.
+
+Block types (pick the RIGHT ones from the shape of the content — automatically, without being asked, and MIX them freely):
+{"type":"heading","level":1,"text":"..."}            // level 1–3; an optional short title first
+{"type":"paragraph","text":"..."}                    // prose; inline **bold**, *italic*, \`code\`, [label](url) allowed
+{"type":"list","ordered":false,"items":["...","..."]} // bullets, or ordered:true for steps in order
+{"type":"checklist","items":[{"text":"...","done":false}]} // tasks / action items / next steps
+{"type":"table","columns":["A","B"],"rows":[["1","2"]]} // a comparison / matrix / grid — a full table, not a token sketch
+{"type":"image","query":"Lake Bled","alt":"Lake Bled"} // a VISUAL subject; the server finds a real image from the query
+{"type":"map","ordered":false,"stops":[{"name":"...","query":"place, locality, state, country","note":"one line"}]} // real visitable places; the server geocodes each stop. ordered:true only for an itinerary/route
+{"type":"link","url":"https://…"}                    // a page worth surfacing; the server fetches its title/description/preview
+{"type":"divider"}                                    // a hairline break
+
+Rules:
+- Choose constructs by content: a comparison → a table; steps/tasks → a checklist; places → a map; a visual subject → an image; points → a list; everything else → paragraphs.
+- Use IMAGES generously for visual answers. If the user asks for photos/images, or the answer is a set of visual things — places, cafes, products, buildings, dishes, people, cars — emit an image block for EACH item (right after you name it), with a short concrete query (e.g. "Blue Tokai Coffee Indiranagar"). The server finds the real photo; you just supply the query. Only skip images for genuinely non-visual answers (analysis, code, abstract reasoning).
+- Use a MAP block when the answer is real places to visit; give each stop a region-qualified query so the geocoder resolves it. 1–8 real stops, never invented.
+- Ground every claim in the provided content or the web; if the sources don't contain the answer, say so in a paragraph rather than inventing. Calibrate depth to the ask — a decision/plan earns a full card, a narrow ask a short one.
+- Output ONLY the JSON lines. No leading/trailing prose.`;
+
+/** Cap runaway structures so one block can't blow up the card. */
+function clampStr(s: unknown, n: number): string {
+  return String(s ?? '').slice(0, n);
+}
+
+/** Validate + hydrate one model-emitted block object into a render-ready
+ *  RichBlock (or null to drop it). Map/image/link reach out for real data. */
+async function hydrateBlock(obj: unknown, signal: AbortSignal): Promise<RichBlock | null> {
+  if (!obj || typeof obj !== 'object') return null;
+  const b = obj as Record<string, unknown>;
+  switch (b.type) {
+    case 'heading': {
+      const text = clampStr(b.text, 200).trim();
+      const level = b.level === 1 || b.level === 2 || b.level === 3 ? b.level : 2;
+      return text ? { type: 'heading', level, text } : null;
+    }
+    case 'paragraph': {
+      const text = clampStr(b.text, 4000).trim();
+      return text ? { type: 'paragraph', text } : null;
+    }
+    case 'list': {
+      const items = Array.isArray(b.items) ? b.items.map((x) => clampStr(x, 500).trim()).filter(Boolean).slice(0, 40) : [];
+      return items.length ? { type: 'list', ordered: b.ordered === true, items } : null;
+    }
+    case 'checklist': {
+      const items = Array.isArray(b.items)
+        ? b.items
+            .map((x) => {
+              const it = (x ?? {}) as Record<string, unknown>;
+              return { text: clampStr(it.text, 500).trim(), done: it.done === true };
+            })
+            .filter((it) => it.text)
+            .slice(0, 40)
+        : [];
+      return items.length ? { type: 'checklist', items } : null;
+    }
+    case 'table': {
+      const columns = Array.isArray(b.columns) ? b.columns.map((c) => clampStr(c, 60)).slice(0, 6) : [];
+      const rows = Array.isArray(b.rows)
+        ? b.rows.map((r) => (Array.isArray(r) ? r.map((c) => clampStr(c, 300)).slice(0, 6) : [])).slice(0, 20)
+        : [];
+      return columns.length || rows.length ? { type: 'table', columns, rows } : null;
+    }
+    case 'divider':
+      return { type: 'divider' };
+    case 'image': {
+      const query = clampStr(b.query, 120).trim();
+      if (!query) return null;
+      const found = await searchImages(query, 1).catch(() => []);
+      if (signal.aborted || found.length === 0) return null; // no real image → drop it
+      return { type: 'image', url: found[0]!.url, alt: clampStr(b.alt, 120).trim() || query };
+    }
+    case 'map': {
+      const proposed: ProposedStop[] = Array.isArray(b.stops)
+        ? b.stops
+            .map((s) => {
+              const st = (s ?? {}) as Record<string, unknown>;
+              return {
+                name: clampStr(st.name, 120).trim(),
+                query: clampStr(st.query, 200).trim() || clampStr(st.name, 120).trim(),
+                note: st.note ? clampStr(st.note, 200) : undefined,
+                day: st.day ? clampStr(st.day, 40) : undefined,
+                time: st.time ? clampStr(st.time, 40) : undefined,
+              };
+            })
+            .filter((s) => s.name)
+            .slice(0, 8)
+        : [];
+      if (proposed.length === 0) return null;
+      const located = await locateStops(proposed, signal).catch(() => []);
+      if (signal.aborted || located.length === 0) return null;
+      return { type: 'map', ordered: b.ordered === true, stops: located };
+    }
+    case 'link': {
+      const url = clampStr(b.url, 2000).trim();
+      if (!/^https?:\/\//i.test(url)) return null;
+      const preview = await buildLinkPreview(url).catch(() => null);
+      if (signal.aborted) return null;
+      return preview
+        ? { type: 'link', url: preview.url, title: preview.title, description: preview.description, image: preview.image || undefined, siteName: preview.siteName || undefined }
+        : { type: 'link', url };
+    }
+    default:
+      return null;
+  }
+}
+
+/** Stream a rich card as hydrated blocks. Parses the model's NDJSON line by line
+ *  so each block streams the moment it closes; the data blocks pause only their
+ *  own hydration, not the whole card. */
+async function* streamBlocks(
+  system: string,
+  user: string,
+  signal: AbortSignal,
+  images: ImageInput[] = [],
+  opts: GenOpts = {},
+): AsyncGenerator<AskEvent> {
+  yield { type: 'card.create', shape: 'doc' };
+  yield { type: 'status', message: 'drafting the answer…' };
+  let buffer = '';
+  let emitted = 0;
+  async function* take(rawLine: string): AsyncGenerator<AskEvent> {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('\`\`\`')) return; // ignore blank lines / stray fences
+    let obj: unknown;
+    try {
+      obj = JSON.parse(line);
+    } catch {
+      return; // a half-written or non-JSON line — skip it
+    }
+    const block = await hydrateBlock(obj, signal);
+    if (signal.aborted) return;
+    if (block) {
+      emitted++;
+      yield { type: 'block.add', block };
+    }
+  }
+  let searching = false;
+  for await (const ev of generateStream(system, user, signal, images, opts)) {
+    if (signal.aborted) return;
+    if (ev.type === 'status') {
+      searching = true;
+      yield { type: 'status', message: ev.message };
+      continue;
+    }
+    if (searching) {
+      searching = false;
+      yield { type: 'status', message: 'drafting the answer…' };
+    }
+    buffer += ev.text;
+    let nl: number;
+    while ((nl = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, nl);
+      buffer = buffer.slice(nl + 1);
+      yield* take(line);
+    }
+  }
+  yield* take(buffer); // the final line has no trailing newline
+  // Never leave an empty card — if nothing parsed, fall back to a plain answer.
+  if (emitted === 0) {
+    yield { type: 'block.add', block: { type: 'paragraph', text: 'I couldn’t compose that — try rephrasing the question.' } };
+  }
+  yield { type: 'card.done' };
+  yield { type: 'done' };
+}
+
 export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGenerator<AskEvent> {
   if (!hasModelKey() && !sidecarAvailable()) {
     yield* streamDemoAsk(req, signal);
@@ -1420,22 +1596,15 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
     return;
   }
 
-  const base = shape === 'list' ? LIST_SYSTEM : DOC_SYSTEM;
-  let system = citable ? base + CITE_DIRECTIVE : base;
-  if (linkRefs.length > 0) system += linkCiteDirective(linkRefs);
-  system += WEB_DIRECTIVE;
-  // Docs carry their map when the content is places, and a small interactive
-  // widget when varying a parameter teaches the concept — the same "when
-  // warranted" doctrine as find_image; static text, so prompt caching holds.
-  system += MAP_BLOCK_DIRECTIVE;
-  system += WIDGET_BLOCK_DIRECTIVE;
-  // With canvas sources riding along, the model declares which it actually
-  // drew on — attached ≠ used, and lineage links only real use.
-  if (req.sources.length > 0) system += SOURCES_USED_DIRECTIVE;
-  yield { type: 'status', message: shape === 'list' ? 'writing the list…' : 'drafting the answer…' };
-  // Everyday doc/list answers carry find_image too — the directive gates it
-  // to answers a real image genuinely lifts (owner call, 2026-07-10).
-  yield* streamDoc(shape, system, user, signal, images, { web: true, framePaths, imageData, clientTools: FIND_IMAGE_CLIENT }, req.sources.length);
+  // The doc/list answer is a STRUCTURED RICH CARD now: the model emits hydrated
+  // blocks (tables/maps/images/checklists), not markdown (rich-card rebuild,
+  // 2026-07-20). BLOCK_DOC_SYSTEM carries its own construct guidance, so the
+  // markdown map/widget/find_image directives don't apply here; web tools stay
+  // on for grounding, and paragraphs may cite inline as [label](url) / [p.N].
+  const blockSystem =
+    BLOCK_DOC_SYSTEM +
+    '\n\nYou can web_search for current or externally verifiable facts (names, dates, prices, credits, places) — do that FIRST, then emit the blocks; cite a web claim inline as ([label](url)). For a page-sourced answer, cite the page as [p.N] where N is its number.';
+  yield* streamBlocks(blockSystem, user, signal, images, { web: true, framePaths, imageData });
 }
 
 /**

@@ -12,7 +12,9 @@ import { Bold, Italic, Underline, Strikethrough, List, ListTodo, X } from 'lucid
 import { toggleInline, toggleLinePrefix, shortcutMarker, type FormatResult } from '../ask/textFormat';
 import { deriveTitle, getShapeTitle, setShapeTitle, titleIsAuto } from '../shapes/shapeTitle';
 import type { DocCardShape } from '../shapes';
+import type { RichBlock } from '@jarwiz/shared';
 import { closeCardFocus, getCardFocus, subscribeCardFocus } from './focusCard';
+import { RichBlocks } from './RichBlocks';
 import { RichDocEditor } from './RichDocEditor';
 import { docHasSpecialSyntax } from './docBridge';
 import { runRichFormat } from './richDocRegistry';
@@ -60,6 +62,7 @@ export function DocFocusOverlay() {
 
   if (!focusId || !shape || shape.type !== 'doc-card') return null;
   const title = getShapeTitle(shape);
+  const blocks = Array.isArray(shape.meta?.jzBlocks) ? (shape.meta!.jzBlocks as unknown as RichBlock[]) : null;
 
   const setText = (value: string) => {
     if (titleIsAuto(shape)) {
@@ -133,7 +136,13 @@ export function DocFocusOverlay() {
             </button>
           </div>
         </div>
-        {docHasSpecialSyntax(text) ? (
+        {blocks && blocks.length > 0 ? (
+          // Structured block docs render read-only here (editing blocks is a
+          // later phase) — better than an empty text editor.
+          <div className="jz-focus-blocks">
+            <RichBlocks blocks={blocks} />
+          </div>
+        ) : docHasSpecialSyntax(text) ? (
           // Dialect docs (map/widget/citations) keep the raw-text editor.
           <textarea
             ref={taRef}

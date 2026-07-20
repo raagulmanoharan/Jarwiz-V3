@@ -5809,6 +5809,9 @@ body,
   margin-left: 8px;
 }
 
+/* Read-only structured blocks in focus mode — same measure as the editor. */
+.jz-focus-blocks { flex: none; width: 100%; }
+
 .jz-focus-textarea {
   /* NOT flex:1 — a zero flex-basis would override the autosize height and
    * pin the page at its min-height with an inner scrollbar. */

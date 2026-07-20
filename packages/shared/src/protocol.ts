@@ -8,6 +8,8 @@
  */
 
 import type { AgentId } from './agents.js';
+// Type-only import — blocks.ts imports MapStop from here; erased at build, no cycle.
+import type { RichBlock } from './blocks.js';
 
 /** The kinds of cards an agent (or the user) can place on the board. */
 export type CardKind = 'link' | 'youtube' | 'image' | 'pdf' | 'sheet' | 'note' | 'doc' | 'table';
@@ -605,6 +607,11 @@ export type AskEvent =
     }
   | { type: 'card.title'; title: string }
   | { type: 'card.delta'; textDelta: string }
+  /** One structured block for a rich doc — appended to the card's block list as
+   *  it's built (heading/paragraph/table/map/image/link/…), already hydrated
+   *  server-side (a map's stops geocoded, an image's URL found). The structured
+   *  counterpart to card.delta text (rich-card rebuild, 2026-07-20). */
+  | { type: 'block.add'; block: RichBlock }
   | { type: 'table.cell'; r: number; c: number; text: string }
   /** Drop one geocoded stop onto a map card, in visiting order — the map
    *  assembles pin by pin, the way a table fills cell by cell. */
