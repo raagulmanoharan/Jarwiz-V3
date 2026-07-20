@@ -242,6 +242,15 @@ export interface AskRequest {
    * subject the user typed into the machine block. See server machines.ts.
    */
   machineId?: string;
+  /**
+   * Titles of the cards on the user's canvas (an ambient index, not full
+   * content), sent when the ask has NO explicit sources so the model can resolve
+   * references the prompt leans on — "his films", "these", a bare pronoun — from
+   * what's visibly on the board. Titles only, capped, so it stays cheap; the
+   * model answers from it or asks the user to select the specific card for
+   * detail (owner call 2026-07-20).
+   */
+  boardIndex?: string[];
 }
 
 /* ─── Diagram (canvas pivot P2 — the AI builds primitives) ───────────────────
