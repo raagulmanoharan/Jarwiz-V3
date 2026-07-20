@@ -22,6 +22,7 @@ import { setShapeTitle } from '../shapes/shapeTitle';
 import { readSSE } from './sse';
 import { startFocus, startGenerating, stopFocus, stopGenerating } from './streaming';
 import { makeCardFollower } from './followCamera';
+import { frameBounds } from '../ui/bringIntoView';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from './presence';
 import { getDraft, setDraft, updateDraft } from '../ask/draft';
 import { claimActiveRun, releaseActiveRun, discardDraft, PROMPT_META_KEY, PROV_META_KEY } from '../ask/useAsk';
@@ -91,7 +92,7 @@ export function useDebrief() {
           .filter((b): b is NonNullable<ReturnType<typeof editor.getShapePageBounds>> => Boolean(b));
         if (boxes.length === 0) return;
         const u = boxes.reduce((acc, b) => acc.union(b), boxes[0]!.clone());
-        editor.zoomToBounds(u, { animation: { duration: 320 }, inset: 130, targetZoom: 1 });
+        frameBounds(editor, u, { margin: 65, animation: { duration: 320 } });
       };
 
       // Place one card of the cluster as a titled empty placeholder (marked

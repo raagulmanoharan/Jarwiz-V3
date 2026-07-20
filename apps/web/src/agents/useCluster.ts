@@ -11,6 +11,7 @@ import { createShapeId, useEditor, type Editor, type TLShapeId } from 'tldraw';
 import { getAgent, type ClusterResult } from '@jarwiz/shared';
 import { affinityColor, DOC_CARD_SIZE, type DocCardShape, type NoteCardShape } from '../shapes';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from './presence';
+import { frameBounds } from '../ui/bringIntoView';
 import { startStreaming, stopStreaming } from './streaming';
 import { clearAgentTask, setAgentTask } from './agentTask';
 
@@ -117,7 +118,7 @@ export function useCluster() {
       clearAgentTask(taskId);
       editor.select(...created, ...noteIds);
       const b = editor.getSelectionPageBounds();
-      if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 80, targetZoom: 1 });
+      if (b) frameBounds(editor, b, { margin: 40, animation: { duration: 300 } });
       editor.selectNone();
     } catch (err) {
       if (summaryId) stopStreaming(summaryId);

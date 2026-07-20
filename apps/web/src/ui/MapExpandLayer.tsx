@@ -10,6 +10,7 @@ import { useEffect } from 'react';
 import { createShapeId, useEditor } from 'tldraw';
 import { MAP_CARD_SIZE, type MapCardShape } from '../shapes';
 import { MAP_EXPAND_EVENT, type MapExpandDetail } from './DocMapBlock';
+import { frameBounds } from './bringIntoView';
 import { placeInLane, PROV_META_KEY } from '../ask/useAsk';
 
 export function MapExpandLayer() {
@@ -41,7 +42,7 @@ export function MapExpandLayer() {
       });
       editor.select(id);
       const bounds = editor.getShapePageBounds(id);
-      if (bounds) editor.zoomToBounds(bounds, { animation: { duration: 320 }, inset: 120, targetZoom: 1 });
+      if (bounds) frameBounds(editor, bounds, { margin: 60, animation: { duration: 320 } });
     };
     window.addEventListener(MAP_EXPAND_EVENT, onExpand);
     return () => window.removeEventListener(MAP_EXPAND_EVENT, onExpand);
