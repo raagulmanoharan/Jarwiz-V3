@@ -3445,17 +3445,21 @@ body,
   pointer-events: all;
   /* The tag is a drag handle (ui/CardTitleTag) — keep touch drags ours. */
   touch-action: none;
+  /* A drag handle in BOTH states — the unselected label AND the rename input
+   * shown when the card is selected — so it rests on grab, not the input's
+   * default text caret. Selecting a card shouldn't read as "type here"; the
+   * caret appears only once you click in to rename (owner ask 2026-07-20;
+   * the title is grabbable surface, not inert text — owner call 2026-07-10). */
+  cursor: grab;
 }
 
 .jz-title-tag::placeholder {
   color: var(--jz-ink-400);
 }
 
-/* Unselected cards show a label that doubles as a handle: click selects the
- * card, drag moves it (owner call 2026-07-10 — the title is part of the
- * card's grabbable surface, not inert text). */
-.jz-title-tag--label {
-  cursor: grab;
+/* Only while actually renaming (the input focused) does the text caret belong. */
+.jz-title-tag:focus {
+  cursor: text;
 }
 
 .jz-doc-content {
