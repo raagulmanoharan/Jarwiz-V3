@@ -20,6 +20,7 @@ import { readSSE } from './sse';
 import { gatherBoardCards } from './boardText';
 import { startFocus, startGenerating, stopFocus, stopGenerating } from './streaming';
 import { makeCardFollower } from './followCamera';
+import { frameBounds } from '../ui/bringIntoView';
 
 export type ComposePhase = 'idle' | 'planning' | 'building' | 'done' | 'error';
 
@@ -348,5 +349,5 @@ function frame(editor: Editor, ids: TLShapeId[]): void {
     .filter((b): b is Box => Boolean(b));
   if (boxes.length === 0) return;
   const u = boxes.reduce((acc, b) => acc.union(b), boxes[0]!.clone());
-  editor.zoomToBounds(u, { animation: { duration: 400 }, inset: 100, targetZoom: 1 });
+  frameBounds(editor, u, { margin: 50, animation: { duration: 400 } });
 }

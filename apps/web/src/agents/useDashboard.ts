@@ -13,6 +13,7 @@ import { DASHBOARD_CARD_SIZE } from '../shapes';
 import { gridToCsv } from '../lib/dashboardable';
 import { PROV_META_KEY } from '../ask/useAsk';
 import { requestDashboardRun } from './dashboardRun';
+import { frameBounds } from '../ui/bringIntoView';
 
 /** The dashboard brief prepended to the data — instructs the model to chart the
  *  ACTUAL rows. The full OpenUI Lang grammar lives in the server prompt; here we
@@ -66,7 +67,7 @@ export function useDashboard() {
         });
         editor.select(id);
         const nb = editor.getShapePageBounds(id);
-        if (nb) editor.zoomToBounds(nb, { inset: 90, targetZoom: 1, animation: { duration: 300 } });
+        if (nb) frameBounds(editor, nb, { margin: 45, animation: { duration: 300 } });
         // Fire the dashboard engine — it streams the OpenUI Lang spec into the card.
         requestDashboardRun(id, dashboardPrompt(subject, csv));
       } finally {

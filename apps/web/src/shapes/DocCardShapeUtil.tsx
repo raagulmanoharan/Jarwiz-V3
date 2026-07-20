@@ -24,6 +24,7 @@ import { RichDocEditor } from '../ui/RichDocEditor';
 import { docHasSpecialSyntax } from '../ui/docBridge';
 import { CardSources } from '../ui/CardSources';
 import { openCardFocus } from '../ui/focusCard';
+import { frameBounds } from '../ui/bringIntoView';
 import { setPdfPage } from '../pdf/pdfView';
 import { toggleInline } from '../ask/textFormat';
 import { deriveTitle, titleIsAuto } from './shapeTitle';
@@ -300,7 +301,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
               setPdfPage(pdfId, page);
               editor.select(pdfId);
               const bounds = editor.getShapePageBounds(pdfId);
-              if (bounds) editor.zoomToBounds(bounds, { animation: { duration: 220 }, inset: 80, targetZoom: 1 });
+              if (bounds) frameBounds(editor, bounds, { margin: 40, animation: { duration: 220 } });
             }}
           />
         ) : text ? (
@@ -312,7 +313,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
               setPdfPage(pdfId, page);
               editor.select(pdfId);
               const bounds = editor.getShapePageBounds(pdfId);
-              if (bounds) editor.zoomToBounds(bounds, { animation: { duration: 220 }, inset: 80, targetZoom: 1 });
+              if (bounds) frameBounds(editor, bounds, { margin: 40, animation: { duration: 220 } });
             }}
             // Truncation would desynchronize checkbox ordinals against the
             // full text — a preview is read-only until opened in focus mode.

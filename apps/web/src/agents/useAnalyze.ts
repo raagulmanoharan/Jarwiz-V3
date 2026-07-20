@@ -9,6 +9,7 @@ import { useCallback, useState } from 'react';
 import { createShapeId, useEditor, type TLShapeId } from 'tldraw';
 import { getAgent, type AnalyzeMode } from '@jarwiz/shared';
 import { gatherBoardCards } from './boardText';
+import { frameBounds } from '../ui/bringIntoView';
 import { readSSE } from './sse';
 import { startStreaming, stopStreaming } from './streaming';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from './presence';
@@ -79,7 +80,7 @@ export function useAnalyze() {
         const b = editor.getShapePageBounds(id);
         // targetZoom caps at 100% — framing a single card must never magnify
         // it past natural size (text balloons and padding reads as broken).
-        if (b) editor.zoomToBounds(b, { animation: { duration: 300 }, inset: 120, targetZoom: 1 });
+        if (b) frameBounds(editor, b, { margin: 60, animation: { duration: 300 } });
       } catch (err) {
         if (cancelled) {
           const s = editor.getShape(id) as DocCardShape | undefined;
