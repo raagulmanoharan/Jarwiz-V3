@@ -3610,7 +3610,10 @@ body,
 .jz-doc-rich .ProseMirror ol { list-style: decimal; }
 .jz-doc-rich .ProseMirror li { margin-bottom: var(--jz-space-2); }
 .jz-doc-rich .ProseMirror li::marker { color: var(--jz-ink-400); }
-.jz-doc-rich .ProseMirror li > p { margin: 0; }
+/* Paragraphs inside list items and table cells carry the browser's default
+ * ~1em margin, which the direct-child reset above doesn't reach — zero them so
+ * cells/items are the same height they are in read mode (no reflow on edit). */
+.jz-doc-rich .ProseMirror :is(li, td, th) > p { margin: 0; }
 /* Task list — checkbox + label, list markers off (mirrors .jz-md-tasklist). */
 .jz-doc-rich .ProseMirror ul[data-type='taskList'] {
   list-style: none;
@@ -3657,7 +3660,8 @@ body,
   border-spacing: 0;
   width: 100%;
   table-layout: fixed;
-  margin: var(--jz-space-2) 0;
+  /* No margin override — the block-spacing rule (> * + *) sizes the gap, same
+   * as every other block, so the table doesn't sit tighter than in read mode. */
   border: 1px solid var(--jz-hairline);
   border-radius: var(--jz-radius-sm);
   overflow: hidden;
@@ -3682,6 +3686,23 @@ body,
   pointer-events: none;
 }
 .jz-doc-rich .ProseMirror :is(th, td) { position: relative; }
+
+/* Full-page (focus mode) variant — larger, airier type than the card, matching
+ * the old .jz-focus-textarea (15px / 1.7). The focus page supplies the padding,
+ * so the editor itself has none; spacing is em-based so it scales with the type. */
+.jz-doc-rich--focus {
+  padding: 0;
+}
+.jz-doc-rich--focus .ProseMirror {
+  font-size: 15px;
+  line-height: 1.7;
+}
+.jz-doc-rich--focus .ProseMirror > * + * {
+  margin-top: 0.85em;
+}
+.jz-doc-rich--focus .ProseMirror > * + :is(h1, h2, h3) {
+  margin-top: 1.4em;
+}
 /* Markdown rendering within doc cards.
  * gap: 0 because blank lines in source are rendered as explicit empty rows so
  * read mode matches the textarea visually — no phantom gaps, no missing ones.
