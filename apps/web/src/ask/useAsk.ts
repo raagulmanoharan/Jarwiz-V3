@@ -16,6 +16,7 @@ import {
   createShapeId,
   renderPlaintextFromRichText,
   useEditor,
+  type Box,
   type Editor,
   type TLRichText,
   type TLShape,
@@ -48,6 +49,7 @@ import { clearClarify, setClarify } from './clarify';
 import { logEvent } from '../log/eventLog';
 import { clearAgentError, setAgentError } from '../agents/agentError';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from '../agents/presence';
+import { frameBounds } from '../ui/bringIntoView';
 import { getShapeTitle } from '../shapes/shapeTitle';
 import { getAgent } from '@jarwiz/shared';
 
@@ -847,28 +849,52 @@ export function discardDraft(editor: Editor): void {
 
 const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
-/** Combined bounds of the response shape(s) and the source(s) they came from. */
-function pairBounds(editor: Editor, responseIds: TLShapeId[], sourceIds: TLShapeId[]) {
-  const boxes = [...responseIds, ...sourceIds]
+/** Union of a set of shapes' page bounds (null if none resolve). */
+function boundsOf(editor: Editor, ids: TLShapeId[]): Box | null {
+  const boxes = ids
     .map((id) => editor.getShapePageBounds(id))
     .filter((b): b is NonNullable<ReturnType<typeof editor.getShapePageBounds>> => Boolean(b));
   if (boxes.length === 0) return null;
   return boxes.reduce((acc, b) => acc.union(b), boxes[0]!.clone());
 }
 
-/** Frame the source + response together, centred (used when the draft appears). */
+/** Never let a generated answer shrink below this — a readable card beats a
+ *  fully-framed pair. When source + answer can't both fit above the floor, we
+ *  hold it and keep the ANSWER centred (the source spills off toward its edge). */
+const ANSWER_MIN_ZOOM = 0.6;
+
+/** Frame the source + answer together when they fit comfortably; otherwise keep
+ *  the fresh answer centred and legible rather than zooming out to a speck
+ *  (owner call 2026-07-20 — "the card looked tiny"). */
 function frameCard(editor: Editor, responseIds: TLShapeId[], sourceIds: TLShapeId[]): void {
-  const u = pairBounds(editor, responseIds, sourceIds);
-  if (u) editor.zoomToBounds(u, { animation: { duration: 420, easing: easeOutCubic }, inset: 130, targetZoom: 1 });
+  const answer = boundsOf(editor, responseIds);
+  if (!answer) return;
+  const pair = boundsOf(editor, [...responseIds, ...sourceIds]) ?? answer;
+  frameBounds(editor, pair, {
+    minZoom: ANSWER_MIN_ZOOM,
+    focus: answer,
+    margin: 130,
+    animation: { duration: 420, easing: easeOutCubic },
+  });
 }
 
-/** Keep the source + response centred as the response grows — re-frame only
- *  when the pair has outgrown the viewport, so it doesn't jitter when it fits. */
+/** Keep the answer in view as it grows — re-frame only when it (or the pair, if
+ *  it still fits) has scrolled out, so a settled view doesn't jitter. */
 function followCard(editor: Editor, responseIds: TLShapeId[], sourceIds: TLShapeId[]): void {
-  const u = pairBounds(editor, responseIds, sourceIds);
-  if (!u) return;
-  if (editor.getViewportPageBounds().contains(u)) return;
-  editor.zoomToBounds(u, { animation: { duration: 280, easing: easeOutCubic }, inset: 130, targetZoom: 1 });
+  const answer = boundsOf(editor, responseIds);
+  if (!answer) return;
+  const vp = editor.getViewportPageBounds();
+  const pair = boundsOf(editor, [...responseIds, ...sourceIds]) ?? answer;
+  // If the whole pair still fits, only nudge when it has drifted out; otherwise
+  // track the answer alone so it never falls off the edge as it grows.
+  if (vp.contains(pair)) return;
+  if (vp.contains(answer)) return;
+  frameBounds(editor, pair, {
+    minZoom: ANSWER_MIN_ZOOM,
+    focus: answer,
+    margin: 130,
+    animation: { duration: 280, easing: easeOutCubic },
+  });
 }
 
 /* ── affinity layout ───────────────────────────────────────────────────────

@@ -46,6 +46,7 @@ stays one-line-per-feature. This changelog papers over Era 1 retroactively.
 ### Jul 18, 2026
 | PR | Tags | What shipped |
 |---|---|---|
+| #98 | `canvas` · `agents` | Frame a generated answer legibly instead of zooming out to a speck; same floor for Tidy |
 | #97 | `canvas` | Keep cards from overlapping when one grows, not just moves |
 | #96 | `canvas` | Cards don't overlap — push overlapping cards apart on move |
 | #95 | `cards` · `canvas` | Declutter the card action bar; move sources into the card as pills |
