@@ -876,9 +876,9 @@ async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenera
   const body = placey
     ? `Here's a solid nature-and-outdoors day out — Savandurga + Manchanabele, both on the Magadi Road side, so the drive between them is quick. *(Demo mode — set a key for a real, planned answer.)*\n\n${mapFence}\n\n**The plan**\n- **5:30 AM** — Leave Bengaluru; Magadi Road before the traffic wakes up.\n- **6:30 AM** — **Savandurga trek** — steep but short (~2 km). Book the forest-dept slot the night before.\n- **12:30 PM** — **Dodda Alada Mara** — lunch near the 400-year-old banyan.\n- **4:30 PM** — **Manchanabele Dam** — timed late on purpose: it's a sunset spot.\n- **7:30 PM** — Back in the city, dinner earned.`
     : `You asked: *${req.prompt.slice(0, 140)}*\n\n` +
-      'Jarwiz is running without a model — add your Anthropic API key (key ' +
-      'button, top right) and real answers will stream onto the board ' +
-      'exactly like this one, grounded on the cards you selected.';
+      "This is Jarwiz's demo mode — a scripted answer, not a real one. With " +
+      'model access (a pilot invite, or a self-hosted server key), real answers ' +
+      'stream onto the board exactly like this one, grounded on the cards you selected.';
   for (const piece of chunkWords(body, 6)) {
     if (signal.aborted) return;
     yield { type: 'card.delta', textDelta: piece };
