@@ -27,3 +27,34 @@ export function chunkWords(text: string, size: number): string[] {
   for (let i = 0; i < words.length; i += size) out.push(words.slice(i, i + size).join(''));
   return out;
 }
+
+/** Tolerant JSON-object parse — strips any ``` fences, then slices from the
+ *  first `{` to the last `}` so surrounding prose can't break the parse.
+ *  Returns null on anything unparseable. */
+export function parseJsonObject(raw: string): Record<string, unknown> | null {
+  const cleaned = raw.replace(/```(?:json)?/gi, '').trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start === -1 || end === -1 || end <= start) return null;
+  try {
+    return JSON.parse(cleaned.slice(start, end + 1)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/** Tolerant JSON-array parse — the array counterpart to parseJsonObject.
+ *  Slices from the first `[` to the last `]`; returns [] on anything
+ *  unparseable or non-array. */
+export function parseJsonArray(raw: string): unknown[] {
+  const cleaned = raw.replace(/```(?:json)?/gi, '').trim();
+  const start = cleaned.indexOf('[');
+  const end = cleaned.lastIndexOf(']');
+  if (start === -1 || end === -1 || end <= start) return [];
+  try {
+    const parsed = JSON.parse(cleaned.slice(start, end + 1));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}

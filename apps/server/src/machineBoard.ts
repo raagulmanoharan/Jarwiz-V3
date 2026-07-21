@@ -16,6 +16,7 @@ import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 import { RESEARCH_MAX_CONTINUATIONS, researchToolset } from './webTools.js';
 import type { MachineSkill } from './machines.js';
 import { anthropic, hasModelKey } from './model.js';
+import { parseJsonObject } from './util.js';
 
 const MAX_TOKENS = 4000;
 const SIDECAR_TIMEOUT_MS = 300_000;
@@ -52,18 +53,6 @@ async function research(system: string, user: string, signal: AbortSignal, useTo
     return sidecarGenerate({ system, user, signal, web: useTools, timeoutMs: SIDECAR_TIMEOUT_MS });
   }
   throw new Error('No model available (set ANTHROPIC_API_KEY or install the Claude CLI).');
-}
-
-function parseObject(raw: string): Record<string, unknown> | null {
-  const cleaned = raw.replace(/```(?:json)?/gi, '').trim();
-  const start = cleaned.indexOf('{');
-  const end = cleaned.lastIndexOf('}');
-  if (start === -1 || end === -1 || end <= start) return null;
-  try {
-    return JSON.parse(cleaned.slice(start, end + 1)) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
 }
 
 const strList = (v: unknown): string[] =>
@@ -227,7 +216,7 @@ export async function* streamMachineBoard(
     return;
   }
   if (signal.aborted) return;
-  const parsed = parseObject(raw);
+  const parsed = parseJsonObject(raw);
   if (!parsed) {
     yield { type: 'error', message: 'Could not structure the research result.' };
     return;
