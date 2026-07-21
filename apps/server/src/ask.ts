@@ -450,13 +450,11 @@ async function gatherContext(
 ): Promise<{
   context: string;
   images: ImageInput[];
-  linkRefs: Array<{ title: string; url: string }>;
   framePaths: string[];
   imageData: ImageInput[];
 }> {
   const parts: string[] = [];
   const images: ImageInput[] = [];
-  const linkRefs: Array<{ title: string; url: string }> = [];
   /** Server-local frame files — the CLI sidecar Reads these (it can't take base64). */
   const framePaths: string[] = [];
   /** Image-card base64 (no file on disk) — the sidecar writes+Reads these so
@@ -465,7 +463,6 @@ async function gatherContext(
   let i = 0;
   for (const s of req.sources) {
     i += 1;
-    if (s.url?.trim()) linkRefs.push({ title: s.title?.trim() || s.url, url: s.url.trim() });
     const head = `Source ${i} (${s.kind}${s.title ? `: ${s.title}` : ''}${s.url ? ` — ${s.url}` : ''}):`;
     // Watched-video frames become vision inputs, evenly thinned to the budget.
     if (s.frameAssetIds?.length) {
@@ -531,7 +528,7 @@ async function gatherContext(
     if (s.text?.trim()) parts.push(`${head}\n"""\n${s.text.trim().slice(0, PER_SOURCE_CHARS)}\n"""`);
     else parts.push(head);
   }
-  return { context: parts.join('\n\n'), images, linkRefs, framePaths, imageData };
+  return { context: parts.join('\n\n'), images, framePaths, imageData };
 }
 
 /** Build the user message content — a plain string, or text + image blocks when
@@ -1299,7 +1296,7 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
             ? `reading ${req.sources.length} sources…`
             : 'reading the source…',
   };
-  const { context, images, linkRefs, framePaths, imageData } = await gatherContext(req);
+  const { context, images, framePaths, imageData } = await gatherContext(req);
   if (signal.aborted) return;
 
   // Ambient board awareness: with NO source attached, hand the model the TITLES

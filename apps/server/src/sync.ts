@@ -47,6 +47,3 @@ export function handleSyncSocket(roomId: string, sessionId: string, socket: unkn
   getRoom(roomId).handleSocketConnect({ sessionId, socket: socket as never });
 }
 
-export function activeRoomCount(): number {
-  return rooms.size;
-}

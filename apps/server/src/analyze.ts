@@ -35,10 +35,6 @@ Output ONLY markdown (no title heading, no code fences). Start with ONE short pl
 Output ONLY markdown (no preamble, no title heading, no code fences): three short labelled sections (**Weakest assumption**, **Most likely failure**, **Who objects**), each 1–2 sentences naming specifics from the cards, then a final line with one question.`,
 };
 
-export function analyzeTitle(mode: AnalyzeMode): string {
-  return mode === 'tensions' ? 'Tensions' : mode === 'gaps' ? "What's missing" : "Devil's advocate";
-}
-
 function formatCard(c: AnalyzeCard): string {
   const head = c.title ? `${c.kind}: "${c.title}"` : c.kind;
   return `[${head}]\n${c.text || '(empty)'}`;

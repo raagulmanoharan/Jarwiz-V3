@@ -50,7 +50,3 @@ You can reach the live web: web_search finds current pages, web_fetch reads one 
 
 IMAGES: when the rows are VISUAL things — products, places, buildings, vehicles, artworks, devices, people — add an "Image" column as the FIRST column, each cell exactly ![name](url), one image per row. Get the URLs with the find_image tool (one short concrete query per row item, e.g. "Aeron chair") or from a page you fetched; use returned URLs VERBATIM and never invent, guess, or alter an image URL. If find_image is not among your tools, you may fetch https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrsearch=ITEM&gsrlimit=2&prop=imageinfo&iiprop=url%7Cmime&iiurlwidth=400 and use a "thumburl" from the response. Leave a row's image cell empty when nothing came back, and skip the column entirely when rows aren't visual (metrics, dates, policies, clauses).`;
 
-/** Appended to the table cell-fill system when the web is on. */
-export const WEB_FILL_DIRECTIVE = `
-
-You can reach the live web (web_search / web_fetch). Use it when a column wants real-world current values — prices, rates, ratings, hours, distances — and fill cells with what you actually find. Search first; then return ONLY the JSON object.`;
