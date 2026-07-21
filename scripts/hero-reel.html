@@ -74,6 +74,13 @@
            copy reads over any card — even the bright chart bars — without banding. */
         text-shadow: 0 1px 3px rgba(0,0,0,1), 0 0 14px rgba(0,0,0,0.98), 0 0 30px rgba(0,0,0,0.92), 0 0 52px rgba(0,0,0,0.8); }
       .reel-caret { display: inline-block; width: 4px; height: 0.9em; margin-left: 7px; border-radius: 2px; background: var(--ink); vertical-align: -2px; }
+      /* Soft black circular blur behind the copy — focuses the centre + lifts the
+         text off the board. A near-black radial over the near-black canvas keeps
+         banding invisible (dark-on-dark). */
+      .reel-glow { position: absolute; left: 540px; top: 540px; transform: translate(-50%, -50%); z-index: 4; pointer-events: none;
+        width: 760px; height: 760px; border-radius: 50%;
+        background: radial-gradient(circle at center, rgba(0,0,0,0.86) 0%, rgba(0,0,0,0.72) 30%, rgba(0,0,0,0.34) 52%, rgba(0,0,0,0) 70%);
+        filter: blur(16px); }
 
       /* ── Card frame ── */
       .reel-card { position: relative; will-change: transform, opacity; min-width: 0; min-height: 0; }
@@ -355,7 +362,9 @@
       </div>
 
       <!-- Centred typewriter: the ✦ mark spins ("thinking") while a short,
-           connected story types + deletes, narrating what Jarwiz does. -->
+           connected story types + deletes, narrating what Jarwiz does. A soft
+           black circular blur sits behind it. -->
+      <div class="reel-glow"></div>
       <div class="reel-center" id="center">
         <div class="reel-spark" id="spark">✦</div>
         <div class="reel-line"><span id="promptText"></span><span class="reel-caret" id="caret"></span></div>
@@ -392,7 +401,7 @@
           const cy = el.offsetTop + el.offsetHeight / 2;
           let dx = cx - BOARD_C, dy = cy - BOARD_C;
           const len = Math.hypot(dx, dy) || 1;
-          return { el, ux: dx / len, uy: dy / len, stagger: (i % cards.length) * 0.015 };
+          return { el, ux: dx / len, uy: dy / len, order: i };
         });
 
         const clamp01 = (t) => Math.max(0, Math.min(1, t));
@@ -401,9 +410,11 @@
         const easeInOut = (t) => { t = clamp01(t); return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
         const lerp = (a, b, t) => a + (b - a) * t;
 
-        // Phases: cards in + zoom out early → the board holds while the story
-        // types → zoom back to loop.
-        const IN_S = 0.04, IN_E = 0.24;
+        // Phases: zoom out early to establish the board view, then the cards
+        // keep flying in across the first lines so the board BUILDS as the story
+        // types; it holds full, then zooms back to loop.
+        const IN_S = 0.03, IN_E = 0.22;                 // camera zoom-out window
+        const BUILD_S = 0.05, BUILD_STEP = 0.045, BUILD_DUR = 0.15; // per-card arrival
         const HOLD_E = 0.90;
 
         function cameraScale(u) {
@@ -431,7 +442,8 @@
         }
         function cardState(m, u) {
           let off, op;
-          const s0 = IN_S + m.stagger, s1 = IN_E + m.stagger;
+          const s0 = BUILD_S + m.order * BUILD_STEP;   // this card's arrival start
+          const s1 = s0 + BUILD_DUR;
           if (u < s0) { off = 1; op = 0; }
           else if (u < s1) { const p = (u - s0) / (s1 - s0); off = 1 - easeOut(p); op = clamp01(p * 3); }
           else if (u < HOLD_E) { off = 0; op = 1; }
