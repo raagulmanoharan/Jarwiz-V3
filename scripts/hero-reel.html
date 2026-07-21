@@ -94,9 +94,15 @@
       .doccard-tbl td { color: var(--ink-2); } .doccard-tbl td:first-child { color: var(--ink); font-weight: 600; }
       .doccard-tbl tbody tr:last-child td { border-bottom: none; }
       .doc-inline { margin: 6px 0 4px; font-size: 13px; } .doc-inline th, .doc-inline td { padding: 7px 9px; } .doc-inline th { font-size: 10px; }
-      .b-table { align-items: flex-start; padding: 18px 22px 22px; -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 36px); mask-image: linear-gradient(180deg, transparent 0, #000 36px); }
-      .b-doc { flex-direction: column; justify-content: flex-end; align-items: stretch; padding: 22px; }
-      .b-doc .doccard-body p { margin-bottom: 8px; }
+      /* Table + doc fill their whole card (no bleed/peek here — self-contained). */
+      .b-table { align-items: stretch; padding: 16px 22px; }
+      .b-table .doccard-tbl { height: 100%; }
+      .b-table .doccard-tbl tbody tr { height: 1px; } /* rows share the height evenly */
+      .b-doc { flex-direction: column; justify-content: stretch; align-items: stretch; padding: 22px; }
+      .b-doc .doccard { display: flex; flex-direction: column; height: 100%; }
+      .b-doc .doccard-body { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+      .b-doc .doccard-body p { margin-bottom: 0; }
+      .b-doc .doccard-src { padding-top: 4px; }
 
       /* image / youtube */
       .b-image { background: #0b0b0e; }
@@ -193,6 +199,9 @@
                   <tr><td>Asana</td><td>$0–$25</td><td>Task tracking</td></tr>
                   <tr><td>ClickUp</td><td>$0–$12</td><td>Value</td></tr>
                   <tr><td>Monday</td><td>$9–$19</td><td>Dashboards</td></tr>
+                  <tr><td>Airtable</td><td>$0–$20</td><td>No-code DB</td></tr>
+                  <tr><td>Trello</td><td>$0–$10</td><td>Kanban</td></tr>
+                  <tr><td>Jira</td><td>$0–$14</td><td>Eng teams</td></tr>
                 </tbody>
               </table>
             </div>
@@ -230,7 +239,7 @@
               <div class="doccard">
                 <div class="doccard-title">Work-management market size</div>
                 <div class="doccard-body">
-                  <p>The global work-management market passed <b>$8B in 2025</b>, up ~13% YoY, and is projected to more than double by <b>2032</b>.</p>
+                  <p>The global work-management market passed <b>$8B in 2025</b>, up ~13% YoY, and is projected to more than double by <b>2032</b> as AI-native tools expand the category.</p>
                   <table class="doccard-tbl doc-inline">
                     <thead><tr><th>Segment</th><th>Share</th><th>CAGR</th></tr></thead>
                     <tbody>
@@ -239,6 +248,7 @@
                       <tr><td>Enterprise</td><td>25%</td><td>9%</td></tr>
                     </tbody>
                   </table>
+                  <p>SMB leads growth as AI-native suites pull in first-time buyers, while enterprise seats stay sticky.</p>
                   <p class="doccard-src">Source: Grand View Research</p>
                 </div>
               </div>
