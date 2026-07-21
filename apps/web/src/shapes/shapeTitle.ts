@@ -27,9 +27,37 @@ const str = (v: unknown) => (typeof v === 'string' ? v : '');
 
 export function getShapeTitle(shape: TLShape): string {
   const p = shape.props as Record<string, unknown>;
-  if (TITLE_PROP.has(shape.type)) return str(p.title);
+  if (TITLE_PROP.has(shape.type)) {
+    const title = str(p.title);
+    if (title.trim()) return title;
+    // A block-stream generated card keeps its heading in meta.jzBlocks, not in
+    // props.title (which renders inline, so we never duplicate it into the tag).
+    // Fall back to that first heading so grounding, search, the composer chip,
+    // and source-labelling can all still see a generated card by name.
+    return firstHeading(shape) || title;
+  }
   if (NAME_PROP.has(shape.type)) return str(p.name);
   return str((shape.meta as Record<string, unknown> | undefined)?.jzTitle);
+}
+
+/** The text of the first heading block a rich card streamed into meta.jzBlocks
+ *  (empty if it has none). */
+function firstHeading(shape: TLShape): string {
+  const blocks = (shape.meta as Record<string, unknown> | undefined)?.jzBlocks;
+  if (!Array.isArray(blocks)) return '';
+  const h = blocks.find((b) => (b as { type?: unknown } | null)?.type === 'heading');
+  return h ? str((h as { text?: unknown }).text).trim() : '';
+}
+
+/** True when a card has NO real props.title and its title is only the inline
+ *  heading fallback — i.e. the title already renders inside the card, so the
+ *  outside title tag would just duplicate it. Grounding/search still read the
+ *  fallback via getShapeTitle; the tag uses this to stay quiet. */
+export function titleIsInlineHeading(shape: TLShape): boolean {
+  if (!TITLE_PROP.has(shape.type)) return false;
+  const p = shape.props as Record<string, unknown>;
+  if (str(p.title).trim()) return false; // a real title wins — show the tag
+  return Boolean(firstHeading(shape));
 }
 
 export function setShapeTitle(editor: Editor, shape: TLShape, title: string): void {

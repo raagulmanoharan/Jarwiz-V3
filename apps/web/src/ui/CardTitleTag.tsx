@@ -11,7 +11,7 @@
 
 import { useRef } from 'react';
 import { useEditor, useValue, type TLShapeId, type TLShapePartial } from 'tldraw';
-import { TITLED, getShapeTitle, setShapeTitle } from '../shapes/shapeTitle';
+import { TITLED, getShapeTitle, setShapeTitle, titleIsInlineHeading } from '../shapes/shapeTitle';
 
 interface Tag {
   id: string;
@@ -52,6 +52,10 @@ export function CardTitleTag() {
         // Untitled cards stay quiet — the "Add a title" affordance appears
         // only on selection, so the canvas never fills with placeholders.
         if (!title.trim() && !editable) continue;
+        // A generated card whose title is just its inline heading needs no tag
+        // in the resting state — the heading already shows inside it. Selecting
+        // it still surfaces the tag (a rename affordance) via `editable`.
+        if (titleIsInlineHeading(shape) && !editable) continue;
         const b = editor.getShapePageBounds(shape.id);
         if (!b) continue;
         const p = editor.pageToViewport({ x: b.minX, y: b.minY });
