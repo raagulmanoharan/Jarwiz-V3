@@ -12,8 +12,8 @@
 
 import type Anthropic from '@anthropic-ai/sdk';
 import { getAgent } from '@jarwiz/shared';
-import type { AgentRunRequest, RunCard } from '@jarwiz/shared';
-import type { AgentDefinition } from './runtime.js';
+import type { AgentRunRequest } from '@jarwiz/shared';
+import { describeCard, type AgentDefinition } from './runtime.js';
 
 /**
  * Frozen system prompt — static so the cache_control breakpoint hits across
@@ -51,30 +51,17 @@ Then stop. Do not write any text output except as the body of an open doc card.
 - Plain text output is only ever card content: write it only between begin_card and finish_card.
 - One draft per run. Make it something the user would be glad to keep and edit.`;
 
-function describeCard(card: RunCard, label: string): string {
-  const lines = [
-    `${label}:`,
-    `  cardId: ${card.cardId}`,
-    `  kind: ${card.kind}`,
-    `  position: x=${Math.round(card.x)}, y=${Math.round(card.y)} (w=${Math.round(card.w)}, h=${Math.round(card.h)})`,
-  ];
-  if (card.url) lines.push(`  url: ${card.url}`);
-  if (card.title) lines.push(`  title: ${card.title}`);
-  if (card.text) lines.push(`  text: """\n${card.text}\n"""`);
-  return lines.join('\n');
-}
-
 async function buildUserTurn(request: AgentRunRequest): Promise<string> {
   const { source, placement } = request;
   const parts: string[] = [
     'Synthesize the selected cards below into one long-form draft on the board.',
     '',
-    describeCard(source, 'Source card (the seed / brief)'),
+    describeCard(source, 'Source card (the seed / brief)', { position: true }),
   ];
 
   const context = (request.selection ?? []).filter((c) => c.cardId !== source.cardId);
   for (const extra of context) {
-    parts.push('', describeCard(extra, 'Also selected (synthesize this in)'));
+    parts.push('', describeCard(extra, 'Also selected (synthesize this in)', { position: true }));
   }
 
   const inputIds = [source.cardId, ...context.map((c) => c.cardId)];

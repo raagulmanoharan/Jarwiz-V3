@@ -8,8 +8,8 @@
  */
 
 import { getAgent } from '@jarwiz/shared';
-import type { AgentRunRequest, RunCard } from '@jarwiz/shared';
-import type { AgentDefinition } from './runtime.js';
+import type { AgentRunRequest } from '@jarwiz/shared';
+import { describeCard, type AgentDefinition } from './runtime.js';
 
 const BRAINSTORMER_SYSTEM_PROMPT = `You are the Brainstormer, one of four AI agents who collaborate with a human on an infinite canvas called Jarwiz. Your specialty: riffing on a card or cluster — hooks, angles, structures, counterpoints, names — and fanning the ideas out as sticky notes the human can keep or dismiss.
 
@@ -32,14 +32,6 @@ Then stop.
 - One idea per note. Keep them tight and provocative, not safe.
 - Use create_note only. Do not write streamed text output in this run.
 - Riff on what's actually on the seed card; don't drift to an unrelated topic.`;
-
-function describeCard(card: RunCard, label: string): string {
-  const lines = [`${label}:`, `  cardId: ${card.cardId}`, `  kind: ${card.kind}`];
-  if (card.url) lines.push(`  url: ${card.url}`);
-  if (card.title) lines.push(`  title: ${card.title}`);
-  if (card.text) lines.push(`  text: """\n${card.text}\n"""`);
-  return lines.join('\n');
-}
 
 async function buildUserTurn(request: AgentRunRequest): Promise<string> {
   const { source, placement } = request;

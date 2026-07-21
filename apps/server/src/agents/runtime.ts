@@ -14,7 +14,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import type { AgentEvent, AgentMeta, AgentRunRequest, CardKind } from '@jarwiz/shared';
+import type { AgentEvent, AgentMeta, AgentRunRequest, CardKind, RunCard } from '@jarwiz/shared';
 import { anthropic } from '../model.js';
 
 export const AGENT_MODEL = 'claude-opus-4-8';
@@ -178,6 +178,28 @@ export function briefSuffix(request: AgentRunRequest): string {
   const brief = request.brief?.trim();
   if (!brief) return '';
   return `\n\nThe user gave this instruction for THIS run — follow it as you produce the artifact:\n"""\n${brief}\n"""`;
+}
+
+/** Render one input card for an agent's user turn: a labelled block of its
+ *  cardId/kind/url/title/text. Every text agent (summarizer/writer/researcher/
+ *  brainstormer) built this identically; `position` adds the x/y/w/h line the
+ *  layout-aware agents (summarizer, writer) want. The sidecar loop keeps its own
+ *  terser variant. */
+export function describeCard(
+  card: RunCard,
+  label: string,
+  opts?: { position?: boolean },
+): string {
+  const lines = [`${label}:`, `  cardId: ${card.cardId}`, `  kind: ${card.kind}`];
+  if (opts?.position) {
+    lines.push(
+      `  position: x=${Math.round(card.x)}, y=${Math.round(card.y)} (w=${Math.round(card.w)}, h=${Math.round(card.h)})`,
+    );
+  }
+  if (card.url) lines.push(`  url: ${card.url}`);
+  if (card.title) lines.push(`  title: ${card.title}`);
+  if (card.text) lines.push(`  text: """\n${card.text}\n"""`);
+  return lines.join('\n');
 }
 
 function friendlyApiError(error: unknown): string {
