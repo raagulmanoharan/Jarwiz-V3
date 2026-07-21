@@ -20,16 +20,40 @@ const CLI = process.env.CLAUDE_CLI_PATH || 'claude';
 const DEFAULT_TIMEOUT_MS = 60_000;
 /** Web-enabled runs search/fetch before answering — give them real headroom. */
 const WEB_TIMEOUT_MS = 180_000;
-const PROBE_TIMEOUT_MS = 5_000;
+const PROBE_TIMEOUT_MS = 8_000;
 
 let cached: boolean | null = null;
 
 /**
+ * Warm the CLI as soon as this module loads on a keyless server. A cold
+ * `claude --version` can take ~15s on first launch but is near-instant once
+ * warm — so without this, the synchronous probe below would lose to its
+ * timeout, cache "unavailable", and strand the server in demo mode (serving
+ * mock answers even though the sidecar is really there). This fire-and-forget
+ * warm-up primes the binary before the first request and flips `cached` to
+ * true the moment it succeeds, so most requests skip the blocking probe
+ * entirely. An ENOENT (no CLI installed) is swallowed — the sync probe still
+ * settles that case to demo mode honestly.
+ */
+if (!hasModelKey() && !process.env.JZ_DISABLE_SIDECAR) {
+  try {
+    const warm = spawn(CLI, ['--version'], { stdio: 'ignore' });
+    warm.on('error', () => {}); // no CLI — leave `cached` null for the sync probe
+    warm.on('exit', (code) => {
+      if (code === 0) cached = true;
+    });
+  } catch {
+    /* ignore — the sync probe is the fallback */
+  }
+}
+
+/**
  * Is the Claude CLI usable as a sidecar? (no API key, binary present).
- * The first call actually probes the binary (`claude --version`, cached) so a
- * keyless machine without the CLI honestly reports demo mode via
- * /api/capabilities and routes to the mock loop, instead of claiming a sidecar
- * it can't spawn.
+ * Probes the binary (`claude --version`) and caches a *definitive* answer:
+ * available, or genuinely-absent (ENOENT). A probe that merely times out — a
+ * cold CLI beating PROBE_TIMEOUT_MS — is NOT cached, so a later call (by which
+ * point the warm-up above has primed the binary) can still flip the server into
+ * sidecar mode rather than being stuck in demo mode for the whole process life.
  */
 export function sidecarAvailable(): boolean {
   if (hasModelKey()) return false; // prefer the real API (server env or the request's BYOK key)
@@ -37,11 +61,14 @@ export function sidecarAvailable(): boolean {
   if (cached !== null) return cached;
   try {
     const probe = spawnSync(CLI, ['--version'], { stdio: 'ignore', timeout: PROBE_TIMEOUT_MS });
-    cached = probe.status === 0; // ENOENT/timeout leave status null → false
+    if (probe.status === 0) return (cached = true); // usable — lock it in
+    // Binary genuinely missing → demo mode for good; stop probing.
+    if ((probe.error as NodeJS.ErrnoException | undefined)?.code === 'ENOENT') return (cached = false);
+    // Timeout / transient spawn hiccup → don't cache; re-probe next call.
+    return false;
   } catch {
-    cached = false;
+    return false; // transient — leave uncached so we re-probe next time
   }
-  return cached;
 }
 
 export interface SidecarOptions {
