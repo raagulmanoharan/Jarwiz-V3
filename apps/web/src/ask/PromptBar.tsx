@@ -24,6 +24,8 @@ import { clearAgentError, getAgentError, subscribeAgentError } from '../agents/a
 import { cardSeedKey, ensureCardSeeds, ensureSeedPrompts, getSeedPrompts, subscribeSeed } from './seedPrompts';
 import { getPromptFill, subscribePromptFill } from './promptFill';
 import { getDraft, subscribeDraft } from './draft';
+import { getClarify, subscribeClarify } from './clarify';
+import { ClarifyLayer } from './ClarifyLayer';
 import { getActiveBoard, markBoardUsed, subscribeBoards } from '../boards/boardStore';
 import { isDemo, isEmbed, isUseCases } from '../boards/demo';
 import { DEMO_NOTICE, getBackendSnapshot, subscribeBackend, PLAYGROUND_NOTICE } from '../lib/backend';
@@ -722,7 +724,10 @@ export function PromptBar() {
   // cards stream in).
   const draftPending = useSyncExternalStore(subscribeDraft, () => Boolean(getDraft()), () => false);
   const generating = composing || isAsking;
-  const showChips = !runningMode && !draftPending && !generating && groundIds.length === 0 && meaningfulCount >= 2;
+  // A pending clarifying question docks above the composer (ClarifyLayer, below);
+  // hide the chip rows while it's up so it reads as one clean block.
+  const clarifying = Boolean(useSyncExternalStore(subscribeClarify, getClarify, getClarify));
+  const showChips = !clarifying && !runningMode && !draftPending && !generating && groundIds.length === 0 && meaningfulCount >= 2;
   // Pills are ALWAYS contextual — generated from the card's own content.
   // Nothing scripted: until the tailored pills arrive (or if the card is
   // empty) we show nothing. Predictable operations live on the card's
@@ -731,12 +736,12 @@ export function PromptBar() {
     groundIds.length === 1 && (seeds?.length ?? 0) > 0
       ? seeds!.map((s) => ({ label: s.label, prompt: s.prompt }))
       : [];
-  const showStarters = !runningMode && !generating && !soleBusy && !draftPending && !plainText.trim() && starters.length > 0;
+  const showStarters = !clarifying && !runningMode && !generating && !soleBusy && !draftPending && !plainText.trim() && starters.length > 0;
   // The 5-20s quiet gap while tailored pills are being generated (cache still
   // undefined = fetch in flight): show shimmering placeholder pills so the
   // wait reads as "thinking", not "nothing here" (feel pass, ROADMAP §10 #4).
   const showSeedWait =
-    !runningMode && !generating && !soleBusy && !draftPending && !plainText.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
+    !clarifying && !runningMode && !generating && !soleBusy && !draftPending && !plainText.trim() && groundIds.length === 1 && Boolean(sole) && seeds === undefined;
 
   return (
     <div className={`jz-promptbar-dock${introMode ? ' jz-promptbar-dock--intro' : ''}`} onPointerDown={stopEventPropagation}>
@@ -805,6 +810,10 @@ export function PromptBar() {
           <button className="jz-pb-error-x" aria-label="Dismiss" onClick={() => clearAgentError()}>✕</button>
         </div>
       ) : null}
+
+      {/* A clarifying question docks here, right above the composer, as a wide
+          card (chips are hidden while it's up). */}
+      <ClarifyLayer />
 
       <div
         ref={barRef}

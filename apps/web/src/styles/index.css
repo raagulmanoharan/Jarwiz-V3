@@ -2488,15 +2488,13 @@ body,
 
 /* ── Disambiguation bubble ──────────────────────────────────────────────── */
 .jz-clarify {
-  position: absolute;
-  transform: translateX(-50%);
-  z-index: 320;
-  width: 320px;
-  max-width: 92vw;
+  /* Docked in the prompt-bar stack, right above the composer, as wide as it. */
+  width: min(var(--pb-max, 560px), calc(100vw - 120px));
+  margin-bottom: 8px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px 14px 12px;
+  gap: 12px;
+  padding: 14px 16px;
   background: var(--jz-surface);
   border: 1px solid var(--jz-line);
   border-radius: 14px;
@@ -2505,17 +2503,10 @@ body,
 }
 
 .jz-clarify-q {
-  display: flex;
-  gap: 7px;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 560;
   line-height: 1.4;
   color: var(--jz-ink-800);
-}
-
-.jz-clarify-spark {
-  color: var(--jz-accent);
-  flex: none;
 }
 
 .jz-clarify-opts {
