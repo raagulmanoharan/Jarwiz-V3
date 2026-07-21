@@ -11,13 +11,24 @@
 //     npm i --prefix "$TMP" gifenc pngjs && GIF_NODE_MODULES="$TMP/node_modules" \
 //       node scripts/hero-reel.mjs
 //
+// Real assets used by the reel (regenerate if the location/style changes):
+//   scripts/hero-reel-assets/map-dark.png  — a 3×3 grid of CARTO dark @2x tiles
+//     (OSM data) stitched with pngjs, centred on the Goa coast (z12).
+//   scripts/hero-reel-assets/yt-attention.jpg — the real 3Blue1Brown thumbnail
+//     (i.ytimg.com/vi/eMlx5fFNoYc/maxresdefault.jpg), the video the app's
+//     use-case boards reference.
+//   The image/link cards reuse the product's own photos in apps/web/public/uc/.
+//
 // Tunables (env): FRAMES (default 96), DELAY ms per frame (default 55),
-//   SIZE px square (default 1080), OUT (default site/assets/hero-reel.gif).
+//   SIZE px square (default 1080), OUT (default site/assets/hero-reel.gif),
+//   PALETTE = 'perframe' (default — best colour for the real photos/map) or
+//   'global' (one shared table — smaller, but bands photos).
 
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 
 const pwRequire = createRequire('/opt/node22/lib/node_modules/playwright/');
 const { chromium } = pwRequire('playwright');
@@ -31,9 +42,17 @@ const { PNG } = gifRequire('pngjs');
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REEL = resolve(__dirname, 'hero-reel.html');
 const OUT = resolve(process.env.OUT || resolve(__dirname, '../site/assets/hero-reel.gif'));
+const OUT_WEBM = OUT.replace(/\.gif$/i, '') + '.webm';
 const SIZE = parseInt(process.env.SIZE || '1080', 10);
 const FRAMES = parseInt(process.env.FRAMES || '96', 10);
 const DELAY = parseInt(process.env.DELAY || '55', 10);
+const PALETTE = process.env.PALETTE || 'perframe';
+// Which artifacts to emit. The WebM is tiny + crisp (recommended for the web);
+// the GIF is the requested format but heavy at 1080². 'both' by default.
+const FORMAT = (process.env.FORMAT || 'both').toLowerCase();
+const WANT_GIF = FORMAT === 'both' || FORMAT === 'gif';
+const WANT_WEBM = FORMAT === 'both' || FORMAT === 'webm';
+const FFMPEG = process.env.FFMPEG || '/opt/pw-browsers/ffmpeg-1011/ffmpeg-linux';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -56,46 +75,58 @@ async function main() {
 
   await page.goto('file://' + REEL, { waitUntil: 'networkidle' });
   await page.waitForFunction('window.reelReady === true', { timeout: 15000 });
-  await sleep(500); // let the prototype iframe + flow.svg paint
+  await sleep(900); // let the prototype iframe, photos, map + flow.svg paint
 
   const clip = { x: 0, y: 0, width: SIZE, height: SIZE };
-  const frames = [];
+  const rgba = [];    // decoded frames for the GIF (per-frame palette needs RGBA)
+  const jpegs = [];   // jpeg frames for the WebM (fed to ffmpeg's mjpeg decoder)
   for (let i = 0; i < FRAMES; i++) {
     await page.evaluate((u) => window.setReel(u), i / FRAMES);
-    const buf = await page.screenshot({ clip, type: 'png' });
-    const png = PNG.sync.read(buf);
-    frames.push(new Uint8Array(png.data.buffer, png.data.byteOffset, png.data.byteLength));
+    if (WANT_GIF) {
+      const png = PNG.sync.read(await page.screenshot({ clip, type: 'png' }));
+      rgba.push(new Uint8Array(png.data.buffer, png.data.byteOffset, png.data.byteLength));
+    }
+    if (WANT_WEBM) jpegs.push(await page.screenshot({ clip, type: 'jpeg', quality: 94 }));
     if ((i + 1) % 12 === 0) console.log(`  captured ${i + 1}/${FRAMES}`);
   }
   await browser.close();
 
-  // One global palette, sampled from frames spread across the loop (the fully
-  // zoomed-out frames carry the most colour). Avoids per-frame flicker + shrinks
-  // the file (single global colour table instead of one per frame).
-  console.log('Building global palette…');
-  const nSamp = Math.min(10, FRAMES);
-  const sample = new Uint8Array(nSamp * SIZE * SIZE * 4);
-  for (let s = 0; s < nSamp; s++) {
-    const fi = Math.round((s / nSamp) * FRAMES) % FRAMES;
-    sample.set(frames[fi], s * SIZE * SIZE * 4);
-  }
-  const palette = quantize(sample, 256, { format: 'rgb444' });
+  const loopS = (FRAMES * DELAY / 1000).toFixed(1);
 
-  console.log('Encoding GIF…');
-  const gif = GIFEncoder();
-  for (let i = 0; i < FRAMES; i++) {
-    const index = applyPalette(frames[i], palette, 'rgb444');
-    gif.writeFrame(index, SIZE, SIZE, {
-      palette: i === 0 ? palette : undefined,
-      delay: DELAY,
-      repeat: 0, // loop forever
-    });
-    if ((i + 1) % 24 === 0) console.log(`  encoded ${i + 1}/${FRAMES}`);
+  if (WANT_GIF) {
+    console.log(`Encoding GIF (${PALETTE} palette)…`);
+    const gif = GIFEncoder();
+    // A shared global palette only when asked (smaller file; bands the photos).
+    let globalPalette = null;
+    if (PALETTE === 'global') {
+      const nSamp = Math.min(10, FRAMES);
+      const sample = new Uint8Array(nSamp * SIZE * SIZE * 4);
+      for (let s = 0; s < nSamp; s++) sample.set(rgba[Math.round((s / nSamp) * FRAMES) % FRAMES], s * SIZE * SIZE * 4);
+      globalPalette = quantize(sample, 256, { format: 'rgb565' });
+    }
+    for (let i = 0; i < FRAMES; i++) {
+      // Per-frame palette keeps the real map + photos crisp; global reuses one.
+      const palette = globalPalette || quantize(rgba[i], 256, { format: 'rgb565' });
+      const index = applyPalette(rgba[i], palette, 'rgb565');
+      gif.writeFrame(index, SIZE, SIZE, { palette: globalPalette ? (i === 0 ? globalPalette : undefined) : palette, delay: DELAY, repeat: 0 });
+      if ((i + 1) % 24 === 0) console.log(`  encoded ${i + 1}/${FRAMES}`);
+    }
+    gif.finish();
+    writeFileSync(OUT, Buffer.from(gif.bytes()));
+    console.log(`Done → ${OUT} (${(gif.bytes().length / 1024).toFixed(0)} KB, ${FRAMES} frames, ${loopS}s loop)`);
   }
-  gif.finish();
-  writeFileSync(OUT, Buffer.from(gif.bytes()));
-  const kb = (Buffer.byteLength(gif.bytes()) / 1024).toFixed(0);
-  console.log(`Done → ${OUT} (${kb} KB, ${FRAMES} frames, ${(FRAMES * DELAY / 1000).toFixed(1)}s loop)`);
+
+  if (WANT_WEBM) {
+    console.log('Encoding WebM (VP8)…');
+    const fps = (1000 / DELAY).toFixed(3);
+    const r = spawnSync(FFMPEG, [
+      '-y', '-f', 'image2pipe', '-vcodec', 'mjpeg', '-framerate', fps, '-i', 'pipe:0',
+      '-c:v', 'libvpx', '-b:v', '0', '-crf', '10', '-pix_fmt', 'yuv420p', '-auto-alt-ref', '0', '-an', OUT_WEBM,
+    ], { input: Buffer.concat(jpegs), maxBuffer: 1 << 30 });
+    if (r.status !== 0) { console.error((r.stderr || '').toString().split('\n').slice(-5).join('\n')); throw new Error('ffmpeg failed'); }
+    const { statSync } = await import('node:fs');
+    console.log(`Done → ${OUT_WEBM} (${(statSync(OUT_WEBM).size / 1024).toFixed(0)} KB, ${FRAMES} frames, ${loopS}s loop)`);
+  }
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
