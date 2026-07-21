@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      hero-reel.html — the SOURCE of the marketing "cards fly in" GIF.
+      A single dot-grid canvas (like the app + the bento) with the six REAL
+      Jarwiz cards on it — the same markup + design-system CSS used in
+      site/index.html (table, dashboard, prototype, doc, composer, flow).
+
+      The reel is driven by one deterministic clock, window.setReel(u) with
+      u in [0,1): the camera zooms out from the centre prompt while the cards
+      slide in from every direction, holds on the full board, then zooms back
+      in so the loop is seamless. scripts/hero-reel.mjs steps this clock frame
+      by frame and encodes the frames into site/assets/hero-reel.gif.
+
+      Kept faithful to the bento's look so the GIF reads as "the real thing".
+    -->
+    <style>
+      :root {
+        --bg: #09090b;
+        --bg-2: #0e0e12;
+        --surface: #151519;
+        --surface-2: #1c1c22;
+        --hairline: rgba(255, 255, 255, 0.08);
+        --hairline-2: rgba(255, 255, 255, 0.14);
+        --ink: #f5f5f7;
+        --ink-2: #b6b6c0;
+        --ink-3: #7b7b86;
+        --accent: #ffffff;
+        --accent-2: #ededf0;
+        --r-sm: 10px;
+        --r-md: 14px;
+        --r-lg: 20px;
+        --ease: cubic-bezier(0.2, 0, 0, 1);
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; background: #000; }
+      body {
+        color: var(--ink);
+        font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        line-height: 1.5;
+      }
+
+      /* ── The recorded frame: a fixed 1080×1080 viewport onto the board ── */
+      .reel-viewport {
+        position: relative; width: 1080px; height: 1080px; overflow: hidden;
+        background: linear-gradient(180deg, var(--bg-2), var(--bg));
+      }
+      /* A soft ambient glow, like the site. */
+      .reel-viewport::before {
+        content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+        background:
+          radial-gradient(720px 460px at 50% -8%, rgba(255,255,255,0.06), transparent 62%),
+          radial-gradient(560px 380px at 6% 100%, rgba(255,255,255,0.03), transparent 64%);
+      }
+      /* Vignette so cards dissolve at the frame edge (a window on an infinite canvas). */
+      .reel-viewport::after {
+        content: ""; position: absolute; inset: 0; z-index: 5; pointer-events: none;
+        box-shadow: inset 0 0 160px 40px rgba(0,0,0,0.55);
+      }
+
+      /* The camera scales the whole board about its centre. */
+      .reel-camera {
+        position: absolute; inset: 0; z-index: 1;
+        transform-origin: 540px 540px;
+        will-change: transform;
+      }
+      /* The board is larger than the viewport and centred in it, so its centre
+         (850,850) sits under the viewport centre (540,540). The dot grid lives
+         here so it scales with the zoom — it reads as a real canvas. */
+      .reel-board {
+        position: absolute; left: -310px; top: -310px; width: 1700px; height: 1700px;
+        background:
+          radial-gradient(circle at center, rgba(255,255,255,0.055) 1px, transparent 1.6px) 0 0 / 30px 30px;
+      }
+
+      /* ── Centre prompt — "Describe anything." with a live caret ── */
+      .reel-center {
+        position: absolute; left: 850px; top: 850px; transform: translate(-50%, -50%);
+        display: flex; flex-direction: column; align-items: center; gap: 20px;
+        text-align: center; z-index: 2; white-space: nowrap;
+      }
+      .reel-spark {
+        display: grid; place-items: center; width: 52px; height: 52px; border-radius: 15px;
+        background: var(--ink); color: #000; font-size: 26px;
+        box-shadow: 0 14px 40px rgba(0,0,0,0.5);
+      }
+      .reel-prompt {
+        font-size: 58px; font-weight: 800; letter-spacing: -0.035em; line-height: 1;
+        background: linear-gradient(120deg, #ffffff 0%, #ffffff 46%, #9a9aa2 100%);
+        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+        display: inline-flex; align-items: center;
+      }
+      .reel-caret {
+        display: inline-block; width: 4px; height: 0.92em; margin-left: 8px;
+        border-radius: 2px; background: var(--ink); vertical-align: -2px;
+        -webkit-text-fill-color: var(--ink);
+      }
+
+      /* ── Card frame: reused straight from the bento ── */
+      .reel-card { position: absolute; z-index: 3; will-change: transform, opacity; }
+      .bcard {
+        position: relative; overflow: hidden; display: flex; width: 100%; height: 100%;
+        border-radius: var(--r-md); border: 1px solid var(--hairline);
+        background: linear-gradient(180deg, var(--surface), var(--bg-2));
+        box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+      }
+      .bcard.metallic {
+        background:
+          linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0) 46%),
+          linear-gradient(160deg, #1a1a20 0%, #101014 58%, #17171c 100%);
+        border-color: var(--hairline-2);
+      }
+
+      /* Shared doc/table typography (from the site). */
+      .doccard { padding: 0; }
+      .doccard-title { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+        color: var(--ink-3); margin: 0 0 12px; }
+      .doccard-body p { margin: 0 0 10px; color: var(--ink-2); font-size: 15px; line-height: 1.6; }
+      .doccard-body p b { color: var(--ink); font-weight: 700; }
+      .doccard-body .doccard-src { color: var(--ink-3); font-size: 12.5px; }
+      .doccard-tbl { width: 100%; border-collapse: collapse; margin: 0; font-size: 14px; }
+      .doccard-tbl th, .doccard-tbl td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--hairline); }
+      .doccard-tbl th { color: var(--ink-3); font-weight: 600; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+      .doccard-tbl td { color: var(--ink-2); }
+      .doccard-tbl td:first-child { color: var(--ink); font-weight: 600; }
+      .doccard-tbl tbody tr:last-child td { border-bottom: none; }
+      .doc-inline { margin: 6px 0 12px; font-size: 13px; }
+      .doc-inline th, .doc-inline td { padding: 7px 9px; }
+      .doc-inline th { font-size: 10px; }
+
+      /* Table card — top fades off, like the bento's peeking end-of-table. */
+      .b-table { align-items: flex-start; padding: 16px 22px 22px;
+        -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 34px);
+        mask-image: linear-gradient(180deg, transparent 0, #000 34px); }
+      .b-table .doccard-tbl { width: 100%; }
+
+      /* Doc card — bottom-anchored so the Source line clears the edge. */
+      .b-doc { flex-direction: column; justify-content: flex-end; align-items: stretch; padding: 20px; }
+      .b-doc .doccard-body p { margin-bottom: 8px; }
+
+      /* Live dashboard, built as real HTML (portrait). */
+      .b-dash { background: #0b0b0e; padding: 16px; }
+      .minidash { display: flex; flex-direction: column; gap: 12px; width: 100%; height: 100%; }
+      .md-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; flex: none; }
+      .md-kpi { border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 12px; background: rgba(255,255,255,0.02); display: flex; flex-direction: column; }
+      .md-kpi span { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); font-weight: 600; }
+      .md-kpi b { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; margin-top: 3px; display: flex; align-items: baseline; gap: 5px; }
+      .md-kpi b em { font-size: 10px; font-weight: 600; font-style: normal; color: var(--ink-3); }
+      .md-kpi .spark { width: 100%; height: 19px; margin-top: 8px; display: block; }
+      .md-kpi .spark .a { fill: rgba(255,255,255,0.10); }
+      .md-kpi .spark .l { fill: none; stroke: var(--ink); stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+      .md-panel { border: 1px solid var(--hairline); border-radius: 10px; padding: 11px 13px; background: rgba(255,255,255,0.02); flex: 1; display: flex; flex-direction: column; min-height: 0; }
+      .md-ct { font-size: 10.5px; color: var(--ink-3); font-weight: 600; margin-bottom: 9px; flex: none; }
+      .md-bars { display: flex; align-items: flex-end; gap: 8px; flex: 1; min-height: 0; }
+      .md-bars span { flex: 1; background: linear-gradient(180deg, var(--ink-2), var(--ink-3)); border-radius: 3px 3px 0 0; }
+      .md-line { width: 100%; flex: 1; min-height: 0; color: var(--ink); display: block; }
+
+      /* Live prototype iframe fills its card. */
+      .b-proto { background: #0b0b0e; }
+      .proto-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #0b0b0e; pointer-events: none; }
+
+      /* Composer — the card IS the prompt bar. */
+      .b-composer { flex-direction: column; justify-content: space-between; align-items: stretch; padding: 18px 20px; gap: 14px; }
+      .pb-input { color: var(--ink); font-size: 17px; line-height: 1.4; letter-spacing: -0.01em; }
+      .pb-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+      .mp-send { flex: none; width: 42px; height: 42px; border-radius: 12px; border: none;
+        display: grid; place-items: center; background: var(--ink); color: var(--bg); box-shadow: 0 6px 18px rgba(0,0,0,0.4); }
+      .mp-send svg { width: 19px; height: 19px; }
+      .suggest {
+        display: inline-flex; align-items: center; gap: 9px; padding: 7px 13px; border-radius: 999px; white-space: nowrap;
+        border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--hairline-2));
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        color: var(--accent-2); font-size: 13px; font-weight: 600; }
+      .suggest .spk { font-size: 12px; opacity: 0.9; }
+      .suggest .lbl { color: var(--ink-3); font-weight: 500; }
+      .suggest .sug-shape { color: var(--ink); font-weight: 700; }
+      .suggest .sug-caret { color: var(--ink-3); }
+
+      /* Flow diagram (real Mermaid SVG), wide — fills the card height. */
+      .b-flow { background: #0b0b0e; align-items: center; justify-content: flex-start; padding: 16px 0 16px 22px; overflow: hidden; }
+      .b-flow .flow-svg { height: 100%; width: auto; max-width: none; max-height: 100%; display: block; }
+    </style>
+  </head>
+  <body>
+    <div class="reel-viewport" id="viewport">
+      <div class="reel-camera" id="camera">
+        <div class="reel-board" id="board">
+
+          <!-- Centre prompt -->
+          <div class="reel-center" id="center">
+            <div class="reel-spark">✦</div>
+            <div class="reel-prompt">Describe anything.<span class="reel-caret" id="caret"></span></div>
+          </div>
+
+          <!-- table — from the top-left -->
+          <div class="reel-card" data-card style="left:110px; top:150px; width:400px; height:300px;">
+            <div class="bcard b-table">
+              <table class="doccard-tbl">
+                <thead><tr><th>Tool</th><th>Price /mo</th><th>Best for</th></tr></thead>
+                <tbody>
+                  <tr><td>Notion</td><td>$0–$18</td><td>Docs + wiki</td></tr>
+                  <tr><td>Linear</td><td>$0–$14</td><td>Product teams</td></tr>
+                  <tr><td>Asana</td><td>$0–$25</td><td>Task tracking</td></tr>
+                  <tr><td>ClickUp</td><td>$0–$12</td><td>Value</td></tr>
+                  <tr><td>Monday</td><td>$9–$19</td><td>Dashboards</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- doc — from the top-right -->
+          <div class="reel-card" data-card style="left:1180px; top:150px; width:410px; height:360px;">
+            <div class="bcard b-doc metallic">
+              <div class="doccard">
+                <div class="doccard-title">Work-management market size</div>
+                <div class="doccard-body">
+                  <p>The global work-management market passed <b>$8B in 2025</b>, up ~13% YoY, and is projected to more than double by <b>2032</b>.</p>
+                  <table class="doccard-tbl doc-inline">
+                    <thead><tr><th>Segment</th><th>Share</th><th>CAGR</th></tr></thead>
+                    <tbody>
+                      <tr><td>SMB</td><td>41%</td><td>15%</td></tr>
+                      <tr><td>Mid-market</td><td>34%</td><td>12%</td></tr>
+                      <tr><td>Enterprise</td><td>25%</td><td>9%</td></tr>
+                    </tbody>
+                  </table>
+                  <p class="doccard-src">Source: Grand View Research</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- dashboard — from the left -->
+          <div class="reel-card" data-card style="left:110px; top:620px; width:300px; height:450px;">
+            <div class="bcard b-dash metallic">
+              <div class="minidash">
+                <div class="md-kpis">
+                  <div class="md-kpi"><span>Total revenue</span><b>$890.2k <em>+18%</em></b>
+                    <svg class="spark" viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true"><path class="a" d="M0,17 L20,14 L40,15 L60,9 L80,7 L100,3 L100,22 L0,22 Z"/><polyline class="l" points="0,17 20,14 40,15 60,9 80,7 100,3"/></svg></div>
+                  <div class="md-kpi"><span>Orders</span><b>3,629 <em>+9%</em></b>
+                    <svg class="spark" viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true"><path class="a" d="M0,13 L20,9 L40,12 L60,6 L80,10 L100,4 L100,22 L0,22 Z"/><polyline class="l" points="0,13 20,9 40,12 60,6 80,10 100,4"/></svg></div>
+                  <div class="md-kpi"><span>New customers</span><b>609 <em>+14%</em></b>
+                    <svg class="spark" viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true"><path class="a" d="M0,16 L25,13 L50,11 L75,8 L100,5 L100,22 L0,22 Z"/><polyline class="l" points="0,16 25,13 50,11 75,8 100,5"/></svg></div>
+                  <div class="md-kpi"><span>Avg order</span><b>$245 <em>+3%</em></b>
+                    <svg class="spark" viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true"><path class="a" d="M0,12 L20,13 L40,10 L60,12 L80,9 L100,8 L100,22 L0,22 Z"/><polyline class="l" points="0,12 20,13 40,10 60,12 80,9 100,8"/></svg></div>
+                </div>
+                <div class="md-panel">
+                  <div class="md-ct">Revenue by month</div>
+                  <div class="md-bars"><span style="height:38%"></span><span style="height:52%"></span><span style="height:46%"></span><span style="height:64%"></span><span style="height:58%"></span><span style="height:76%"></span><span style="height:70%"></span><span style="height:88%"></span><span style="height:82%"></span><span style="height:100%"></span><span style="height:94%"></span><span style="height:90%"></span></div>
+                </div>
+                <div class="md-panel">
+                  <div class="md-ct">Monthly trend</div>
+                  <svg class="md-line" viewBox="0 0 120 40" preserveAspectRatio="none" aria-hidden="true">
+                    <defs><linearGradient id="mdArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(255,255,255,0.30)"/><stop offset="1" stop-color="rgba(255,255,255,0)"/></linearGradient></defs>
+                    <path d="M0,33 L13,30 L26,31 L40,24 L53,26 L66,19 L80,21 L93,13 L106,11 L120,6 L120,40 L0,40 Z" fill="url(#mdArea)"/>
+                    <polyline points="0,33 13,30 26,31 40,24 53,26 66,19 80,21 93,13 106,11 120,6" fill="none" stroke="#f5f5f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+                    <circle cx="120" cy="6" r="3" fill="#f5f5f7" vector-effect="non-scaling-stroke"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- prototype — from the right -->
+          <div class="reel-card" data-card style="left:1300px; top:600px; width:290px; height:470px;">
+            <div class="bcard b-proto">
+              <iframe class="proto-frame" src="../site/assets/proto-focus.html" title="A live Focus mobile-app prototype" scrolling="no"></iframe>
+            </div>
+          </div>
+
+          <!-- composer — from the bottom-left -->
+          <div class="reel-card" data-card style="left:250px; top:1200px; width:440px; height:150px;">
+            <div class="bcard b-composer">
+              <div class="pb-input">Turn my Q2 sales into a report<span class="reel-caret"></span></div>
+              <div class="pb-foot">
+                <span class="suggest">
+                  <span class="spk" aria-hidden="true">✦</span>
+                  <span class="lbl">Suggested</span>
+                  <span class="sug-shape">Dashboard</span>
+                  <span class="sug-caret" aria-hidden="true">▾</span>
+                </span>
+                <button class="mp-send" aria-hidden="true" tabindex="-1">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- flow — from the bottom-right -->
+          <div class="reel-card" data-card style="left:780px; top:1210px; width:640px; height:250px;">
+            <div class="bcard b-flow">
+              <img class="flow-svg" src="../site/assets/flow.svg" alt="An onboarding flow diagram" />
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ── The deterministic reel clock ──────────────────────────────────────
+      // One function positions everything for a given u in [0,1). The renderer
+      // steps u frame by frame; nothing here reads the wall clock, so every
+      // frame is reproducible and the loop is seamless (state at u=1 === u=0).
+      (function () {
+        const camera = document.getElementById('camera');
+        const caret = document.getElementById('caret');
+        const cards = Array.from(document.querySelectorAll('[data-card]'));
+
+        const BOARD_C = 850;          // board centre in board px
+        const CENTER_SCALE = 1.35;    // zoomed in on the prompt
+        const BOARD_SCALE = 0.60;     // zoomed out to reveal the whole board
+        const FLY = 1180;             // how far each card starts out, along its ray
+
+        // Precompute each card's unit direction (centre → card centre) and a
+        // small stagger so they don't all land on the same frame.
+        const meta = cards.map((el, i) => {
+          const cx = parseFloat(el.style.left) + parseFloat(el.style.width) / 2;
+          const cy = parseFloat(el.style.top) + parseFloat(el.style.height) / 2;
+          let dx = cx - BOARD_C, dy = cy - BOARD_C;
+          const len = Math.hypot(dx, dy) || 1;
+          return { el, ux: dx / len, uy: dy / len, stagger: (i % 6) * 0.028 };
+        });
+
+        const clamp01 = (t) => Math.max(0, Math.min(1, t));
+        const easeOut = (t) => 1 - Math.pow(1 - clamp01(t), 3);
+        const easeIn = (t) => Math.pow(clamp01(t), 3);
+        const easeInOut = (t) => { t = clamp01(t); return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
+        const lerp = (a, b, t) => a + (b - a) * t;
+
+        // Phase boundaries (in u).
+        const IN_START = 0.06, IN_END = 0.56;   // cards slide in / camera zooms out
+        const HOLD_END = 0.80;                   // hold on the full board
+        // 0.80 → 1.00: zoom back in, cards recede — returns exactly to u=0.
+
+        function cameraScale(u) {
+          if (u < IN_START) return CENTER_SCALE;
+          if (u < IN_END) return lerp(CENTER_SCALE, BOARD_SCALE, easeOut((u - IN_START) / (IN_END - IN_START)));
+          if (u < HOLD_END) return BOARD_SCALE;
+          return lerp(BOARD_SCALE, CENTER_SCALE, easeInOut((u - HOLD_END) / (1 - HOLD_END)));
+        }
+
+        // Per-card fly offset (0 = home) and opacity for a given u.
+        function cardState(m, u) {
+          let off, op;
+          const s0 = IN_START + m.stagger;
+          const s1 = IN_END + m.stagger;
+          if (u < s0) { off = 1; op = 0; }
+          else if (u < s1) { const p = (u - s0) / (s1 - s0); off = 1 - easeOut(p); op = clamp01(p * 3); }
+          else if (u < HOLD_END) { off = 0; op = 1; }
+          else {
+            const p = (u - HOLD_END) / (1 - HOLD_END);
+            off = easeIn(p); op = 1 - easeIn(clamp01((p - 0.15) / 0.85));
+          }
+          return { off, op };
+        }
+
+        window.setReel = function (u) {
+          u = ((u % 1) + 1) % 1;
+          camera.style.transform = 'scale(' + cameraScale(u).toFixed(4) + ')';
+          for (const m of meta) {
+            const { off, op } = cardState(m, u);
+            const dx = (m.ux * FLY * off).toFixed(1);
+            const dy = (m.uy * FLY * off).toFixed(1);
+            m.el.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+            m.el.style.opacity = op.toFixed(3);
+          }
+          // Caret blink: purely a function of u (≈5 blinks/loop) so it's stable.
+          caret.style.opacity = (Math.floor(u * 10) % 2 === 0) ? '1' : '0.15';
+        };
+
+        window.reelReady = true;
+        window.setReel(0);
+      })();
+    </script>
+  </body>
+</html>
