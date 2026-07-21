@@ -1,8 +1,6 @@
 import { useRef, useSyncExternalStore } from 'react';
 import {
   HTMLContainer,
-  Rectangle2d,
-  ShapeUtil,
   T,
   resizeBox,
   stopEventPropagation,
@@ -13,6 +11,7 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
+import { CardShapeUtil } from './CardShapeUtil';
 import { useStreamState } from './useStreamState';
 import { StreamingPlaceholder } from '../ui/StreamingPlaceholder';
 import { TableCellEditable } from './TableCellEditable';
@@ -63,7 +62,7 @@ export function starterTableProps(): TableCardProps {
   };
 }
 
-export class TableCardShapeUtil extends ShapeUtil<TableCardShape> {
+export class TableCardShapeUtil extends CardShapeUtil<TableCardShape> {
   static override type = 'table-card' as const;
 
   static override props: RecordProps<TableCardShape> = {
@@ -78,10 +77,6 @@ export class TableCardShapeUtil extends ShapeUtil<TableCardShape> {
     return starterTableProps();
   }
 
-  override canResize() {
-    return true;
-  }
-
   override canEdit() {
     return true;
   }
@@ -90,10 +85,6 @@ export class TableCardShapeUtil extends ShapeUtil<TableCardShape> {
   // content-driven and re-fit by the body's ResizeObserver, so we don't fight it.
   override onResize(shape: TableCardShape, info: TLResizeInfo<TableCardShape>) {
     return resizeBox(shape, info, { minWidth: MIN_COL_W * Math.max(1, shape.props.columns.length) });
-  }
-
-  override getGeometry(shape: TableCardShape) {
-    return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true });
   }
 
   override getIndicatorPath(shape: TableCardShape) {

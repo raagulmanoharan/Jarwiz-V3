@@ -1,8 +1,6 @@
 import { useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 import {
   HTMLContainer,
-  Rectangle2d,
-  ShapeUtil,
   T,
   resizeBox,
   stopEventPropagation,
@@ -15,6 +13,7 @@ import {
   type TLShape,
   type TLShapeId,
 } from 'tldraw';
+import { CardShapeUtil } from './CardShapeUtil';
 import type { RichBlock } from '@jarwiz/shared';
 import { StreamingPlaceholder } from '../ui/StreamingPlaceholder';
 import { useStreamState } from './useStreamState';
@@ -50,7 +49,7 @@ export type DocCardShape = TLShape<'doc-card'>;
 
 export const DOC_CARD_SIZE = { w: 416, h: 240 };
 
-export class DocCardShapeUtil extends ShapeUtil<DocCardShape> {
+export class DocCardShapeUtil extends CardShapeUtil<DocCardShape> {
   static override type = 'doc-card' as const;
 
   static override props: RecordProps<DocCardShape> = {
@@ -65,17 +64,12 @@ export class DocCardShapeUtil extends ShapeUtil<DocCardShape> {
     return { ...DOC_CARD_SIZE, text: '', title: '', sourcePdfId: '' };
   }
 
-  override canResize() { return true; }
   override hideRotateHandle() { return true; }
   override hideSelectionBoundsFg() { return true; }
   override canEdit() { return true; }
 
   override onResize(shape: DocCardShape, info: TLResizeInfo<DocCardShape>) {
     return resizeBox(shape, info, { minWidth: 240, minHeight: 80 });
-  }
-
-  override getGeometry(shape: DocCardShape) {
-    return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true });
   }
 
   override getIndicatorPath(shape: DocCardShape) {

@@ -9,14 +9,13 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   HTMLContainer,
-  Rectangle2d,
-  ShapeUtil,
   T,
   resizeBox,
   type RecordProps,
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
+import { CardShapeUtil } from './CardShapeUtil';
 import { useStreamState } from './useStreamState';
 import { StreamingPlaceholder } from '../ui/StreamingPlaceholder';
 import { renderMermaid, stripFences } from '../lib/mermaid';
@@ -42,7 +41,7 @@ export type DiagramCardShape = TLShape<'diagram-card'>;
 
 export const DIAGRAM_CARD_SIZE = { w: 540, h: 360 };
 
-export class DiagramCardShapeUtil extends ShapeUtil<DiagramCardShape> {
+export class DiagramCardShapeUtil extends CardShapeUtil<DiagramCardShape> {
   static override type = 'diagram-card' as const;
 
   static override props: RecordProps<DiagramCardShape> = {
@@ -56,16 +55,8 @@ export class DiagramCardShapeUtil extends ShapeUtil<DiagramCardShape> {
     return { ...DIAGRAM_CARD_SIZE, code: '', title: '' };
   }
 
-  override canResize() {
-    return true;
-  }
-
   override onResize(shape: DiagramCardShape, info: TLResizeInfo<DiagramCardShape>) {
     return resizeBox(shape, info, { minWidth: 320, minHeight: 200 });
-  }
-
-  override getGeometry(shape: DiagramCardShape) {
-    return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true });
   }
 
   override getIndicatorPath(shape: DiagramCardShape) {

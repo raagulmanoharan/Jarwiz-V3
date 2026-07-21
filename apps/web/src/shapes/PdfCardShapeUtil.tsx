@@ -8,8 +8,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import {
   HTMLContainer,
-  Rectangle2d,
-  ShapeUtil,
   T,
   resizeBox,
   stopEventPropagation,
@@ -19,6 +17,7 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
+import { CardShapeUtil } from './CardShapeUtil';
 import { getPdfjs, type PdfDocument } from '../lib/pdfjs';
 import { getPdfPage, setPdfPage, subscribePdfView } from '../pdf/pdfView';
 import { setPdfSelection } from '../pdf/pdfSelection';
@@ -63,7 +62,7 @@ function tldrReserve(shape: PdfCardShape): number {
   return Number(shape.meta.jzTldrH) || 0;
 }
 
-export class PdfCardShapeUtil extends ShapeUtil<PdfCardShape> {
+export class PdfCardShapeUtil extends CardShapeUtil<PdfCardShape> {
   static override type = 'pdf-card' as const;
 
   static override props: RecordProps<PdfCardShape> = {
@@ -82,10 +81,6 @@ export class PdfCardShapeUtil extends ShapeUtil<PdfCardShape> {
     return { ...PDF_CARD_SIZE, src: '', assetId: '', name: '', pages: 0, status: 'uploading' };
   }
 
-  override canResize() {
-    return true;
-  }
-
   /** Double-click enters editing — the state where the page text is selectable. */
   override canEdit() {
     return true;
@@ -100,10 +95,6 @@ export class PdfCardShapeUtil extends ShapeUtil<PdfCardShape> {
       next.props.h = Math.round(next.props.w * aspect) + FOOTER_H + tldrReserve(shape);
     }
     return next;
-  }
-
-  override getGeometry(shape: PdfCardShape) {
-    return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true });
   }
 
   override getIndicatorPath(shape: PdfCardShape) {

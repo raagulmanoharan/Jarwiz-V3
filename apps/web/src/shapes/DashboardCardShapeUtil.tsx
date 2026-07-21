@@ -9,8 +9,6 @@
 
 import {
   HTMLContainer,
-  Rectangle2d,
-  ShapeUtil,
   T,
   resizeBox,
   stopEventPropagation,
@@ -18,6 +16,7 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
+import { CardShapeUtil } from './CardShapeUtil';
 import { Renderer } from '@openuidev/react-lang';
 import { BarChart3, Loader2 } from 'lucide-react';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
@@ -45,7 +44,7 @@ export type DashboardCardShape = TLShape<'dashboard-card'>;
 
 export const DASHBOARD_CARD_SIZE = { w: 780, h: 560 };
 
-export class DashboardCardShapeUtil extends ShapeUtil<DashboardCardShape> {
+export class DashboardCardShapeUtil extends CardShapeUtil<DashboardCardShape> {
   static override type = 'dashboard-card' as const;
 
   static override props: RecordProps<DashboardCardShape> = {
@@ -60,14 +59,8 @@ export class DashboardCardShapeUtil extends ShapeUtil<DashboardCardShape> {
     return { ...DASHBOARD_CARD_SIZE, spec: '', title: 'Dashboard', status: 'running' };
   }
 
-  override canResize() {
-    return true;
-  }
   override onResize(shape: DashboardCardShape, info: TLResizeInfo<DashboardCardShape>) {
     return resizeBox(shape, info, { minWidth: 360, minHeight: 240 });
-  }
-  override getGeometry(shape: DashboardCardShape) {
-    return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true });
   }
   override getIndicatorPath(shape: DashboardCardShape) {
     return roundedRectPath(shape.props.w, shape.props.h, CARD_RADIUS);

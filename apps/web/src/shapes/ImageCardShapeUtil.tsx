@@ -1,13 +1,12 @@
 import {
   HTMLContainer,
-  Rectangle2d,
-  ShapeUtil,
   T,
   resizeBox,
   type RecordProps,
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
+import { CardShapeUtil } from './CardShapeUtil';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
 
@@ -27,7 +26,7 @@ declare module '@tldraw/tlschema' {
 
 export type ImageCardShape = TLShape<'image-card'>;
 
-export class ImageCardShapeUtil extends ShapeUtil<ImageCardShape> {
+export class ImageCardShapeUtil extends CardShapeUtil<ImageCardShape> {
   static override type = 'image-card' as const;
 
   static override props: RecordProps<ImageCardShape> = {
@@ -41,16 +40,8 @@ export class ImageCardShapeUtil extends ShapeUtil<ImageCardShape> {
     return { w: 360, h: 300, src: '', name: '' };
   }
 
-  override canResize() {
-    return true;
-  }
-
   override onResize(shape: ImageCardShape, info: TLResizeInfo<ImageCardShape>) {
     return resizeBox(shape, info, { minWidth: 120, minHeight: 100 });
-  }
-
-  override getGeometry(shape: ImageCardShape) {
-    return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true });
   }
 
   override getIndicatorPath(shape: ImageCardShape) {

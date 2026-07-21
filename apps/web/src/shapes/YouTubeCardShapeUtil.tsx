@@ -1,8 +1,6 @@
 import { useRef } from 'react';
 import {
   HTMLContainer,
-  Rectangle2d,
-  ShapeUtil,
   T,
   resizeBox,
   useIsEditing,
@@ -10,6 +8,7 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
+import { CardShapeUtil } from './CardShapeUtil';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
 import { TldrStrip, useTldrGrowth, type TldrStatus } from './TldrStrip';
@@ -50,7 +49,7 @@ export type YouTubeCardShape = TLShape<'youtube-card'>;
 
 export const YOUTUBE_CARD_SIZE = { w: 480, h: 306 }; // 36px header + 16:9 player
 
-export class YouTubeCardShapeUtil extends ShapeUtil<YouTubeCardShape> {
+export class YouTubeCardShapeUtil extends CardShapeUtil<YouTubeCardShape> {
   static override type = 'youtube-card' as const;
 
   static override props: RecordProps<YouTubeCardShape> = {
@@ -71,10 +70,6 @@ export class YouTubeCardShapeUtil extends ShapeUtil<YouTubeCardShape> {
     return { ...YOUTUBE_CARD_SIZE, videoId: '', url: '', title: '' };
   }
 
-  override canResize() {
-    return true;
-  }
-
   /** Double-click enters editing — the only state where the iframe is interactive. */
   override canEdit() {
     return true;
@@ -82,10 +77,6 @@ export class YouTubeCardShapeUtil extends ShapeUtil<YouTubeCardShape> {
 
   override onResize(shape: YouTubeCardShape, info: TLResizeInfo<YouTubeCardShape>) {
     return resizeBox(shape, info, { minWidth: 280, minHeight: 194 });
-  }
-
-  override getGeometry(shape: YouTubeCardShape) {
-    return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true });
   }
 
   override getIndicatorPath(shape: YouTubeCardShape) {

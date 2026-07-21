@@ -17,8 +17,6 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 import {
   HTMLContainer,
-  Rectangle2d,
-  ShapeUtil,
   T,
   resizeBox,
   stopEventPropagation,
@@ -28,6 +26,7 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
+import { CardShapeUtil } from './CardShapeUtil';
 import { AppWindow, ArrowRight, Loader2 } from 'lucide-react';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { useStreamState } from './useStreamState';
@@ -65,7 +64,7 @@ function stripFences(html: string): string {
   return html.replace(/^\s*```(?:html)?\s*/i, '').replace(/```\s*$/i, '');
 }
 
-export class PrototypeCardShapeUtil extends ShapeUtil<PrototypeCardShape> {
+export class PrototypeCardShapeUtil extends CardShapeUtil<PrototypeCardShape> {
   static override type = 'prototype-card' as const;
 
   static override props: RecordProps<PrototypeCardShape> = {
@@ -81,14 +80,8 @@ export class PrototypeCardShapeUtil extends ShapeUtil<PrototypeCardShape> {
     return { ...PROTOTYPE_CARD_SIZE, html: '', title: '', prompt: '', status: 'idle' };
   }
 
-  override canResize() {
-    return true;
-  }
   override onResize(shape: PrototypeCardShape, info: TLResizeInfo<PrototypeCardShape>) {
     return resizeBox(shape, info, { minWidth: 240, minHeight: 140 });
-  }
-  override getGeometry(shape: PrototypeCardShape) {
-    return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true });
   }
   override getIndicatorPath(shape: PrototypeCardShape) {
     return roundedRectPath(shape.props.w, shape.props.h, CARD_RADIUS);
