@@ -855,9 +855,14 @@ export function useAsk() {
           const at = placeInLane(editor, sourceIds, MAP_CARD_SIZE.w, MAP_CARD_SIZE.h);
           editor.createShape<MapCardShape>({ id, type: 'map-card', x: at.x, y: at.y, props: { w: MAP_CARD_SIZE.w, h: MAP_CARD_SIZE.h, title: trimmed.slice(0, 70), intro: '', stops: [], ordered: true, status: 'running' } });
         } else {
-          // doc / list — both render in the doc card.
+          // doc / list — both render in the doc card. Seed the title with the
+          // prompt (like every other pre-placed shape) so the card is labelled
+          // with what you asked the instant it appears — a slow or stalled
+          // answer reads as "your question, forming" instead of a blank
+          // "Writing this in…". Marked auto (jzTitleAuto) so the server's
+          // content-derived card.title cleanly replaces it once it streams.
           const at = placeInLane(editor, sourceIds, DOC_CARD_SIZE.w, DOC_CARD_SIZE.h);
-          editor.createShape<DocCardShape>({ id, type: 'doc-card', x: at.x, y: at.y, props: { w: DOC_CARD_SIZE.w, h: DOC_CARD_SIZE.h, title: '', text: '', sourcePdfId: pdfSourceId ?? '' } });
+          editor.createShape<DocCardShape>({ id, type: 'doc-card', x: at.x, y: at.y, props: { w: DOC_CARD_SIZE.w, h: DOC_CARD_SIZE.h, title: trimmed.slice(0, 70), text: '', sourcePdfId: pdfSourceId ?? '' }, meta: { jzTitleAuto: true } });
         }
         recordSources(editor, id, contributingIds, trimmed);
         startStreaming(id); // flips the card into its "building…" placeholder state
