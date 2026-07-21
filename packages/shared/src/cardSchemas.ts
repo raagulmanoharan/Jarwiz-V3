@@ -106,5 +106,3 @@ export const cardShapeProps = {
     status: T.string,
   },
 } as const;
-
-export type CardShapeType = keyof typeof cardShapeProps;

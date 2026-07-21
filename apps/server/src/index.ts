@@ -491,7 +491,7 @@ app.post('/api/ask', async (c) => {
   if (typeof raw.prompt !== 'string' || raw.prompt.trim() === '') {
     return c.json({ error: 'prompt is required' }, 400);
   }
-  const SHAPES = ['doc', 'table', 'list', 'diagram', 'affinity', 'prototype', 'dashboard', 'map'] as const;
+  const SHAPES = ['doc', 'table', 'list', 'diagram', 'prototype', 'dashboard', 'map'] as const;
   const request: AskRequest = {
     prompt: raw.prompt.trim().slice(0, 2000),
     sources: Array.isArray(raw.sources)

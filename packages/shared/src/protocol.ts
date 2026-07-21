@@ -110,56 +110,7 @@ export type AgentEvent =
   /** The run failed — surfaced honestly on the board, never silently. */
   | { type: 'error'; message: string };
 
-/* ─── Content-aware suggestions (proactive pills) ───────────────────────── */
-
-/** A proposed agent action, tailored to a dropped artifact's actual content. */
-export interface AgentSuggestion {
-  /** Short pill label, e.g. "Make a compliance checklist". */
-  label: string;
-  /** Which agent does it. */
-  agentId: AgentId;
-  /** Optional steering brief passed to the run. */
-  brief?: string;
-}
-
-/**
- * POST /api/suggest request — read a dropped artifact and propose tailored
- * agent-action pills. The server extracts the content (fetch a link/oEmbed a
- * video / parse a PDF) and asks the model what's worth doing with it.
- */
-export interface SuggestRequest {
-  kind: 'youtube' | 'link' | 'pdf';
-  url?: string;
-  title?: string;
-  /** A PDF's data URL (the card's src) for server-side text extraction. */
-  pdfDataUrl?: string;
-}
-
-export interface SuggestResponse {
-  suggestions: AgentSuggestion[];
-}
-
-/**
- * POST /api/cluster-suggest request — propose CROSS-CUTTING actions over a set
- * of related artifacts (compare them, synthesize them, find the through-line).
- * Surface-level: only titles + kinds, so it's fast.
- */
-export interface ClusterSuggestRequest {
-  items: Array<{ kind: string; title: string }>;
-  /** The detected shared theme word, if any. */
-  theme?: string;
-}
-
 /* ─── Comments & agent voice ────────────────────────────────────────────── */
-
-/** One message in a card's comment thread — from you or from an agent. */
-export interface CommentMessage {
-  id: string;
-  /** 'you' for the human, or an AgentId when an agent replied. */
-  author: 'you' | AgentId;
-  text: string;
-  ts: number;
-}
 
 /**
  * POST /api/comment request — ask an agent to reply, in conversation, to a
@@ -221,9 +172,7 @@ export interface AskRequest {
   skipClarify?: boolean;
   /**
    * Explicit response shape picked by the user (the prompt bar's "/" mode
-   * selector). Wins over the prompt-based router. This is also the only path
-   * that may produce sticky notes ('affinity') — the router never chooses
-   * stickies on its own; they're the user's annotation medium.
+   * selector). Wins over the prompt-based router.
    */
   shape?: AskShape;
   /**
@@ -253,37 +202,6 @@ export interface AskRequest {
    * detail (owner call 2026-07-20).
    */
   boardIndex?: string[];
-}
-
-/* ─── Diagram (canvas pivot P2 — the AI builds primitives) ───────────────────
- * "Turn this into a flowchart": the model returns a graph spec and the client
- * lays it out as native tldraw shapes + connectors (not a card, not Mermaid).
- * This is the agent authoring real, editable primitives the user can then tweak.
- */
-
-export interface DiagramNode {
-  /** Stable id used to wire edges; opaque to the user. */
-  id: string;
-  label: string;
-  /** Node silhouette — maps to a tldraw geo shape. */
-  shape?: 'rectangle' | 'ellipse' | 'diamond';
-}
-
-export interface DiagramEdge {
-  from: string;
-  to: string;
-  label?: string;
-}
-
-export interface DiagramSpec {
-  nodes: DiagramNode[];
-  edges: DiagramEdge[];
-}
-
-export interface DiagramRequest {
-  prompt: string;
-  /** Optional grounding — the selected cards/primitives the diagram is built from. */
-  sources?: AskSource[];
 }
 
 /* ─── Cluster & summarise (Big Rocks 2.1 — synthesis) ────────────────────────
@@ -333,12 +251,6 @@ export interface AnalyzeRequest {
   cards: AnalyzeCard[];
 }
 
-export interface AnalyzeResult {
-  title: string;
-  /** Markdown body for the result doc card. */
-  text: string;
-}
-
 /* ─── Discover (Scout — grounded resource discovery) ──────────────────────────
  * Read the board and surface REAL related resources from the live web (Claude
  * grounded search). The links must be real — an ungrounded model invents dead
@@ -377,10 +289,6 @@ export interface DiscoverRequest {
   existingUrls?: string[];
 }
 
-export interface DiscoverResult {
-  resources: SuggestedResource[];
-}
-
 /* ─── Notice (proactive comments — FigJam-style) ──────────────────────────────
  * Jarwiz quietly reviews the board and, when it spots something genuinely worth
  * flagging, leaves a short comment PINNED to the specific card it's about — a
@@ -410,34 +318,6 @@ export interface NoticeRequest {
   cards: NoticeCard[];
   /** Today's date (ISO yyyy-mm-dd) so Jarwiz can catch timing/season issues. */
   today?: string;
-}
-
-export interface NoticeResult {
-  comments: NoticeComment[];
-}
-
-/* ─── Annotate (Stickies mode — Jarwiz drops notes across many cards) ─────────
- * Sticky notes are the USER's medium — but when they explicitly pick Stickies
- * mode and ask ("TL;DR each link", "review my ideas and add your two cents"),
- * Jarwiz drops a short sticky next to each relevant card. One note per target.
- */
-
-export interface AnnotateRequest {
-  /** The user's instruction (e.g. "add a tl;dr to each link I've added"). */
-  prompt: string;
-  /** Candidate target cards (selection, else the whole board), id-tagged. */
-  cards: NoticeCard[];
-}
-
-export interface AnnotateNote {
-  /** The card this sticky annotates (one of the sent ids). */
-  cardId: string;
-  /** The sticky's text — short, a couple of sentences at most. */
-  note: string;
-}
-
-export interface AnnotateResult {
-  notes: AnnotateNote[];
 }
 
 /* ─── Compose (board fan-out — one intent → many laid-out cards) ───────────────
@@ -520,30 +400,6 @@ export type ExportEvent =
   | { type: 'done'; format: 'html' | 'markdown' }
   | { type: 'error'; message: string };
 
-/* ─── Revise (Big Rocks 3.3 — conversational depth) ──────────────────────────
- * Argue with an answer card: a follow-up instruction revises the doc IN PLACE
- * (not a new card), keeping the dialogue on the one artifact.
- */
-
-export interface ReviseTurn {
-  role: 'you' | 'agent';
-  text: string;
-}
-
-export interface ReviseRequest {
-  /** The doc card's current markdown. */
-  text: string;
-  /** The user's follow-up ("yes, but what about enterprise customers?"). */
-  instruction: string;
-  /** Prior turns in this card's discussion, for continuity. */
-  thread?: ReviseTurn[];
-}
-
-export interface ReviseResult {
-  /** The full revised markdown to replace the card's body. */
-  text: string;
-}
-
 /**
  * The shape the answer takes; inferred from the prompt + content, steerable.
  *  - `doc`/`list` — written prose or bullets. A checklist is a `doc`/`list`
@@ -551,10 +407,8 @@ export interface ReviseResult {
  *  - `table` — a comparison/matrix grid.
  *  - `diagram` — a Mermaid diagram; the server picks the subtype (flowchart,
  *    sequence, mindmap, ER, gantt, …) from the prompt and emits Mermaid code.
- *  - `affinity` — clustered sticky notes (an affinity diagram): not one card but
- *    a set of `note` cards grouped into labelled clusters.
  */
-export type AskShape = 'doc' | 'table' | 'list' | 'diagram' | 'affinity' | 'prototype' | 'dashboard' | 'map';
+export type AskShape = 'doc' | 'table' | 'list' | 'diagram' | 'prototype' | 'dashboard' | 'map';
 
 /**
  * One stop on a map card. The model proposes `name`/`query` (+ day/time/note
@@ -584,9 +438,7 @@ export type MapStop = {
  *  - Tables build live: `card.create` carries the columns + row count, then
  *    `table.cell` events fill cells one by one.
  *  - Docs/lists/diagrams stream as `card.delta` text (a diagram streams its
- *    Mermaid source, rendered to SVG once `card.done` lands).
- *  - Affinity diagrams emit `affinity.cluster` (a labelled group) followed by
- *    `affinity.note` events (a sticky in that group). */
+ *    Mermaid source, rendered to SVG once `card.done` lands). */
 export type AskEvent =
   | { type: 'status'; message: string }
   /** The request was genuinely ambiguous — ask the user a short question with a
@@ -616,8 +468,6 @@ export type AskEvent =
   /** Drop one geocoded stop onto a map card, in visiting order — the map
    *  assembles pin by pin, the way a table fills cell by cell. */
   | { type: 'map.pin'; index: number; stop: MapStop }
-  | { type: 'affinity.cluster'; index: number; label: string }
-  | { type: 'affinity.note'; cluster: number; text: string }
   /** Which numbered sources (1-based, matching the "Source N" numbering the
    *  model saw) the answer ACTUALLY drew on — the model's own declaration,
    *  parsed out of the response. Provenance links only what was genuinely
