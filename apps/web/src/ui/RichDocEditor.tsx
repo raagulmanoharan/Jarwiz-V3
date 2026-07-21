@@ -44,7 +44,11 @@ export function RichDocEditor({ initialMarkdown, onChange, onExit, onHeight, cla
   const editor = useEditor({
     extensions: [
       // Only h1–h3 exist in the doc dialect (DocMarkdown renders # / ## / ###).
-      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+      // orderedList is OFF: the markdown dialect has no `1.` serializer
+      // (docBridge) or renderer (DocMarkdown), so a numbered list would
+      // round-trip to an empty string and silently lose the user's content.
+      // Bullet + task lists stay (they serialize as `- ` / `- [ ]`).
+      StarterKit.configure({ heading: { levels: [1, 2, 3] }, orderedList: false }),
       Underline,
       Link.configure({ openOnClick: false, autolink: true }),
       Image,
