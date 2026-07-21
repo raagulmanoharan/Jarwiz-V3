@@ -43,6 +43,11 @@ stays one-line-per-feature. This changelog papers over Era 1 retroactively.
 
 ## Release log (chronological, newest first)
 
+### Jul 21, 2026
+| PR | Tags | What shipped |
+|---|---|---|
+| #121 | `foundation` | Delete orphaned web files surfaced by the codebase audit — `EmbedComposer`, `boardIntent`, `ExpandToggle`, and `boards/templates.ts` (nothing imports them) — and trim `flowLayout.ts` to the `computeRows`/gap helpers Tidy actually uses (the `buildFlowchart`/`layoutFlow`/node-builder chain was reachable only from the deleted template) (dead-code sweep, part 1) |
+
 ### Jul 20, 2026
 | PR | Tags | What shipped |
 |---|---|---|
