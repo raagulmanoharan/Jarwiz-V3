@@ -21,6 +21,7 @@ import { gatherBoardCards } from './boardText';
 import { startFocus, startGenerating, stopFocus, stopGenerating } from './streaming';
 import { makeCardFollower } from './followCamera';
 import { frameBounds } from '../ui/bringIntoView';
+import { claimActiveRun, releaseActiveRun } from '../ask/useAsk';
 
 export type ComposePhase = 'idle' | 'planning' | 'building' | 'done' | 'error';
 
@@ -53,6 +54,11 @@ export function useCompose() {
     if (board.length === 0 && !intent?.trim()) return;
     abortRef.current?.abort();
     const ac = new AbortController();
+    // Occupy the same one-run-at-a-time slot as Ask/regen/debrief: refuse to
+    // start while another AI run is live (or a draft awaits Keep/Discard). Two
+    // concurrent runs would each spin up a camera follower and fight over the
+    // viewport — this is the gate that stops that. (Swallow like ask() does.)
+    if (!claimActiveRun(ac)) return;
     abortRef.current = ac;
     setPhase('planning');
 
@@ -267,6 +273,7 @@ export function useCompose() {
       // detach the follow listeners.
       for (const id of created) { stopFocus(id); stopGenerating(id); }
       follower.dispose();
+      releaseActiveRun(ac);
       if (abortRef.current === ac) abortRef.current = null;
     }
   }, [editor, phase]);
