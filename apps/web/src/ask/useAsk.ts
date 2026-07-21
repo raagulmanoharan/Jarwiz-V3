@@ -267,6 +267,26 @@ export function sourceLabel(shape: TLShape): string {
   return fallback[shape.type] ?? 'Card';
 }
 
+/** Has this answer card taken any real content yet? A rich card streams its body
+ *  into meta.jzBlocks (props.text stays empty), so a card that took even ONE
+ *  block counts as non-empty. Used to decide whether an aborted or failed run
+ *  left something worth keeping, or just an empty skeleton to sweep — so a
+ *  late/transient failure never wipes out an answer the person watched appear. */
+function cardIsEmpty(shape: TLShape | undefined): boolean {
+  if (!shape) return true;
+  const blocks = (shape.meta as { jzBlocks?: unknown[] } | undefined)?.jzBlocks;
+  if (Array.isArray(blocks) && blocks.length > 0) return false;
+  const p = shape.props as { text?: string; columns?: unknown[]; code?: string; html?: string; spec?: string; stops?: unknown[] };
+  switch (shape.type) {
+    case 'table-card': return !p.columns?.length;
+    case 'diagram-card': return !(p.code ?? '').trim();
+    case 'prototype-card': return !(p.html ?? '').trim();
+    case 'dashboard-card': return !(p.spec ?? '').trim();
+    case 'map-card': return !p.stops?.length;
+    default: return !(p.text ?? '').trim();
+  }
+}
+
 export function useAsk() {
   const editor = useEditor();
   const [isAsking, setIsAsking] = useState(false);
@@ -389,12 +409,23 @@ export function useAsk() {
       let runFailed = false;
 
       // Errors must never be silent — and they have ONE home: the banner above
-      // the composer (agentError.ts), never a popup at a random canvas spot. A
-      // failed draft is thrown away (a failure leaves nothing keepable) so the
-      // person isn't left hunting for a Discard button on a card off to the
-      // side; the reason and its Retry wait right where they'll type next.
+      // the composer (agentError.ts), never a popup at a random canvas spot.
+      // An EMPTY failed draft is thrown away (nothing keepable) so the person
+      // isn't left hunting for a Discard button on a stray card; the reason and
+      // its Retry wait right where they'll type next. But a draft that already
+      // streamed real content is KEPT — a late or transient failure must never
+      // wipe out the answer the person just watched appear; the banner still
+      // explains what went wrong, and the partial card stays on the board.
       const surfaceError = (message: string) => {
-        if (getDraft()) discardDraft(editor);
+        const d = getDraft();
+        if (d) {
+          if (cardIsEmpty(editor.getShape(d.id))) {
+            discardDraft(editor);
+          } else {
+            stopStreaming(d.id);
+            updateDraft({ status: 'done' });
+          }
+        }
         setAgentError({
           message,
           onRetry: () => {
@@ -867,17 +898,10 @@ export function useAsk() {
           // Aborted during the wait, before any content reached the pre-placed
           // card — don't leave an empty skeleton behind. (A partial card that
           // already took content is kept, as before, for Keep/Discard.)
-          const s = editor.getShape(placeholderId);
-          const p = (s?.props ?? {}) as { text?: string; columns?: unknown[]; code?: string; html?: string; spec?: string; stops?: unknown[] };
-          const empty =
-            !s ||
-            (s.type === 'table-card' ? !p.columns?.length
-              : s.type === 'diagram-card' ? !(p.code ?? '').trim()
-              : s.type === 'prototype-card' ? !(p.html ?? '').trim()
-              : s.type === 'dashboard-card' ? !(p.spec ?? '').trim()
-              : s.type === 'map-card' ? !p.stops?.length
-              : !(p.text ?? '').trim());
-          if (empty) {
+          // A rich card streams its body into meta.jzBlocks (props.text stays
+          // empty), so cardIsEmpty treats a card that took even one block as
+          // content — a partial answer is kept, only a true empty skeleton is swept.
+          if (cardIsEmpty(editor.getShape(placeholderId))) {
             if (getDraft()?.id === placeholderId) clearDraft();
             editor.deleteShape(placeholderId);
           }
