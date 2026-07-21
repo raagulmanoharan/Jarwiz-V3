@@ -326,7 +326,12 @@ async function maybeClarify(
   // reference means — don't ask "who is he?" when a "Nolan's films" card is
   // sitting right there.
   const boardDesc =
-    req.sources.length === 0 && req.boardIndex && req.boardIndex.length > 0
+    req.sources.length === 0 && req.boardContext && req.boardContext.length > 0
+      ? `\n\nCards on the user's canvas (their content — this IS available to answer from, treat it as attached):\n${req.boardContext
+          .slice(0, 12)
+          .map((c, i) => `${i + 1}. ${c.title ? `${c.title}: ` : ''}${(c.text ?? '').slice(0, 400)}`)
+          .join('\n')}`
+      : req.sources.length === 0 && req.boardIndex && req.boardIndex.length > 0
       ? `\n\nCards on the user's canvas (titles):\n${req.boardIndex.slice(0, 40).map((t, i) => `${i + 1}. ${t}`).join('\n')}`
       : '';
   let raw: string;
@@ -1286,7 +1291,12 @@ export async function* streamAsk(req: AskRequest, signal: AbortSignal): AsyncGen
   // answer from its own knowledge. Titles only (capped) so it stays cheap; it's
   // not the cards' contents (owner call 2026-07-20).
   const boardHint =
-    req.sources.length === 0 && req.boardIndex && req.boardIndex.length > 0
+    req.sources.length === 0 && req.boardContext && req.boardContext.length > 0
+      ? `On the user's canvas right now (the cards and their content — use this to answer directly, it IS the source):\n\n${req.boardContext
+          .slice(0, 12)
+          .map((c, i) => `Card ${i + 1}${c.title ? ` — ${c.title}` : ''}:\n${(c.text ?? '').trim() || '(no text)'}`)
+          .join('\n\n')}\n\nAnswer the request from these cards' content. Only ask the user to clarify if the request itself is genuinely ambiguous — not merely because "no source is attached" (the content above IS attached).`
+      : req.sources.length === 0 && req.boardIndex && req.boardIndex.length > 0
       ? `On the user's canvas right now (card titles only — their full content is NOT attached):\n${req.boardIndex
           .slice(0, 60)
           .map((t, i) => `${i + 1}. ${t}`)

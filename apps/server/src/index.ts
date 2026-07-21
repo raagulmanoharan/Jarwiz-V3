@@ -535,6 +535,20 @@ app.post('/api/ask', async (c) => {
           .map((t) => t.slice(0, 120))
           .slice(0, 60)
       : undefined,
+    // Ambient board CONTENT for a small board — title + capped text per card, so
+    // an unselected ask can answer about what's on the canvas. Sanitised + capped.
+    boardContext: Array.isArray(raw.boardContext)
+      ? raw.boardContext
+          .map((c) => {
+            const o = (c ?? {}) as { title?: unknown; text?: unknown };
+            return {
+              title: typeof o.title === 'string' ? o.title.slice(0, 200) : undefined,
+              text: typeof o.text === 'string' ? o.text.slice(0, 1600) : undefined,
+            };
+          })
+          .filter((c) => c.title || c.text?.trim())
+          .slice(0, 12)
+      : undefined,
   };
 
   return streamSSE(c, async (stream) => {

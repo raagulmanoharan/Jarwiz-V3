@@ -24,6 +24,7 @@ import {
   type TLShapePartial,
 } from 'tldraw';
 import type { AskEvent, AskShape, AskSource, RichBlock } from '@jarwiz/shared';
+import { blocksToText } from '@jarwiz/shared';
 import {
   DIAGRAM_CARD_SIZE,
   DOC_CARD_SIZE,
@@ -49,6 +50,7 @@ import { clearAgentError, setAgentError } from '../agents/agentError';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from '../agents/presence';
 import { frameBounds } from '../ui/bringIntoView';
 import { getShapeTitle } from '../shapes/shapeTitle';
+import { gatherBoardCardsWithIds } from '../agents/boardText';
 import { getAgent } from '@jarwiz/shared';
 
 /** The single Jarwiz presence identity (routing id 'writer'). Parked on the
@@ -809,23 +811,35 @@ export function useAsk() {
         }
       };
 
-      // Ambient board context for an UNGROUNDED ask: the titles of the cards
-      // already on the canvas, so the server can resolve what the prompt refers
-      // to ("his films", "these") without a source attached. Titles only, and
-      // gathered BEFORE we pre-place the answer below so the fresh skeleton
-      // isn't in its own index (owner call 2026-07-20).
-      const boardIndex =
-        sources.length === 0
-          ? Array.from(
-              new Set(
-                editor
-                  .getCurrentPageShapes()
-                  .filter((s) => s.type.endsWith('-card'))
-                  .map((s) => getShapeTitle(s).trim())
-                  .filter(Boolean),
-              ),
-            ).slice(0, 60)
-          : undefined;
+      // Ambient board awareness for an UNGROUNDED ask, gathered BEFORE we
+      // pre-place the answer so the fresh skeleton isn't in its own index.
+      //   • SMALL board → send the cards' actual CONTENT (title + text), so a
+      //     question about what's on the board — "why was Memento not included"
+      //     — can be answered without selecting anything.
+      //   • BIG board → titles only (grounding a big board would be costly);
+      //     the model resolves references and asks you to select for detail.
+      // Both are ambient, not formal sources: no provenance edges (owner call
+      // 2026-07-20, extended to small-board content 2026-07-21).
+      const SMALL_BOARD = 8;
+      let boardIndex: string[] | undefined;
+      let boardContext: Array<{ title?: string; text?: string }> | undefined;
+      if (sources.length === 0) {
+        const cardShapes = editor.getCurrentPageShapes().filter((s) => s.type.endsWith('-card'));
+        if (cardShapes.length > 0 && cardShapes.length <= SMALL_BOARD) {
+          const textById = new Map(gatherBoardCardsWithIds(editor).map((c) => [c.id, c.text]));
+          boardContext = cardShapes
+            .map((s) => {
+              const blocks = (s.meta as { jzBlocks?: RichBlock[] } | undefined)?.jzBlocks;
+              const text = Array.isArray(blocks) && blocks.length ? blocksToText(blocks) : (textById.get(s.id) ?? '');
+              return { title: getShapeTitle(s).trim() || undefined, text: text.slice(0, 1500) };
+            })
+            .filter((c) => c.title || c.text?.trim());
+        } else if (cardShapes.length > 0) {
+          boardIndex = Array.from(
+            new Set(cardShapes.map((s) => getShapeTitle(s).trim()).filter(Boolean)),
+          ).slice(0, 60);
+        }
+      }
 
       // Show the answer card the INSTANT you press enter, at the spot it'll
       // land, already in its "building…" state — so the wait (a doc's first
@@ -879,7 +893,7 @@ export function useAsk() {
         const res = await fetch('/api/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: trimmed, sources, currentShape, skipClarify: opts?.skipClarify, shape: opts?.forceShape, deep: opts?.deep, machineId: opts?.machineId, boardIndex }),
+          body: JSON.stringify({ prompt: trimmed, sources, currentShape, skipClarify: opts?.skipClarify, shape: opts?.forceShape, deep: opts?.deep, machineId: opts?.machineId, boardIndex, boardContext }),
           signal,
         });
         if (!res.ok || !res.body) {

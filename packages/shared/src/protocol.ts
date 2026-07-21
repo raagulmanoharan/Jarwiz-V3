@@ -202,6 +202,16 @@ export interface AskRequest {
    * detail (owner call 2026-07-20).
    */
   boardIndex?: string[];
+  /**
+   * Ambient board CONTENT for an unselected ask on a SMALL board — the card
+   * titles plus their (truncated) text, so a question about what's on the board
+   * ("why was Memento not included") can be answered without selecting anything.
+   * The client only sends this when few cards are on the canvas (grounding on a
+   * big board would be costly); a big board falls back to `boardIndex` titles.
+   * Still ambient, not formal sources: no provenance edges, used only if
+   * relevant.
+   */
+  boardContext?: Array<{ title?: string; text?: string }>;
 }
 
 /* ─── Cluster & summarise (Big Rocks 2.1 — synthesis) ────────────────────────
