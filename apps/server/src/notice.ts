@@ -9,11 +9,8 @@
  * Each comment must pin to one of the card ids we sent, so the UI can anchor it.
  */
 
-import Anthropic from '@anthropic-ai/sdk';
 import type { NoticeCard, NoticeComment, NoticeKind, NoticeRequest } from '@jarwiz/shared';
-import { AGENT_MODEL } from './agents/runtime.js';
-import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
-import { anthropic, hasModelKey } from './model.js';
+import { generateText } from './generate.js';
 import { parseJsonArray } from './util.js';
 
 const MAX_CARDS = 24;
@@ -47,22 +44,8 @@ function boardSummary(cards: NoticeCard[]): string {
     .join('\n');
 }
 
-async function review(user: string, signal: AbortSignal): Promise<string> {
-  if (hasModelKey()) {
-    const client = anthropic();
-    const msg = await client.messages.create(
-      { model: AGENT_MODEL, max_tokens: MAX_TOKENS, system: SYSTEM, messages: [{ role: 'user', content: user }] },
-      { signal },
-    );
-    return msg.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map((b) => b.text)
-      .join('');
-  }
-  if (sidecarAvailable()) {
-    return sidecarGenerate({ system: SYSTEM, user, signal, timeoutMs: SIDECAR_TIMEOUT_MS });
-  }
-  throw new Error('No model available (set ANTHROPIC_API_KEY or install the Claude CLI).');
+function review(user: string, signal: AbortSignal): Promise<string> {
+  return generateText({ system: SYSTEM, user, signal, maxTokens: MAX_TOKENS, sidecarTimeoutMs: SIDECAR_TIMEOUT_MS });
 }
 
 /** Tolerant JSON-array parse — replies sometimes wrap it in prose/fences. */
