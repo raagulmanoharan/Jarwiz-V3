@@ -11,7 +11,7 @@
 import type { AnalyzeCard, AskShape, ComposeEvent, ComposePlanCard, ComposeRequest } from '@jarwiz/shared';
 import { streamAsk } from './ask.js';
 import { generateText } from './generate.js';
-import { parseJsonArray } from './util.js';
+import { cardLabelBody, parseJsonArray } from './util.js';
 
 const MAX_BOARD_CARDS = 24;
 const MAX_TEXT_PER_CARD = 700;
@@ -45,11 +45,7 @@ Return ONLY a JSON array (no prose, no code fences) of ${MIN_CARDS}–${MAX_CARD
 function boardSummary(cards: AnalyzeCard[]): string {
   return cards
     .slice(0, MAX_BOARD_CARDS)
-    .map((c, i) => {
-      const label = c.title ? `${c.kind}: ${c.title}` : c.kind;
-      const body = (c.text || '').replace(/\s+/g, ' ').trim().slice(0, MAX_TEXT_PER_CARD);
-      return `${i + 1}. [${label}]${body ? ` — ${body}` : ''}`;
-    })
+    .map((c, i) => `${i + 1}. ${cardLabelBody(c, MAX_TEXT_PER_CARD)}`)
     .join('\n');
 }
 
