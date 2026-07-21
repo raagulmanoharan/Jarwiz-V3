@@ -290,10 +290,14 @@ function looksLikeResearch(prompt: string): boolean {
  * do we spend a triage call. We bias hard toward acting — over-asking is worse
  * than a reversible wrong guess (Keep/Discard + undo already cover that). */
 
-const TRIAGE_SYSTEM = `You triage a user's request about some canvas sources and decide if it is clear enough to act on. Respond with ONLY a JSON object — no prose, no code fences.
-- If you can tell what single artifact to produce, return {"clear": true}.
-- If it is genuinely ambiguous (no clear verb or output, or it could reasonably mean very different things with these sources), return {"clear": false, "question": "<one short question, max ~12 words>", "options": ["<2-4 short, concrete artifact choices>"]}.
-Strongly prefer {"clear": true}; only ask when truly unsure. Options must be tappable artifact choices like "Comparison table", "Summary doc", "Diagram", "Sticky notes" — not open-ended.`;
+const TRIAGE_SYSTEM = `You gate a user's request on a canvas. You have BROAD general knowledge and the content of the cards on their board (given below). Decide ONLY whether you can just answer, or whether the request is genuinely ambiguous. Respond with ONLY a JSON object — no prose, no code fences.
+
+DEFAULT HARD to {"clear": true} — you can almost always proceed. Answer from your own knowledge plus the board content, and produce the most sensible result. Specifically, treat as CLEAR:
+- A short or terse request ("his highest grosser", "the best one", "why not Memento") — resolve any reference ("his", "their", "it", "these") from the board or from obvious context and answer.
+- Anything you can reasonably answer from general knowledge, even with no source attached.
+- Any request where you'd merely be guessing the OUTPUT FORMAT — never ask about format; just pick the most fitting one.
+
+Return {"clear": false, "question": "<one short question, max ~12 words>", "options": ["<2-4 concrete choices>"]} ONLY when the request is TRULY ambiguous: a reference could point to two or more clearly DIFFERENT things (e.g. two different directors on the board and "his" fits both) and you honestly cannot choose. When two board cards are about the SAME subject, that's not ambiguous. When in doubt, answer — do not ask.`;
 
 /** Cheap gate: is this request vague enough that a triage call is worth it?
  *  A recognizable verb/output word means it's clear — never ask. */
