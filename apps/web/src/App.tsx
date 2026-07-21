@@ -29,7 +29,6 @@ import { AmbientOnboarding } from './onboarding/AmbientOnboarding';
 import { PersonaModal } from './onboarding/PersonaModal';
 import { CardActionBar } from './ask/CardActionBar';
 import { ProvenanceLayer } from './ask/ProvenanceLayer';
-import { ClarifyLayer } from './ask/ClarifyLayer';
 import { CommentLayer } from './ask/CommentLayer';
 import { setComments, toggleComment, commentSig } from './ask/comments';
 import { MachineRunner } from './ui/MachineRunner';
@@ -93,7 +92,6 @@ function JarwizOverlay() {
       <Safe label="CardPhysics"><CardPhysics /></Safe>
       <Safe label="CardTitleTag"><CardTitleTag /></Safe>
       <Safe label="CardActionBar"><CardActionBar /></Safe>
-      <Safe label="ClarifyLayer"><ClarifyLayer /></Safe>
       <Safe label="CommentLayer"><CommentLayer /></Safe>
       <Safe label="MachineRunner"><MachineRunner /></Safe>
       <Safe label="PrototypeRunner"><PrototypeRunner /></Safe>
