@@ -14,6 +14,7 @@ import type { NoticeCard, NoticeComment, NoticeKind, NoticeRequest } from '@jarw
 import { AGENT_MODEL } from './agents/runtime.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 import { anthropic, hasModelKey } from './model.js';
+import { parseJsonArray } from './util.js';
 
 const MAX_CARDS = 24;
 const MAX_TEXT_PER_CARD = 900;
@@ -65,19 +66,6 @@ async function review(user: string, signal: AbortSignal): Promise<string> {
 }
 
 /** Tolerant JSON-array parse — replies sometimes wrap it in prose/fences. */
-function parseArray(raw: string): unknown[] {
-  const cleaned = raw.replace(/```(?:json)?/gi, '').trim();
-  const start = cleaned.indexOf('[');
-  const end = cleaned.lastIndexOf(']');
-  if (start === -1 || end === -1 || end <= start) return [];
-  try {
-    const parsed = JSON.parse(cleaned.slice(start, end + 1));
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
 /**
  * Review a board and return proactive comments, each pinned to a real card id.
  * Defensive: drops anything not pinned to a card we sent, dedupes per card, and
@@ -100,7 +88,7 @@ export async function reviewBoard(req: NoticeRequest, signal: AbortSignal): Prom
 
   const out: NoticeComment[] = [];
   const usedCards = new Set<string>();
-  for (const item of parseArray(raw)) {
+  for (const item of parseJsonArray(raw)) {
     if (!item || typeof item !== 'object') continue;
     const o = item as Record<string, unknown>;
     const cardId = String(o.cardId ?? '').trim();

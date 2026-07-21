@@ -14,6 +14,7 @@ import { AGENT_MODEL } from './agents/runtime.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 import { streamAsk } from './ask.js';
 import { anthropic, hasModelKey } from './model.js';
+import { parseJsonArray } from './util.js';
 
 const MAX_BOARD_CARDS = 24;
 const MAX_TEXT_PER_CARD = 700;
@@ -73,19 +74,6 @@ async function planText(user: string, signal: AbortSignal): Promise<string> {
   throw new Error('No model available (set ANTHROPIC_API_KEY or install the Claude CLI).');
 }
 
-function parseArray(raw: string): unknown[] {
-  const cleaned = raw.replace(/```(?:json)?/gi, '').trim();
-  const start = cleaned.indexOf('[');
-  const end = cleaned.lastIndexOf(']');
-  if (start === -1 || end === -1 || end <= start) return [];
-  try {
-    const parsed = JSON.parse(cleaned.slice(start, end + 1));
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
 /** Plan the set of cards to build. Defensive: validates types, caps count. */
 async function planBoard(board: AnalyzeCard[], intent: string | undefined, signal: AbortSignal): Promise<Array<ComposePlanCard & { prompt: string }>> {
   const summary = boardSummary(board);
@@ -93,7 +81,7 @@ async function planBoard(board: AnalyzeCard[], intent: string | undefined, signa
   const user = `${steer}The board so far:\n${summary || '(empty)'}\n\nDesign the set of cards to build out this board, grounded in its subject.`;
   const raw = await planText(user, signal);
   const out: Array<ComposePlanCard & { prompt: string }> = [];
-  for (const item of parseArray(raw)) {
+  for (const item of parseJsonArray(raw)) {
     if (!item || typeof item !== 'object') continue;
     const o = item as Record<string, unknown>;
     const type = SHAPES.includes(o.type as AskShape) ? (o.type as AskShape) : 'doc';

@@ -16,6 +16,7 @@ import { AGENT_MODEL } from './agents/runtime.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 import { RESEARCH_MAX_CONTINUATIONS, researchToolset } from './webTools.js';
 import { anthropic, hasModelKey } from './model.js';
+import { parseJsonArray } from './util.js';
 
 const MAX_CARDS = 24;
 const MAX_TEXT_PER_CARD = 700;
@@ -77,20 +78,6 @@ async function groundedSearch(user: string, signal: AbortSignal): Promise<string
   throw new Error('No model available (set ANTHROPIC_API_KEY or install the Claude CLI).');
 }
 
-/** Tolerant JSON-array parse — grounded replies sometimes wrap it in prose. */
-function parseResources(raw: string): unknown[] {
-  const cleaned = raw.replace(/```(?:json)?/gi, '').trim();
-  const start = cleaned.indexOf('[');
-  const end = cleaned.lastIndexOf(']');
-  if (start === -1 || end === -1 || end <= start) return [];
-  try {
-    const parsed = JSON.parse(cleaned.slice(start, end + 1));
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
 function normUrl(u: string): string {
   return u.trim().replace(/[).,]+$/, '');
 }
@@ -124,7 +111,7 @@ export async function discoverResources(req: DiscoverRequest, signal: AbortSigna
     (req.existingUrls ?? []).map((u) => normUrl(u).toLowerCase()),
   );
   const out: SuggestedResource[] = [];
-  for (const item of parseResources(raw)) {
+  for (const item of parseJsonArray(raw)) {
     if (!item || typeof item !== 'object') continue;
     const o = item as Record<string, unknown>;
     const url = normUrl(String(o.url ?? ''));
