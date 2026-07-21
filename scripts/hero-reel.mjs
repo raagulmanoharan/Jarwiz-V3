@@ -44,8 +44,8 @@ const REEL = resolve(__dirname, 'hero-reel.html');
 const OUT = resolve(process.env.OUT || resolve(__dirname, '../site/assets/hero-reel.gif'));
 const OUT_WEBM = OUT.replace(/\.gif$/i, '') + '.webm';
 const SIZE = parseInt(process.env.SIZE || '1080', 10);
-const FRAMES = parseInt(process.env.FRAMES || '96', 10);
-const DELAY = parseInt(process.env.DELAY || '55', 10);
+const FRAMES = parseInt(process.env.FRAMES || '120', 10); // ~7.2s loop — fits the 4 cycling prompts
+const DELAY = parseInt(process.env.DELAY || '60', 10);
 const PALETTE = process.env.PALETTE || 'perframe';
 // Which artifacts to emit. The WebM is tiny + crisp (recommended for the web);
 // the GIF is the requested format but heavy at 1080². 'both' by default.
