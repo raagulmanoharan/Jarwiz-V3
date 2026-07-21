@@ -62,10 +62,3 @@ export function subscribeAgentTasks(cb: () => void): () => void {
 export function getAgentTasks(): ReadonlyMap<string, AgentTask> {
   return tasks;
 }
-
-/** Count of running tasks — used for the concurrency guard (Phase 2). */
-export function runningTaskCount(): number {
-  let n = 0;
-  for (const t of tasks.values()) if (t.status === 'running') n++;
-  return n;
-}

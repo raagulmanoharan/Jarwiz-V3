@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { createShapeId, useEditor, type TLShapeId } from 'tldraw';
+import { createShapeId, useEditor } from 'tldraw';
 import { getAgent, type AnalyzeMode } from '@jarwiz/shared';
 import { gatherBoardCards } from './boardText';
 import { frameBounds } from '../ui/bringIntoView';

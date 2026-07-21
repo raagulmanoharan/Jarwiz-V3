@@ -28,8 +28,7 @@ export function apiUrl(path: string): string {
 
 // ── The visitor's own key (BYOK) — a tiny external store ────────────────────
 
-let cachedKey: string | null = readStoredKey();
-const listeners = new Set<() => void>();
+const cachedKey: string | null = readStoredKey();
 
 function readStoredKey(): string | null {
   try {
@@ -37,26 +36,6 @@ function readStoredKey(): string | null {
   } catch {
     return null; // storage blocked (private mode) — key just won't persist
   }
-}
-
-export function subscribeApiKey(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-export function getApiKey(): string | null {
-  return cachedKey;
-}
-
-export function setApiKey(key: string | null): void {
-  cachedKey = key?.trim() || null;
-  try {
-    if (cachedKey) window.localStorage.setItem(KEY_STORAGE, cachedKey);
-    else window.localStorage.removeItem(KEY_STORAGE);
-  } catch {
-    /* storage blocked — the key still works for this tab's lifetime */
-  }
-  for (const listener of listeners) listener();
 }
 
 // ── Pilot invite code — same shape, separate credential ─────────────────────
@@ -77,10 +56,6 @@ function readStored(key: string): string | null {
   }
 }
 
-export function getPilotCode(): string | null {
-  return cachedPilot;
-}
-
 export function setPilotCode(code: string | null): void {
   cachedPilot = code?.trim() || null;
   try {
@@ -89,7 +64,6 @@ export function setPilotCode(code: string | null): void {
   } catch {
     /* storage blocked — works for this tab's lifetime */
   }
-  for (const listener of listeners) listener();
 }
 
 /** Adopt an invite from the URL (?pilot=CODE), then tidy the address bar so

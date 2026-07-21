@@ -15,13 +15,3 @@ export function domainInitial(url: string): string {
   const first = domain.trim().charAt(0);
   return first ? first.toUpperCase() : '?';
 }
-
-/** True when a pasted/dropped string is a lone http(s) URL. */
-export function isHttpUrl(text: string): boolean {
-  try {
-    const url = new URL(text.trim());
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}

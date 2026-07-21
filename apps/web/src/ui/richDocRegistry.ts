@@ -16,10 +16,6 @@ export function setActiveRichEditor(editor: TiptapEditor | null): void {
   active = editor;
 }
 
-export function getActiveRichEditor(): TiptapEditor | null {
-  return active;
-}
-
 /** Run a format intent (by the CardActionBar key) against the active rich
  *  editor. Returns false when there's no rich editor (caller falls back to the
  *  textarea path), so the format bar behaves identically on dialect docs. */

@@ -7,9 +7,6 @@
 import type { TLShapeId } from 'tldraw';
 import { createExternalStore } from '../lib/externalStore';
 
-/** Answer cards taller than this collapse, with an expand/collapse toggle. */
-export const MAX_CARD_H = 520;
-
 const store = createExternalStore<ReadonlySet<string>>(new Set());
 
 export const subscribeExpand = store.subscribe;

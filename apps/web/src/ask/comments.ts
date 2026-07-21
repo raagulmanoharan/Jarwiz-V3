@@ -84,10 +84,5 @@ export function closeComments(): void {
   store.update((s) => (s.openId === null ? s : { ...s, openId: null }));
 }
 
-/** Clear everything on-screen without touching dismissals (e.g. board switch). */
-export function clearComments(): void {
-  store.set({ comments: [], openId: null });
-}
-
 export const subscribeComments = store.subscribe;
 export const getComments = store.get;

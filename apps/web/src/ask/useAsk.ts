@@ -387,7 +387,6 @@ export function useAsk() {
       // failure); the finally block bails an in-place regen back to its mark so
       // a failure can't commit a blanked card.
       let runFailed = false;
-      const taskId = `ask_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
       // Errors must never be silent — and they have ONE home: the banner above
       // the composer (agentError.ts), never a popup at a random canvas spot. A

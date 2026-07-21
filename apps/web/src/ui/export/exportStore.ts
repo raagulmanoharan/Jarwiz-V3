@@ -81,13 +81,6 @@ export function retryExport(mode: ExportMode): void {
   if (input) startExport(mode, input.cards, input.title);
 }
 
-/** Clear one mode back to idle (and abort it if still running). */
-export function dismissExport(mode: ExportMode): void {
-  controllers[mode]?.abort();
-  controllers[mode] = null;
-  patchSlot(mode, idleSlot());
-}
-
 async function run(mode: ExportMode): Promise<void> {
   const input = lastInput[mode];
   if (!input) return;
