@@ -194,7 +194,13 @@ const handleMount = (editor: Editor) => {
   // lockstep with the Jarwiz theme. tldraw ignores DOM attributes — this
   // preference is the only mechanism it reads.
   editor.user.updateUserPreferences({ colorScheme: getTheme() });
-  subscribeTheme(() => editor.user.updateUserPreferences({ colorScheme: getTheme() }));
+  // Tie the theme subscription to the editor's lifetime. Each board switch
+  // remounts <Tldraw key={board.id}>, re-running handleMount; without this the
+  // unsubscribe was dropped, so every remount stacked another listener pinning
+  // the now-dead editor (a growing leak). disposables fire on editor teardown.
+  editor.disposables.add(
+    subscribeTheme(() => editor.user.updateUserPreferences({ colorScheme: getTheme() })),
+  );
   // Suppress tldraw's blue selection chrome. updateThemes with a callback
   // deep-merges into the existing theme so no other colors are wiped out.
   editor.updateThemes((themes) => {
