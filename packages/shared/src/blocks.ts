@@ -86,20 +86,3 @@ export type RichBlock =
   | LinkBlock
   | DividerBlock;
 
-/** A structured rich-card document — an ordered list of blocks. */
-export interface RichDoc {
-  blocks: RichBlock[];
-}
-
-/** Every block `type` string, for validation/switches. */
-export const RICH_BLOCK_TYPES = [
-  'heading',
-  'paragraph',
-  'list',
-  'checklist',
-  'table',
-  'image',
-  'map',
-  'link',
-  'divider',
-] as const;

@@ -414,10 +414,9 @@ function pickShape(_prompt: string, current?: AskShape): AskShape {
   // 2026-07-07). Here we handle just the two non-explicit cases:
   //  - an in-place refine keeps the card's OWN current shape, so a tweak
   //    ("add a node", "make it shorter") regenerates that same card rather than
-  //    morphing into a different artefact (affinity is a multi-card layout, not
-  //    a single refinable card — never kept here);
+  //    morphing into a different artefact;
   //  - everything else defaults to a doc (the first-class default).
-  if (current && current !== 'affinity') return current;
+  if (current) return current;
   return 'doc';
 }
 
