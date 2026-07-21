@@ -61,12 +61,19 @@
           "flow    flow    map    map    image2 note";
       }
 
-      /* ── Centre prompt: the ✦ mark spins, "Describe anything." types ── */
-      .reel-center { position: absolute; left: 850px; top: 850px; transform: translate(-50%, -50%);
+      /* ── Persistent hero copy — a FIXED viewport-centred overlay (does not
+            scale with the board), so "Describe anything." stays crisp + legible
+            in the middle the whole time, with the cards filling around it. ── */
+      .reel-scrim { position: absolute; left: 540px; top: 540px; transform: translate(-50%, -50%);
+        width: 940px; height: 470px; z-index: 4; pointer-events: none; border-radius: 50%;
+        background: radial-gradient(ellipse at center, rgba(9,9,11,0.95) 0%, rgba(9,9,11,0.9) 34%, rgba(9,9,11,0.55) 58%, rgba(9,9,11,0) 74%);
+        filter: blur(6px); will-change: opacity; }
+      .reel-center { position: absolute; left: 540px; top: 540px; transform: translate(-50%, -50%);
         display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; z-index: 5; white-space: nowrap; pointer-events: none; }
       .reel-spark { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px;
         background: var(--ink); color: #000; font-size: 28px; box-shadow: 0 16px 44px rgba(0,0,0,0.55); will-change: transform; }
-      .reel-prompt { font-size: 58px; font-weight: 800; letter-spacing: -0.035em; line-height: 1; color: #fff; display: inline-flex; align-items: center; min-height: 1em; }
+      .reel-prompt { font-size: 58px; font-weight: 800; letter-spacing: -0.035em; line-height: 1; color: #fff; display: inline-flex; align-items: center; min-height: 1em;
+        text-shadow: 0 2px 30px rgba(0,0,0,0.9); }
       .reel-caret { display: inline-block; width: 4px; height: 0.92em; margin-left: 6px; border-radius: 2px; background: var(--ink); vertical-align: -2px; }
 
       /* ── Card frame ── */
@@ -182,11 +189,6 @@
     <div class="reel-viewport" id="viewport">
       <div class="reel-camera" id="camera">
         <div class="reel-board" id="board">
-
-          <div class="reel-center" id="center">
-            <div class="reel-spark" id="spark">✦</div>
-            <div class="reel-prompt"><span id="promptText"></span><span class="reel-caret" id="caret"></span></div>
-          </div>
 
           <!-- TABLE -->
           <div class="reel-card" data-card style="grid-area: table">
@@ -352,17 +354,24 @@
 
         </div>
       </div>
+
+      <!-- Persistent hero copy: stays centred + legible over the packed board,
+           with a soft scrim that ramps in as the cards fill behind it. -->
+      <div class="reel-scrim" id="scrim"></div>
+      <div class="reel-center" id="center">
+        <div class="reel-spark" id="spark">✦</div>
+        <div class="reel-prompt">Describe anything.<span class="reel-caret" id="caret"></span></div>
+      </div>
     </div>
 
     <script>
       (function () {
         const camera = document.getElementById('camera');
         const center = document.getElementById('center');
+        const scrim = document.getElementById('scrim');
         const spark = document.getElementById('spark');
         const caret = document.getElementById('caret');
-        const promptText = document.getElementById('promptText');
         const cards = Array.from(document.querySelectorAll('[data-card]'));
-        const PROMPT = 'Describe anything.';
 
         const BOARD_C = 850;
         const CENTER_SCALE = 1.35;    // zoomed in on the composer
@@ -384,9 +393,8 @@
         const easeInOut = (t) => { t = clamp01(t); return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
         const lerp = (a, b, t) => a + (b - a) * t;
 
-        // Phases: spin+type (zoomed in) → cards in + zoom out → hold → zoom back.
-        const SPIN_S = 0.02, SPIN_E = 0.18;
-        const TYPE_S = 0.05, TYPE_E = 0.17;
+        // Phases: spin (zoomed in) → cards in + zoom out → hold → zoom back.
+        const SPIN_S = 0.02, SPIN_E = 0.20;
         const IN_S = 0.20, IN_E = 0.62;
         const HOLD_E = 0.82;
 
@@ -396,23 +404,16 @@
           if (u < HOLD_E) return BOARD_SCALE;
           return lerp(BOARD_SCALE, CENTER_SCALE, easeInOut((u - HOLD_E) / (1 - HOLD_E)));
         }
-        // One eased spin (360°≡0°, so the loop seam is clean).
+        // One eased spin of the ✦ mark (360°≡0°, so the loop seam is clean).
         function sparkDeg(u) {
           if (u < SPIN_S) return 0;
           if (u < SPIN_E) return easeInOut((u - SPIN_S) / (SPIN_E - SPIN_S)) * 360;
           return 0;
         }
-        function promptChars(u) {
-          if (u < TYPE_S) return 0;
-          if (u < TYPE_E) return Math.round(lerp(0, PROMPT.length, (u - TYPE_S) / (TYPE_E - TYPE_S)));
-          if (u < 0.44) return PROMPT.length;
-          return 0;
-        }
-        function promptOpacity(u) {
-          if (u < 0.30) return 1;
-          if (u < 0.42) return 1 - (u - 0.30) / 0.12;
-          if (u < HOLD_E) return 0;
-          return easeInOut((u - HOLD_E) / (1 - HOLD_E));
+        // The scrim behind the hero copy fades in as the board zooms out + fills
+        // (0 when zoomed in on a clean canvas, 1 over the packed board).
+        function scrimOpacity(u) {
+          return clamp01((CENTER_SCALE - cameraScale(u)) / (CENTER_SCALE - BOARD_SCALE));
         }
         function cardState(m, u) {
           let off, op;
@@ -428,8 +429,7 @@
           u = ((u % 1) + 1) % 1;
           camera.style.transform = 'scale(' + cameraScale(u).toFixed(4) + ')';
           spark.style.transform = 'rotate(' + sparkDeg(u).toFixed(2) + 'deg)';
-          promptText.textContent = PROMPT.slice(0, promptChars(u));
-          center.style.opacity = promptOpacity(u).toFixed(3);
+          scrim.style.opacity = scrimOpacity(u).toFixed(3);
           caret.style.opacity = (Math.floor(u * 26) % 2 === 0) ? '1' : '0.12';
           for (const m of meta) {
             const { off, op } = cardState(m, u);
