@@ -178,10 +178,13 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
     // Cards grow as tall as their content needs — no clamp, no Expand toggle
     // (owner call). `overflowing` therefore stays false and never collapses.
     maxHeight: Infinity,
-    // Grow to fit a long answer, but once settled never shrink below the card's
-    // current height — a one-line card kept a stable height instead of
-    // collapsing to that line after a drag/re-measure (owner call, 2026-07-14).
-    growOnly: true,
+    // Track the content height exactly, both ways. The visible card is
+    // height:auto (it hugs its content), so a shape box taller than the content
+    // is INVISIBLE — but it still hit-tests, so a click in the empty band below
+    // a short card's text selected the card even though the card visibly ended
+    // above (bug report 2026-07-21). Keeping the box == content height makes the
+    // hit area match what's drawn. (Supersedes the 2026-07-14 growOnly call,
+    // which only ever preserved that invisible dead band on an auto-height card.)
     growWidth: { max: 800, step: 128, ratio: 1.4 },
   });
   const collapsed = overflowing && !expanded && !isStreaming;
