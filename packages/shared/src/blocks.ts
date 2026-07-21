@@ -86,3 +86,39 @@ export type RichBlock =
   | LinkBlock
   | DividerBlock;
 
+/** Flatten a rich card's blocks into plain text — for grounding, search, and
+ *  anywhere a structured card needs to read back as prose (a block-stream card
+ *  keeps its body here in meta.jzBlocks, not in props.text). */
+export function blocksToText(blocks: readonly RichBlock[]): string {
+  const parts: string[] = [];
+  for (const b of blocks) {
+    switch (b.type) {
+      case 'heading':
+      case 'paragraph':
+        parts.push(b.text);
+        break;
+      case 'list':
+        parts.push(b.items.map((i, n) => `${b.ordered ? `${n + 1}.` : '-'} ${i}`).join('\n'));
+        break;
+      case 'checklist':
+        parts.push(b.items.map((i) => `- [${i.done ? 'x' : ' '}] ${i.text}`).join('\n'));
+        break;
+      case 'table':
+        parts.push([b.columns.join(' | '), ...b.rows.map((r) => r.join(' | '))].join('\n'));
+        break;
+      case 'map':
+        parts.push(b.stops.map((s) => s.name).filter(Boolean).join(', '));
+        break;
+      case 'link':
+        parts.push([b.title, b.description, b.url].filter(Boolean).join(' — '));
+        break;
+      case 'image':
+        if (b.caption || b.alt) parts.push(b.caption ?? b.alt ?? '');
+        break;
+      case 'divider':
+        break;
+    }
+  }
+  return parts.filter((p) => p.trim()).join('\n\n');
+}
+
