@@ -58,3 +58,17 @@ export function parseJsonArray(raw: string): unknown[] {
     return [];
   }
 }
+
+/** Render one board card as a compact `[kind: title] — body` line for a
+ *  board-summary prompt: the title-qualified label, then the whitespace-
+ *  collapsed text clipped to `maxText`. The three board-summarising endpoints
+ *  (notice/discover/compose) built this identically; they differ only in the
+ *  line prefix they add (an id, or an ordinal), which stays at the call site. */
+export function cardLabelBody(
+  card: { kind: string; title?: string; text?: string },
+  maxText: number,
+): string {
+  const label = card.title ? `${card.kind}: ${card.title}` : card.kind;
+  const body = (card.text || '').replace(/\s+/g, ' ').trim().slice(0, maxText);
+  return `[${label}]${body ? ` — ${body}` : ''}`;
+}

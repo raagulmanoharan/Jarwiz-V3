@@ -11,7 +11,7 @@
 
 import type { NoticeCard, NoticeComment, NoticeKind, NoticeRequest } from '@jarwiz/shared';
 import { generateText } from './generate.js';
-import { parseJsonArray } from './util.js';
+import { cardLabelBody, parseJsonArray } from './util.js';
 
 const MAX_CARDS = 24;
 const MAX_TEXT_PER_CARD = 900;
@@ -36,11 +36,7 @@ If nothing is worth flagging, return []. Quality over quantity — zero good com
 function boardSummary(cards: NoticeCard[]): string {
   return cards
     .slice(0, MAX_CARDS)
-    .map((c) => {
-      const label = c.title ? `${c.kind}: ${c.title}` : c.kind;
-      const body = (c.text || '').replace(/\s+/g, ' ').trim().slice(0, MAX_TEXT_PER_CARD);
-      return `id=${c.id} [${label}]${body ? ` — ${body}` : ''}`;
-    })
+    .map((c) => `id=${c.id} ${cardLabelBody(c, MAX_TEXT_PER_CARD)}`)
     .join('\n');
 }
 

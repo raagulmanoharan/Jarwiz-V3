@@ -13,7 +13,7 @@
 import type { AnalyzeCard, DiscoverRequest, ResourceKind, SuggestedResource } from '@jarwiz/shared';
 import { RESEARCH_MAX_CONTINUATIONS, researchToolset } from './webTools.js';
 import { generateText } from './generate.js';
-import { parseJsonArray } from './util.js';
+import { cardLabelBody, parseJsonArray } from './util.js';
 
 const MAX_CARDS = 24;
 const MAX_TEXT_PER_CARD = 700;
@@ -40,11 +40,7 @@ Rules: only URLs you actually found via search; never invent one; no duplicates;
 function boardSummary(cards: AnalyzeCard[]): string {
   return cards
     .slice(0, MAX_CARDS)
-    .map((c, i) => {
-      const label = c.title ? `${c.kind}: ${c.title}` : c.kind;
-      const body = (c.text || '').replace(/\s+/g, ' ').trim().slice(0, MAX_TEXT_PER_CARD);
-      return `${i + 1}. [${label}]${body ? ` — ${body}` : ''}`;
-    })
+    .map((c, i) => `${i + 1}. ${cardLabelBody(c, MAX_TEXT_PER_CARD)}`)
     .join('\n');
 }
 
