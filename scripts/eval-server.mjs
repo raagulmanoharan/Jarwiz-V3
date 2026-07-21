@@ -124,41 +124,6 @@ async function main() {
     deltas > 0 ? pass('POST /api/comment', `${deltas} deltas`) : fail('POST /api/comment', `deltas=${deltas}`);
   } catch (e) { fail('POST /api/comment', String(e)); }
 
-  // 8. Content-aware suggest (real PDF end-to-end)
-  try {
-    const pdf = readFileSync('node_modules/pdf-parse/test/data/01-valid.pdf');
-    const sample = await pdfParse(pdf).then((d) => d.text.slice(0, 40)).catch(() => '');
-    const dataUrl = 'data:application/pdf;base64,' + pdf.toString('base64');
-    const r = await fetch(`${BASE}/api/suggest`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind: 'pdf', title: 'paper.pdf', pdfDataUrl: dataUrl }),
-    }).then((x) => x.json());
-    const s = r.suggestions ?? [];
-    const valid = s.length >= 1 && s.every((x) => x.label && ['researcher', 'summarizer', 'brainstormer', 'writer'].includes(x.agentId));
-    valid
-      ? pass('POST /api/suggest (PDF)', `${s.length} tailored: ${s.map((x) => x.label).join(' · ')}`)
-      : fail('POST /api/suggest (PDF)', JSON.stringify(s).slice(0, 120));
-  } catch (e) { fail('POST /api/suggest (PDF)', String(e)); }
-
-  // 9. Cluster suggest (cross-cutting)
-  try {
-    const r = await fetch(`${BASE}/api/cluster-suggest`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        theme: 'onboarding',
-        items: [
-          { kind: 'link', title: 'The Elements of User Onboarding' },
-          { kind: 'youtube', title: 'How Duolingo designs habit-forming onboarding' },
-          { kind: 'pdf', title: 'SaaS Activation Benchmarks 2025' },
-        ],
-      }),
-    }).then((x) => x.json());
-    const s = r.suggestions ?? [];
-    s.length >= 2
-      ? pass('POST /api/cluster-suggest', `${s.length}: ${s.map((x) => x.label).join(' · ')}`)
-      : fail('POST /api/cluster-suggest', JSON.stringify(s).slice(0, 120));
-  } catch (e) { fail('POST /api/cluster-suggest', String(e)); }
-
   // 10. Multiplayer sync — WebSocket upgrade accepted
   try {
     const ok = await new Promise((resolve) => {

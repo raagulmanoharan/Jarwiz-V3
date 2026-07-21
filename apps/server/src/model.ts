@@ -44,11 +44,6 @@ export function runWithRequestContext<T>(ctx: RequestContext, fn: () => T): T {
   return ctx.key || ctx.pilot ? requestStore.run(ctx, fn) : fn();
 }
 
-/** The validated pilot code on the current request, if any. */
-export function requestPilot(): string | undefined {
-  return requestStore.getStore()?.pilot;
-}
-
 /** The key this call should use: the request's BYOK header first, else the
  *  server's env key — which, in pilot mode, only answers for invite holders. */
 export function modelKey(): string | undefined {

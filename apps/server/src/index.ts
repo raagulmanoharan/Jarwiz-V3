@@ -21,10 +21,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { streamSSE } from 'hono/streaming';
 import { isAgentId } from '@jarwiz/shared';
-import type {
-  AgentEvent,
-  CommentReplyRequest,
-} from '@jarwiz/shared';
+import type { AgentEvent } from '@jarwiz/shared';
 import { buildLinkPreview, fetchYouTubeText, SsrfError } from './linkPreview.js';
 import { generateTldr, type TldrInput, type TldrKind } from './tldr.js';
 import { ingestVideo, videoTools } from './video.js';
@@ -39,17 +36,14 @@ import { getAsset, isValidAssetId, MAX_ASSET_BYTES, putAsset, sniffMime } from '
 import { cachedImageUrl } from './imageCache.js';
 import { locateStops, type ProposedStop } from './geo.js';
 import { classifyMentionTarget, classifyRefineIntent, generateWidgetHtml, proposeSeedPrompts, streamAsk, suggestShape } from './ask.js';
-import type { AnalyzeCard, AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, DiagramRequest, ExportEvent, ExportMode, ExportRequest, ReviseRequest } from '@jarwiz/shared';
+import type { AnalyzeCard, AnalyzeMode, AnalyzeRequest, AskRequest, ClusterRequest, ExportEvent, ExportMode, ExportRequest } from '@jarwiz/shared';
 import { streamAgentRun } from './agentRun.js';
-import { generateDiagram } from './diagram.js';
 import { generateClusters } from './cluster.js';
 import { streamAnalysis } from './analyze.js';
 import { sidecarAvailable } from './sidecar.js';
-import { proposeClusterSuggestions, proposeSuggestions } from './suggest.js';
-import type { ClusterSuggestRequest, SuggestRequest } from '@jarwiz/shared';
 import { handleSyncSocket } from './sync.js';
 import { parseRunRequest, RunRequestError } from './agents/request.js';
-import { hasModelKey, requestPilot, runWithRequestContext, sanitizeRequestKey } from './model.js';
+import { hasModelKey, runWithRequestContext, sanitizeRequestKey } from './model.js';
 import {
   isMeteredPath,
   perCodeLimit,
@@ -556,37 +550,6 @@ app.post('/api/ask', async (c) => {
   });
 });
 
-app.post('/api/diagram', async (c) => {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: 'Expected JSON: { prompt, sources? }' }, 400);
-  }
-  const raw = body as Partial<DiagramRequest>;
-  if (typeof raw.prompt !== 'string' && !Array.isArray(raw.sources)) {
-    return c.json({ error: 'prompt or sources is required' }, 400);
-  }
-  const request: DiagramRequest = {
-    prompt: typeof raw.prompt === 'string' ? raw.prompt.trim().slice(0, 2000) : '',
-    sources: Array.isArray(raw.sources)
-      ? raw.sources.slice(0, 8).map((s) => ({
-          kind: s?.kind ?? 'note',
-          title: typeof s?.title === 'string' ? s.title.slice(0, 200) : undefined,
-          text: typeof s?.text === 'string' ? s.text.slice(0, 8000) : undefined,
-        }))
-      : undefined,
-  };
-
-  try {
-    const spec = await generateDiagram(request, c.req.raw.signal);
-    return c.json(spec);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Diagram failed';
-    return c.json({ error: message }, 500);
-  }
-});
-
 app.post('/api/cluster', async (c) => {
   let body: unknown;
   try {
@@ -821,54 +784,6 @@ app.post('/api/seed-prompts', async (c) => {
     return c.json({ prompts });
   } catch (error) {
     return c.json({ prompts: [], error: error instanceof Error ? error.message : 'failed' });
-  }
-});
-
-app.post('/api/suggest', async (c) => {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: 'Expected a JSON body: { kind, url?, title?, pdfDataUrl? }' }, 400);
-  }
-  const raw = body as Partial<SuggestRequest>;
-  if (raw.kind !== 'youtube' && raw.kind !== 'link' && raw.kind !== 'pdf') {
-    return c.json({ error: 'kind must be one of: youtube, link, pdf' }, 400);
-  }
-  const request: SuggestRequest = {
-    kind: raw.kind,
-    url: typeof raw.url === 'string' ? raw.url : undefined,
-    title: typeof raw.title === 'string' ? raw.title.slice(0, 300) : undefined,
-    pdfDataUrl: typeof raw.pdfDataUrl === 'string' ? raw.pdfDataUrl : undefined,
-  };
-  try {
-    const suggestions = await proposeSuggestions(request, c.req.raw.signal);
-    return c.json({ suggestions });
-  } catch {
-    return c.json({ suggestions: [] });
-  }
-});
-
-app.post('/api/cluster-suggest', async (c) => {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: 'Expected a JSON body: { items, theme? }' }, 400);
-  }
-  const raw = body as Partial<ClusterSuggestRequest>;
-  if (!Array.isArray(raw.items)) return c.json({ error: 'items must be an array' }, 400);
-  const request: ClusterSuggestRequest = {
-    items: raw.items
-      .slice(0, 12)
-      .map((i) => ({ kind: String(i?.kind ?? 'card'), title: String(i?.title ?? '').slice(0, 300) })),
-    theme: typeof raw.theme === 'string' ? raw.theme.slice(0, 80) : undefined,
-  };
-  try {
-    const suggestions = await proposeClusterSuggestions(request, c.req.raw.signal);
-    return c.json({ suggestions });
-  } catch {
-    return c.json({ suggestions: [] });
   }
 });
 

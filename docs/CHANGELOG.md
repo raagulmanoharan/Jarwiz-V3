@@ -46,6 +46,7 @@ stays one-line-per-feature. This changelog papers over Era 1 retroactively.
 ### Jul 21, 2026
 | PR | Tags | What shipped |
 |---|---|---|
+| #123 | `agents` · `foundation` | Remove dead server routes, modules, and exports — the client-unreachable `/api/suggest` + `/api/cluster-suggest` (whole `suggest.ts`) and `/api/diagram` (whole `diagram.ts`, the never-wired flowchart path; the live Mermaid ask-diagram path is untouched), `WEB_FILL_DIRECTIVE`, `analyzeTitle`, `activeRoomCount`, `looksLikeSpreadsheet`, `requestPilot`, the `linkRefs` leftover, and two stale metered-path entries; drop the obsolete eval blocks (dead-code sweep, part 3) |
 | #122 | `foundation` | Remove scattered dead web exports + unused locals surfaced by the audit — the abandoned BYOK key store (`subscribeApiKey`/`getApiKey`/`setApiKey`/`getPilotCode` + orphaned listener set), `runningTaskCount`, `clearComments`, `isHttpUrl`, `MAX_CARD_H`, `openHtmlInNewTab`/`copyText`, `dismissExport`, `openHelp`, `getActiveRichEditor`, and five unused imports/vars (presence exports left untouched pending a product call) (dead-code sweep, part 2) |
 | #121 | `foundation` | Delete orphaned web files surfaced by the codebase audit — `EmbedComposer`, `boardIntent`, `ExpandToggle`, and `boards/templates.ts` (nothing imports them) — and trim `flowLayout.ts` to the `computeRows`/gap helpers Tidy actually uses (the `buildFlowchart`/`layoutFlow`/node-builder chain was reachable only from the deleted template) (dead-code sweep, part 1) |
 

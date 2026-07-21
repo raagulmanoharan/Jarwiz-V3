@@ -82,11 +82,3 @@ export async function extractSheetText(assetId: string, maxChars = MAX_TEXT_CHAR
   return parts.join('\n\n').slice(0, maxChars);
 }
 
-/** Bytes that look like a spreadsheet (xlsx=zip, xls=OLE, or a .csv name). */
-export function looksLikeSpreadsheet(buf: Buffer, name = ''): boolean {
-  if (/\.(xlsx|xls|csv|tsv)$/i.test(name)) return true;
-  // xlsx is a zip (PK\x03\x04); xls is an OLE compound file (D0 CF 11 E0).
-  if (buf[0] === 0x50 && buf[1] === 0x4b) return true;
-  if (buf[0] === 0xd0 && buf[1] === 0xcf && buf[2] === 0x11 && buf[3] === 0xe0) return true;
-  return false;
-}
