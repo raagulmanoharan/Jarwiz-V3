@@ -95,9 +95,13 @@ async function main() {
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
     args: ['--force-color-profile=srgb', '--hide-scrollbars'],
   });
+  // The reel's CSS is authored at a native 1080². Render at 1080 and let the
+  // device scale factor downscale the whole board to SIZE (a fractional dsf
+  // rasterises the full reel at SIZE px) — SIZE must SCALE, never crop.
+  const NATIVE = 1080;
   const page = await browser.newPage({
-    viewport: { width: SIZE, height: SIZE },
-    deviceScaleFactor: 1,
+    viewport: { width: NATIVE, height: NATIVE },
+    deviceScaleFactor: SIZE / NATIVE,
   });
   // Block webfonts/CDN (unreachable in the sandbox) so nothing hangs the load.
   await page.route('**/*', (route) => {
@@ -110,7 +114,7 @@ async function main() {
   await page.waitForFunction('window.reelReady === true', { timeout: 15000 });
   await sleep(900); // let the prototype iframe, photos, map + flow.svg paint
 
-  const clip = { x: 0, y: 0, width: SIZE, height: SIZE };
+  const clip = { x: 0, y: 0, width: NATIVE, height: NATIVE }; // CSS px; dsf → SIZE px out
   const rgba = [];    // decoded frames for the GIF (per-frame palette needs RGBA)
   const jpegs = [];   // jpeg frames for the WebM (fed to ffmpeg's mjpeg decoder)
   for (let i = 0; i < FRAMES; i++) {
