@@ -10,6 +10,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { AGENT_MODEL } from './agents/runtime.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 import { anthropic, hasModelKey } from './model.js';
+import { chunkWords, sleep } from './util.js';
 
 export type TextStreamEvent =
   | { type: 'delta'; textDelta: string }
@@ -25,25 +26,6 @@ export interface TextStreamOptions {
   mock?: () => string;
 }
 
-function chunk(text: string, size = 6): string[] {
-  const words = text.split(/(?<=\s)/);
-  const out: string[] = [];
-  for (let i = 0; i < words.length; i += size) out.push(words.slice(i, i + size).join(''));
-  return out;
-}
-
-const sleep = (ms: number, signal: AbortSignal) =>
-  new Promise<void>((resolve) => {
-    if (signal.aborted) return resolve();
-    const t = setTimeout(done, ms);
-    function done() {
-      signal.removeEventListener('abort', done);
-      clearTimeout(t);
-      resolve();
-    }
-    signal.addEventListener('abort', done, { once: true });
-  });
-
 export async function* streamText(opts: TextStreamOptions): AsyncGenerator<TextStreamEvent> {
   const { system, user, signal, maxTokens = 1500 } = opts;
   const hasKey = Boolean(hasModelKey());
@@ -53,7 +35,7 @@ export async function* streamText(opts: TextStreamOptions): AsyncGenerator<TextS
     if (sidecarAvailable()) {
       try {
         const text = await sidecarGenerate({ system, user, signal });
-        for (const piece of chunk(text)) {
+        for (const piece of chunkWords(text, 6)) {
           if (signal.aborted) return;
           yield { type: 'delta', textDelta: piece };
           await sleep(28, signal);
@@ -65,7 +47,7 @@ export async function* streamText(opts: TextStreamOptions): AsyncGenerator<TextS
       }
     }
     if (opts.mock) {
-      for (const piece of chunk(opts.mock())) {
+      for (const piece of chunkWords(opts.mock(), 6)) {
         if (signal.aborted) return;
         yield { type: 'delta', textDelta: piece };
         await sleep(55, signal);

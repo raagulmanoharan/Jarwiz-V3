@@ -14,6 +14,7 @@ import type { AgentRunRequest, RunCard } from '@jarwiz/shared';
 import type { AgentDefinition, EmitFn } from './runtime.js';
 import { briefSuffix } from './runtime.js';
 import { sidecarGenerate } from '../sidecar.js';
+import { chunkWords, sleep } from '../util.js';
 
 const SUMMARIZER_SYSTEM = `You are the Summarizer on a canvas. Given a source card, write "the gist at a glance" as tight markdown: an opening line with the core takeaway, then a few short bullets or one compact section. 120–220 words. If you only have a title/snippet (not full content), be honest and summarize what's known. Output ONLY the summary — no preamble.`;
 
@@ -21,24 +22,6 @@ const WRITER_SYSTEM = `You are the Writer on a canvas. Synthesize the provided c
 
 const BRAINSTORMER_SYSTEM = `You are the Brainstormer on a canvas. Riff on the card with exactly 6 short, punchy, distinct ideas (angles, hooks, counterpoints, names). Output ONLY the 6 ideas, ONE per line, no numbering, no bullets, no preamble.`;
 
-const sleep = (ms: number, signal: AbortSignal) =>
-  new Promise<void>((resolve) => {
-    if (signal.aborted) return resolve();
-    const t = setTimeout(done, ms);
-    function done() {
-      signal.removeEventListener('abort', done);
-      clearTimeout(t);
-      resolve();
-    }
-    signal.addEventListener('abort', done, { once: true });
-  });
-
-function chunk(text: string, size = 18): string[] {
-  const words = text.split(/(?<=\s)/);
-  const out: string[] = [];
-  for (let i = 0; i < words.length; i += size) out.push(words.slice(i, i + size).join(''));
-  return out;
-}
 
 function describeCard(card: RunCard, label: string): string {
   const lines = [`${label} (${card.kind}):`];
@@ -88,7 +71,7 @@ async function streamDoc(
   await emit({ type: 'cursor', x: placement.x, y: placement.y });
   await emit({ type: 'card.create', cardId, kind: 'doc', x: placement.x, y: placement.y, title });
   await emit({ type: 'status', message: `${def.meta.name} is writing…` });
-  for (const piece of chunk(body)) {
+  for (const piece of chunkWords(body, 18)) {
     if (signal.aborted) return;
     await emit({ type: 'card.delta', cardId, textDelta: piece });
     await sleep(45, signal);

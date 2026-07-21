@@ -11,6 +11,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { AskEvent, AskRequest, AskShape, AskSource, RichBlock } from '@jarwiz/shared';
 import { AGENT_MODEL } from './agents/runtime.js';
+import { chunkWords, sleep } from './util.js';
 import { assetPath, extractAssetPages, extractAssetText, getAsset } from './assets.js';
 import { cacheImagesInRows } from './imageCache.js';
 import { FIND_IMAGE_TOOL, runFindImage, searchImages } from './imageSearch.js';
@@ -758,7 +759,7 @@ async function* generateStream(
       imageData: opts.imageData,
       timeoutMs: sidecarTimeoutMs,
     });
-    for (const piece of chunk(text)) {
+    for (const piece of chunkWords(text, 6)) {
       if (signal.aborted) return;
       yield { type: 'text', text: piece };
       await sleep(18, signal);
@@ -767,25 +768,6 @@ async function* generateStream(
   }
   throw new Error('No model available (set ANTHROPIC_API_KEY or install the Claude CLI).');
 }
-
-function chunk(text: string, size = 6): string[] {
-  const words = text.split(/(?<=\s)/);
-  const out: string[] = [];
-  for (let i = 0; i < words.length; i += size) out.push(words.slice(i, i + size).join(''));
-  return out;
-}
-
-const sleep = (ms: number, signal: AbortSignal) =>
-  new Promise<void>((resolve) => {
-    if (signal.aborted) return resolve();
-    const t = setTimeout(done, ms);
-    function done() {
-      signal.removeEventListener('abort', done);
-      clearTimeout(t);
-      resolve();
-    }
-    signal.addEventListener('abort', done, { once: true });
-  });
 
 /** Scripted demo answer — every other AI route degrades to a mock without a
  *  key; Ask was the lone exception (it used to throw). A canned doc keeps the
@@ -809,7 +791,7 @@ async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenera
       'tbl = Card("Set a key for a real dashboard", [t1])',
       't1 = Table(["Column", "Value"], [["Model", "not configured"], ["Fix", "get full access — see the boards panel"]])',
     ].join('\n');
-    for (const piece of chunk(spec, 4)) {
+    for (const piece of chunkWords(spec, 4)) {
       if (signal.aborted) return;
       yield { type: 'card.delta', textDelta: piece };
       await sleep(20, signal);
@@ -870,7 +852,7 @@ async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenera
       '```',
     ].join('\n');
     const conceptBody = `Drag force grows with the **square** of speed — double your speed and the air pushes back four times as hard. *(Demo mode — set a key for a real, grounded answer.)*\n\n${widgetFence}\n\nA van suffers twice: its drag coefficient is higher (boxy nose, hard edges — Cd ≈ 0.38 vs a sedan's ≈ 0.28) **and** its frontal area is bigger (≈ 3.4 m² vs ≈ 2.2 m²). Multiply those through F = ½ρC_dAv² and at highway speed the van is fighting roughly **twice the drag force** — which is why its fuel economy falls off a cliff above 90 km/h while the sedan's merely sags.`;
-    for (const piece of chunk(conceptBody)) {
+    for (const piece of chunkWords(conceptBody, 6)) {
       if (signal.aborted) return;
       yield { type: 'card.delta', textDelta: piece };
       await sleep(24, signal);
@@ -897,7 +879,7 @@ async function* streamDemoAsk(req: AskRequest, signal: AbortSignal): AsyncGenera
       'Jarwiz is running without a model — add your Anthropic API key (key ' +
       'button, top right) and real answers will stream onto the board ' +
       'exactly like this one, grounded on the cards you selected.';
-  for (const piece of chunk(body)) {
+  for (const piece of chunkWords(body, 6)) {
     if (signal.aborted) return;
     yield { type: 'card.delta', textDelta: piece };
     await sleep(24, signal);
