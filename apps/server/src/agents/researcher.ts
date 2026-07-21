@@ -10,8 +10,8 @@
 
 import type Anthropic from '@anthropic-ai/sdk';
 import { getAgent } from '@jarwiz/shared';
-import type { AgentRunRequest, RunCard } from '@jarwiz/shared';
-import type { AgentDefinition } from './runtime.js';
+import type { AgentRunRequest } from '@jarwiz/shared';
+import { describeCard, type AgentDefinition } from './runtime.js';
 
 const RESEARCHER_SYSTEM_PROMPT = `You are the Researcher, one of four AI agents who collaborate with a human on an infinite canvas called Jarwiz. Your specialty: given an idea, find the most relevant sources on the web and place them on the board as link cards, each connected to the idea that spawned them.
 
@@ -46,18 +46,6 @@ const WEB_FETCH_TOOL: Anthropic.Messages.WebFetchTool20260209 = {
   name: 'web_fetch',
   max_uses: 3,
 };
-
-function describeCard(card: RunCard, label: string): string {
-  const lines = [
-    `${label}:`,
-    `  cardId: ${card.cardId}`,
-    `  kind: ${card.kind}`,
-  ];
-  if (card.url) lines.push(`  url: ${card.url}`);
-  if (card.title) lines.push(`  title: ${card.title}`);
-  if (card.text) lines.push(`  text: """\n${card.text}\n"""`);
-  return lines.join('\n');
-}
 
 async function buildUserTurn(request: AgentRunRequest): Promise<string> {
   const { source, placement } = request;

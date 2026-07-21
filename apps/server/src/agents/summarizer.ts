@@ -11,8 +11,8 @@
 
 import type Anthropic from '@anthropic-ai/sdk';
 import { getAgent } from '@jarwiz/shared';
-import type { AgentRunRequest, RunCard } from '@jarwiz/shared';
-import type { AgentDefinition } from './runtime.js';
+import type { AgentRunRequest } from '@jarwiz/shared';
+import { describeCard, type AgentDefinition } from './runtime.js';
 
 /**
  * Frozen system prompt — a static string so the cache_control breakpoint on
@@ -70,24 +70,11 @@ async function fetchYouTubeOEmbed(url: string): Promise<YouTubeOEmbed | null> {
   }
 }
 
-function describeCard(card: RunCard, label: string): string {
-  const lines = [
-    `${label}:`,
-    `  cardId: ${card.cardId}`,
-    `  kind: ${card.kind}`,
-    `  position: x=${Math.round(card.x)}, y=${Math.round(card.y)} (w=${Math.round(card.w)}, h=${Math.round(card.h)})`,
-  ];
-  if (card.url) lines.push(`  url: ${card.url}`);
-  if (card.title) lines.push(`  title: ${card.title}`);
-  if (card.text) lines.push(`  text: """\n${card.text}\n"""`);
-  return lines.join('\n');
-}
-
 async function buildUserTurn(request: AgentRunRequest): Promise<string> {
   const { source, placement } = request;
   const parts: string[] = ['Summarize the source card below onto the board.', ''];
 
-  parts.push(describeCard(source, 'Source card'));
+  parts.push(describeCard(source, 'Source card', { position: true }));
 
   if (source.kind === 'youtube' && source.url) {
     const oembed = await fetchYouTubeOEmbed(source.url);
@@ -108,7 +95,7 @@ async function buildUserTurn(request: AgentRunRequest): Promise<string> {
 
   for (const extra of request.selection ?? []) {
     if (extra.cardId !== source.cardId) {
-      parts.push('', describeCard(extra, 'Also selected (context)'));
+      parts.push('', describeCard(extra, 'Also selected (context)', { position: true }));
     }
   }
 
