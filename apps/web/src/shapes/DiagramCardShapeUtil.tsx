@@ -13,7 +13,6 @@ import {
   ShapeUtil,
   T,
   resizeBox,
-  useEditor,
   type RecordProps,
   type TLResizeInfo,
   type TLShape,

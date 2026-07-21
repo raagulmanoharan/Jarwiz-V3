@@ -29,9 +29,6 @@ export function getHelpState(): HelpState {
   return state;
 }
 
-export function openHelp(): void {
-  set({ panelOpen: true });
-}
 export function closeHelp(): void {
   set({ panelOpen: false });
 }

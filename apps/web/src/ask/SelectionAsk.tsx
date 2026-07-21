@@ -5,14 +5,13 @@
  */
 
 import { useSyncExternalStore, type CSSProperties } from 'react';
-import { stopEventPropagation, useEditor } from 'tldraw';
+import { stopEventPropagation } from 'tldraw';
 import { getPdfSelection, setPdfSelection, subscribePdfSelection } from '../pdf/pdfSelection';
 import { setPdfHighlight } from '../pdf/pdfHighlight';
 import { useAsk } from './useAsk';
 import { JarwizSpark } from '../ui/JarwizSpark';
 
 export function SelectionAsk() {
-  const editor = useEditor();
   const { ask, isAsking } = useAsk();
   const selection = useSyncExternalStore(subscribePdfSelection, getPdfSelection, getPdfSelection);
 
