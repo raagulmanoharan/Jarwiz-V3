@@ -28,6 +28,7 @@ import { AGENT_MODEL } from './agents/runtime.js';
 import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 import { anthropic, hasModelKey } from './model.js';
 import { WEB_MAX_CONTINUATIONS, webToolset } from './webTools.js';
+import { sleep } from './util.js';
 
 const MAX_BOARD_CARDS = 40;
 const MAX_TEXT_PER_CARD = 1400;
@@ -308,18 +309,6 @@ function chunk(text: string, size: number): string[] {
   for (let i = 0; i < text.length; i += size) out.push(text.slice(i, i + size));
   return out;
 }
-
-const sleep = (ms: number, signal: AbortSignal) =>
-  new Promise<void>((resolve) => {
-    if (signal.aborted) return resolve();
-    const t = setTimeout(done, ms);
-    function done() {
-      signal.removeEventListener('abort', done);
-      clearTimeout(t);
-      resolve();
-    }
-    signal.addEventListener('abort', done, { once: true });
-  });
 
 /** Rotating "still working" lines so a 60–90s generation never looks stalled. */
 const WORKING_STATUS: Record<ExportRequest['mode'], string[]> = {

@@ -14,20 +14,9 @@
 
 import type { AgentDefinition, EmitFn } from './runtime.js';
 import type { AgentRunRequest } from '@jarwiz/shared';
+import { sleep } from '../util.js';
 
 const STEP_DELAY_MS = 110;
-
-const sleep = (ms: number, signal: AbortSignal) =>
-  new Promise<void>((resolve) => {
-    if (signal.aborted) return resolve();
-    const timer = setTimeout(done, ms);
-    function done() {
-      signal.removeEventListener('abort', done);
-      clearTimeout(timer);
-      resolve();
-    }
-    signal.addEventListener('abort', done, { once: true });
-  });
 
 export async function runMockLoop(
   def: AgentDefinition,
