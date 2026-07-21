@@ -10,12 +10,9 @@
  * the old flat Gemini scaffold — same idea, our engine (webTools.ts).
  */
 
-import Anthropic from '@anthropic-ai/sdk';
 import type { AnalyzeCard, DiscoverRequest, ResourceKind, SuggestedResource } from '@jarwiz/shared';
-import { AGENT_MODEL } from './agents/runtime.js';
-import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 import { RESEARCH_MAX_CONTINUATIONS, researchToolset } from './webTools.js';
-import { anthropic, hasModelKey } from './model.js';
+import { generateText } from './generate.js';
 import { parseJsonArray } from './util.js';
 
 const MAX_CARDS = 24;
@@ -52,30 +49,15 @@ function boardSummary(cards: AnalyzeCard[]): string {
 }
 
 /** Deep grounded research with the web tools; returns the model's raw text. */
-async function groundedSearch(user: string, signal: AbortSignal): Promise<string> {
-  if (hasModelKey()) {
-    const client = anthropic();
-    const tools = researchToolset(); // deep budget: many searches + fetches
-    const messages: Anthropic.MessageParam[] = [{ role: 'user', content: user }];
-    let text = '';
-    for (let turn = 0; turn <= RESEARCH_MAX_CONTINUATIONS; turn++) {
-      const msg = await client.messages.create(
-        { model: AGENT_MODEL, max_tokens: MAX_TOKENS, system: SYSTEM, messages, tools },
-        { signal },
-      );
-      text += msg.content
-        .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-        .map((b) => b.text)
-        .join('');
-      if (msg.stop_reason !== 'pause_turn') break;
-      messages.push({ role: 'assistant', content: msg.content });
-    }
-    return text;
-  }
-  if (sidecarAvailable()) {
-    return sidecarGenerate({ system: SYSTEM, user, signal, web: true, timeoutMs: SIDECAR_TIMEOUT_MS });
-  }
-  throw new Error('No model available (set ANTHROPIC_API_KEY or install the Claude CLI).');
+function groundedSearch(user: string, signal: AbortSignal): Promise<string> {
+  return generateText({
+    system: SYSTEM,
+    user,
+    signal,
+    maxTokens: MAX_TOKENS,
+    sidecarTimeoutMs: SIDECAR_TIMEOUT_MS,
+    web: { tools: researchToolset(), maxTurns: RESEARCH_MAX_CONTINUATIONS },
+  });
 }
 
 function normUrl(u: string): string {

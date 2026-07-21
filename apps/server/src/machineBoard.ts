@@ -9,13 +9,10 @@
  * the JSON, so the fan-out is instant after the research lands.
  */
 
-import Anthropic from '@anthropic-ai/sdk';
 import type { ComposeEvent } from '@jarwiz/shared';
-import { AGENT_MODEL } from './agents/runtime.js';
-import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 import { RESEARCH_MAX_CONTINUATIONS, researchToolset } from './webTools.js';
 import type { MachineSkill } from './machines.js';
-import { anthropic, hasModelKey } from './model.js';
+import { generateText } from './generate.js';
 import { parseJsonObject } from './util.js';
 
 const MAX_TOKENS = 4000;
@@ -24,35 +21,15 @@ const SIDECAR_TIMEOUT_MS = 300_000;
 /** A structured pass returning the model's raw text (JSON). `useTools` gates the
  *  deep web-research toolset: on for research machines (SWOT), off for a
  *  pure-reasoning machine (Effort–Impact) so it answers in one snappy call. */
-async function research(system: string, user: string, signal: AbortSignal, useTools = true): Promise<string> {
-  if (hasModelKey()) {
-    const client = anthropic();
-    const tools = useTools ? researchToolset() : undefined;
-    const messages: Anthropic.MessageParam[] = [{ role: 'user', content: user }];
-    let text = '';
-    const maxTurns = useTools ? RESEARCH_MAX_CONTINUATIONS : 0;
-    for (let turn = 0; turn <= maxTurns; turn++) {
-      const params: Anthropic.MessageCreateParamsNonStreaming = {
-        model: AGENT_MODEL,
-        max_tokens: MAX_TOKENS,
-        system,
-        messages,
-      };
-      if (tools) params.tools = tools;
-      const msg = await client.messages.create(params, { signal });
-      text += msg.content
-        .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-        .map((b) => b.text)
-        .join('');
-      if (msg.stop_reason !== 'pause_turn') break;
-      messages.push({ role: 'assistant', content: msg.content });
-    }
-    return text;
-  }
-  if (sidecarAvailable()) {
-    return sidecarGenerate({ system, user, signal, web: useTools, timeoutMs: SIDECAR_TIMEOUT_MS });
-  }
-  throw new Error('No model available (set ANTHROPIC_API_KEY or install the Claude CLI).');
+function research(system: string, user: string, signal: AbortSignal, useTools = true): Promise<string> {
+  return generateText({
+    system,
+    user,
+    signal,
+    maxTokens: MAX_TOKENS,
+    sidecarTimeoutMs: SIDECAR_TIMEOUT_MS,
+    web: useTools ? { tools: researchToolset(), maxTurns: RESEARCH_MAX_CONTINUATIONS } : undefined,
+  });
 }
 
 const strList = (v: unknown): string[] =>

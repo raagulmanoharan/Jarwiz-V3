@@ -8,12 +8,9 @@
  * to; the client lays the cards out masonry-style as they arrive.
  */
 
-import Anthropic from '@anthropic-ai/sdk';
 import type { AnalyzeCard, AskShape, ComposeEvent, ComposePlanCard, ComposeRequest } from '@jarwiz/shared';
-import { AGENT_MODEL } from './agents/runtime.js';
-import { sidecarAvailable, sidecarGenerate } from './sidecar.js';
 import { streamAsk } from './ask.js';
-import { anthropic, hasModelKey } from './model.js';
+import { generateText } from './generate.js';
 import { parseJsonArray } from './util.js';
 
 const MAX_BOARD_CARDS = 24;
@@ -56,22 +53,8 @@ function boardSummary(cards: AnalyzeCard[]): string {
     .join('\n');
 }
 
-async function planText(user: string, signal: AbortSignal): Promise<string> {
-  if (hasModelKey()) {
-    const client = anthropic();
-    const msg = await client.messages.create(
-      { model: AGENT_MODEL, max_tokens: PLAN_TOKENS, system: PLAN_SYSTEM, messages: [{ role: 'user', content: user }] },
-      { signal },
-    );
-    return msg.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map((b) => b.text)
-      .join('');
-  }
-  if (sidecarAvailable()) {
-    return sidecarGenerate({ system: PLAN_SYSTEM, user, signal, timeoutMs: SIDECAR_TIMEOUT_MS });
-  }
-  throw new Error('No model available (set ANTHROPIC_API_KEY or install the Claude CLI).');
+function planText(user: string, signal: AbortSignal): Promise<string> {
+  return generateText({ system: PLAN_SYSTEM, user, signal, maxTokens: PLAN_TOKENS, sidecarTimeoutMs: SIDECAR_TIMEOUT_MS });
 }
 
 /** Plan the set of cards to build. Defensive: validates types, caps count. */
