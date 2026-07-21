@@ -38,10 +38,10 @@
       body { color: var(--ink); font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; line-height: 1.5; }
 
       /* ── The recorded frame: a fixed 1080×1080 viewport onto the board ── */
-      .reel-viewport { position: relative; width: 1080px; height: 1080px; overflow: hidden; background: linear-gradient(180deg, var(--bg-2), var(--bg)); }
-      .reel-viewport::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-        background: radial-gradient(760px 480px at 50% -8%, rgba(255,255,255,0.06), transparent 62%), radial-gradient(560px 380px at 6% 100%, rgba(255,255,255,0.03), transparent 64%); }
-      .reel-viewport::after { content: ""; position: absolute; inset: 0; z-index: 6; pointer-events: none; box-shadow: inset 0 0 130px 22px rgba(0,0,0,0.46); }
+      /* Flat solid background — smooth dark ramps (gradient / glow / vignette)
+         band badly in a 256-colour GIF and compress poorly, so a flat field both
+         removes the banding and shrinks the file (flat areas compress well). */
+      .reel-viewport { position: relative; width: 1080px; height: 1080px; overflow: hidden; background: #0a0a0d; }
 
       .reel-camera { position: absolute; inset: 0; z-index: 1; transform-origin: 540px 540px; will-change: transform; }
       /* Board = larger than the viewport, centred (its centre 850,850 under the
@@ -64,10 +64,6 @@
       /* ── The composer — a FIXED viewport-centred overlay (does not scale with
             the board). It types real prompts + cycles the suggested shape, so it
             stays crisp in the middle and narrates what the product builds. ── */
-      .reel-scrim { position: absolute; left: 540px; top: 540px; transform: translate(-50%, -50%);
-        width: 880px; height: 420px; z-index: 4; pointer-events: none; border-radius: 50%;
-        background: radial-gradient(ellipse at center, rgba(9,9,11,0.82) 0%, rgba(9,9,11,0.6) 42%, rgba(9,9,11,0) 72%);
-        filter: blur(8px); will-change: opacity; }
       .reel-center { position: absolute; left: 540px; top: 540px; transform: translate(-50%, -50%);
         z-index: 5; pointer-events: none; }
       .reel-composer { display: flex; flex-direction: column; gap: 15px; width: 618px; padding: 21px 23px; border-radius: 20px;
@@ -367,8 +363,7 @@
 
       <!-- The product's composer, centred + persistent: it types real prompts
            and cycles the suggested shape, narrating what Jarwiz builds while the
-           output cards fill the board around it. A soft scrim adds separation. -->
-      <div class="reel-scrim" id="scrim"></div>
+           output cards fill the board around it. -->
       <div class="reel-center" id="center">
         <div class="reel-composer">
           <div class="rc-row">
@@ -388,7 +383,6 @@
     <script>
       (function () {
         const camera = document.getElementById('camera');
-        const scrim = document.getElementById('scrim');
         const spark = document.getElementById('spark');
         const caret = document.getElementById('caret');
         const promptText = document.getElementById('promptText');
@@ -443,10 +437,6 @@
           if (u < SPIN_E) return easeInOut((u - SPIN_S) / (SPIN_E - SPIN_S)) * 360;
           return 0;
         }
-        // The scrim fades in as the board fills (0 zoomed in, 1 over the board).
-        function scrimOpacity(u) {
-          return clamp01((CENTER_SCALE - cameraScale(u)) / (CENTER_SCALE - BOARD_SCALE));
-        }
         // Typewriter: the loop is split into equal slots, one prompt each —
         // type, hold, delete. Text is empty at every slot boundary (incl. u=0
         // and u=1), so the loop seam is clean. Returns chars typed + the shape.
@@ -475,7 +465,6 @@
           u = ((u % 1) + 1) % 1;
           camera.style.transform = 'scale(' + cameraScale(u).toFixed(4) + ')';
           spark.style.transform = 'rotate(' + sparkDeg(u).toFixed(2) + 'deg)';
-          scrim.style.opacity = scrimOpacity(u).toFixed(3);
           const tw = typewriter(u);
           promptText.textContent = tw.text;
           sugShape.textContent = tw.shape;

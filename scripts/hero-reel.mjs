@@ -47,6 +47,39 @@ const SIZE = parseInt(process.env.SIZE || '1080', 10);
 const FRAMES = parseInt(process.env.FRAMES || '120', 10); // ~7.2s loop — fits the 4 cycling prompts
 const DELAY = parseInt(process.env.DELAY || '60', 10);
 const PALETTE = process.env.PALETTE || 'perframe';
+// Ordered (Bayer) dithering breaks up 256-colour banding. Position-based, so it
+// is stable frame-to-frame (no shimmer) — unlike error-diffusion. 'none' to skip.
+const DITHER = (process.env.DITHER || 'ordered').toLowerCase();
+const DITHER_AMP = parseFloat(process.env.DITHER_AMP || '10'); // ± levels of nudge
+
+// 8×8 Bayer threshold matrix, normalised to roughly [-0.5, 0.5].
+const BAYER8 = [
+  0, 32, 8, 40, 2, 34, 10, 42, 48, 16, 56, 24, 50, 18, 58, 26,
+  12, 44, 4, 36, 14, 46, 6, 38, 60, 28, 52, 20, 62, 30, 54, 22,
+  3, 35, 11, 43, 1, 33, 9, 41, 51, 19, 59, 27, 49, 17, 57, 25,
+  15, 47, 7, 39, 13, 45, 5, 37, 63, 31, 55, 23, 61, 29, 53, 21,
+].map((v) => v / 64 - 0.5);
+
+// Return a dithered copy of an RGBA frame (nudge each channel by a Bayer offset
+// before palette mapping, so smooth ramps dissolve across adjacent entries).
+// Gated: leave near-black flats (the background + card blacks) untouched — they
+// don't band and dithering them only adds noise that bloats the GIF. Only the
+// mid-tones (card gradients, map, photos) — where banding shows — get dithered.
+function ditherFrame(src, w, h, amp) {
+  const out = new Uint8Array(src);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const luma = 0.299 * src[i] + 0.587 * src[i + 1] + 0.114 * src[i + 2];
+      if (luma < 13) continue; // flat black — keep it flat (compresses to ~nothing)
+      const t = BAYER8[(y & 7) * 8 + (x & 7)] * amp;
+      out[i] = Math.max(0, Math.min(255, src[i] + t));
+      out[i + 1] = Math.max(0, Math.min(255, src[i + 1] + t));
+      out[i + 2] = Math.max(0, Math.min(255, src[i + 2] + t));
+    }
+  }
+  return out;
+}
 // Which artifacts to emit. The WebM is tiny + crisp (recommended for the web);
 // the GIF is the requested format but heavy at 1080². 'both' by default.
 const FORMAT = (process.env.FORMAT || 'both').toLowerCase();
@@ -105,9 +138,12 @@ async function main() {
       globalPalette = quantize(sample, 256, { format: 'rgb565' });
     }
     for (let i = 0; i < FRAMES; i++) {
-      // Per-frame palette keeps the real map + photos crisp; global reuses one.
+      // Palette from the clean frame; map the dithered frame to it so smooth
+      // dark ramps de-band instead of stepping. Per-frame palette keeps the real
+      // map + photos crisp; global reuses one.
       const palette = globalPalette || quantize(rgba[i], 256, { format: 'rgb565' });
-      const index = applyPalette(rgba[i], palette, 'rgb565');
+      const src = DITHER === 'ordered' ? ditherFrame(rgba[i], SIZE, SIZE, DITHER_AMP) : rgba[i];
+      const index = applyPalette(src, palette, 'rgb565');
       gif.writeFrame(index, SIZE, SIZE, { palette: globalPalette ? (i === 0 ? globalPalette : undefined) : palette, delay: DELAY, repeat: 0 });
       if ((i + 1) % 24 === 0) console.log(`  encoded ${i + 1}/${FRAMES}`);
     }
