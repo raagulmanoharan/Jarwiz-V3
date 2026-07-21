@@ -1,7 +1,5 @@
 import {
   HTMLContainer,
-  Rectangle2d,
-  ShapeUtil,
   T,
   resizeBox,
   stopEventPropagation,
@@ -11,6 +9,7 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
+import { CardShapeUtil } from './CardShapeUtil';
 import { NOTE_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
 import { useStreamState } from './useStreamState';
@@ -50,7 +49,7 @@ export function affinityColor(index: number): string {
   return AFFINITY_COLORS[index % AFFINITY_COLORS.length]!;
 }
 
-export class NoteCardShapeUtil extends ShapeUtil<NoteCardShape> {
+export class NoteCardShapeUtil extends CardShapeUtil<NoteCardShape> {
   static override type = 'note-card' as const;
 
   static override props: RecordProps<NoteCardShape> = {
@@ -64,20 +63,12 @@ export class NoteCardShapeUtil extends ShapeUtil<NoteCardShape> {
     return { ...NOTE_CARD_SIZE, text: '', color: NOTE_PAPER };
   }
 
-  override canResize() {
-    return true;
-  }
-
   override canEdit() {
     return true;
   }
 
   override onResize(shape: NoteCardShape, info: TLResizeInfo<NoteCardShape>) {
     return resizeBox(shape, info, { minWidth: 140, minHeight: 120 });
-  }
-
-  override getGeometry(shape: NoteCardShape) {
-    return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true });
   }
 
   override getIndicatorPath(shape: NoteCardShape) {

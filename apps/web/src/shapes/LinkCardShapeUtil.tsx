@@ -1,8 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import {
   HTMLContainer,
-  Rectangle2d,
-  ShapeUtil,
   T,
   resizeBox,
   stopEventPropagation,
@@ -11,6 +9,7 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
+import { CardShapeUtil } from './CardShapeUtil';
 import { domainInitial, domainOf } from '../lib/url';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
@@ -46,7 +45,7 @@ export type LinkCardShape = TLShape<'link-card'>;
 
 export const LINK_CARD_SIZE = { w: 320, h: 300 };
 
-export class LinkCardShapeUtil extends ShapeUtil<LinkCardShape> {
+export class LinkCardShapeUtil extends CardShapeUtil<LinkCardShape> {
   static override type = 'link-card' as const;
 
   static override props: RecordProps<LinkCardShape> = {
@@ -79,16 +78,8 @@ export class LinkCardShapeUtil extends ShapeUtil<LinkCardShape> {
     };
   }
 
-  override canResize() {
-    return true;
-  }
-
   override onResize(shape: LinkCardShape, info: TLResizeInfo<LinkCardShape>) {
     return resizeBox(shape, info, { minWidth: 220, minHeight: 180 });
-  }
-
-  override getGeometry(shape: LinkCardShape) {
-    return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true });
   }
 
   override getIndicatorPath(shape: LinkCardShape) {

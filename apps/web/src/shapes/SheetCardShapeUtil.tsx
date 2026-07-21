@@ -10,8 +10,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   HTMLContainer,
-  Rectangle2d,
-  ShapeUtil,
   T,
   resizeBox,
   stopEventPropagation,
@@ -20,6 +18,7 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
+import { CardShapeUtil } from './CardShapeUtil';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
 import { TldrStrip, useTldrGrowth, type TldrStatus } from './TldrStrip';
@@ -61,7 +60,7 @@ interface Grid {
   totalCols: number;
 }
 
-export class SheetCardShapeUtil extends ShapeUtil<SheetCardShape> {
+export class SheetCardShapeUtil extends CardShapeUtil<SheetCardShape> {
   static override type = 'sheet-card' as const;
 
   static override props: RecordProps<SheetCardShape> = {
@@ -79,16 +78,8 @@ export class SheetCardShapeUtil extends ShapeUtil<SheetCardShape> {
     return { ...SHEET_CARD_SIZE, src: '', assetId: '', name: '', status: 'uploading' };
   }
 
-  override canResize() {
-    return true;
-  }
-
   override onResize(shape: SheetCardShape, info: TLResizeInfo<SheetCardShape>) {
     return resizeBox(shape, info, { minWidth: 320, minHeight: 220 });
-  }
-
-  override getGeometry(shape: SheetCardShape) {
-    return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true });
   }
 
   override getIndicatorPath(shape: SheetCardShape) {

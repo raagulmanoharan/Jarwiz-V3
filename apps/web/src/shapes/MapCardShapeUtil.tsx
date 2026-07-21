@@ -13,8 +13,6 @@
 
 import {
   HTMLContainer,
-  Rectangle2d,
-  ShapeUtil,
   T,
   resizeBox,
   stopEventPropagation,
@@ -23,6 +21,7 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
+import { CardShapeUtil } from './CardShapeUtil';
 import type { MapStop } from '@jarwiz/shared';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
@@ -57,7 +56,7 @@ export type MapCardShape = TLShape<'map-card'>;
 
 export const MAP_CARD_SIZE = { w: 520, h: 336 };
 
-export class MapCardShapeUtil extends ShapeUtil<MapCardShape> {
+export class MapCardShapeUtil extends CardShapeUtil<MapCardShape> {
   static override type = 'map-card' as const;
 
   static override props: RecordProps<MapCardShape> = {
@@ -86,10 +85,6 @@ export class MapCardShapeUtil extends ShapeUtil<MapCardShape> {
     return { ...MAP_CARD_SIZE, title: '', intro: '', stops: [], ordered: true, status: 'running' };
   }
 
-  override canResize() {
-    return true;
-  }
-
   /** Double-click enters editing — the only state where the map pans/zooms. */
   override canEdit() {
     return true;
@@ -97,10 +92,6 @@ export class MapCardShapeUtil extends ShapeUtil<MapCardShape> {
 
   override onResize(shape: MapCardShape, info: TLResizeInfo<MapCardShape>) {
     return resizeBox(shape, info, { minWidth: 320, minHeight: 240 });
-  }
-
-  override getGeometry(shape: MapCardShape) {
-    return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true });
   }
 
   override getIndicatorPath(shape: MapCardShape) {

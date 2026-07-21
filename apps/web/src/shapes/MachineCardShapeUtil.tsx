@@ -9,8 +9,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import {
   HTMLContainer,
-  Rectangle2d,
-  ShapeUtil,
   T,
   resizeBox,
   stopEventPropagation,
@@ -20,6 +18,7 @@ import {
   type TLResizeInfo,
   type TLShape,
 } from 'tldraw';
+import { CardShapeUtil } from './CardShapeUtil';
 import { ArrowRight, Loader2, Check } from 'lucide-react';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { MACHINES, resolveMachineOptions } from '../machines/catalog';
@@ -48,7 +47,7 @@ export type MachineCardShape = TLShape<'machine-card'>;
 
 export const MACHINE_CARD_SIZE = { w: 300, h: 286 };
 
-export class MachineCardShapeUtil extends ShapeUtil<MachineCardShape> {
+export class MachineCardShapeUtil extends CardShapeUtil<MachineCardShape> {
   static override type = 'machine-card' as const;
 
   static override props: RecordProps<MachineCardShape> = {
@@ -63,17 +62,11 @@ export class MachineCardShapeUtil extends ShapeUtil<MachineCardShape> {
     return { ...MACHINE_CARD_SIZE, machineId: 'swot', subject: '', status: 'idle' };
   }
 
-  override canResize() {
-    return true;
-  }
   override canEdit() {
     return true;
   }
   override onResize(shape: MachineCardShape, info: TLResizeInfo<MachineCardShape>) {
     return resizeBox(shape, info, { minWidth: 276, minHeight: 248 });
-  }
-  override getGeometry(shape: MachineCardShape) {
-    return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true });
   }
   override getIndicatorPath(shape: MachineCardShape) {
     return roundedRectPath(shape.props.w, shape.props.h, CARD_RADIUS);
