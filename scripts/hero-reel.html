@@ -379,16 +379,15 @@
         const promptText = document.getElementById('promptText');
         const cards = Array.from(document.querySelectorAll('[data-card]'));
 
-        // A short connected story that types + deletes: the ask, three things it
-        // becomes (each a card on the board), then the payoff (the site's hero).
+        // A short connected story that types + deletes — kept to three beats so
+        // the motion stays calm: the ask, what it becomes, the payoff (the site's
+        // hero line). The middle line lists the shapes in one breath.
         const LINES = [
           'Ask for anything.',
-          'Turn sales into a dashboard.',
-          'Turn a trip into a map.',
-          'Turn an idea into a prototype.',
+          'A dashboard. A map. A prototype.',
           'Your ideas deserve a canvas.',
         ];
-        const SPINS = 4; // full "thinking" turns of the ✦ over one loop (integer → clean seam)
+        const SPINS = 3; // full "thinking" turns of the ✦ over one loop (integer → clean seam)
 
         const BOARD_C = 850;
         const CENTER_SCALE = 1.35;    // zoomed in on the composer
