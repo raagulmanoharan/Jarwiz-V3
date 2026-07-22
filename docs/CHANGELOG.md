@@ -43,6 +43,11 @@ stays one-line-per-feature. This changelog papers over Era 1 retroactively.
 
 ## Release log (chronological, newest first)
 
+### Jul 22, 2026
+| PR | Tags | What shipped |
+|---|---|---|
+| #148 | `cards` · `agents` | Make images actually render in rich cards — an image ask ("give me movie posters") was showing links or bare text, from two separate failures. (1) The rich card's `image` blocks are hydrated server-side, but the only keyless providers (Wikipedia / Commons / Openverse) are Creative-Commons / encyclopedic, so copyrighted commercial art — movie posters, album and book covers, app icons — was never found and each block was silently dropped. Adds the keyless **iTunes / Apple Search** provider, tried FIRST for catalog-artwork queries (the CC providers return tangential hits — a prop, a same-named concept car, the person — that, being non-empty, crowd the real poster out), with the medium descriptor stripped before querying, a right-medium preference (video for a film, music for an album), and a title-relevance guard so an unrelated item is dropped rather than shown ("Parasite" no longer surfaces "Superman"). (2) The model would narrate its process into paragraphs and hand-write a fake "Source:" line without ever emitting an image block; the shared `BLOCK_FORMAT` grammar now forbids process narration and self-authored source lines, requires an image block to show a picture, and phrases commercial-media queries with the medium word so the search resolves the real art. Verified end-to-end against live iTunes/Wikimedia and rendered a real rich card (Dune: Part Two, Interstellar, The Batman, Oppenheimer); non-catalog subjects ("IMAX camera", "Aeron chair") still get their Commons photo. Also corrects stale comments that described the retired "construction tools" model (`blocks.ts`, `RichBlocks.tsx`, `DocCardShapeUtil.tsx`) |
+
 ### Jul 21, 2026
 | PR | Tags | What shipped |
 |---|---|---|

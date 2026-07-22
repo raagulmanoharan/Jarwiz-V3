@@ -290,9 +290,9 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
       <div className="jz-doc-content">
         <CardSources shapeId={shape.id} />
         {blocks && blocks.length > 0 ? (
-          // Structured rich card — the model built typed blocks via construction
-          // tools (owner call 2026-07-20). Carried in meta.jzBlocks so no shape
-          // migration; falls back to markdown text when absent.
+          // Structured rich card — the model emits typed blocks as NDJSON,
+          // hydrated server-side (owner call 2026-07-20). Carried in meta.jzBlocks
+          // so no shape migration; falls back to markdown text when absent.
           <RichBlocks
             blocks={blocks}
             highlight={fix?.blocks}

@@ -1,12 +1,18 @@
 /**
- * Structured rich-card blocks — the answer content model (owner call 2026-07-20).
+ * Structured rich-card blocks — the rich card's content model (owner call
+ * 2026-07-20). A doc card IS the rich card: there is ONE card, composed of these
+ * typed blocks — not a separate "doc" kind versus a "rich" kind.
  *
- * A doc answer is a SEQUENCE OF TYPED BLOCKS, not a wall of markdown the model
- * has to remember to format. The model composes it by calling construction tools
- * (add_paragraph / add_table / add_map / find_image / …); each tool appends one
- * validated, hydrated block. The card renders the blocks. This makes rich
- * constructs — tables, maps, images, links, checklists — reliable and
- * structured, instead of hoping the model writes correct markdown.
+ * The card body is a SEQUENCE OF TYPED BLOCKS, not a wall of markdown the model
+ * has to remember to format. The model emits the blocks as newline-delimited
+ * JSON — one block object per line (see BLOCK_FORMAT in apps/server's ask.ts) —
+ * and the server VALIDATES + HYDRATES each line (a map's stops geocoded, an
+ * image's query searched, a link's URL previewed), streaming it to the canvas as
+ * a `block.add` event. This is what makes rich constructs — tables, maps, images,
+ * links, checklists — reliable and structured, instead of hoping the model writes
+ * correct markdown. Images in particular are DECLARED, not fetched by the model:
+ * the block carries a query and the server finds the real photo — so a card only
+ * shows an image when the model actually emits an image block.
  *
  * Inline text (`paragraph`, `heading`, list items, cells) still carries the
  * small markdown marks the renderer already understands (**bold**, *italic*,

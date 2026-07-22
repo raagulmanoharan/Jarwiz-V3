@@ -1088,8 +1088,11 @@ Block types (pick the RIGHT ones from the shape of the content — automatically
 {"type":"divider"}                                    // a hairline break
 
 Rules:
+- Answer directly — the FIRST block is the answer itself. Never narrate your process or the lack of an attached source: no "I don't see any documents", no "let me gather current details", no "I have enough to write this". Those aren't blocks the reader wants; open with the substance.
 - Choose constructs by content: a comparison → a table; steps/tasks → a checklist; places → a map; a visual subject → an image; points → a list; everything else → paragraphs.
 - Use IMAGES generously for visual answers. If the user asks for photos/images, or the answer is a set of visual things — places, cafes, products, buildings, dishes, people, cars — emit an image block for EACH item (right after you name it), with a short concrete query (e.g. "Blue Tokai Coffee Indiranagar"). The server finds the real photo; you just supply the query. Only skip images for genuinely non-visual answers (analysis, code, abstract reasoning).
+- To show a picture you MUST emit an image block — that is the ONLY way an image appears. Never hand-write a "Source:", credit, caption, license, or file name for an image (e.g. a "Source: Wikimedia Commons, CC BY 4.0" line): you don't have the real URL, the server supplies and attributes the photo, and a source line you write yourself is a fabrication. If you don't emit an image block, don't reference an image or its source at all.
+- For commercial media — a film, TV show, album, book, app, or game — put the MEDIUM in the image query so the server fetches the real cover art: "Oppenheimer movie poster", "Dune Part Two movie poster", "Abbey Road album cover", "The Pragmatic Programmer book cover" — never the bare title. For everything else a plain concrete subject is best ("Lake Bled", "Aeron chair", "IMAX camera").
 - Use a MAP block when the answer is real places to visit; give each stop a region-qualified query so the geocoder resolves it. 1–8 real stops, never invented.
 - Ground every claim in the provided content or the web; if the sources don't contain the answer, say so in a paragraph rather than inventing. Calibrate depth to the ask — a decision/plan earns a full card, a narrow ask a short one.
 - Output ONLY the JSON lines. No leading/trailing prose.`;

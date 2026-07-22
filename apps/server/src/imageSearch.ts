@@ -6,13 +6,18 @@
  *      for ANY subject, including commercial products. Opt-in: set
  *      GOOGLE_SEARCH_API_KEY + GOOGLE_SEARCH_ENGINE_ID on the server (same
  *      place as ANTHROPIC_API_KEY; free tier is 100 queries/day).
- *   2. The keyless OPEN trio, queried in parallel and merged in this order:
+ *   2. The keyless OPEN set, queried in parallel and merged in this order:
  *      - Wikipedia lead image — the photo atop the subject's article, usually
  *        THE canonical picture of any notable thing.
  *      - Wikimedia Commons search — openly licensed; strong on encyclopedic
  *        subjects (places, hardware, people, nature).
  *      - Openverse — the Creative Commons search engine (~800M images from
  *        Flickr, museums, archives); broadens coverage past encyclopedic.
+ *      - iTunes/Apple Search — the catalog artwork the CC libraries can't have:
+ *        movie POSTERS, TV art, album covers, book covers, app icons. Keyless.
+ *        Tried FIRST for a catalog-artwork query (a film/album title makes the
+ *        CC providers return tangential junk that would crowd the real art out),
+ *        and otherwise last in the merge as a fallback.
  *   3. Nothing — the model is told to skip the image, never invent a URL.
  *
  * The /api/image cache-proxy then makes whichever URL wins durable at render
@@ -25,10 +30,14 @@ const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
 const WIKIPEDIA_API = 'https://en.wikipedia.org/w/api.php';
 const OPENVERSE_API = 'https://api.openverse.org/v1/images/';
 const GOOGLE_API = 'https://www.googleapis.com/customsearch/v1';
+const ITUNES_API = 'https://itunes.apple.com/search';
 const FETCH_TIMEOUT_MS = 8000;
 /** Rendered width requested from thumbnail-capable APIs — matches the card's
  *  hero size so we don't pull multi-megabyte originals through the proxy. */
 const THUMB_WIDTH = 960;
+/** iTunes hands back a 100px `artworkUrl100`; mzstatic renders any bounding box,
+ *  so we swap in a card-sized one instead of pulling a thumbnail-sharp poster. */
+const ITUNES_ART_SIZE = 600;
 
 export interface FoundImage {
   url: string;
@@ -43,7 +52,8 @@ export const FIND_IMAGE_TOOL: Anthropic.Tool = {
   name: 'find_image',
   description:
     'Find a REAL photo or illustration of a subject via image search (Google Images when configured; ' +
-    'else Wikipedia lead images, Wikimedia Commons, and Openverse in parallel). Returns image URLs ' +
+    'else Wikipedia lead images, Wikimedia Commons, Openverse, and iTunes/Apple catalog artwork — ' +
+    'movie posters, album and book covers, app icons — in parallel). Returns image URLs ' +
     'with title and an attribution page (license included when known). Use the returned url verbatim ' +
     'in Image(src, caption) or ![alt](url) — never alter or invent image URLs; caption with the ' +
     'source (page or license). Query with a short, concrete subject ("Hubble Space Telescope", ' +
@@ -269,20 +279,136 @@ async function searchOpenverse(query: string, count: number): Promise<FoundImage
   }
 }
 
-/** The provider chain: Google (when keys are configured) wins outright; else
- *  the keyless open trio runs in PARALLEL (latency doesn't stack) and merges
- *  Wikipedia-lead → Commons → Openverse, de-duped by URL. */
+/** Upscale an iTunes `artworkUrl100` to a card-sized render. The URL ends in
+ *  `.../100x100bb.jpg` (or `.png`); mzstatic serves any bounding box, so we swap
+ *  the dimensions. Non-matching URLs pass through unchanged (still a valid img). */
+export function upscaleItunesArtwork(url: string): string {
+  return url.replace(/\/\d+x\d+bb\.(jpg|jpeg|png)(\?.*)?$/i, `/${ITUNES_ART_SIZE}x${ITUNES_ART_SIZE}bb.$1`);
+}
+
+/** Parse an iTunes Search response into candidates — the catalog artwork
+ *  (movie posters, album/book covers, app icons). Pure — tested against a
+ *  fixture; the sandbox has no network. */
+export function parseItunesResponse(json: unknown): FoundImage[] {
+  const results = (json as { results?: unknown[] })?.results;
+  if (!Array.isArray(results)) return [];
+  const out: FoundImage[] = [];
+  for (const r of results) {
+    const it = r as {
+      artworkUrl100?: string;
+      artworkUrl60?: string;
+      trackName?: string;
+      collectionName?: string;
+      trackViewUrl?: string;
+      collectionViewUrl?: string;
+    };
+    const art = it.artworkUrl100 || it.artworkUrl60 || '';
+    if (!art) continue;
+    out.push({
+      url: upscaleItunesArtwork(art),
+      title: it.trackName || it.collectionName || '',
+      // Apple catalog artwork carries no CC license — attribute the store page.
+      page: it.trackViewUrl || it.collectionViewUrl || '',
+      license: '',
+    });
+  }
+  return out;
+}
+
+/** iTunes/Apple Search — keyless catalog artwork the CC libraries structurally
+ *  lack (movie posters, album/book covers, app icons). `media` is left open so
+ *  one lookup covers movies, TV, music, books, and apps alike. */
+async function searchItunes(query: string, count: number): Promise<FoundImage[]> {
+  const params = new URLSearchParams({
+    term: query,
+    limit: String(Math.max(1, Math.min(5, count))),
+    country: 'US',
+  });
+  try {
+    const res = await fetch(`${ITUNES_API}?${params}`, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      headers: { 'user-agent': 'JarwizBot/1.0 (+find-image)' },
+    });
+    if (!res.ok) return [];
+    return parseItunesResponse(await res.json());
+  } catch {
+    return [];
+  }
+}
+
+/** Catalog-artwork intent in a query — a poster / cover / app icon the CC
+ *  libraries structurally lack. When present, iTunes is the RIGHT source and is
+ *  tried FIRST: for a film or album title the encyclopedic providers return
+ *  tangential junk that isn't the art (a movie's prop gun, a same-named concept
+ *  car, the person the film is about), and being non-empty they'd otherwise
+ *  crowd the real poster out of the results. The model is prompted to phrase
+ *  these queries with the medium word ("Oppenheimer movie poster"). */
+const CATALOG_ARTWORK_RE =
+  /\b(poster|movie|film|soundtrack|album|audiobook|book cover|cover art|box art|app icon|game cover|video game)\b/i;
+
+/** The descriptor words the model appends to signal artwork intent — stripped
+ *  before we hit iTunes, because they POLLUTE the match ("The Dark Knight movie
+ *  poster" finds a podcast about posters; the bare "The Dark Knight" finds the
+ *  film). Kept narrow so it never eats a real title word (no "book"/"game"). */
+const CATALOG_STRIP_RE =
+  /\b(movie|movies|film|films|cinematic|poster|posters|cover art|box art|key art|artwork|cover|covers|album|soundtrack|ost|audiobook|app icon)\b/gi;
+
+/** Which mzstatic artwork kind the query wants, so we can prefer it when iTunes
+ *  ranks a same-named item of the wrong medium first (an "Abbey Road" search
+ *  surfaces the film *Yesterday*; a film search surfaces its soundtrack album).
+ *  The path segment appears in every mzstatic URL (…/image/thumb/Video…/Music…). */
+function preferredArtSegment(query: string): string | null {
+  if (/\b(album|song|songs|single|ep|soundtrack|ost|music)\b/i.test(query)) return '/Music';
+  if (/\b(poster|movie|film|cinema|trailer|tv|television|show|series|season|episode)\b/i.test(query)) return '/Video';
+  return null;
+}
+
+/** Guard against iTunes returning a wholly unrelated item when it lacks the real
+ *  one (searching "Parasite" with no catalog match surfaces "Superman"). Keep a
+ *  result only if its title shares a meaningful word (4+ chars) with the search
+ *  term; when the term has no such word, don't over-filter. */
+function titleRelevant(term: string, title: string): boolean {
+  const tokens = term.toLowerCase().match(/[a-z0-9]{4,}/g) ?? [];
+  if (tokens.length === 0) return true;
+  const t = title.toLowerCase();
+  return tokens.some((tok) => t.includes(tok));
+}
+
+/** The provider chain: Google (when keys are configured) wins outright; else,
+ *  for a catalog-artwork query, iTunes is tried FIRST (see above); otherwise the
+ *  keyless open set runs in PARALLEL (latency doesn't stack) and merges
+ *  Wikipedia-lead → Commons → Openverse → iTunes, de-duped by URL. iTunes stays
+ *  last in that merge so encyclopedic subjects still prefer the CC photo — it
+ *  only surfaces when the open trio came up empty. */
 export async function searchImages(query: string, count = 3): Promise<FoundImage[]> {
   const google = await searchGoogleImages(query, count);
   if (google.length > 0) return google.slice(0, count);
-  const [wiki, commons, openverse] = await Promise.all([
+  // Posters/covers/app icons: the CC trio returns tangential encyclopedic hits
+  // for a film/album title, so go to the catalog source first — with the medium
+  // descriptor stripped (it pollutes the match) and, for a film query, video
+  // artwork (the poster) preferred over a same-named soundtrack album.
+  if (CATALOG_ARTWORK_RE.test(query)) {
+    const term = query.replace(CATALOG_STRIP_RE, ' ').replace(/\s+/g, ' ').trim() || query;
+    let artwork = (await searchItunes(term, Math.max(count, 5))).filter((img) =>
+      titleRelevant(term, img.title),
+    );
+    const seg = preferredArtSegment(query);
+    if (seg) {
+      artwork = [...artwork].sort(
+        (a, b) => Number(b.url.includes(seg)) - Number(a.url.includes(seg)),
+      );
+    }
+    if (artwork.length > 0) return artwork.slice(0, count);
+  }
+  const [wiki, commons, openverse, itunes] = await Promise.all([
     searchWikipediaLead(query),
     searchCommonsImages(query, count),
     searchOpenverse(query, count),
+    searchItunes(query, count),
   ]);
   const merged: FoundImage[] = [];
   const seen = new Set<string>();
-  for (const img of [...wiki, ...commons, ...openverse]) {
+  for (const img of [...wiki, ...commons, ...openverse, ...itunes]) {
     if (seen.has(img.url)) continue;
     seen.add(img.url);
     merged.push(img);
