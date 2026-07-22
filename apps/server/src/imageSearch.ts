@@ -14,9 +14,10 @@
  *      - Openverse — the Creative Commons search engine (~800M images from
  *        Flickr, museums, archives); broadens coverage past encyclopedic.
  *      - iTunes/Apple Search — the catalog artwork the CC libraries can't have:
- *        movie POSTERS, TV art, album covers, book covers, app icons. Keyless,
- *        and last in the merge, so it only fills the copyrighted-commercial gap
- *        (e.g. "movie posters") the open trio structurally misses.
+ *        movie POSTERS, TV art, album covers, book covers, app icons. Keyless.
+ *        Tried FIRST for a catalog-artwork query (a film/album title makes the
+ *        CC providers return tangential junk that would crowd the real art out),
+ *        and otherwise last in the merge as a fallback.
  *   3. Nothing — the model is told to skip the image, never invent a URL.
  *
  * The /api/image cache-proxy then makes whichever URL wins durable at render
@@ -335,15 +336,70 @@ async function searchItunes(query: string, count: number): Promise<FoundImage[]>
   }
 }
 
-/** The provider chain: Google (when keys are configured) wins outright; else
- *  the keyless open set runs in PARALLEL (latency doesn't stack) and merges
- *  Wikipedia-lead → Commons → Openverse → iTunes, de-duped by URL. iTunes is
- *  last so encyclopedic subjects still prefer the CC photo; it only surfaces
- *  when the open trio came up empty — the copyrighted-commercial case (posters,
- *  covers, app icons) that made "give me movie posters" return links, not art. */
+/** Catalog-artwork intent in a query — a poster / cover / app icon the CC
+ *  libraries structurally lack. When present, iTunes is the RIGHT source and is
+ *  tried FIRST: for a film or album title the encyclopedic providers return
+ *  tangential junk that isn't the art (a movie's prop gun, a same-named concept
+ *  car, the person the film is about), and being non-empty they'd otherwise
+ *  crowd the real poster out of the results. The model is prompted to phrase
+ *  these queries with the medium word ("Oppenheimer movie poster"). */
+const CATALOG_ARTWORK_RE =
+  /\b(poster|movie|film|soundtrack|album|audiobook|book cover|cover art|box art|app icon|game cover|video game)\b/i;
+
+/** The descriptor words the model appends to signal artwork intent — stripped
+ *  before we hit iTunes, because they POLLUTE the match ("The Dark Knight movie
+ *  poster" finds a podcast about posters; the bare "The Dark Knight" finds the
+ *  film). Kept narrow so it never eats a real title word (no "book"/"game"). */
+const CATALOG_STRIP_RE =
+  /\b(movie|movies|film|films|cinematic|poster|posters|cover art|box art|key art|artwork|cover|covers|album|soundtrack|ost|audiobook|app icon)\b/gi;
+
+/** Which mzstatic artwork kind the query wants, so we can prefer it when iTunes
+ *  ranks a same-named item of the wrong medium first (an "Abbey Road" search
+ *  surfaces the film *Yesterday*; a film search surfaces its soundtrack album).
+ *  The path segment appears in every mzstatic URL (…/image/thumb/Video…/Music…). */
+function preferredArtSegment(query: string): string | null {
+  if (/\b(album|song|songs|single|ep|soundtrack|ost|music)\b/i.test(query)) return '/Music';
+  if (/\b(poster|movie|film|cinema|trailer|tv|television|show|series|season|episode)\b/i.test(query)) return '/Video';
+  return null;
+}
+
+/** Guard against iTunes returning a wholly unrelated item when it lacks the real
+ *  one (searching "Parasite" with no catalog match surfaces "Superman"). Keep a
+ *  result only if its title shares a meaningful word (4+ chars) with the search
+ *  term; when the term has no such word, don't over-filter. */
+function titleRelevant(term: string, title: string): boolean {
+  const tokens = term.toLowerCase().match(/[a-z0-9]{4,}/g) ?? [];
+  if (tokens.length === 0) return true;
+  const t = title.toLowerCase();
+  return tokens.some((tok) => t.includes(tok));
+}
+
+/** The provider chain: Google (when keys are configured) wins outright; else,
+ *  for a catalog-artwork query, iTunes is tried FIRST (see above); otherwise the
+ *  keyless open set runs in PARALLEL (latency doesn't stack) and merges
+ *  Wikipedia-lead → Commons → Openverse → iTunes, de-duped by URL. iTunes stays
+ *  last in that merge so encyclopedic subjects still prefer the CC photo — it
+ *  only surfaces when the open trio came up empty. */
 export async function searchImages(query: string, count = 3): Promise<FoundImage[]> {
   const google = await searchGoogleImages(query, count);
   if (google.length > 0) return google.slice(0, count);
+  // Posters/covers/app icons: the CC trio returns tangential encyclopedic hits
+  // for a film/album title, so go to the catalog source first — with the medium
+  // descriptor stripped (it pollutes the match) and, for a film query, video
+  // artwork (the poster) preferred over a same-named soundtrack album.
+  if (CATALOG_ARTWORK_RE.test(query)) {
+    const term = query.replace(CATALOG_STRIP_RE, ' ').replace(/\s+/g, ' ').trim() || query;
+    let artwork = (await searchItunes(term, Math.max(count, 5))).filter((img) =>
+      titleRelevant(term, img.title),
+    );
+    const seg = preferredArtSegment(query);
+    if (seg) {
+      artwork = [...artwork].sort(
+        (a, b) => Number(b.url.includes(seg)) - Number(a.url.includes(seg)),
+      );
+    }
+    if (artwork.length > 0) return artwork.slice(0, count);
+  }
   const [wiki, commons, openverse, itunes] = await Promise.all([
     searchWikipediaLead(query),
     searchCommonsImages(query, count),

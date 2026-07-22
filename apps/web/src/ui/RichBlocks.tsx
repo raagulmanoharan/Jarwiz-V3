@@ -1,8 +1,9 @@
 /**
  * Renders a structured rich card — a sequence of typed blocks (packages/shared
- * blocks.ts) that the model built via construction tools. The counterpart to
- * DocMarkdown: where that parses a markdown string, this walks already-structured
- * blocks, so tables/maps/images/links are guaranteed well-formed. Inline text
+ * blocks.ts) the model emits as newline-delimited JSON, validated and hydrated
+ * server-side. The counterpart to DocMarkdown: where that parses a markdown
+ * string, this walks already-structured blocks, so tables/maps/images/links are
+ * guaranteed well-formed. Inline text
  * inside paragraphs, headings, list items and cells still runs through
  * DocMarkdown's `renderInline` for the small marks (bold/italic/code/links).
  *
