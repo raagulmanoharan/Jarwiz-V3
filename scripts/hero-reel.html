@@ -379,11 +379,11 @@
         const promptText = document.getElementById('promptText');
         const cards = Array.from(document.querySelectorAll('[data-card]'));
 
-        // One line — no cycling. It names what a chat can't do; the board of real
-        // cards behind it is the implicit answer. Types once, holds, clears at the
-        // loop seam (single type + single delete = minimal motion).
+        // One line — no cycling. The thesis: all this capability is wasted in a
+        // chat; the board of real cards behind it is the proof. Types once, holds,
+        // clears at the loop seam (single type + single delete = minimal motion).
         const LINES = [
-          'Some ideas don’t fit in a chat.',
+          'AI is too powerful for a chat.',
         ];
         const SPINS = 3; // full "thinking" turns of the ✦ over one loop (integer → clean seam)
 
