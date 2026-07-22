@@ -363,15 +363,25 @@ function preferredArtSegment(query: string): string | null {
   return null;
 }
 
-/** Guard against iTunes returning a wholly unrelated item when it lacks the real
- *  one (searching "Parasite" with no catalog match surfaces "Superman"). Keep a
- *  result only if its title shares a meaningful word (4+ chars) with the search
- *  term; when the term has no such word, don't over-filter. */
+/** Guard against iTunes returning a same-named-but-wrong item when it lacks the
+ *  real one: searching "Batman Begins" surfaces "Bitcoin Begins: Bitcoin
+ *  Explained Using Batman", "Inception" a "Forsaken Mercenary" audiobook,
+ *  "Memento" a "Depeche Mode - Memento Mori" concert. A loose one-token match
+ *  lets all of those through, so require BOTH: the whole search term appears in
+ *  the title (exact, leading, or as a phrase), AND the title isn't padded with
+ *  unrelated words (a genuine match is the term plus at most a small tail like a
+ *  year or edition — "Dunkirk (2017)", "Oppenheimer: The Real Story"). When the
+ *  term has no matchable word (very short titles), don't over-filter. */
 function titleRelevant(term: string, title: string): boolean {
-  const tokens = term.toLowerCase().match(/[a-z0-9]{4,}/g) ?? [];
-  if (tokens.length === 0) return true;
+  const q = term.toLowerCase().trim();
   const t = title.toLowerCase();
-  return tokens.some((tok) => t.includes(tok));
+  const qTokens = q.match(/[a-z0-9]{4,}/g) ?? [];
+  if (qTokens.length === 0) return true;
+  const phraseHit = t.includes(q) || qTokens.every((tok) => t.includes(tok));
+  if (!phraseHit) return false;
+  const tTokens = t.match(/[a-z0-9]{4,}/g) ?? [];
+  // The title shouldn't be dominated by words the query never asked for.
+  return tTokens.length - qTokens.length <= 2;
 }
 
 /** The provider chain: Google (when keys are configured) wins outright; else,
@@ -387,7 +397,8 @@ export async function searchImages(query: string, count = 3): Promise<FoundImage
   // for a film/album title, so go to the catalog source first — with the medium
   // descriptor stripped (it pollutes the match) and, for a film query, video
   // artwork (the poster) preferred over a same-named soundtrack album.
-  if (CATALOG_ARTWORK_RE.test(query)) {
+  const wantsCatalog = CATALOG_ARTWORK_RE.test(query);
+  if (wantsCatalog) {
     const term = query.replace(CATALOG_STRIP_RE, ' ').replace(/\s+/g, ' ').trim() || query;
     let artwork = (await searchItunes(term, Math.max(count, 5))).filter((img) =>
       titleRelevant(term, img.title),
@@ -399,7 +410,15 @@ export async function searchImages(query: string, count = 3): Promise<FoundImage
       );
     }
     if (artwork.length > 0) return artwork.slice(0, count);
+    // Commercial media not in the keyless catalog → return NOTHING. The CC trio
+    // is the wrong fallback here: for a film/album title it serves props, fan
+    // toys, concept cars and same-named Flickr photos, and a wrong poster is
+    // worse than none (the image block is simply dropped). Configure Google/TMDB
+    // keys to actually resolve these.
+    return [];
   }
+  // Non-catalog subjects: the keyless open set in PARALLEL, merged
+  // Wikipedia-lead → Commons → Openverse → iTunes (last), de-duped by URL.
   const [wiki, commons, openverse, itunes] = await Promise.all([
     searchWikipediaLead(query),
     searchCommonsImages(query, count),
