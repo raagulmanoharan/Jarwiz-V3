@@ -45,6 +45,7 @@ import { startStreaming, stopStreaming } from '../agents/streaming';
 import { clearDraft, getDraft, setDraft, updateDraft } from './draft';
 import { clearRegen, setRegen } from './regen';
 import { clearClarify, setClarify } from './clarify';
+import { flashFix, diffBlocks, diffCells } from './fixHighlight';
 import { logEvent } from '../log/eventLog';
 import { clearAgentError, setAgentError } from '../agents/agentError';
 import { endPresence, setPresenceCursor, setPresenceStatus, startPresence } from '../agents/presence';
@@ -308,6 +309,9 @@ export function useAsk() {
         deep?: boolean;
         /** Run a Thinking Machine skill server-side (prompt = the subject). */
         machineId?: string;
+        /** After an in-place refine, spotlight what changed (the blocks/cells
+         *  the fix touched) with a transient glow — used by "Let Jarwiz fix it". */
+        highlightChanges?: boolean;
       },
     ) => {
       const trimmed = prompt.trim();
@@ -405,6 +409,11 @@ export function useAsk() {
       // When regenerating in place, a single history mark wraps the clear +
       // every streamed delta so one Cmd+Z restores the card's previous content.
       let inPlaceMark: string | null = null;
+      // "Let Jarwiz fix it" spotlights what changed: snapshot the card's body
+      // BEFORE the in-place refine blanks it, so card.done can diff old→new.
+      let fixBeforeBlocks: RichBlock[] | null = null;
+      let fixBeforeText: string | null = null;
+      let fixBeforeRows: string[][] | null = null;
       // Set when the run errors (server `error` event or a thrown fetch/stream
       // failure); the finally block bails an in-place regen back to its mark so
       // a failure can't commit a blanked card.
@@ -534,6 +543,7 @@ export function useAsk() {
                   },
                 });
               } else if (t.type === 'table-card') {
+                if (opts?.highlightChanges) fixBeforeRows = (t.props as TableCardShape['props']).rows.map((r) => [...r]);
                 cols = (event.columns ?? []).slice(0, 6);
                 rows = Array.from({ length: event.rowCount ?? 0 }, () => cols.map(() => ''));
                 editor.updateShape<TableCardShape>({
@@ -542,9 +552,21 @@ export function useAsk() {
                   props: { columns: cols, rows },
                 });
               } else {
+                if (opts?.highlightChanges) {
+                  const b = t.meta?.jzBlocks as unknown as RichBlock[] | undefined;
+                  fixBeforeBlocks = Array.isArray(b) ? b : null;
+                  fixBeforeText = (t.props as DocCardShape['props']).text ?? '';
+                }
                 // Keep the existing title; a regenerated "# " line overwrites it
                 // via card.title, but a plain tweak ("shorter") keeps it intact.
-                editor.updateShape<DocCardShape>({ id: targetId, type: 'doc-card', props: { text: '' } });
+                // Clear BOTH bodies: a rich answer streams into meta.jzBlocks, so
+                // leaving stale blocks would let block.add append to the old ones.
+                editor.updateShape(({
+                  id: targetId,
+                  type: 'doc-card',
+                  props: { text: '' },
+                  meta: { ...t.meta, jzBlocks: [] },
+                } as unknown) as Parameters<typeof editor.updateShape>[0]);
               }
               startStreaming(targetId);
               setRegen({ id: targetId, status: 'streaming' });
@@ -791,6 +813,29 @@ export function useAsk() {
                 editor.updateShape<MapCardShape>({ id: cardId, type: 'map-card', props: { status: 'done' } });
               }
               stopStreaming(cardId);
+              // "Let Jarwiz fix it": the refine rewrote the card in place — now
+              // spotlight what actually moved (changed blocks / cells; the whole
+              // card on a full rewrite) so the change is legible, not silent.
+              if (opts?.highlightChanges && inPlaceMark && dc) {
+                if (dc.type === 'doc-card') {
+                  const after = (dc.meta?.jzBlocks as unknown as RichBlock[] | undefined) ?? null;
+                  if (after && after.length) {
+                    const changed = diffBlocks(fixBeforeBlocks, after);
+                    if (changed.length >= after.length) flashFix(cardId, { whole: true });
+                    else if (changed.length) flashFix(cardId, { blocks: changed });
+                  } else if (((dc.props as DocCardShape['props']).text ?? '') !== (fixBeforeText ?? '')) {
+                    flashFix(cardId, { whole: true });
+                  }
+                } else if (dc.type === 'table-card') {
+                  const after = (dc.props as TableCardShape['props']).rows;
+                  const changed = diffCells(fixBeforeRows, after);
+                  const total = after.reduce((n, r) => n + r.length, 0);
+                  if (changed.length >= total) flashFix(cardId, { whole: true });
+                  else if (changed.length) flashFix(cardId, { cells: changed });
+                } else {
+                  flashFix(cardId, { whole: true });
+                }
+              }
               // One final settle: mid-stream follows are throttled and their
               // animations interrupt each other, so the finished artifact can
               // end a run partly out of view (G3.2). Same contains() gate as

@@ -10,6 +10,7 @@
  * viewport straight from the stops — no client hydration round-trip.
  */
 
+import { cloneElement, type ReactElement } from 'react';
 import { stopEventPropagation } from 'tldraw';
 import type { RichBlock, MapStop } from '@jarwiz/shared';
 import { googleMapsRouteUrl, googleMapsUrl, MapViewport } from '../shapes/mapView';
@@ -25,17 +26,19 @@ export function RichBlocks({
   blocks,
   onToggleTask,
   onCite,
+  highlight,
 }: {
   blocks: RichBlock[];
   /** Toggling a checklist item — ordinal is its index across ALL checklist items. */
   onToggleTask?: (ordinal: number, checked: boolean) => void;
   onCite?: (page: number) => void;
+  /** Block indices to spotlight (a just-applied fix — see fixHighlight). */
+  highlight?: number[];
 }) {
   let taskOrdinal = 0;
-  return (
-    <div className="jz-markdown jz-richblocks">
-      {blocks.map((b, i) => {
-        switch (b.type) {
+  const hl = highlight && highlight.length ? new Set(highlight) : null;
+  const renderBlock = (b: RichBlock, i: number): ReactElement | null => {
+    switch (b.type) {
           case 'heading': {
             const H = (b.level === 1 ? 'h1' : b.level === 2 ? 'h2' : 'h3') as 'h1';
             return (
@@ -151,7 +154,21 @@ export function RichBlocks({
             return <MapRender key={i} ordered={b.ordered} stops={b.stops} />;
           default:
             return null;
+      }
+  };
+  return (
+    <div className="jz-markdown jz-richblocks">
+      {blocks.map((b, i) => {
+        const el = renderBlock(b, i);
+        if (!el) return null;
+        // A just-applied fix glows the blocks it changed (see fixHighlight).
+        if (hl?.has(i)) {
+          const cls = (el.props as { className?: string }).className ?? '';
+          return cloneElement(el as ReactElement<{ className?: string }>, {
+            className: `${cls} jz-fix-glow`.trim(),
+          });
         }
+        return el;
       })}
     </div>
   );

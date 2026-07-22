@@ -2910,6 +2910,41 @@ body,
   }
 }
 
+/* "Just changed" spotlight — after "Let Jarwiz fix it" refines a card in place
+   (ask/fixHighlight), the blocks/cells it rewrote (or the whole card on a full
+   rebuild) glow once and fade. A ::after overlay so it never disturbs the
+   element's own surface/shadow; the accent flips per theme so it reads in both.
+   The ~2.4s lifetime matches FIX_GLOW_MS — a bespoke fade, not a UI-motion token. */
+@keyframes jz-fix-fade {
+  to {
+    opacity: 0;
+  }
+}
+.jz-fix-glow {
+  position: relative;
+}
+.jz-fix-glow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--jz-accent) 42%, transparent);
+  animation: jz-fix-fade 2.4s var(--jz-ease-out) forwards;
+}
+/* Card-level glow follows the card's own corner radius, not a block's. */
+.jz-doc.jz-fix-glow::after,
+.jz-table.jz-fix-glow::after {
+  border-radius: var(--jz-radius-lg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-fix-glow::after {
+    animation: none;
+    opacity: 1;
+  }
+}
+
 @keyframes jz-cell-in {
   from {
     opacity: 0.3;

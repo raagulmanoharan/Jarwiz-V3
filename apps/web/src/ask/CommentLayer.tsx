@@ -1,10 +1,11 @@
 /**
  * Comment layer — the FigJam-style proactive comments Jarwiz pins to cards.
  * Each comment shows as a small pin on the card's top-right corner; clicking it
- * opens a popover with Jarwiz's note and two moves: let Jarwiz draft the fix
- * (prefills the prompt bar, grounded on that card — never auto-edits) or
- * dismiss (which sticks, so it won't come back). Camera-tracked like the other
- * on-card affordances.
+ * opens a popover with Jarwiz's note and two moves: let Jarwiz APPLY the fix (it
+ * refines the card in place and glows the parts it changed — see fixHighlight)
+ * or dismiss (which sticks, so it won't come back). A card whose format can't be
+ * refined in place falls back to prefilling the prompt bar. Camera-tracked like
+ * the other on-card affordances.
  */
 
 import { useSyncExternalStore } from 'react';
@@ -14,6 +15,7 @@ import { JarwizSpark } from '../ui/JarwizSpark';
 import type { NoticeKind } from '@jarwiz/shared';
 import { getTheme, subscribeTheme } from '../ui/theme';
 import { requestPromptFill } from './promptFill';
+import { REFINABLE, useAsk } from './useAsk';
 import {
   dismissComment,
   getComments,
@@ -47,6 +49,7 @@ export function CommentLayer() {
 
 function CommentPin({ comment, open }: { comment: BoardComment; open: boolean }) {
   const editor = useEditor();
+  const { ask } = useAsk();
   // Anchor to the card's top-right corner, in viewport pixels; recompute on
   // every camera move. If the card is gone the pin simply hides (the comment
   // stays in the store — a filtered board shouldn't lose Jarwiz's notes).
@@ -86,9 +89,25 @@ function CommentPin({ comment, open }: { comment: BoardComment; open: boolean })
               <button
                 className="jz-comment-fix"
                 onClick={() => {
-                  editor.select(comment.cardId as TLShapeId);
-                  requestPromptFill(comment.suggestion!, comment.cardId as TLShapeId);
-                  closeComments();
+                  const cardId = comment.cardId as TLShapeId;
+                  const type = editor.getShape(cardId)?.type;
+                  editor.select(cardId);
+                  if (type && REFINABLE[type]) {
+                    // Apply the fix straight to the card — no composer detour. The
+                    // refine keeps the card's format and glows what it changed;
+                    // the note is resolved, so it's dismissed.
+                    void ask(comment.suggestion!, [cardId], {
+                      targetId: cardId,
+                      skipClarify: true,
+                      logLabel: 'Applied a fix',
+                      highlightChanges: true,
+                    });
+                    dismissComment(comment.id);
+                  } else {
+                    // A card whose format can't refine in place → prefill instead.
+                    requestPromptFill(comment.suggestion!, cardId);
+                    closeComments();
+                  }
                 }}
               >
                 <Wand2 size={13} /> Let Jarwiz fix it

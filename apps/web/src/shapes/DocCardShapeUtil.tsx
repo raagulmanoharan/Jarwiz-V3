@@ -30,6 +30,7 @@ import { deriveTitle, titleIsAuto } from './shapeTitle';
 import { useFitHeight } from './useFitHeight';
 import { isExpanded, subscribeExpand } from './cardExpand';
 import { DOC_RADIUS, roundedRectPath } from './cardGeometry';
+import { useFix } from '../ask/fixHighlight';
 
 export interface DocCardProps {
   w: number;
@@ -136,6 +137,8 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
   // "writing…" placeholder, only the former reflows width.
   const { isStreaming, isGenerating, isFocused } = useStreamState(shape.id);
   const expanded = useSyncExternalStore(subscribeExpand, () => isExpanded(shape.id), () => false);
+  // Transient "just changed" spotlight after a "Let Jarwiz fix it" refine.
+  const fix = useFix(shape.id);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -281,7 +284,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
 
   return (
     <div
-      className={`jz-doc jz-doc-auto${collapsed ? ' jz-card-collapsed' : ''}${isSelected ? ' jz-card-selected' : ''}${isFocused ? ' jz-card-streaming' : ''}`}
+      className={`jz-doc jz-doc-auto${collapsed ? ' jz-card-collapsed' : ''}${isSelected ? ' jz-card-selected' : ''}${isFocused ? ' jz-card-streaming' : ''}${fix?.whole ? ' jz-fix-glow' : ''}`}
       ref={fitRef}
     >
       <div className="jz-doc-content">
@@ -292,6 +295,7 @@ function DocCardBody({ shape }: { shape: DocCardShape }) {
           // migration; falls back to markdown text when absent.
           <RichBlocks
             blocks={blocks}
+            highlight={fix?.blocks}
             onCite={(page) => {
               const pdfId = shape.props.sourcePdfId as TLShapeId;
               if (!pdfId || !editor.getShape(pdfId)) return;
