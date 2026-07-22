@@ -379,13 +379,12 @@
         const promptText = document.getElementById('promptText');
         const cards = Array.from(document.querySelectorAll('[data-card]'));
 
-        // A short connected story that types + deletes — kept to three beats so
-        // the motion stays calm: the ask, what it becomes, the payoff (the site's
-        // hero line). The middle line lists the shapes in one breath.
+        // Three calm beats that drive the point home — a canvas over a chat:
+        // the ask, the real things you get, then the positioning line.
         const LINES = [
-          'Ask for anything.',
-          'A dashboard. A map. A prototype.',
-          'Your ideas deserve a canvas.',
+          'Ask anything.',
+          'Dashboards. Maps. Prototypes.',
+          'A canvas, not a chat box.',
         ];
         const SPINS = 3; // full "thinking" turns of the ✦ over one loop (integer → clean seam)
 
