@@ -379,13 +379,11 @@
         const promptText = document.getElementById('promptText');
         const cards = Array.from(document.querySelectorAll('[data-card]'));
 
-        // Three calm beats. The close implies the canvas-over-chat point rather
-        // than stating it: your words become things that "take shape", not more
-        // text — the board of real cards behind it carries the rest.
+        // One line — no cycling. It names what a chat can't do; the board of real
+        // cards behind it is the implicit answer. Types once, holds, clears at the
+        // loop seam (single type + single delete = minimal motion).
         const LINES = [
-          'Ask anything.',
-          'Docs. Dashboards. Prototypes.',
-          'Watch your ideas take shape.',
+          'Some ideas don’t fit in a chat.',
         ];
         const SPINS = 3; // full "thinking" turns of the ✦ over one loop (integer → clean seam)
 
