@@ -69,7 +69,8 @@
         z-index: 5; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 28px; text-align: center; white-space: nowrap; }
       .reel-spark { display: grid; place-items: center; width: 68px; height: 68px; border-radius: 19px;
         background: var(--ink); color: #000; font-size: 35px; box-shadow: 0 18px 50px rgba(0,0,0,0.6); will-change: transform; }
-      .reel-line { font-size: 50px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; color: #fff; display: inline-flex; align-items: center; min-height: 1em;
+      .reel-line { font-size: 44px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.18; color: #fff;
+        display: block; max-width: 620px; white-space: normal; text-align: center; min-height: 1em;
         /* Strong dark halo (localised around the glyphs, not a full scrim) so the
            copy reads over any card — even the bright chart bars — without banding. */
         text-shadow: 0 1px 3px rgba(0,0,0,1), 0 0 14px rgba(0,0,0,0.98), 0 0 30px rgba(0,0,0,0.92), 0 0 52px rgba(0,0,0,0.8); }
@@ -383,7 +384,7 @@
         // big for a chat; the board of real cards behind it is where they go. Types
         // once, holds, clears at the loop seam (single type + single delete).
         const LINES = [
-          'Your ideas are too big for a chat.',
+          'Your ideas are too big to be locked in a chat.',
         ];
         const SPINS = 3; // full "thinking" turns of the ✦ over one loop (integer → clean seam)
 
