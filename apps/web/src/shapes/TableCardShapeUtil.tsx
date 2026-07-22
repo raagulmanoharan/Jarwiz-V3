@@ -22,6 +22,7 @@ import { isExpanded, subscribeExpand } from './cardExpand';
 import { CARD_RADIUS, roundedRectPath } from './cardGeometry';
 import { useCardSelected } from './useCardSelected';
 import { renderRichCell } from './tableRich';
+import { useFix } from '../ask/fixHighlight';
 
 export type ColumnType = 'text' | 'link' | 'photo';
 
@@ -126,6 +127,10 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
   // cell-by-cell caret cue and the pre-columns placeholder both key off it.
   const { isGenerating: isFilling, isFocused } = useStreamState(shape.id);
   const expanded = useSyncExternalStore(subscribeExpand, () => isExpanded(shape.id), () => false);
+  // Transient "just changed" spotlight after a "Let Jarwiz fix it" refine —
+  // glows the cells it rewrote (or the whole grid on a full rebuild).
+  const fix = useFix(shape.id);
+  const cellFixed = (row: number, col: number) => Boolean(fix?.cells?.some(([r, c]) => r === row && c === col));
   // Grow to fit all rows; clamp past the threshold once settled (collapsible).
   const fitRef = useRef<HTMLDivElement | null>(null);
   // Fit stays on while editing: edit mode adds chrome (the +Row/+Column bar,
@@ -339,7 +344,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
       </button>
     ) : null}
     <div
-      className={`jz-table${isFocused ? ' jz-card-streaming' : ''}${collapsed ? ' jz-card-collapsed' : ''}${chrome ? ' jz-table--chrome' : ''}${ringSelected ? ' jz-card-selected' : ''}`}
+      className={`jz-table${isFocused ? ' jz-card-streaming' : ''}${collapsed ? ' jz-card-collapsed' : ''}${chrome ? ' jz-table--chrome' : ''}${ringSelected ? ' jz-card-selected' : ''}${fix?.whole ? ' jz-fix-glow' : ''}`}
     >
       {/* Measured wrapper: the frame is height:100% (its scrollHeight always
           equals the CURRENT shape height — the fit-height ratchet), so the
@@ -396,7 +401,7 @@ function TableCardBody({ shape }: { shape: TableCardShape }) {
               ) : (
                 <div
                   key={col}
-                  className={`jz-table-cell jz-table-cell-static${flashCell && flashCell[0] === row && flashCell[1] === col ? ' jz-table-cell--flash' : ''}`}
+                  className={`jz-table-cell jz-table-cell-static${flashCell && flashCell[0] === row && flashCell[1] === col ? ' jz-table-cell--flash' : ''}${cellFixed(row, col) ? ' jz-fix-glow' : ''}`}
                 >
                   {colType(col) === 'photo' && !cell.trim() ? (
                     <button
