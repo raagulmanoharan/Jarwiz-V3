@@ -69,8 +69,10 @@
         z-index: 5; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 28px; text-align: center; white-space: nowrap; }
       .reel-spark { display: grid; place-items: center; width: 68px; height: 68px; border-radius: 19px;
         background: var(--ink); color: #000; font-size: 35px; box-shadow: 0 18px 50px rgba(0,0,0,0.6); will-change: transform; }
-      .reel-line { font-size: 44px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.18; color: #fff;
-        display: block; max-width: 620px; white-space: normal; text-align: center; min-height: 1em;
+      .reel-line { font-size: 44px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; color: #fff;
+        /* Fixed two-line box + a hard-coded break so the copy never reflows as it
+           types (line 1 stays put, line 2 fills in) — the sentence doesn't jump. */
+        display: block; width: 680px; height: 2.4em; white-space: normal; text-align: center;
         /* Strong dark halo (localised around the glyphs, not a full scrim) so the
            copy reads over any card — even the bright chart bars — without banding. */
         text-shadow: 0 1px 3px rgba(0,0,0,1), 0 0 14px rgba(0,0,0,0.98), 0 0 30px rgba(0,0,0,0.92), 0 0 52px rgba(0,0,0,0.8); }
@@ -384,7 +386,7 @@
         // big for a chat; the board of real cards behind it is where they go. Types
         // once, holds, clears at the loop seam (single type + single delete).
         const LINES = [
-          'Your ideas are too big to be locked in a chat.',
+          'Your ideas are too big\nto be locked in a chat.', // \n = fixed line break
         ];
         const SPINS = 3; // full "thinking" turns of the ✦ over one loop (integer → clean seam)
 
@@ -453,7 +455,9 @@
           u = ((u % 1) + 1) % 1;
           camera.style.transform = 'scale(' + cameraScale(u).toFixed(4) + ')';
           spark.style.transform = 'rotate(' + sparkDeg(u).toFixed(2) + 'deg)';
-          promptText.textContent = typewriter(u);
+          // Render the typed substring, turning the hard break into a <br> so the
+          // two lines are fixed (our own static copy — safe to set as HTML).
+          promptText.innerHTML = typewriter(u).replace(/\n/g, '<br>');
           caret.style.opacity = (Math.floor(u * 44) % 2 === 0) ? '1' : '0.15';
           for (const m of meta) {
             const { off, op } = cardState(m, u);
