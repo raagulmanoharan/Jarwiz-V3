@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      hero-reel.html — the SOURCE of the marketing "cards fly in" GIF.
+      A single dot-grid canvas packed edge-to-edge with the REAL Jarwiz card
+      types (same markup + design-system CSS as the app + site/index.html):
+      a comparison table, a researched doc, a live dashboard, a REAL map
+      (stitched dark OSM/CARTO tiles), image cards (the product's real photos),
+      a YouTube card (the real 3Blue1Brown video the app's use-cases use), a
+      link bookmark, a note, a spreadsheet, a flow diagram, and a live prototype.
+      Laid out as a gap-free bento (CSS grid) so the frame fills — no dead space.
+
+      One deterministic clock, window.setReel(u), u in [0,1):
+        · the ✦ mark spins once (ease-in-out) while the prompt types
+        · the cards stagger in from every side as the camera zooms out to the
+          full board, and the prompt fades to reveal the product
+        · holds on the dense board, then zooms back to the empty composer — the
+          loop seam is exact (state at u=1 === u=0).
+      Card fly-in directions come from each card's real grid position; nothing
+      reads the wall clock, so every frame is reproducible.
+
+      Assets: scripts/hero-reel-assets/{map-dark.png, yt-attention.jpg}, the
+      product images under apps/web/public/uc/, and site/assets/{flow.svg,
+      proto-focus.html}. Regenerate the map/thumbnail with the prep step in
+      scripts/hero-reel.mjs's header. scripts/hero-reel.mjs encodes the GIF.
+    -->
+    <style>
+      :root {
+        --bg: #09090b; --bg-2: #0e0e12; --surface: #151519; --surface-2: #1c1c22;
+        --hairline: rgba(255, 255, 255, 0.08); --hairline-2: rgba(255, 255, 255, 0.14);
+        --ink: #f5f5f7; --ink-2: #b6b6c0; --ink-3: #7b7b86; --accent: #ffffff; --accent-2: #ededf0;
+        --r-sm: 10px; --r-md: 14px; --r-lg: 18px;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; background: #000; }
+      body { color: var(--ink); font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; line-height: 1.5; }
+
+      /* ── The recorded frame: a fixed 1080×1080 viewport onto the board ── */
+      /* Flat solid background — smooth dark ramps (gradient / glow / vignette)
+         band badly in a 256-colour GIF and compress poorly, so a flat field both
+         removes the banding and shrinks the file (flat areas compress well). */
+      .reel-viewport { position: relative; width: 1080px; height: 1080px; overflow: hidden; background: #0a0a0d; }
+
+      .reel-camera { position: absolute; inset: 0; z-index: 1; transform-origin: 540px 540px; will-change: transform; }
+      /* Board = larger than the viewport, centred (its centre 850,850 under the
+         viewport centre 540,540). Dot grid scales with the zoom; it is also the
+         gap-free bento grid. */
+      .reel-board {
+        position: absolute; left: -310px; top: -310px; width: 1700px; height: 1700px; padding: 28px;
+        background: radial-gradient(circle at center, rgba(255,255,255,0.05) 1px, transparent 1.6px) 0 0 / 30px 30px;
+        display: grid; gap: 16px;
+        grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr);
+        grid-template-areas:
+          "table   table   image1 image1 proto  proto"
+          "table   table   image1 image1 proto  proto"
+          "youtube youtube doc    doc    proto  proto"
+          "dash    dash    doc    doc    proto  proto"
+          "dash    dash    map    map    link   sheet"
+          "flow    flow    map    map    image2 note";
+      }
+
+      /* ── Centred typewriter — a FIXED viewport-centred overlay (does not scale
+            with the board): the ✦ mark spins ("thinking") on top while a short,
+            connected story types + deletes below. No chrome. A strong text-shadow
+            (not a gradient scrim) keeps it legible over the dark cards. ── */
+      .reel-center { position: absolute; left: 540px; top: 540px; transform: translate(-50%, -50%);
+        z-index: 5; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 28px; text-align: center; white-space: nowrap; }
+      .reel-spark { display: grid; place-items: center; width: 68px; height: 68px; border-radius: 19px;
+        background: var(--ink); color: #000; font-size: 35px; box-shadow: 0 18px 50px rgba(0,0,0,0.6); will-change: transform; }
+      .reel-line { font-size: 44px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; color: #fff;
+        /* Fixed two-line box + a hard-coded break so the copy never reflows as it
+           types (line 1 stays put, line 2 fills in) — the sentence doesn't jump. */
+        display: block; width: 680px; height: 2.4em; white-space: normal; text-align: center;
+        /* Strong dark halo (localised around the glyphs, not a full scrim) so the
+           copy reads over any card — even the bright chart bars — without banding. */
+        text-shadow: 0 1px 3px rgba(0,0,0,1), 0 0 14px rgba(0,0,0,0.98), 0 0 30px rgba(0,0,0,0.92), 0 0 52px rgba(0,0,0,0.8); }
+      .reel-caret { display: inline-block; width: 4px; height: 0.9em; margin-left: 7px; border-radius: 2px; background: var(--ink); vertical-align: -2px; }
+      /* Soft black circular blur behind the copy — focuses the centre + lifts the
+         text off the board. A near-black radial over the near-black canvas keeps
+         banding invisible (dark-on-dark). */
+      .reel-glow { position: absolute; left: 540px; top: 540px; transform: translate(-50%, -50%); z-index: 4; pointer-events: none;
+        width: 760px; height: 760px; border-radius: 50%;
+        background: radial-gradient(circle at center, rgba(0,0,0,0.86) 0%, rgba(0,0,0,0.72) 30%, rgba(0,0,0,0.34) 52%, rgba(0,0,0,0) 70%);
+        filter: blur(16px); }
+
+      /* ── Card frame ── */
+      .reel-card { position: relative; will-change: transform, opacity; min-width: 0; min-height: 0; }
+      .b-table { grid-area: table; } .b-doc { grid-area: doc; }
+      .bcard { position: relative; overflow: hidden; display: flex; width: 100%; height: 100%;
+        border-radius: var(--r-md); border: 1px solid var(--hairline);
+        background: linear-gradient(180deg, var(--surface), var(--bg-2)); box-shadow: 0 22px 54px rgba(0,0,0,0.5); }
+      .bcard.metallic { background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0) 46%), linear-gradient(160deg, #1a1a20 0%, #101014 58%, #17171c 100%); border-color: var(--hairline-2); }
+      .card-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+      .card-chip { position: absolute; left: 12px; top: 12px; z-index: 3; display: inline-flex; align-items: center; gap: 6px;
+        padding: 5px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600; color: var(--ink-2);
+        background: rgba(10,10,14,0.72); border: 1px solid var(--hairline); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+      .card-chip .spk { color: var(--ink); }
+
+      /* doc/table typography */
+      .doccard { padding: 0; }
+      .doccard-title { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 12px; }
+      .doccard-body p { margin: 0 0 10px; color: var(--ink-2); font-size: 15px; line-height: 1.6; }
+      .doccard-body p b { color: var(--ink); font-weight: 700; }
+      .doccard-body .doccard-src { color: var(--ink-3); font-size: 12.5px; }
+      .doccard-tbl { width: 100%; border-collapse: collapse; margin: 0; font-size: 14px; }
+      .doccard-tbl th, .doccard-tbl td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--hairline); }
+      .doccard-tbl th { color: var(--ink-3); font-weight: 600; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+      .doccard-tbl td { color: var(--ink-2); } .doccard-tbl td:first-child { color: var(--ink); font-weight: 600; }
+      .doccard-tbl tbody tr:last-child td { border-bottom: none; }
+      .doc-inline { margin: 6px 0 4px; font-size: 13px; } .doc-inline th, .doc-inline td { padding: 7px 9px; } .doc-inline th { font-size: 10px; }
+      /* Table + doc fill their whole card (no bleed/peek here — self-contained). */
+      .b-table { align-items: stretch; padding: 16px 22px; }
+      .b-table .doccard-tbl { height: 100%; }
+      .b-table .doccard-tbl tbody tr { height: 1px; } /* rows share the height evenly */
+      .b-doc { flex-direction: column; justify-content: stretch; align-items: stretch; padding: 22px; }
+      .b-doc .doccard { display: flex; flex-direction: column; height: 100%; }
+      .b-doc .doccard-body { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+      .b-doc .doccard-body p { margin-bottom: 0; }
+      .b-doc .doccard-src { padding-top: 4px; }
+
+      /* image / youtube */
+      .b-image { background: #0b0b0e; }
+      .b-youtube { background: #000; }
+      .yt-scrim { position: absolute; inset: 0; z-index: 2; background: linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0) 34%, rgba(0,0,0,0.66) 100%); }
+      .yt-play { position: absolute; left: 50%; top: 46%; transform: translate(-50%,-50%); z-index: 3; width: 62px; height: 62px; border-radius: 50%;
+        background: rgba(0,0,0,0.62); border: 1.5px solid rgba(255,255,255,0.7); display: grid; place-items: center; }
+      .yt-play svg { width: 24px; height: 24px; margin-left: 3px; fill: #fff; }
+      .yt-badge { position: absolute; left: 12px; top: 12px; z-index: 3; display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 9px; border-radius: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.01em; color: #fff; background: #e0202a; }
+      .yt-title { position: absolute; left: 14px; right: 14px; bottom: 12px; z-index: 3; font-size: 14.5px; font-weight: 700; color: #fff; line-height: 1.3;
+        text-shadow: 0 1px 6px rgba(0,0,0,0.7); white-space: normal; }
+
+      /* note (warm sticky — the product's one authentic pop of colour) */
+      .b-note { background: #fef9c3; border-color: rgba(0,0,0,0.12); box-shadow: 0 20px 44px rgba(0,0,0,0.5); padding: 15px 16px; }
+      .note-mini { display: flex; flex-direction: column; gap: 7px; color: #3f3a2e; font-size: 13.5px; line-height: 1.5; }
+      .note-mini .note-h { font-weight: 800; letter-spacing: -0.01em; display: inline-flex; align-items: center; gap: 5px; }
+      .note-mini .note-b { color: rgba(63,58,46,0.86); }
+
+      /* link (bookmark: thumb + site + title) */
+      .b-link { flex-direction: column; align-items: stretch; padding: 0; }
+      .link-thumb { position: relative; width: 100%; height: 118px; flex: none; overflow: hidden; background: #0b0b0e; border-bottom: 1px solid var(--hairline); }
+      .link-body { padding: 12px 13px; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+      .link-site { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; color: var(--ink-3); font-weight: 600; white-space: nowrap; overflow: hidden; }
+      .link-favi { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 5px; background: var(--ink); color: #000; font-size: 10px; font-weight: 800; flex: none; }
+      .link-title { font-size: 13.5px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; line-height: 1.28; }
+
+      /* dashboard */
+      .b-dash { background: #0b0b0e; padding: 15px; }
+      .b-dash.metallic { background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0) 46%), linear-gradient(160deg, #14141a 0%, #0c0c10 58%, #131318 100%); }
+      .minidash { display: flex; flex-direction: column; gap: 11px; width: 100%; height: 100%; }
+      .md-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: none; }
+      .md-kpi { border: 1px solid var(--hairline); border-radius: 10px; padding: 9px 11px; background: rgba(255,255,255,0.02); display: flex; flex-direction: column; }
+      .md-kpi span { font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-3); font-weight: 600; }
+      .md-kpi b { font-size: 16px; font-weight: 800; letter-spacing: -0.02em; margin-top: 2px; display: flex; align-items: baseline; gap: 4px; }
+      .md-kpi b em { font-size: 9px; font-weight: 600; font-style: normal; color: var(--ink-3); }
+      .md-kpi .spark { width: 100%; height: 16px; margin-top: 6px; display: block; }
+      .md-kpi .spark .a { fill: rgba(255,255,255,0.10); }
+      .md-kpi .spark .l { fill: none; stroke: var(--ink); stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+      .md-panel { border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 12px; background: rgba(255,255,255,0.02); flex: 1; display: flex; flex-direction: column; min-height: 0; }
+      .md-ct { font-size: 10px; color: var(--ink-3); font-weight: 600; margin-bottom: 8px; flex: none; }
+      .md-bars { display: flex; align-items: flex-end; gap: 7px; flex: 1; min-height: 0; }
+      .md-bars span { flex: 1; background: linear-gradient(180deg, var(--ink-2), var(--ink-3)); border-radius: 3px 3px 0 0; }
+      .md-line { width: 100%; flex: 1; min-height: 0; color: var(--ink); display: block; }
+
+      /* map (real stitched dark tiles + route + pins + attribution) */
+      .b-map { background: #0b0b0e; }
+      .map-route { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+      .map-route polyline { stroke: #fff; stroke-width: 0.8; stroke-dasharray: 1.8 2.2; opacity: 0.92; fill: none; }
+      .map-pin { position: absolute; z-index: 3; width: 26px; height: 26px; border-radius: 50%; transform: translate(-50%,-50%);
+        background: var(--ink); color: #000; border: 2px solid #0b0b0e; box-sizing: border-box; display: flex; align-items: center; justify-content: center;
+        font-size: 12px; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,0.55); }
+      .map-attr { position: absolute; right: 8px; bottom: 8px; z-index: 3; font-size: 9.5px; color: rgba(255,255,255,0.5);
+        background: rgba(0,0,0,0.4); border-radius: 5px; padding: 2px 6px; }
+
+      /* sheet (mini spreadsheet) */
+      .b-sheet { background: #0b0b0e; padding: 0; flex-direction: column; align-items: stretch; }
+      .sheet { display: flex; flex-direction: column; width: 100%; height: 100%; font-size: 11.5px; }
+      .sheet-row { display: grid; grid-template-columns: 26px 1fr 52px; border-bottom: 1px solid var(--hairline); flex: 1; }
+      .sheet-row > span { padding: 0 9px; border-right: 1px solid var(--hairline); color: var(--ink-2); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; display: flex; align-items: center; }
+      .sheet-row > span:last-child { border-right: none; }
+      .sheet-row.head > span { background: rgba(255,255,255,0.04); color: var(--ink-3); font-weight: 700; font-size: 9.5px; letter-spacing: 0.03em; text-transform: uppercase; }
+      .sheet-row .rownum { background: rgba(255,255,255,0.03); color: var(--ink-3); font-weight: 600; justify-content: center; padding: 0; }
+      .sheet-row .c-name { color: var(--ink); font-weight: 600; }
+      .sheet-row.total > span { background: rgba(255,255,255,0.05); color: var(--ink); font-weight: 700; }
+
+      /* flow (real Mermaid SVG) */
+      .b-flow { background: #0b0b0e; align-items: center; justify-content: flex-start; padding: 14px 0 14px 18px; overflow: hidden; }
+      .b-flow .flow-svg { height: 100%; width: auto; max-width: none; max-height: 100%; display: block; }
+
+      /* prototype (live iframe) */
+      .b-proto { background: #0b0b0e; }
+      .proto-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #0b0b0e; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div class="reel-viewport" id="viewport">
+      <div class="reel-camera" id="camera">
+        <div class="reel-board" id="board">
+
+          <!-- TABLE -->
+          <div class="reel-card" data-card style="grid-area: table">
+            <div class="bcard b-table">
+              <table class="doccard-tbl">
+                <thead><tr><th>Tool</th><th>Price /mo</th><th>Best for</th></tr></thead>
+                <tbody>
+                  <tr><td>Notion</td><td>$0–$18</td><td>Docs + wiki</td></tr>
+                  <tr><td>Linear</td><td>$0–$14</td><td>Product teams</td></tr>
+                  <tr><td>Asana</td><td>$0–$25</td><td>Task tracking</td></tr>
+                  <tr><td>ClickUp</td><td>$0–$12</td><td>Value</td></tr>
+                  <tr><td>Monday</td><td>$9–$19</td><td>Dashboards</td></tr>
+                  <tr><td>Airtable</td><td>$0–$20</td><td>No-code DB</td></tr>
+                  <tr><td>Trello</td><td>$0–$10</td><td>Kanban</td></tr>
+                  <tr><td>Jira</td><td>$0–$14</td><td>Eng teams</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- IMAGE 1 — real product photo (a storyboard sketch) -->
+          <div class="reel-card" data-card style="grid-area: image1">
+            <div class="bcard b-image">
+              <img class="card-img" src="../apps/web/public/uc/storyboard.jpg" alt="A hand-drawn storyboard" />
+              <span class="card-chip"><span class="spk">✦</span> Storyboard</span>
+            </div>
+          </div>
+
+          <!-- PROTOTYPE — live iframe -->
+          <div class="reel-card" data-card style="grid-area: proto">
+            <div class="bcard b-proto">
+              <iframe class="proto-frame" src="../site/assets/proto-focus.html" title="A live Focus mobile-app prototype" scrolling="no"></iframe>
+            </div>
+          </div>
+
+          <!-- YOUTUBE — real video the app's use-cases reference -->
+          <div class="reel-card" data-card style="grid-area: youtube">
+            <div class="bcard b-youtube">
+              <img class="card-img" src="./hero-reel-assets/yt-attention.jpg" alt="Video thumbnail" />
+              <div class="yt-scrim"></div>
+              <div class="yt-badge">▶ YouTube</div>
+              <div class="yt-play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></div>
+              <div class="yt-title">Attention in transformers, visually explained</div>
+            </div>
+          </div>
+
+          <!-- DOC -->
+          <div class="reel-card" data-card style="grid-area: doc">
+            <div class="bcard b-doc metallic">
+              <div class="doccard">
+                <div class="doccard-title">Work-management market size</div>
+                <div class="doccard-body">
+                  <p>The global work-management market passed <b>$8B in 2025</b>, up ~13% YoY, and is projected to more than double by <b>2032</b> as AI-native tools expand the category.</p>
+                  <table class="doccard-tbl doc-inline">
+                    <thead><tr><th>Segment</th><th>Share</th><th>CAGR</th></tr></thead>
+                    <tbody>
+                      <tr><td>SMB</td><td>41%</td><td>15%</td></tr>
+                      <tr><td>Mid-market</td><td>34%</td><td>12%</td></tr>
+                      <tr><td>Enterprise</td><td>25%</td><td>9%</td></tr>
+                    </tbody>
+                  </table>
+                  <p>SMB leads growth as AI-native suites pull in first-time buyers, while enterprise seats stay sticky.</p>
+                  <p class="doccard-src">Source: Grand View Research</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- DASHBOARD -->
+          <div class="reel-card" data-card style="grid-area: dash">
+            <div class="bcard b-dash metallic">
+              <div class="minidash">
+                <div class="md-kpis">
+                  <div class="md-kpi"><span>Total revenue</span><b>$890.2k <em>+18%</em></b>
+                    <svg class="spark" viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true"><path class="a" d="M0,17 L20,14 L40,15 L60,9 L80,7 L100,3 L100,22 L0,22 Z"/><polyline class="l" points="0,17 20,14 40,15 60,9 80,7 100,3"/></svg></div>
+                  <div class="md-kpi"><span>Orders</span><b>3,629 <em>+9%</em></b>
+                    <svg class="spark" viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true"><path class="a" d="M0,13 L20,9 L40,12 L60,6 L80,10 L100,4 L100,22 L0,22 Z"/><polyline class="l" points="0,13 20,9 40,12 60,6 80,10 100,4"/></svg></div>
+                  <div class="md-kpi"><span>New customers</span><b>609 <em>+14%</em></b>
+                    <svg class="spark" viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true"><path class="a" d="M0,16 L25,13 L50,11 L75,8 L100,5 L100,22 L0,22 Z"/><polyline class="l" points="0,16 25,13 50,11 75,8 100,5"/></svg></div>
+                  <div class="md-kpi"><span>Avg order</span><b>$245 <em>+3%</em></b>
+                    <svg class="spark" viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true"><path class="a" d="M0,12 L20,13 L40,10 L60,12 L80,9 L100,8 L100,22 L0,22 Z"/><polyline class="l" points="0,12 20,13 40,10 60,12 80,9 100,8"/></svg></div>
+                </div>
+                <div class="md-panel">
+                  <div class="md-ct">Revenue by month</div>
+                  <div class="md-bars"><span style="height:38%"></span><span style="height:52%"></span><span style="height:46%"></span><span style="height:64%"></span><span style="height:58%"></span><span style="height:76%"></span><span style="height:70%"></span><span style="height:88%"></span><span style="height:82%"></span><span style="height:100%"></span><span style="height:94%"></span><span style="height:90%"></span></div>
+                </div>
+                <div class="md-panel">
+                  <div class="md-ct">Monthly trend</div>
+                  <svg class="md-line" viewBox="0 0 120 40" preserveAspectRatio="none" aria-hidden="true">
+                    <defs><linearGradient id="mdArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(255,255,255,0.30)"/><stop offset="1" stop-color="rgba(255,255,255,0)"/></linearGradient></defs>
+                    <path d="M0,33 L13,30 L26,31 L40,24 L53,26 L66,19 L80,21 L93,13 L106,11 L120,6 L120,40 L0,40 Z" fill="url(#mdArea)"/>
+                    <polyline points="0,33 13,30 26,31 40,24 53,26 66,19 80,21 93,13 106,11 120,6" fill="none" stroke="#f5f5f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+                    <circle cx="120" cy="6" r="3" fill="#f5f5f7" vector-effect="non-scaling-stroke"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MAP — a real dark map (OSM/CARTO tiles) + route + pins -->
+          <div class="reel-card" data-card style="grid-area: map">
+            <div class="bcard b-map">
+              <img class="card-img" src="./hero-reel-assets/map-dark.png" alt="A dark map of the Goa coast" />
+              <svg class="map-route" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                <polyline points="13,29 33,49 25,57 27,88" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <div class="map-pin" style="left:13%; top:29%">1</div>
+              <div class="map-pin" style="left:33%; top:49%">2</div>
+              <div class="map-pin" style="left:25%; top:57%">3</div>
+              <div class="map-pin" style="left:27%; top:88%">4</div>
+              <span class="card-chip"><span class="spk">✦</span> 5 days in Goa</span>
+              <span class="map-attr">© OpenStreetMap · CARTO</span>
+            </div>
+          </div>
+
+          <!-- LINK — a bookmark preview -->
+          <div class="reel-card" data-card style="grid-area: link">
+            <div class="bcard b-link">
+              <div class="link-thumb"><img class="card-img" src="../apps/web/public/uc/radar.jpg" alt="Article preview" /></div>
+              <div class="link-body">
+                <span class="link-site"><span class="link-favi">A</span> anthropic.com</span>
+                <span class="link-title">Which economic tasks are exposed to AI</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- SHEET — a mini spreadsheet -->
+          <div class="reel-card" data-card style="grid-area: sheet">
+            <div class="bcard b-sheet">
+              <div class="sheet">
+                <div class="sheet-row head"><span class="rownum"></span><span>Item</span><span>Cost</span></div>
+                <div class="sheet-row"><span class="rownum">1</span><span class="c-name">Flights</span><span>$620</span></div>
+                <div class="sheet-row"><span class="rownum">2</span><span class="c-name">Stay</span><span>$480</span></div>
+                <div class="sheet-row"><span class="rownum">3</span><span class="c-name">Scooter</span><span>$70</span></div>
+                <div class="sheet-row total"><span class="rownum">Σ</span><span class="c-name">Total</span><span>$1,420</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- IMAGE 2 — real product photo (a saved reference) -->
+          <div class="reel-card" data-card style="grid-area: image2">
+            <div class="bcard b-image">
+              <img class="card-img" src="../apps/web/public/uc/stocks.jpg" alt="A saved reference image" />
+            </div>
+          </div>
+
+          <!-- NOTE — the warm sticky -->
+          <div class="reel-card" data-card style="grid-area: note">
+            <div class="bcard b-note">
+              <div class="note-mini">
+                <span class="note-h">✦ Trip plan</span>
+                <span class="note-b">7am ferry. Ask Sam re: budget. Pack light.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- FLOW — the real Mermaid SVG -->
+          <div class="reel-card" data-card style="grid-area: flow">
+            <div class="bcard b-flow">
+              <img class="flow-svg" src="../site/assets/flow.svg" alt="An onboarding flow diagram" />
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Centred typewriter: the ✦ mark spins ("thinking") while a short,
+           connected story types + deletes, narrating what Jarwiz does. A soft
+           black circular blur sits behind it. -->
+      <div class="reel-glow"></div>
+      <div class="reel-center" id="center">
+        <div class="reel-spark" id="spark">✦</div>
+        <div class="reel-line"><span id="promptText"></span><span class="reel-caret" id="caret"></span></div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const camera = document.getElementById('camera');
+        const spark = document.getElementById('spark');
+        const caret = document.getElementById('caret');
+        const promptText = document.getElementById('promptText');
+        const cards = Array.from(document.querySelectorAll('[data-card]'));
+
+        // One line — no cycling. Angled at the user's value: their ideas are too
+        // big for a chat; the board of real cards behind it is where they go. Types
+        // once, holds, clears at the loop seam (single type + single delete).
+        const LINES = [
+          'Your ideas are too big\nto be locked in a chat.', // \n = fixed line break
+        ];
+        const SPINS = 3; // full "thinking" turns of the ✦ over one loop (integer → clean seam)
+
+        const BOARD_C = 850;
+        const CENTER_SCALE = 1.35;    // zoomed in on the composer
+        const BOARD_SCALE = 0.66;     // zoomed out — the packed board fills the frame
+        const FLY = 1150;
+
+        // Fly-in direction from each card's REAL grid position.
+        const meta = cards.map((el, i) => {
+          const cx = el.offsetLeft + el.offsetWidth / 2;
+          const cy = el.offsetTop + el.offsetHeight / 2;
+          let dx = cx - BOARD_C, dy = cy - BOARD_C;
+          const len = Math.hypot(dx, dy) || 1;
+          return { el, ux: dx / len, uy: dy / len, order: i };
+        });
+
+        const clamp01 = (t) => Math.max(0, Math.min(1, t));
+        const easeOut = (t) => 1 - Math.pow(1 - clamp01(t), 3);
+        const easeIn = (t) => Math.pow(clamp01(t), 3);
+        const easeInOut = (t) => { t = clamp01(t); return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
+        const lerp = (a, b, t) => a + (b - a) * t;
+
+        // Phases: zoom out early to establish the board view, then the cards
+        // keep flying in across the first lines so the board BUILDS as the story
+        // types; it holds full, then zooms back to loop.
+        const IN_S = 0.03, IN_E = 0.22;                 // camera zoom-out window
+        const BUILD_S = 0.05, BUILD_STEP = 0.045, BUILD_DUR = 0.15; // per-card arrival
+        const HOLD_E = 0.90;
+
+        function cameraScale(u) {
+          if (u < IN_S) return CENTER_SCALE;
+          if (u < IN_E) return lerp(CENTER_SCALE, BOARD_SCALE, easeOut((u - IN_S) / (IN_E - IN_S)));
+          if (u < HOLD_E) return BOARD_SCALE;
+          return lerp(BOARD_SCALE, CENTER_SCALE, easeInOut((u - HOLD_E) / (1 - HOLD_E)));
+        }
+        // The ✦ mark spins continuously while it "thinks" — a whole number of
+        // turns over the loop keeps the seam clean.
+        function sparkDeg(u) { return u * SPINS * 360; }
+        // Typewriter: the loop is split into equal slots, one line each — type,
+        // hold, delete. Text is empty at every slot boundary (incl. u=0 and u=1),
+        // so the loop seam is clean.
+        function typewriter(u) {
+          const n = LINES.length;
+          const seg = Math.min(n - 1, Math.floor(u * n));
+          const t = u * n - seg;                 // 0..1 within this line's slot
+          const line = LINES[seg];
+          let chars;
+          if (t < 0.34) chars = Math.round((t / 0.34) * line.length);
+          else if (t < 0.80) chars = line.length;
+          else chars = Math.round((1 - (t - 0.80) / 0.20) * line.length);
+          return line.slice(0, Math.max(0, chars));
+        }
+        function cardState(m, u) {
+          let off, op;
+          const s0 = BUILD_S + m.order * BUILD_STEP;   // this card's arrival start
+          const s1 = s0 + BUILD_DUR;
+          if (u < s0) { off = 1; op = 0; }
+          else if (u < s1) { const p = (u - s0) / (s1 - s0); off = 1 - easeOut(p); op = clamp01(p * 3); }
+          else if (u < HOLD_E) { off = 0; op = 1; }
+          else { const p = (u - HOLD_E) / (1 - HOLD_E); off = easeIn(p); op = 1 - easeIn(clamp01((p - 0.1) / 0.9)); }
+          return { off, op };
+        }
+
+        window.setReel = function (u) {
+          u = ((u % 1) + 1) % 1;
+          camera.style.transform = 'scale(' + cameraScale(u).toFixed(4) + ')';
+          spark.style.transform = 'rotate(' + sparkDeg(u).toFixed(2) + 'deg)';
+          // Render the typed substring, turning the hard break into a <br> so the
+          // two lines are fixed (our own static copy — safe to set as HTML).
+          promptText.innerHTML = typewriter(u).replace(/\n/g, '<br>');
+          caret.style.opacity = (Math.floor(u * 44) % 2 === 0) ? '1' : '0.15';
+          for (const m of meta) {
+            const { off, op } = cardState(m, u);
+            m.el.style.transform = 'translate(' + (m.ux * FLY * off).toFixed(1) + 'px,' + (m.uy * FLY * off).toFixed(1) + 'px)';
+            m.el.style.opacity = op.toFixed(3);
+          }
+        };
+
+        window.reelReady = true;
+        window.setReel(0);
+      })();
+    </script>
+  </body>
+</html>
